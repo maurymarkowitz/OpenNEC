@@ -60,8 +60,8 @@ void parse_card(Card *card, int card_num, Errors *errors);
 /* read_deck()
  *
  * Reads the entire deck line by line and fills out the decks's cards[]
- * array with the resulting data. When all the cards are read, additional
- * processing functions are called to parse the cards.
+ * array with the resulting data. After this completes, the caller should
+ * call parse_deck() to process the data.
  *
  */
 void read_deck(Deck *deck, FILE *pfile)
@@ -71,6 +71,9 @@ void read_deck(Deck *deck, FILE *pfile)
 
   char line_buf[MAX_LINE_LEN];  // make it large enough to hold any possible line
   size_t line_len;              // actual length of the current card being read
+    
+  /* set the card count to 0, it might have !=0 default */
+  deck->num_cards = 0;
 
   /* loop and read lines one-by-one until we hit the EOF */
   while(TRUE) {
@@ -144,7 +147,7 @@ int read_line(char *buff, FILE *file)
   // in order to report a warning. if that's the case, it would seem we should do this
   // eating at the end of the routine?
   while((chr == CR) || (chr == LF)) {
-    // eat the line-end, and then return if that's the eof
+    // eat the next char, and return if that's the eof
     if((chr = getc(file)) == EOF) {
       return(EOF);
     }
@@ -285,37 +288,58 @@ void parse_deck(Deck *deck, Errors *errors)
       sawEN = TRUE;
     }
     
-	/* another special case: if this is a comment card but the next two characters
-	 * are one of the extensions, this is really a "hidden extension" that is being
-	 * used to make the deck compatible with older NEC programs. In that case, we
-	 * want to change the card to an extension type, make it not a comment, and save
-	 * the comment marker in the extn. note that this could only be the case if the
-	 * card has at least three characters, which would assume something like !SY
-	 */
-	 if (isCmt && line_len > 3) {
-		// look at the two characters *after* the comment marker
-		if(strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0) {
-			strncpy(hidden_type_buff, card->orig_str[2], 2);
-		} else if (strcmp(type_buff, "!") == 0 || strcmp(type_buff, "#") == 0|| strcmp(type_buff, "#") == 0) {
-			strncpy(hidden_type_buff, card->orig_str[1], 2);			
-		} else {
-			// we didn't find anything interesting
-			hidden_type_buff = "";
-		}
-		//now we see if those two characters are one of the extensions
-		  int isHidden = FALSE;
-		  for(int i = 0; i < NUM_ONEC_CODES; i++) {
-			if(strcmp(card->card_code, onec_codes[i]) == 0) {
-			  isHidden = TRUE;
-			  break;
-			}
-		  }
-		  if(isHidden) {
-			  isCmt = FALSE;
-			  isExt = TRUE;
-			  card->extn_code[0] = 
-		  }
-	 }
+    /* another special case: if this is a comment card but the next two characters
+     * are one of the extensions, this is really a "hidden extension" that is being
+     * used to make the deck compatible with older NEC programs. In that case, we
+     * want to change the card to an extension type, make it not a comment, and save
+     * the comment marker in the extn. note that this could only be the case if the
+     * card has at least three characters, which would assume something like !SY
+     */
+    if (isCmt && line_len > 3) {
+      // skip forward to find anything after the comment marker
+      int pos = 0;
+      if(strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0)  {
+        pos = 2;
+      } else if (strcmp(type_buff, "!") == 0 || strcmp(type_buff, "#") == 0|| strcmp(type_buff, "'") == 0) {
+        pos = 1;
+      } else {
+        // how would this even happen?
+      }
+      // only continue if we didn't eat the entire line
+      if(pos < line_len) {
+        // eat any whitespace
+        if(isspace(card->orig_str[pos])) {
+          pos++;
+        }
+        //
+      }
+
+      //get the rest of the string after the comment marker
+    
+    
+     // get the two characters *after* the comment marker
+     if((strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0) && line_len > 4) {
+       strncpy(hidden_type_buff, &card->orig_str[2], 2);
+     } else if (strcmp(type_buff, "!") == 0 || strcmp(type_buff, "#") == 0|| strcmp(type_buff, "'") == 0) {
+       strncpy(hidden_type_buff, &card->orig_str[1], 2);
+     } else {
+       // we didn't find anything interesting
+       strcpy(hidden_type_buff, "");
+     }
+     //now we see if those two characters are one of the extensions
+     int isHidden = FALSE;
+     for(int i = 0; i < NUM_ONEC_CODES; i++) {
+       if(strcmp(hidden_type_buff, onec_codes[i]) == 0) { // was card->card_code in the front
+         isHidden = TRUE;
+         break;
+       }
+     }
+     if (isHidden) {
+       isCmt = FALSE;
+       isExt = TRUE;
+       card->extn_code[0] = '!';
+     }
+  }
 
     /* if we're past the end of the deck, don't do anything, just keep it in the orig_card
      * but if we're still inside the deck and we don't recognize the card, make an error
