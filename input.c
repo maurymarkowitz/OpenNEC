@@ -311,11 +311,9 @@ void parse_deck(Deck *deck, Errors *errors)
         if(isspace(card->orig_str[pos])) {
           pos++;
         }
-        //
       }
 
       //get the rest of the string after the comment marker
-    
     
      // get the two characters *after* the comment marker
      if((strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0) && line_len > 4) {
@@ -334,7 +332,7 @@ void parse_deck(Deck *deck, Errors *errors)
          break;
        }
      }
-     if (isHidden) {
+     if(isHidden) {
        isCmt = FALSE;
        isExt = TRUE;
        card->extn_code[0] = '!';
@@ -379,8 +377,9 @@ void parse_deck(Deck *deck, Errors *errors)
     
     /* if we did find a comment marker in this line, and the deck doesn't have a
      * default marker set, assume this is the one used in the entire file and make
-     * it the default. You can still use other codes on other lines, but if you
-     * add a new card with a comment, it will default to using this marker on that card.
+     * it the default. You can still use other markers on other lines, but if you
+     * add a new card programmatically and set a comment, it will default to using
+     * this marker on that card.
      */
     if(card->extn_code[0] != 0 && deck->cmt_code[0] == 0) {
       deck->cmt_code[0] = card->extn_code[0];
@@ -449,7 +448,7 @@ void parse_comment_card(Card *card, Errors *errors)
  */
 void parse_command_card(Card *card, Errors *errors)
 {
-	int nint = 4, nflt = 6; // maximum number of integers on a line, max number of floats
+    int nint = 4, nflt = 6; // maximum number of integers on a line, max number of floats
   char* end_ptr;
 
 	// get line length of the card part of the line
@@ -466,7 +465,7 @@ void parse_command_card(Card *card, Errors *errors)
   end_ptr = NULL;
   int ints_processed = 0;
   while(str <= card->card_str + line_len && ints_processed < nint) {
-    size_t value = strtol(str , &end_ptr , 10);
+    size_t value = strtol(str, &end_ptr, 10);
     if(value == 0L && end_ptr == str) break;
     str = end_ptr ;
 
@@ -476,13 +475,13 @@ void parse_command_card(Card *card, Errors *errors)
         card->i1 = (int)value;
         break;
       case 2:
-        card->i2 =  (int)value;
+        card->i2 = (int)value;
         break;
       case 3:
-        card->i3 =  (int)value;
+        card->i3 = (int)value;
         break;
       case 4:
-        card->i4 =  (int)value;
+        card->i4 = (int)value;
         break;
     }
   }
@@ -492,7 +491,7 @@ void parse_command_card(Card *card, Errors *errors)
   int dbls_processed = 0;
   while(str <= card->card_str + line_len && dbls_processed < nflt) {
     // try to read another double on the line, and exit otherwise
-    double value = strtod(str , &end_ptr);
+    double value = strtod(str, &end_ptr);
     if(value == 0L && end_ptr == str) break;
     str = end_ptr ;
 
@@ -543,7 +542,7 @@ void parse_geometry_card(Card *card, Errors *errors)
   if(line_len <= 2) return;
   
   // skip the first two chars, the mnemonic is still there
-  char *str = card->card_str + 2;//strdup(card->card_str + 2);
+  char *str = card->card_str + 2; //strdup(card->card_str + 2);
 
   // process up to four ints at the start of the line
   end_ptr = NULL;
@@ -609,7 +608,9 @@ void parse_geometry_card(Card *card, Errors *errors)
         /* test to see if we got a code we recognize */
         if(unit < 1) {
           char *msg = calloc(1, MAX_ERROR_LEN);
-          sprintf(msg, "Unknown unit type '%s' encountered in float field %d of card %d. Units left as 'default'.", unit_code, dbls_processed, card->card_num);
+          sprintf(msg,
+                  "Unknown unit type '%s' encountered in float field %d of card %d. Units left as 'default'.",
+                  unit_code, dbls_processed, card->card_num);
           add_error(errors, msg, 0);
           free(msg);
         }
