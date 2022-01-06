@@ -87,6 +87,7 @@ Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
 #define	TPJ		(0.0+I*6.283185308)
 #define PI8		25.13274123
 #define PI10	31.41592654
+#define FPI     12.56637062
 #define	TA		1.745329252E-02 // degrees to radians
 #define	TD		57.29577951     // radians to degrees
 #define	ETA		376.73
@@ -95,7 +96,6 @@ Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
 #define	TOSP	1.128379167
 #define ACCS	1.E-12
 #define	SP		1.772453851
-#define	FPI		12.56637062
 #define	CCJ		(0.0-I*0.01666666667)
 #define	CONST1	(0.0+I*4.771341189)
 #define	CONST2	4.771341188
@@ -138,4 +138,3 @@ Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
 #define MAX_UNIT_LEN 5
 
 #endif
-
