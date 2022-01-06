@@ -50,7 +50,7 @@ extern char *onec_codes[NUM_ONEC_CODES];
 #define UNITS_DEF
 #define NUM_UNIT_CODES 8
 extern char *unit_codes[NUM_UNIT_CODES];
-extern double *unit_mult[NUM_UNIT_CODES];
+extern double unit_mult[NUM_UNIT_CODES];
 #endif
 
 /*** Structs encapsulating global ("common") variables ***/
@@ -72,7 +72,7 @@ typedef struct
   
   // processed NEC2 data
   int card_num;       // card number within the deck. mostly used for error reporting ("Card X has an error")
-  char card_code[2];  // the two-letter code for this card, or one letter for some comments
+  char card_code[2];  // the two-letter code for this card, or one letter and a space for some comment formats
   int i1, i2, i3, i4; // various bits read from the cards - i1 is normally the tag, for instance
   double f1, f2, f3;  // various floats/doubles read from the cards
   double f4, f5, f6;
@@ -80,7 +80,7 @@ typedef struct
   double f10;         // last possible input, happens in a GW/GC pair
   
   // onec values
-  int m1, m2, m3;     // measurement units on the fields, or 0 for "default"
+  int m1, m2, m3;     // measurement units on the fields, or 0 for "default", meters
   int m4, m5, m6;
   int m7, m8, m9;
   int m10;
@@ -98,19 +98,19 @@ typedef struct
   char *name;         // name for this card, if present
   char *group;        // group name, used to collect multiple cards into groups
   char *comment;      // if a comment was found, it's placed here *without* the delimiter
-  KeyValue *values;   // onec extensions consist of name:value pairs, this holds any of those *after* removing the comment, if present
+  KeyValue *values;   // onec extensions consist of name:value pairs, *after* removing a real comment, if present
 } Card;
 
 /*** Deck encapsulates a single deck of cards ***/
 typedef struct
 {
   int num_cards;      // total number of cards read in. should point to an EN, but that is not nessesary
-	Card *cards;        // array of cards
-	int comment_start;  // card number of the start of the comments section, normally 0. -1 if there are no CM or CE cards
-	int comment_end;    // card number of the last continuous CM card, or the CE card if present. -1 if there are no CM or CE cards
-	int geometry_start; // card number of the first geometry card, which definitely should exist. -1 if not found
+  Card *cards;        // array of cards
+  int comment_start;  // card number of the start of the comments section, normally 0. -1 if there are no CM or CE cards
+  int comment_end;    // card number of the last continuous CM card, or the CE card if present. -1 if there are no CM or CE cards
+  int geometry_start; // card number of the first geometry card, which definitely should exist. -1 if not found
   int geometry_end;   // card number of the GE card, which also has to exist. -1 if not found
-  int deck_end;       // card number of the EN card, which also has to exist. -1 if not found
+  int deck_end;       // card number of the EN card or the last card in the deck otherwise. -1 if not found
   char cmt_code[1];   // the default marker to use for comments, !, $ or '
   KeyValue *symbols;  // any variables read in from SY cards
 } Deck;
@@ -138,15 +138,15 @@ typedef struct
 /* common  /crnt/ */
 typedef struct
 {
-	double
-		*air,	/* Ai/lambda, real part */
-		*aii,	/* Ai/lambda, imaginary part */
-		*bir,	/* Bi/lambda, real part */
-		*bii,	/* Bi/lambda, imaginary part */
-		*cir,	/* Ci/lambda, real part */
-		*cii;	/* Ci/lambda, imaginary part */
+  double
+    *air,	/* Ai/lambda, real part */
+    *aii,	/* Ai/lambda, imaginary part */
+    *bir,	/* Bi/lambda, real part */
+    *bii,	/* Bi/lambda, imaginary part */
+    *cir,	/* Ci/lambda, real part */
+    *cii;	/* Ci/lambda, imaginary part */
 
-		complex double *cur; /* Amplitude of basis function */
+  complex double *cur; /* Amplitude of basis function */
 } crnt_t;
 
 /* common  /data/ (geometry data) */
@@ -300,21 +300,21 @@ typedef struct
 {
 	int
 		ksymp,	/* Ground flag */
-		ifar,	/* Int flag in RP card, for far field calculations */
+		ifar,	  /* Int flag in RP card, for far field calculations */
 		iperf,	/* Type of ground flag */
 		nradl;	/* Number of radials in ground screen */
 
 	double
-		t2,		/* Const for radial wire ground impedance */
-		cl,		/* Distance in wavelengths of cliff edge from origin */
-		ch,		/* Cliff height in wavelengths */
+		t2,		  /* Const for radial wire ground impedance */
+		cl,		  /* Distance in wavelengths of cliff edge from origin */
+		ch,		  /* Cliff height in wavelengths */
 		scrwl,	/* Wire length in radial ground screen normalized to w/length */
 		scrwr;	/* Radius of wires in screen in wavelengths */
 
 	complex double
 		zrati,	/* Ground medium [Er-js/wE0]^-1/2 */
 		zrati2,	/* As above for 2nd ground medium */
-		t1,		/* Const for radial wire ground impedance */
+		t1,		  /* Const for radial wire ground impedance */
 		frati;	/* (k1^2-k2^2)/(k1^2+k2^2), k1=w(E0Mu0)^1/2, k1=k2/ZRATI */
 
 } gnd_t;
@@ -323,16 +323,16 @@ typedef struct
 typedef struct
 {
 	double
-		r1,		/* Distance from current element to point where field is evaluated  */
-		r2,		/* Distance from image of element to point where field is evaluated */
-		zmh,	/* Z-Z', Z is height of field evaluation point */
-		zph;	/* Z+Z', Z' is height of current element */
+		r1,		  /* Distance from current element to point where field is evaluated  */
+		r2,		  /* Distance from image of element to point where field is evaluated */
+		zmh,	  /* Z-Z', Z is height of field evaluation point */
+		zph;	  /* Z+Z', Z' is height of current element */
 
 	complex double
-		u,		/* (Er-jS/WE0)^-1/2 */
-		u2,		/* u^2 */
-		xx1,	/* G1*exp(jkR1.r[i])  */
-		xx2;	/* G2*exp(jkR2.r'[i]) */
+		u,		  /* (Er-jS/WE0)^-1/2 */
+		u2,		  /* u^2 */
+		xx1,	  /* G1*exp(jkR1.r[i])  */
+		xx2;	  /* G2*exp(jkR2.r'[i]) */
 
 } gwav_t;
 
@@ -358,7 +358,7 @@ typedef struct
 		icase,	/* Storage mode of primary matrix */
 		npblk,	/* Num of blocks in first (NBLOKS-1) blocks */
 		nlast,	/* Num of blocks in last block */
-		imat;	/* Storage reserved in CM for primary NGF matrix A */
+		imat;	  /* Storage reserved in CM for primary NGF matrix A */
 
 } matpar_t;
 
@@ -384,8 +384,8 @@ typedef struct
 		*x12i,
 		*x22r,
 		*x22i,
-		pin,	/* Total input power from sources */
-		pnls;	/* Power lost in networks */
+		pin,	  /* Total input power from sources */
+		pnls;	  /* Power lost in networks */
 
 	complex double zped;
 
@@ -409,11 +409,11 @@ typedef struct
 	int *ip;	/* Vector of indices of pivot elements used to factor matrix */
 
 	double
-		epsr,	/* Relative dielectric constant of ground */
-		sig,	/* Conductivity of ground */
+		epsr,	  /* Relative dielectric constant of ground */
+		sig,	  /* Conductivity of ground */
 		scrwlt,	/* Length of radials in ground screen approximation */
 		scrwrt,	/* Radius of wires in ground screen approximation */
-		fmhz;	/* Frequency in MHz */
+		fmhz;	  /* Frequency in MHz */
 
 } save_t;
 
@@ -421,8 +421,8 @@ typedef struct
 typedef struct
 {
 	int
-		*jco,	/* Stores connection data */
-		jsno,	/* Total number of entries in ax, bx, cx */
+		*jco,	  /* Stores connection data */
+		jsno,	  /* Total number of entries in ax, bx, cx */
 		maxcon; /* Max. no. connections */
 
 	double
@@ -467,11 +467,11 @@ typedef struct
 		*ivqd,	/* Num of segs on which a current-slope discontinuity source is located */
 		*iqds,	/* Same as above (?) */
 		nsant,	/* Number of applied field voltage sources */
-		nvqd,	/* Number of applied current-slope discontinuity sources */
-		nqds;	/* Same as above (?) */
+		nvqd,	  /* Number of applied current-slope discontinuity sources */
+		nqds;	  /* Same as above (?) */
 
 	complex double
-		*vqd,	/* Voltage of applied-current slope discontinuity sources */
+		*vqd,	  /* Voltage of applied-current slope discontinuity sources */
 		*vqds,	/* Same as above (?) */
 		*vsant;	/* Voltages of applied field voltage sources */
 
