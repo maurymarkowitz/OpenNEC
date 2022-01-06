@@ -42,7 +42,7 @@ char *unit_codes[NUM_UNIT_CODES] = {
   "", "m", "cm", "mm", "ft", "in", "ftin", "awg"
 };
 //// the last two units, ftin and awg, require special conversions
-double *unit_mult[NUM_UNIT_CODES] = {
+double unit_mult[NUM_UNIT_CODES] = {
   0, 1.0, 0.01, 0.001, 0.30480, 0.0254, 0, 0
 };
 
