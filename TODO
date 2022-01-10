@@ -1,3 +1,5 @@
 Items still to be implemented: 
  
 * add handlers for IT(eration) and OP(timization) cards, which produce multiple output runs from a single deck. in onec these should be processed out into some sort of "run" or "simulate" object with any difference from the original definitions.
+
+* look for comment rows that contain key/value pairs and see if they should be merged onto the previous row. this can occur if an external editor added a line feed at precisely the point where an inline comment started
