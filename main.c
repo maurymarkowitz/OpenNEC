@@ -113,7 +113,7 @@ int main(int argc, char **argv)
     printf("%s\n", import_errors.errors[i].message);
   }
   
-  test_deck(&deck, &test_errors);
+  test_deck_structure(&deck, &test_errors);
   for(int i = 0; i < test_errors.num_errors; i++) {
     printf("%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
   }
