@@ -8,15 +8,125 @@
  *******************************************************************/
 
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif
 
 #include "opennec.h"
 #include "shared.h"
 
-/* signal handler */
-static void sig_handler( int signal );
+#ifndef _GETOPT_H
+#include <getopt.h>
+#endif
 
+/* signal handler */
+static void sig_handler(int signal);
+
+/* various switches for the command line arguments */
+static int run_simulation = TRUE;
+static int run_tests = FALSE;
+static int run_greens = FALSE;
+static char *input_file = "";
+static char *output_file = "";
+static char *tests_file = "";
+static char *greens_file = "";
+
+
+/* simple version info for --version command line option */
+static void print_version()
+{
+    puts("OpenNEC 1.0");
+}
+
+/* usage, both for the user and for documenting the code below */
+static void print_usage(char *argv[])
+{
+  printf("Usage: %s [-hvsngu] [-a number] [-t spaces] [-r seed] [-p | -w stats_file] [-o output_file] [-i input_file] source_file\n", argv[0]);
+  puts("Options:");
+  puts("  -h, --help: print this description");
+  puts("  -v, --version: print version info");
+  puts("  -i, --input-file: the input file");
+  puts("  -o, --output-file: the output file");
+  puts("  -n, --no-run: don't run the simulation after parsing");
+  puts("  -t, --test-deck: run various sanity tests, write to *.errors or provided filename");
+  puts("  -g, --greens: write a greens function file to *.ngf or provided filename. same as placing a WG in a deck.");
+}
+
+static struct option program_options[] =
+{
+  {"help", no_argument, NULL, 'h'},
+  {"version", no_argument, NULL, 'v'},
+  {"input-file", required_argument, NULL, 'i'},
+  {"output-file", required_argument,  NULL, 'o'},
+  {"no-run", no_argument, NULL, 'n'},
+  {"test-deck", no_argument, NULL, 't'},
+  {"greens", required_argument, NULL, 'g'},
+  {0, 0, 0, 0}
+};
+
+void parse_options(int argc, char *argv[])
+{
+  int option_index = 0;
+  int printed_help = FALSE;
+  
+  while(1) {
+    // eat an option and exit if we're done
+    int c = getopt_long(argc, argv, "hvua:t:r:i:o:w:spn", program_options, &option_index); // should match the items above, but with flag-setters excluded
+    if (c == -1) break;
+    
+    switch (c) {
+      case 0:
+        // flag-setting options return 0 - these are s, p and n
+        if (program_options[option_index].flag != 0)
+          break;
+        
+      case 'h':
+        print_usage(argv);
+        printed_help = TRUE;
+        break;
+        
+      case 'v':
+        print_version();
+        printed_help =  TRUE;
+        break;
+        
+      case 'i':
+        input_file = optarg;
+        break;
+        
+      case 'o':
+        output_file = optarg;
+        break;
+        
+      case 'n':
+        run_simulation = FALSE;
+        break;
+        
+      case 't':
+        run_tests = TRUE;
+        tests_file = optarg;
+        break;
+        
+      case 'g':
+        run_greens = TRUE;
+        greens_file = optarg;
+        break;
+        
+      default:
+        abort();
+    }
+  } // while
+  
+  // now see if there's a filename
+  if (optind < argc)
+    // we'll just assume one file if any
+    input_file = argv[argc - 1];
+  else
+    // not always a failure, we might have just been asked for usage
+    if (printed_help)
+      exit(EXIT_SUCCESS);
+    else
+      exit(EXIT_FAILURE);
+}
 /*-------------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
@@ -24,13 +134,13 @@ int main(int argc, char **argv)
   Deck deck;              // the deck we're processing, we'll make it local as it disappears on exit
   Errors import_errors;   // a list of errors that occured during import
   Errors test_errors;     // a list of errors and warnings about the deck's format
-
+  
   /* getopt() variables */
   int option;
   char infile[81] = "", otfile[81] = "";
-
+  
   /*** command line arguments handler ***/
-
+  
   /* if there are no command line arguments, print usage */
   if(argc == 1) {
     usage();
@@ -118,11 +228,11 @@ int main(int argc, char **argv)
     printf("%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
   }
   
-//  for(int i = 0; i < deck.num_cards; i++) {
-//    printf("%d %s\n", i, deck.cards[i].card_str);
-//    printf("%d %s\n", i, deck.cards[i].extn_str);
-//    printf("%d %s\n", i, deck.cards[i].comment);
-//  }
+  //  for(int i = 0; i < deck.num_cards; i++) {
+  //    printf("%d %s\n", i, deck.cards[i].card_str);
+  //    printf("%d %s\n", i, deck.cards[i].extn_str);
+  //    printf("%d %s\n", i, deck.cards[i].comment);
+  //  }
   
   return 0;
 } /* main */
