@@ -457,7 +457,7 @@ void parse_comment_card(Card *card, Errors *errors)
  */
 void parse_command_card(Card *card, Errors *errors)
 {
-  int nint = 4, nflt = 6; // maximum number of integers on a line, max number of floats
+  int MAX_INT = 4, MAX_FLOAT = 6; // maximum number of integers on a line, max number of floats
   char* end_ptr;
 
 	// get line length of the card part of the line
@@ -473,7 +473,7 @@ void parse_command_card(Card *card, Errors *errors)
   // process up to four ints at the start of the line
   end_ptr = NULL;
   int ints_processed = 0;
-  while(str <= card->card_str + line_len && ints_processed < nint) {
+  while(str <= card->card_str + line_len && ints_processed < MAX_INT) {
     size_t value = strtol(str, &end_ptr, 10);
     if(value == 0L && end_ptr == str) break;
     str = end_ptr ;
@@ -498,7 +498,7 @@ void parse_command_card(Card *card, Errors *errors)
   // process up to six doubles following the ints
   end_ptr = NULL;
   int dbls_processed = 0;
-  while(str <= card->card_str + line_len && dbls_processed < nflt) {
+  while(str <= card->card_str + line_len && dbls_processed < MAX_FLOAT) {
     // try to read another double on the line, and exit otherwise
     double value = strtod(str, &end_ptr);
     if(value == 0L && end_ptr == str) break;
@@ -695,15 +695,54 @@ void parse_onec_card(Card *card, Errors *errors)
   // see if this is an SY card, otherwise exit
   // TODO: add all onec_codes here, we currently only do SY
   if(strcmp(card->card_code, "SY") == 0) {
-    // TODO: do this!
-    
+    // make a copy of the string so we can mangle it - DO WE NEED TO?
+    char str[MAX_LINE_LEN];
+    strcpy(str, card->card_str + 2);
+
+    // SY allows only a comma as a delimeter
+    char *token, *split;
+    token = strtok(str, " ,");
+    while(token != NULL) {
+      // make sure there's a equals in it
+      split = strpbrk(token, "=");
+      if(split != NULL) {
+        // remove any whitespace off the front, which might be trailing the comma
+        while(isspace((unsigned char)*token)) token++;
+        //TODO: do the same on the end of the string, if they put space comma
+
+        // if the split was successful, meaning we found the = somewhere,
+        // the = is still on the front so let's kill it
+        if (split[0] == '=') split++;
+
+        // now check that both sides are >0 len
+        if(strlen(token) > 0 && strlen(split) > 0) {
+          // if so, make a new keyvalue pair and add it to the card's collection
+          KeyValue *pair = (KeyValue *)malloc(sizeof(KeyValue));
+          if(pair != NULL) {
+            // calloc the strings and store them...
+            pair->key = calloc(split - token, sizeof(char));
+            strncpy(pair->key, token, split - token - 1);
+            pair->value = calloc(strlen(split) + 1, sizeof(char)); // add one for a trailing null
+            strcpy(pair->value, split);
+            // and store the original separator so we can recreate it on output
+            pair->separator = token[split - token];
+            // and null this out, as its going on the end
+            pair->next = NULL;
+            // and then add it to the end of the list
+            KeyValue *tail = card->formulas;
+            if(tail == NULL) {
+              card->formulas = pair;
+            } else {
+              while(tail->next != NULL) tail = tail->next;
+              tail->next = pair;
+            }
+          } // there should be else's for all the mallocs and callocs!
+        }
+      } // split != NULL
+      // and get the next token
+      token = strtok(NULL, OUR_WHITESPACE OUR_SEPARATORS);
     }
-    
-   // free(str);
-//    free(token);
-//    free(name);
-//    free(value);
-//    free(split);
+  }
 } /* end of parse_onec_card() */
 
 /*----------------------------------------------------------------------*/
@@ -711,13 +750,15 @@ void parse_onec_card(Card *card, Errors *errors)
  *
  * parses a string that may contain key/value pairs
  *
- * also looks for comment markers within the string, and assumes
- * everything a second marker is an actual comment as opposed to
+ * also looks for "comment:" markers within the string, and assumes
+ * everything that marker is a comment
  *
  */
 void parse_key_values(Card *card, Errors *errors)
 {
   char str[MAX_LINE_LEN];
+  char key[MAX_LINE_LEN], value[MAX_LINE_LEN];
+
   // first off, check if the extension exists and has enough data
   if(strlen(card->extn_str) < 2)
     return;
@@ -729,9 +770,8 @@ void parse_key_values(Card *card, Errors *errors)
   strcpy(str, card->extn_str);
   
   // strtok should be perfect for this one because we don't want the delimiters to be handed back
-  char *token, *split;
-
   // ...so start by priming the strtok pump
+  char *token, *split;
   token = strtok(str, OUR_WHITESPACE OUR_SEPARATORS); // note the "concat the string literals" trick
   while(token != NULL) {
     // make sure there's a equals or colon in it - note you can't nest another strtok!
@@ -741,15 +781,46 @@ void parse_key_values(Card *card, Errors *errors)
       // the split char is still on the front so let's kill it
       if (split[0] == '=') split++;
       if (split[0] == ':') split++;
-
+      
+      // and split these out for ease of use
+      strncpy(key, token, split - token - 1);
+      strcpy(value, split);
+      
       // now check that both sides are >0 len
-      if(strlen(token) > 0 && strlen(split) > 0) {
+      if(strlen(key) > 0 && strlen(value) > 0) {
         // there are a couple of cases here:
-        // 1) the key is comment - copy it into comment string and move on
-        // 2) the key is a formula - make a KeyValue 
+        // 1) the key is "name", "group", which are stored separately
+        // 2) the key is "comment" - copy everything after it into comment string and exit
+        // 3) the key is a formula - make a KeyValue pair and add it to the formulas list
+        // 4) the key is anything else - make a KeyValue pair and add it to the pairs list
         
+        // handle "name" or "group"
+        if(strcasecmp(key, "name") == 0) {
+          card->name = value;
+          continue;
+        }
+        if(strcasecmp(key, "group") == 0) {
+          card->group = value;
+          continue;
+        }
+        // and comments
+        if(strcasecmp(key, "comment") == 0) {
+          card->comment = value;
+          return;
+        }
         
-        // if so, make a new keyvalue pair and add it to the card's collection
+        // now see if its a formula
+        bool isFormula = false;
+        for(int i = 0; i < NUM_FIELD_NAMES; i++) {
+          if(strcasestr(key, field_names[i]) != NULL) {
+            isFormula = true;
+            break;
+          }
+        }
+        
+        // formulas and all other tags are handled in the same fashion,
+        // we make a KeyValue pair to hold it. They differ only in
+        // where we put them in the end
         KeyValue *pair = (KeyValue *)malloc(sizeof(KeyValue));
         if(pair != NULL) {
           // calloc the strings and store them...
@@ -762,35 +833,29 @@ void parse_key_values(Card *card, Errors *errors)
           // and null this out, as its going on the end
           pair->next = NULL;
           
-          // if the key
-          
-          
-          // and then add it to the end of the list
-          KeyValue *tail = card->pairs;
-          if(tail == NULL) {
-            card->pairs = pair;
+          // now decide which list to add it to
+          KeyValue *head, *tail;
+          if(isFormula) {
+            head = card->formulas;
           } else {
-            while(tail->next != NULL) tail = tail->next;
+            head = card->pairs;
+          }
+          tail = head;
+
+          // and then add it to the end of the list
+          if(tail == NULL) {
+            head = pair;
+          } else {
+            while(tail->next != NULL)
+              tail = tail->next;
             tail->next = pair;
           }
         } // there should be else's for all the mallocs and callocs!
       }
-      
-      //
-      
-      // FIXME: at this point we still have formulas and comments in the string,
-      //   we need to look for these and pull them out.
-      
     } // split != NULL
     
     // and get the next token
     token = strtok(NULL, OUR_WHITESPACE OUR_SEPARATORS);
   }
-    
-    //free(str);
-//    free(token);
-//    free(name);
-//    free(value);
-//    free(split);
 } /* end of parse_key_values() */
 
