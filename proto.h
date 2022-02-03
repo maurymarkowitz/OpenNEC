@@ -15,10 +15,11 @@ void parse_comment_card(Card *card, Errors *errors);
 void parse_command_card(Card *card, Errors *errors);
 void parse_geometry_card(Card *card, Errors *errors);
 void parse_onec_card(Card *card, Errors *errors);
+void parse_key_values(Card *card, Errors *errors);
 /* deck.c */
 void update_deck_values(Deck *deck);
 void update_card_values(Card *card);
-void test_deck(Deck *deck, Errors *errors);
+void test_deck_structure(Deck *deck, Errors *errors);
 int isComment(Card *card);
 int isGeometry(Card *card);
 int isControl(Card *card);
