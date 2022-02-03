@@ -3,7 +3,7 @@
  * main.c is the entry point for the command-line version of OpenNEC
  * It works along with input.c and output.c. Together they parse the
  * command line, read an input file if provided, run the commands in
- * the deck, and then print the output to another file
+ * the deck, and then print the output to another file.
  *
  *******************************************************************/
 
@@ -18,7 +18,7 @@
 #include <getopt.h>
 #endif
 
-/* signal handler */
+/** signal handler */
 static void sig_handler(int signal);
 
 /* various switches for the command line arguments */
@@ -27,27 +27,27 @@ static int run_tests = FALSE;
 static int run_greens = FALSE;
 static char *input_file = "";
 static char *output_file = "";
-static char *tests_file = "";
+static char *error_file = "";
 static char *greens_file = "";
 
-
-/* simple version info for --version command line option */
+/** simple version info for --version command line option */
 static void print_version()
 {
-    puts("OpenNEC 1.0");
+    puts("OpenNEC " VERSION_STRING);
 }
 
-/* usage, both for the user and for documenting the code below */
+/** usage, both for the user and for documenting the code below */
 static void print_usage(char *argv[])
 {
-  printf("Usage: %s [-hvsngu] [-a number] [-t spaces] [-r seed] [-p | -w stats_file] [-o output_file] [-i input_file] source_file\n", argv[0]);
+  printf("Usage: %s [-hvtng] [-i output_file] [-o output_file] [-e error_file] source_file\n", argv[0]);
   puts("Options:");
   puts("  -h, --help: print this description");
   puts("  -v, --version: print version info");
-  puts("  -i, --input-file: the input file");
-  puts("  -o, --output-file: the output file");
+  puts("  -i, --input-file: (path/)name of the input file");
+  puts("  -o, --output-file: (path/)name to the output file");
+  puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -n, --no-run: don't run the simulation after parsing");
-  puts("  -t, --test-deck: run various sanity tests, write to *.errors or provided filename");
+  puts("  -t, --test-deck: run various sanity tests");
   puts("  -g, --greens: write a greens function file to *.ngf or provided filename. same as placing a WG in a deck.");
 }
 
@@ -55,11 +55,12 @@ static struct option program_options[] =
 {
   {"help", no_argument, NULL, 'h'},
   {"version", no_argument, NULL, 'v'},
+  {"no-run", no_argument, NULL, 'n'},
   {"input-file", required_argument, NULL, 'i'},
   {"output-file", required_argument,  NULL, 'o'},
-  {"no-run", no_argument, NULL, 'n'},
-  {"test-deck", no_argument, NULL, 't'},
-  {"greens", required_argument, NULL, 'g'},
+  {"error-file", required_argument,  NULL, 'e'},
+  {"test-deck", optional_argument, NULL, 't'},
+  {"greens", optional_argument, NULL, 'g'},
   {0, 0, 0, 0}
 };
 
@@ -70,7 +71,7 @@ void parse_options(int argc, char *argv[])
   
   while(1) {
     // eat an option and exit if we're done
-    int c = getopt_long(argc, argv, "hvua:t:r:i:o:w:spn", program_options, &option_index); // should match the items above, but with flag-setters excluded
+    int c = getopt_long(argc, argv, "hvni:o:t:g:", program_options, &option_index); // should match the items above, but with flag-setters excluded
     if (c == -1) break;
     
     switch (c) {
@@ -97,13 +98,16 @@ void parse_options(int argc, char *argv[])
         output_file = optarg;
         break;
         
+      case 'e':
+        error_file = optarg;
+        break;
+
       case 'n':
         run_simulation = FALSE;
         break;
         
       case 't':
         run_tests = TRUE;
-        tests_file = optarg;
         break;
         
       case 'g':
@@ -127,6 +131,7 @@ void parse_options(int argc, char *argv[])
     else
       exit(EXIT_FAILURE);
 }
+
 /*-------------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
@@ -135,9 +140,15 @@ int main(int argc, char **argv)
   Errors import_errors;   // a list of errors that occured during import
   Errors test_errors;     // a list of errors and warnings about the deck's format
   
+  // empty these out so we can test them easier
+  import_errors.num_errors = 0;
+  import_errors.errors = NULL;
+  test_errors.num_errors = 0;
+  test_errors.errors = NULL;
+
   /* getopt() variables */
   int option;
-  char infile[81] = "", otfile[81] = "";
+  char infile[81] = "", otfile[81] = "", erfile[81] = "";
   
   /*** command line arguments handler ***/
   
@@ -160,6 +171,11 @@ int main(int argc, char **argv)
       case 'o' : /* specify output file name */
         if(strlen(optarg) > MAX_PATH_LEN) abort_on_error(-2);
         strcpy(otfile, optarg);
+        break;
+        
+      case 'e' : /* specify error file name */
+        if(strlen(optarg) > MAX_PATH_LEN) abort_on_error(-2);
+        strcpy(erfile, optarg);
         break;
         
       case 'g': /* return only the maximum gain to stdout, from nec2c++ */
