@@ -21,8 +21,7 @@ char *control_codes[NUM_CONTROL_CODES] = {
 // note that the continuation cards like GC are not here, but SC is,
 // this is because you can have multiple SC's in a row so they need
 // to show up in the list.
-// FIXME: they don't, the SP handler should read forward until it
-//  finds all the SCs
+// FIXME: they don't, the SP handler should read forward until it finds all the SCs
 char *geometry_codes[NUM_GEOMETRY_CODES] = {
   "GW", "GX", "GR", "GS", "GE", "GM", \
   "SP", "SM", "GA", "SC", "GH", "GF"
@@ -36,8 +35,8 @@ char *onec_codes[NUM_ONEC_CODES] = {
   "XT", "SY", "IT", "OP"
 };
 
-// the unit_codes and unit_mult are in the same order,
-// so if you change one, change the other!
+//// the unit_codes and unit_mult are in the same order,
+//// so if you change one, change the other!
 char *unit_codes[NUM_UNIT_CODES] = {
   "", "m", "cm", "mm", "ft", "in", "ftin", "awg"
 };

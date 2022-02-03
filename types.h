@@ -7,18 +7,40 @@
  * in nec2c.h, and have been moved here for clarity. OpenNEC also
  * adds new types for the Deck and Card, so they can be passed
  * instead of using globals. Other new types include Error and
- * Errors, and various definitions of measurements and such.
+ * Errors, KeyValue, and various definitions of measurements and such.
  *
  *******************************************************************/
 
 #ifndef types_h
 #define types_h
 
-#import <complex.h>
-#import <stdio.h>
+#include <complex.h>
+#include <stdio.h>
+#include <stdbool.h>  // we will use the bool type!
 
 // OpenNEC generally allows commas or any whitespace between fields
-#define OUR_WHITESPACE ", \t\n\r\v\f\0"
+#ifndef OUR_WHITESPACE_DEF
+#define OUR_WHITESPACE_DEF
+#define OUR_WHITESPACE ", \t\n\r\v\f\0" // should comma be a separator? look for examples
+#endif
+
+// these are the markers for inline comments
+#ifndef OUR_COMMENTS_DEF
+#define OUR_COMMENTS_DEF
+#define OUR_COMMENTS "!'#"
+#endif
+
+// these are the separators within an OpenNEC extension list
+#ifndef OUR_SEPARATORS_DEF
+#define OUR_SEPARATORS_DEF
+#define OUR_SEPARATORS ";"
+#endif
+
+// these are the delimeters between the key and value pairs
+#ifndef OUR_DELIMETERS_DEF
+#define OUR_DELIMETERS_DEF
+#define OUR_DELIMETERS "=:"
+#endif
 
 /* input card mnemonic list */
 /* "XT" stands for "exit", added for testing, not included in these lists */
@@ -55,24 +77,45 @@ extern double unit_mult[NUM_UNIT_CODES];
 
 /*** Structs encapsulating global ("common") variables ***/
 
-/*** Extension is a key:value pair used to store an OpenNEC extension on a card ***/
+/*** Error has information about a single error or warning ***/
+enum error_level { MINOR, PROBLEM, FATAL };    // 0 = warning, 1 = error, 2 = fatal, <0 informational
+
+/*** Error has information about a single error or warning ***/
 typedef struct
+{
+  int severity;
+  char *message;  // the error string
+} Error;
+
+typedef struct
+{
+  int num_errors; // total number of errors in this list
+  Error *errors;  // pointer to a list of errors
+} Errors;
+
+/*** KeyValue is a key:value pair used to store an OpenNEC extension on a card ***/
+typedef struct KeyValue
 {
   char *key;
   char *value;
+  char separator; // what separator was used, a colon or an equals?
+  struct KeyValue* next;
 } KeyValue;
+//typedef struct KeyValue KeyValue;
 
 /*** Card encapsulates a single card ***/
 typedef struct
 {
+  // used to track whether this card has been edited since being read
+  bool edited;
+  
   // raw data from the original card
   char *orig_str;     // the original line, as read from the file in raw format
-  char *card_str;     // the card part of the string, everything in front of the comment (if one exists)
-  char *extn_str;     // the extension, anything after the comment marker, including the marker itself
+  char *card_str;     // the "card part" of the string, everything in front of the comment (if one exists)
   
   // processed NEC2 data
-  int card_num;       // card number within the deck. mostly used for error reporting ("Card X has an error")
-  char card_code[2];  // the two-letter code for this card, or one letter and a space for some comment formats
+  int card_num;       // card (line) number within the deck. mostly used for error reporting ("Card X has an error")
+  char card_code[2];  // the two-letter code for this card, or one letter for some comment formats
   int i1, i2, i3, i4; // various bits read from the cards - i1 is normally the tag, for instance
   double f1, f2, f3;  // various floats/doubles read from the cards
   double f4, f5, f6;
@@ -80,12 +123,12 @@ typedef struct
   double f10;         // last possible input, happens in a GW/GC pair
   
   // onec values
-  int m1, m2, m3;     // measurement units on the fields, or 0 for "default", meters
+  int m1, m2, m3;     // measurement units on the fields, or 0 for "default"
   int m4, m5, m6;
   int m7, m8, m9;
   int m10;
   char *if1, *if2;    // holds the forumla for each of the possible fields, i or f
-  char *if3, *if4;
+  char *if3, *if4;    // the formulas themselves are in the extensions
   char *ff1, *ff2;
   char *ff3, *ff4;
   char *ff5, *ff6;
@@ -93,18 +136,19 @@ typedef struct
   char *ff9, *ff10;
 
   // onec extensions
-  int unit_def;       // default units for this card, set while doing whole-deck processing
   char extn_code[1];  // the one-letter code that marked the extension or inline comment, if any
+  char *extn_str;     // the entire inline comment, anything after the comment marker including key/values
   char *name;         // name for this card, if present
   char *group;        // group name, used to collect multiple cards into groups
-  char *comment;      // if a comment was found, it's placed here *without* the delimiter
-  KeyValue *values;   // onec extensions consist of name:value pairs, *after* removing a real comment, if present
+  char *comment;      // if a comment was found, it's placed here *without* the delimiter, this is not the same as extn_str
+  KeyValue* pairs;    // pairs of name:value key/value entries, this will **not** include a comment if there was one
+  KeyValue *formulas; // pairs of fieldname=formula pairs found in the extensions area
 } Card;
 
 /*** Deck encapsulates a single deck of cards ***/
 typedef struct
 {
-  int num_cards;      // total number of cards read in. should point to an EN, but that is not nessesary
+  int num_cards;      // total number of cards read in, including any trailing lines
   Card *cards;        // array of cards
   int comment_start;  // card number of the start of the comments section, normally 0. -1 if there are no CM or CE cards
   int comment_end;    // card number of the last continuous CM card, or the CE card if present. -1 if there are no CM or CE cards
@@ -112,28 +156,11 @@ typedef struct
   int geometry_end;   // card number of the GE card, which also has to exist. -1 if not found
   int deck_end;       // card number of the EN card or the last card in the deck otherwise. -1 if not found
   char cmt_code[1];   // the default marker to use for comments, !, $ or '
-  KeyValue *symbols;  // any variables read in from SY cards
+  int unit_val;       // if there is a single GS, this is the f1 value, otherwise 1
+  int unit_typ;       // if there is a single GS, and we recognize the value, put out index here
+  KeyValue *symbols;  // any variables read in from SY cards, consisting of name/inital value pairs
+  KeyValue *formulas; // any *global* formulas found on any of the cards, consists of fieldname=formula pairs
 } Deck;
-
-/*** Error has information about a single error or warning ***/
-typedef struct
-{
-  int severity;       // 0 = warning, 1 = error, 2 = fatal
-  char *message;      // the error string
-} Error;
-
-typedef struct
-{
-  int num_errors;  // total number of errors in this list
-  Error *errors;   // pointer to a list of errors
-} Errors;
-
-typedef struct
-{
-	char *name;			// file name
-	char *path;			// file path
-	FILE *inputf;   // pointer to the input file
-} import_t;
 
 /* common  /crnt/ */
 typedef struct
