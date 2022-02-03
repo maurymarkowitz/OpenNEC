@@ -108,7 +108,7 @@ void read_deck(Deck *deck, FILE *pfile)
  * to separate cards so that it can perform whole-stack syntax checking
  * and similar tests.
  *
- * You might expect this to use c's built-in line reading routines.
+ * You might expect this to use c's built-in fgets or getline or similar.
  * It doesn't because of the infrequent but seen-in-the-wild problem
  * of hard returns being inserted in the middle of lines when users
  * edit their decks using some text editors. This code reads until
@@ -116,12 +116,13 @@ void read_deck(Deck *deck, FILE *pfile)
  * multiple lines, thereby fixing such damage by merging the lines
  * back together.
  *
- * This can likely be improved by using scanf to read in one line,
- * process as much of it as possible, and the  deciding whether or
- * not the line is complete.
- *
  * This means that if one simply loads and then saves the deck, the
  * split lines will be removed.
+ *
+ * This can likely be improved by using scanf to read in one line,
+ * process as much of it as possible, and the  deciding whether or
+ * not the line is complete. But it seems unlikely this would have a
+ * real-world impact given the size of typical decks.
  *
  * This code also automatically capitalizes the first two characters
  * on the line.
@@ -160,7 +161,7 @@ int read_line(char *buff, FILE *file)
         return(EOF);
       }
     }
-  } /* end of while( (chr == '#') || ... */
+  } /* end of while( (chr == CR) || ... */
   
   // read the line until you pick up any trailing cr's or lfs.
   while(num_chr < MAX_LINE_LEN) {
@@ -176,7 +177,7 @@ int read_line(char *buff, FILE *file)
       buff[num_chr] = '\0';
       eof = EOF;
     }
-  } /* end of while( num_chr < max_chr ) */
+  } /* end of while( num_chr < MAX_LINE_LEN ) */
   
   /* capitalize first two characters (mnemonic) */
   if((buff[0] > 0x60) && (buff[0] < 0x79))
@@ -539,7 +540,7 @@ void parse_command_card(Card *card, Errors *errors)
  */
 void parse_geometry_card(Card *card, Errors *errors)
 {
-  int nint = 2, nflt = 7; // maximum number of integers on a line, max number of floats
+  int MAX_INTS = 2, MAX_FLOATS = 7; // maximum number of integers on a line, max number of floats
   char* end_ptr;
   
   /* get line length of the card part of the line */
@@ -553,9 +554,10 @@ void parse_geometry_card(Card *card, Errors *errors)
   char *str = card->card_str + 2; //strdup(card->card_str + 2);
 
   // process up to four ints at the start of the line
+  // FIXME: comment says four, but this only looks for two?!
   end_ptr = NULL;
   int ints_processed = 0;
-  while(str <= card->card_str + line_len && ints_processed < nint) {
+  while(str <= card->card_str + line_len && ints_processed < MAX_INTS) {
     // try to read an int on the line, and exit otherwise
     size_t value = strtol(str, &end_ptr , 10);
     if(value == 0L && end_ptr == str) break;
@@ -585,7 +587,23 @@ void parse_geometry_card(Card *card, Errors *errors)
   char unit_code[MAX_UNIT_LEN]; // the unit code string (if any) found on this line
   size_t pos;                   // ...and it's position in the line
   int unit;                     // ...and our internal code for that unit if we found it, or 0 for default
-  while(str <= card->card_str + line_len && dbls_processed < nflt) {
+  while(str <= card->card_str + line_len && dbls_processed < MAX_FLOATS) {
+    unit = 0; // if we don't find a unit code, this will ensure it is set to "default"
+
+    // look for a leading # indicating an awg measurement from 4nec2
+    // FIXME: this doesn't currently work because we trim off everything after the # above
+    if(str[0] == '#') {
+      // see if we can find that code
+      for(int i = 0; i < NUM_UNIT_CODES; i++) {
+        if(strcmp(unit_code, unit_codes[i]) == 0) {
+          unit = i;
+          break;
+        }
+      }
+      // and then move forward to skip it
+      str += 1;
+    }
+    
     // try to read another double on the line, and exit otherwise
     double value = strtod(str , &end_ptr);
     if(value == 0L && end_ptr == str) break;
@@ -596,7 +614,6 @@ void parse_geometry_card(Card *card, Errors *errors)
      * we find one of those, and then look at the resulting string to see if we can match
      * it with one of our units. Othewise report an error.
      */
-    unit = 0; // if we don't find a unit code, this will ensure it is set to "default"
     if(!isspace(str[0])) {
       pos = strcspn(str, OUR_WHITESPACE); // you need the \0, but \n\r should have been pulled already
       if(pos > 0) {
@@ -631,7 +648,6 @@ void parse_geometry_card(Card *card, Errors *errors)
       case 1:
         card->f1 = value;
         card->m1 = unit;
-        if(unit)
         break;
       case 2:
         card->f2 = value;
@@ -714,7 +730,6 @@ void parse_key_values(Card *card, Errors *errors)
   
   // strtok should be perfect for this one because we don't want the delimiters to be handed back
   char *token, *split;
-  long lastSep = 0;
 
   // ...so start by priming the strtok pump
   token = strtok(str, OUR_WHITESPACE OUR_SEPARATORS); // note the "concat the string literals" trick
@@ -722,9 +737,6 @@ void parse_key_values(Card *card, Errors *errors)
     // make sure there's a equals or colon in it - note you can't nest another strtok!
     split = strpbrk(token, "=:");
     if(split != NULL) {
-      // keep track of the location
-      lastSep = split - token;
-      
       // if the split was successful, meaning we found an = or : somewhere,
       // the split char is still on the front so let's kill it
       if (split[0] == '=') split++;
@@ -732,6 +744,11 @@ void parse_key_values(Card *card, Errors *errors)
 
       // now check that both sides are >0 len
       if(strlen(token) > 0 && strlen(split) > 0) {
+        // there are a couple of cases here:
+        // 1) the key is comment - copy it into comment string and move on
+        // 2) the key is a formula - make a KeyValue 
+        
+        
         // if so, make a new keyvalue pair and add it to the card's collection
         KeyValue *pair = (KeyValue *)malloc(sizeof(KeyValue));
         if(pair != NULL) {
@@ -741,9 +758,13 @@ void parse_key_values(Card *card, Errors *errors)
           pair->value = calloc(strlen(split) + 1, sizeof(char)); // add one for a trailing null
           strcpy(pair->value, split);
           // and store the original separator so we can recreate it on output
-          pair->separator = token[lastSep];
+          pair->separator = token[split - token];
           // and null this out, as its going on the end
           pair->next = NULL;
+          
+          // if the key
+          
+          
           // and then add it to the end of the list
           KeyValue *tail = card->pairs;
           if(tail == NULL) {
@@ -755,12 +776,12 @@ void parse_key_values(Card *card, Errors *errors)
         } // there should be else's for all the mallocs and callocs!
       }
       
+      //
+      
       // FIXME: at this point we still have formulas and comments in the string,
       //   we need to look for these and pull them out.
       
-      //TESTING
-      printf("token='%s', split'%s'\n", token, split);
-    }
+    } // split != NULL
     
     // and get the next token
     token = strtok(NULL, OUR_WHITESPACE OUR_SEPARATORS);
