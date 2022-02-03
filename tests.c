@@ -244,6 +244,7 @@ void test_deck_structure(Deck *deck, Errors *errors) //, int level
 }
 
 // TODO: MISSING TESTS
+// GE -1 requires a GN
 // LDs and/or EXs should not be at open ends of wires
 // look for SY formulas that override system-wide items like mm or awg
 //   but overriding user-entered system variables is ok
