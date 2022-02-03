@@ -7,6 +7,10 @@
  
 #include "types.h"
 
+char *field_names[NUM_FIELD_NAMES] = {
+  "I1", "I2", "I3", "I4", "F1", "F2", "F3", "F4", "F5", "F6"
+};
+
 char *comment_codes[NUM_COMMENT_CODES] = {
   "CM", "CE", "!", "'", "#"
 };
@@ -35,13 +39,13 @@ char *onec_codes[NUM_ONEC_CODES] = {
   "XT", "SY", "IT", "OP"
 };
 
-//// the unit_codes and unit_mult are in the same order,
-//// so if you change one, change the other!
+// the unit_codes and unit_mult are in the same order,
+// so if you change one, change the other!
 char *unit_codes[NUM_UNIT_CODES] = {
-  "", "m", "cm", "mm", "ft", "in", "ftin", "awg"
+  "", "m", "cm", "mm", "ft", "in", "ftin", "awg", "#"
 };
-//// the last two units, ftin and awg, require special conversions
+// the last three units, ftin and awg, require special conversions
 double unit_mult[NUM_UNIT_CODES] = {
-  0, 1.0, 0.01, 0.001, 0.30480, 0.0254, 0, 0
+  0, 1.0, 0.01, 0.001, 0.30480, 0.0254, 0, 0, 0
 };
 

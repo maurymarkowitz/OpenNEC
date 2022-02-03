@@ -42,6 +42,13 @@
 #define OUR_DELIMETERS "=:"
 #endif
 
+/* card field names, like "I1" of "F4" */
+#ifndef FIELD_NAMES_DEF
+#define FIELD_NAMES_DEF
+#define NUM_FIELD_NAMES 10
+extern char *field_names[NUM_FIELD_NAMES];
+#endif
+
 /* input card mnemonic list */
 /* "XT" stands for "exit", added for testing, not included in these lists */
 #ifndef COMMENT_CODES_DEF
@@ -70,14 +77,14 @@ extern char *onec_codes[NUM_ONEC_CODES];
 
 #ifndef UNITS_DEF
 #define UNITS_DEF
-#define NUM_UNIT_CODES 8
+#define NUM_UNIT_CODES 9
 extern char *unit_codes[NUM_UNIT_CODES];
 extern double unit_mult[NUM_UNIT_CODES];
 #endif
 
 /*** Structs encapsulating global ("common") variables ***/
 
-/*** Error has information about a single error or warning ***/
+/*** Error levels are used internally, external software should use negatives ***/
 enum error_level { MINOR, PROBLEM, FATAL };    // 0 = warning, 1 = error, 2 = fatal, <0 informational
 
 /*** Error has information about a single error or warning ***/
@@ -87,6 +94,10 @@ typedef struct
   char *message;  // the error string
 } Error;
 
+/*** Errors is a list generated during a particular stage, typically
+there will be different error lists for import, sanity checks, running
+and export
+ ***/
 typedef struct
 {
   int num_errors; // total number of errors in this list
@@ -127,8 +138,8 @@ typedef struct
   int m4, m5, m6;
   int m7, m8, m9;
   int m10;
-  char *if1, *if2;    // holds the forumla for each of the possible fields, i or f
-  char *if3, *if4;    // the formulas themselves are in the extensions
+  char *if1, *if2;    // holds the formula for each of the possible fields, i or f
+  char *if3, *if4;    // formulas can also be placed in the extensions
   char *ff1, *ff2;
   char *ff3, *ff4;
   char *ff5, *ff6;
@@ -141,8 +152,8 @@ typedef struct
   char *name;         // name for this card, if present
   char *group;        // group name, used to collect multiple cards into groups
   char *comment;      // if a comment was found, it's placed here *without* the delimiter, this is not the same as extn_str
-  KeyValue* pairs;    // pairs of name:value key/value entries, this will **not** include a comment if there was one
-  KeyValue *formulas; // pairs of fieldname=formula pairs found in the extensions area
+  KeyValue *pairs;    // pairs of name:value key/value entries, this will **not** include a comment if there was one
+  KeyValue *formulas; // pairs of variable=formula pairs found in SY cards or in the extensions area
 } Card;
 
 /*** Deck encapsulates a single deck of cards ***/
@@ -159,7 +170,7 @@ typedef struct
   int unit_val;       // if there is a single GS, this is the f1 value, otherwise 1
   int unit_typ;       // if there is a single GS, and we recognize the value, put out index here
   KeyValue *symbols;  // any variables read in from SY cards, consisting of name/inital value pairs
-  KeyValue *formulas; // any *global* formulas found on any of the cards, consists of fieldname=formula pairs
+  KeyValue *formulas; // any *global* formulas found on any of the cards, consists of variable=formula pairs
 } Deck;
 
 /* common  /crnt/ */
