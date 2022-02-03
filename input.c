@@ -6,8 +6,8 @@
  * read_deck(), which uses read_line() to get the data from one
  * line in the file and then turn it into a Card. When all the
  * lines are read into Cards, read_deck() then calls a series of
- * functions to parse the deck into parts, mostly using the logic
- * found in parse_command_card() or parse_geometry_card().
+ * functions to parse the deck into parts, using the logic
+ * found in parse_command_card(), parse_geometry_card(), etc.
  *
  * The original nec2c, like the NEC2 code it was based on, is very
  * "modal". It reads a card, processes it, and then forgets it.
@@ -18,6 +18,21 @@
  * OpenNEC also keeps every card it finds, even blank lines and
  * inline comments.
  *
+ * You will note that the code for reading lines is more complex
+ * than you might see in most C programs - it reads char by char
+ * instead of doing a read-line. This is because NEC decks are
+ * sometimes edited by hand in editors that insert hard breaks
+ * when saved, and this are relatively common on the 'net. So this
+ * code is somewhat more complex and tries to merge broken lines
+ * of this sort. This is an area that might be improved, but
+ * performance on modern machines makes this a non-issue in all the
+ * examples I fed it.
+ *
+ * One lingering problem is when such a break has been inserted
+ * precisely where an inline comment occurs. This causes the parser
+ * to consider the second line to be a comment card, instead of
+ * a comment on the previous card. This is a TODO.
+ *
  * Other changes to this code include a wider set of comment
  * markers, including CM, !, # and ', whereas nec2c only accepted
  * # outside the comment header. Additionally, this code looks for
@@ -26,32 +41,10 @@
  * extensions. It keeps track of what the original comment marker
  * was so it can save it back out in the same format.
  *
- * There is one remaining problem. Because the .nec files are
- * normally edited by hand, it is not entirely unknown to find a
- * file where the text editor has inserted hard-line-wraps. This
- * causes some of the data to appear on a separate line, "splitting"
- * the card. There are a variety of ways to solve this in most
- * cases, but one requires some thought: if the split is inserted
- * at the point where a trailing comment appears, the comment will
- * be put onto a line by itself. If the line above it does not have
- * a comment of its own, its not immediately possible to tell if this
- * is a wrapped comment or one that was always on its own line.
- * Looking for colons, the onec field separator, may help. The
- * remaining case, a comment on a line by itself with no onec data
- * might be perfectly acceptable, and likely extremely rare.
- *
  *******************************************************************/
 
 #include "opennec.h"
 #include "shared.h"
-
-// TODO:
-// - add a case where if the leading char(s) is a comment marker, read the next two chars
-//   and see if that's one of the extensions. this will allow the extensions to be hidden
-//   in a comment
-//
-// - what do we do if there is more than one GS, or the GS isn't at the end of the geometry?
-//   it seems this is a legal thing, and that we should rescale everything above that point?
 
 /* forward declares */
 void parse_card(Card *card, int card_num, Errors *errors);
@@ -66,8 +59,7 @@ void parse_card(Card *card, int card_num, Errors *errors);
  */
 void read_deck(Deck *deck, FILE *pfile)
 {
-  Card *card = NULL;  // the card we're working on, have to null it or
-                      // the Free() below may fail when this contains garbage
+  Card *card = NULL;  // the card we're working on, have to null it or the Free() below may fail when this contains garbage
 
   char line_buf[MAX_LINE_LEN];  // make it large enough to hold any possible line
   size_t line_len;              // actual length of the current card being read
@@ -87,6 +79,7 @@ void read_deck(Deck *deck, FILE *pfile)
     /* we save every line to a card, even blank lines */
     card = calloc(1, sizeof(Card));
     card->orig_str = calloc(line_len +1, sizeof(char));
+    card->edited = FALSE;
     strcpy(card->orig_str, line_buf);
     
     /* calloc/realloc the deck and add this card to it */
@@ -100,6 +93,9 @@ void read_deck(Deck *deck, FILE *pfile)
     }
     deck->cards[deck->num_cards - 1] = *card;
   }
+  
+  /* card is temp, free it */
+  free(card);
 }
 
 /*----------------------------------------------------------------------*/
@@ -112,12 +108,18 @@ void read_deck(Deck *deck, FILE *pfile)
  * to separate cards so that it can perform whole-stack syntax checking
  * and similar tests.
  *
- * The only oddity here is some code that handles split lines. The
- * original NEC format was on 80-column punch cards, but that is no
- * longer recognized as a limit. Some decks spill over 80-chars, and
- * then the text editors insert a return at the 80-char mark. This is
- * clearly wrong, but seems like it might be common in the wild. This
- * code looks for such cases and merges the lines into a single card.
+ * You might expect this to use c's built-in line reading routines.
+ * It doesn't because of the infrequent but seen-in-the-wild problem
+ * of hard returns being inserted in the middle of lines when users
+ * edit their decks using some text editors. This code reads until
+ * is has seen the required number of fields even if they cross
+ * multiple lines, thereby fixing such damage by merging the lines
+ * back together.
+ *
+ * This can likely be improved by using scanf to read in one line,
+ * process as much of it as possible, and the  deciding whether or
+ * not the line is complete.
+ *
  * This means that if one simply loads and then saves the deck, the
  * split lines will be removed.
  *
@@ -128,14 +130,14 @@ void read_deck(Deck *deck, FILE *pfile)
 int read_line(char *buff, FILE *file)
 {
   int
-    num_chr = 0, // number of characters read, excluding lf/cr
-    eof = 0, // EOF flag
-    chr;     // character read by getc
+    num_chr = 0,  // number of characters read, excluding lf/cr
+    eof = 0,      // EOF flag
+    chr;          // character read by getc
   
   /* clear buffer at start */
   buff[0] = '\0';
   
-  // if we're at the end of the file, just return that
+  // if we're at the end of the file, return that, we're done
   if((chr = getc(file)) == EOF) {
     return(EOF);
   }
@@ -206,13 +208,12 @@ int read_line(char *buff, FILE *file)
 void parse_deck(Deck *deck, Errors *errors)
 {
   Card *card;
-  size_t line_len; // length of the original string for this card
   
+  size_t line_len; // length of the original string for this card
   char type_buff[3];
   char hidden_type_buff[3];
-  int isCmt, isGeo, isCtl, isExt; // boolean so we can do the string compare only once
-  /* the following are used to keep track of various key points in the deck */
-  int sawCM = FALSE, sawCE = FALSE, sawGx = FALSE, sawGE = FALSE, sawEN = FALSE;
+  bool isCmt, isGeo, isCtl, isExt; // cache these so we can do the string compare only once
+  bool sawCM = FALSE, sawCE = FALSE, sawGx = FALSE, sawGE = FALSE, sawEN = FALSE; // keep track of where we are
 
   for(int i = 0; i < deck->num_cards; i++) {
     card = &deck->cards[i];
@@ -233,7 +234,7 @@ void parse_deck(Deck *deck, Errors *errors)
     // null the end
     type_buff[2] = '\0';
 	
-    // the code might only be one char, but if there's a comment following it there strlen>1, so...
+    // the code might only be one char, but if there's a comment following it then strlen>1, so...
     if(isspace(type_buff[1])) {
       type_buff[1] = '\0';
     }
@@ -249,7 +250,7 @@ void parse_deck(Deck *deck, Errors *errors)
     /* while we loop, we want to keep track of key points in the deck
      * which will make it easier to work with in other parts of the code.
      * for instance, we need to know where the EN card is, if we find
-     * one, because anything after that is automatically a comment. its
+     * one, because anything after that is automatically a comment. it's
      * also handy to know where the geometry and comments sections
      * start and end.
      *
@@ -259,6 +260,7 @@ void parse_deck(Deck *deck, Errors *errors)
      * case in a "real" NEC2 file, but widely allowed by practically
      * every system.
      */
+    
     // so, for instance, if this is the first CM card we've seen, and we
     // have NOT seen a CE or any Gx card, then this appears to be the
     // start of the comment section. but it's not if we've seen anything
@@ -295,7 +297,7 @@ void parse_deck(Deck *deck, Errors *errors)
      * the comment marker in the extn. note that this could only be the case if the
      * card has at least three characters, which would assume something like !SY
      */
-    if (isCmt && line_len > 3) {
+    if(isCmt && line_len > 3) {
       // skip forward to find anything after the comment marker
       int pos = 0;
       if(strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0)  {
@@ -313,7 +315,7 @@ void parse_deck(Deck *deck, Errors *errors)
         }
       }
 
-      //get the rest of the string after the comment marker
+      // get the rest of the string after the comment marker
     
      // get the two characters *after* the comment marker
      if((strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0) && line_len > 4) {
@@ -324,10 +326,10 @@ void parse_deck(Deck *deck, Errors *errors)
        // we didn't find anything interesting
        strcpy(hidden_type_buff, "");
      }
-     //now we see if those two characters are one of the extensions
-     int isHidden = FALSE;
+     // now we see if those two characters are one of the extensions
+     bool isHidden = FALSE;
      for(int i = 0; i < NUM_ONEC_CODES; i++) {
-       if(strcmp(hidden_type_buff, onec_codes[i]) == 0) { // was card->card_code in the front
+       if(strcmp(hidden_type_buff, onec_codes[i]) == 0) { // was card->card_code in the front?
          isHidden = TRUE;
          break;
        }
@@ -337,7 +339,7 @@ void parse_deck(Deck *deck, Errors *errors)
        isExt = TRUE;
        card->extn_code[0] = '!';
      }
-  }
+  } // checking for hidden info
 
     /* if we're past the end of the deck, don't do anything, just keep it in the orig_card
      * but if we're still inside the deck and we don't recognize the card, make an error
@@ -355,31 +357,35 @@ void parse_deck(Deck *deck, Errors *errors)
      * clip that part out separately into extn_str
      */
     if(isCmt || isCtl || isGeo || isExt) {
-      const char *sep = strpbrk(card->orig_str, "!'#");
-      if (sep == NULL) {
-        // no comment was found
-        card->card_str = malloc(strlen(card->orig_str) + 1);
-        strcpy(card->card_str, card->orig_str);
-        card->extn_str = NULL;
+      size_t len; // this is the length of the main card text
+      // look for a comment marker, adjust length of card text based on that
+      const char *sep = strpbrk(card->orig_str, OUR_COMMENTS);
+      if(sep == NULL) {
+        // no comment was found, put everything into the string
+        len = strlen(card->orig_str);
       } else {
-        // comment was found at sep
-        size_t len = sep - card->orig_str;
-        char *p = malloc(len + 1);
-        if (p != NULL) {
-          memcpy(p, card->orig_str, len);
-          p[len] = '\0';
-          card->card_str = p;
-          card->extn_str = strdup(sep);
-          card->extn_code[0] = card->extn_str[0];
-        }
+        // comment was found at location sep
+        len = sep - card->orig_str;
+      }
+      // malloc room for the card part, copy that in, and close the string
+      card->card_str = malloc((len * sizeof(char)) + 1);
+      strncpy(card->card_str, card->orig_str, len);
+      card->card_str[len] = '\0';
+      // and if there was any leftover, copy it into the extension, otherwise make sure its empty
+      if(sep == NULL) {
+        card->extn_str = NULL;
+        card->extn_code[0] = '\0';
+      } else {
+        card->extn_str = strdup(sep + 1);
+        card->extn_code[0] = sep[0];
       }
     }
     
     /* if we did find a comment marker in this line, and the deck doesn't have a
      * default marker set, assume this is the one used in the entire file and make
      * it the default. You can still use other markers on other lines, but if you
-     * add a new card programmatically and set a comment, it will default to using
-     * this marker on that card.
+     * add a new card programmatically and set a comment, it should default to using
+     * this marker
      */
     if(card->extn_code[0] != 0 && deck->cmt_code[0] == 0) {
       deck->cmt_code[0] = card->extn_code[0];
@@ -398,12 +404,14 @@ void parse_deck(Deck *deck, Errors *errors)
     if(isExt) {
       parse_onec_card(card, errors);
     }
-    
-    // and finally, if there is an extension, parse it into a comment or key:value pairs
-    // TODO
 
+    /* process inline comments to look for key/value pairs
+     */
+    if(card->extn_code[0] != '\0') {
+      parse_key_values(card, errors);
+    }
   } // foreach card
-} /* end of parse_card() */
+} /* end of parse_deck() */
 
 /*----------------------------------------------------------------------*/
 /* parse_comment_card()
@@ -430,7 +438,7 @@ void parse_comment_card(Card *card, Errors *errors)
   } else {
     code_end = 0; // error case, shouldn't be able to happen
   }
-  card->comment = calloc(strlen(card->card_code) - code_end, sizeof(char));
+  card->comment = calloc(strlen(card->orig_str) - code_end, sizeof(char));
   strcpy(card->comment, &card->card_str[code_end]);
 }
 
@@ -448,7 +456,7 @@ void parse_comment_card(Card *card, Errors *errors)
  */
 void parse_command_card(Card *card, Errors *errors)
 {
-    int nint = 4, nflt = 6; // maximum number of integers on a line, max number of floats
+  int nint = 4, nflt = 6; // maximum number of integers on a line, max number of floats
   char* end_ptr;
 
 	// get line length of the card part of the line
@@ -538,7 +546,7 @@ void parse_geometry_card(Card *card, Errors *errors)
   int line_len = (int)strlen(card->card_str);
   
   // calloc has zeroed everything, so if this card doesn't have any parameters,
-  // like a GM, just return now.
+  // like a GM, just return now
   if(line_len <= 2) return;
   
   // skip the first two chars, the mnemonic is still there
@@ -574,9 +582,9 @@ void parse_geometry_card(Card *card, Errors *errors)
    */
   end_ptr = NULL;
   int dbls_processed = 0;
-  int unit;
-  char unit_code[MAX_UNIT_LEN];
-  size_t pos;
+  char unit_code[MAX_UNIT_LEN]; // the unit code string (if any) found on this line
+  size_t pos;                   // ...and it's position in the line
+  int unit;                     // ...and our internal code for that unit if we found it, or 0 for default
   while(str <= card->card_str + line_len && dbls_processed < nflt) {
     // try to read another double on the line, and exit otherwise
     double value = strtod(str , &end_ptr);
@@ -658,7 +666,7 @@ void parse_geometry_card(Card *card, Errors *errors)
  *
  * parses cards only understood by onec, which at this point is only
  * the SY. Although XT is also part of the onec list, there's nothing to
- * do in that case as it has no parameters.
+ * do in that case as it has no parameters so it has no code here.
  *
  * TODO:
  *
@@ -669,219 +677,99 @@ void parse_geometry_card(Card *card, Errors *errors)
 void parse_onec_card(Card *card, Errors *errors)
 {
   // see if this is an SY card, otherwise exit
+  // TODO: add all onec_codes here, we currently only do SY
   if(strcmp(card->card_code, "SY") == 0) {
-    char *token, *name, *value, *split;
+    // TODO: do this!
     
-    // make a copy of the string so we can mangle it, and cut off the card code at the front
-    char *str = malloc(strlen(card->orig_str) * sizeof(char));
-    strcpy(str, card->card_str + 2);
-    
-    // strtok should be perfect for this one, because we don't want the delimiters to be handed back
-    // so start by priming the pump
-    token = strtok(str, OUR_WHITESPACE);
-    while(token != NULL) {
-      // make sure there's a equals or colon in it - note you can't nest another strtok!
-      split = strstr(token, "=");
-      if(split != NULL) {
-        // we found the equals, so we have a pair, so set it up
-        
-        printf("token=%s, split=%s\n", token, split);
-        
-      } else {
-        char *msg = calloc(1, MAX_ERROR_LEN);
-        sprintf(msg, "SY definition '%s' on card %d has no '=' separator. Variable definition ignored.", token, card->card_num);
-        add_error(errors, msg, 0);
-        free(msg);
-      }
-      
-      // and get another token
-      token = strtok(NULL, str);
     }
+    
+   // free(str);
 //    free(token);
 //    free(name);
 //    free(value);
 //    free(split);
-  }
 } /* end of parse_onec_card() */
 
-
-///*-----------------------------------------------------------------------*/
-///* this is used to read a geometry card, as opposed to "general" cards
-// * the main difference is the number of ints and floats
-// */
-//void read_geometry_card( char *gm, int *i1, int *i2, double *x1, double *y1,
-//                        double *z1, double *x2, double *y2, double *z2, double *rad )
-//{
-//  char line_buf[MAX_LINE_LEN];
-//  int line_length, i, line_idx;
-//  int nint = 2, nflt = 7;
-//  int iarr[2] = { 0, 0 };
-//  double rarr[7] = { 0., 0., 0., 0., 0., 0., 0. };
-//
-//  /* read a line from input file */
-//  read_line( line_buf, input_fp );
-//
-//  /* get line length */
-//  line_length = (int)strlen( line_buf );
-//
-//  /* abort if card's mnemonic too short or missing */
-//  if( line_length < 2 ) {
-//    fprintf( output_fp,
-//            "\n  GEOMETRY DATA CARD ERROR:"
-//            "\n  CARD'S MNEMONIC CODE TOO SHORT OR MISSING." );
-//    stop(-1);
-//  }
-//
-//  /* extract card's mnemonic code */
-//  strncpy( gm, line_buf, 2 );
-//  gm[2] = '\0';
-//
-//  /* Exit if "XT" command read (for testing) */
-//  if( strcmp( gm, "XT" ) == 0 ) {
-//    fprintf( stderr,
-//            "\nnec2c: Exiting after an \"XT\" command in read_geometry_card()\n" );
-//    fprintf( output_fp,
-//            "\n\n  nec2c: Exiting after an \"XT\" command in read_geometry_card()" );
-//    stop(0);
-//  }
-//
-//  /* Return if only mnemonic on card, like GS */
-//  if( line_length == 2 ) {
-//    *i1 = *i2 = 0;
-//    *x1 = *y1 = *z1 = *x2 = *y2 = *z2 = *rad = 0.;
-//    return;
-//  }
-//
-//  /* read integers from line */
-//  line_idx = 1;
-//  for( i = 0; i < nint; i++ ) {
-//    /* Find first numerical character */
-//    while( ((line_buf[++line_idx] < '0')  ||  (line_buf[  line_idx] > '9')) &&
-//          (line_buf[  line_idx] != '+')  &&
-//          (line_buf[  line_idx] != '-') )
-//      if( line_buf[line_idx] == '\0' ) {
-//        *i1= iarr[0];
-//        *i2= iarr[1];
-//        *x1= rarr[0];
-//        *y1= rarr[1];
-//        *z1= rarr[2];
-//        *x2= rarr[3];
-//        *y2= rarr[4];
-//        *z2= rarr[5];
-//        *rad= rarr[6];
-//        return;
-//      }
-//
-//    /* read an integer from line */
-//    iarr[i] = atoi( &line_buf[line_idx] );
-//
-//    /* traverse numerical field to next ' ' or ',' or '\0' */
-//    line_idx--;
-//    while(
-//          (line_buf[++line_idx] != ' ') &&
-//          (line_buf[  line_idx] != '\t') && // this was two spaces, which seems unlikely
-//          (line_buf[  line_idx] != ',') &&
-//          (line_buf[  line_idx] != '\0') ) {
-//      /* test for non-numerical characters */
-//      if( ((line_buf[line_idx] <  '0')  ||
-//           (line_buf[line_idx] >  '9')) &&
-//         (line_buf[line_idx] != '+')  &&
-//         (line_buf[line_idx] != '-') ) {
-//        fprintf( output_fp,
-//                "\n  GEOMETRY DATA CARD \"%s\" ERROR:"
-//                "\n  NON-NUMERICAL CHARACTER '%c' IN INTEGER FIELD AT CHAR. %d\n",
-//                gm, line_buf[line_idx], (line_idx+1)  );
-//        stop(-1);
-//      }
-//    } /* while( (line_buff[++line_idx] ... */
-//
-//    /* Return on end of line */
-//    if( line_buf[line_idx] == '\0' ) {
-//      *i1= iarr[0];
-//      *i2= iarr[1];
-//      *x1= rarr[0];
-//      *y1= rarr[1];
-//      *z1= rarr[2];
-//      *x2= rarr[3];
-//      *y2= rarr[4];
-//      *z2= rarr[5];
-//      *rad= rarr[6];
-//      return;
-//    }
-//  } /* for( i = 0; i < nint; i++ ) */
-//
-//  /* read doubles from line */
-//  for( i = 0; i < nflt; i++ )  {
-//    /* Find first numerical character */
-//    while( ((line_buf[++line_idx] <  '0')  || (line_buf[  line_idx] >  '9')) &&
-//          (line_buf[  line_idx] != '+')  &&
-//          (line_buf[  line_idx] != '-')  &&
-//          (line_buf[  line_idx] != '.') )
-//      if( line_buf[line_idx] == '\0' ) {
-//        *i1= iarr[0];
-//        *i2= iarr[1];
-//        *x1= rarr[0];
-//        *y1= rarr[1];
-//        *z1= rarr[2];
-//        *x2= rarr[3];
-//        *y2= rarr[4];
-//        *z2= rarr[5];
-//        *rad= rarr[6];
-//        return;
-//      }
-//
-//    /* read a double from line */
-//    rarr[i] = atof( &line_buf[line_idx] );
-//
-//    /* traverse numerical field to next ' ' or ',' or '\0' */
-//    line_idx--;
-//    while(
-//          (line_buf[++line_idx] != ' ')  &&
-//          (line_buf[  line_idx] != '\t') && // this was two spaces, but that is not correct
-//          (line_buf[  line_idx] != ',')  &&
-//          (line_buf[  line_idx] != '\0') ) {
-//      /* test for non-numerical characters */
-//      if( ((line_buf[line_idx] <  '0')  ||
-//           (line_buf[line_idx] >  '9')) &&
-//         (line_buf[line_idx] != '.')  &&
-//         (line_buf[line_idx] != '+')  &&
-//         (line_buf[line_idx] != '-')  &&
-//         (line_buf[line_idx] != 'E')  &&
-//         (line_buf[line_idx] != 'e') ) {
-//        fprintf( output_fp,
-//                "\n  GEOMETRY DATA CARD \"%s\" ERROR:"
-//                "\n  NON-NUMERICAL CHARACTER '%c' IN FLOAT FIELD AT CHAR. %d.\n",
-//                gm, line_buf[line_idx], (line_idx+1) );
-//        stop(-1);
-//      }
-//    } /* while( (line_buff[++line_idx] ... */
-//
-//    /* Return on end of line */
-//    if( line_buf[line_idx] == '\0' ) {
-//      *i1= iarr[0];
-//      *i2= iarr[1];
-//      *x1= rarr[0];
-//      *y1= rarr[1];
-//      *z1= rarr[2];
-//      *x2= rarr[3];
-//      *y2= rarr[4];
-//      *z2= rarr[5];
-//      *rad= rarr[6];
-//      return;
-//    }
-//  } /* for( i = 0; i < nflt; i++ ) */
-//
-//  *i1  = iarr[0];
-//  *i2  = iarr[1];
-//  *x1  = rarr[0];
-//  *y1  = rarr[1];
-//  *z1  = rarr[2];
-//  *x2  = rarr[3];
-//  *y2  = rarr[4];
-//  *z2  = rarr[5];
-//  *rad = rarr[6];
-//
-//  return;
-//}
 /*----------------------------------------------------------------------*/
+/* parse_key_values()
+ *
+ * parses a string that may contain key/value pairs
+ *
+ * also looks for comment markers within the string, and assumes
+ * everything a second marker is an actual comment as opposed to
+ *
+ */
+void parse_key_values(Card *card, Errors *errors)
+{
+  char str[MAX_LINE_LEN];
+  // first off, check if the extension exists and has enough data
+  if(strlen(card->extn_str) < 2)
+    return;
+  // and that one of our onec separators is in there somewhere
+  if(strpbrk(card->extn_str, "=:") == NULL)
+    return;
+
+  // make a copy of the string so we can mangle it - DO WE NEED TO?
+  strcpy(str, card->extn_str);
+  
+  // strtok should be perfect for this one because we don't want the delimiters to be handed back
+  char *token, *split;
+  long lastSep = 0;
+
+  // ...so start by priming the strtok pump
+  token = strtok(str, OUR_WHITESPACE OUR_SEPARATORS); // note the "concat the string literals" trick
+  while(token != NULL) {
+    // make sure there's a equals or colon in it - note you can't nest another strtok!
+    split = strpbrk(token, "=:");
+    if(split != NULL) {
+      // keep track of the location
+      lastSep = split - token;
+      
+      // if the split was successful, meaning we found an = or : somewhere,
+      // the split char is still on the front so let's kill it
+      if (split[0] == '=') split++;
+      if (split[0] == ':') split++;
+
+      // now check that both sides are >0 len
+      if(strlen(token) > 0 && strlen(split) > 0) {
+        // if so, make a new keyvalue pair and add it to the card's collection
+        KeyValue *pair = (KeyValue *)malloc(sizeof(KeyValue));
+        if(pair != NULL) {
+          // calloc the strings and store them...
+          pair->key = calloc(split - token, sizeof(char));
+          strncpy(pair->key, token, split - token - 1);
+          pair->value = calloc(strlen(split) + 1, sizeof(char)); // add one for a trailing null
+          strcpy(pair->value, split);
+          // and store the original separator so we can recreate it on output
+          pair->separator = token[lastSep];
+          // and null this out, as its going on the end
+          pair->next = NULL;
+          // and then add it to the end of the list
+          KeyValue *tail = card->pairs;
+          if(tail == NULL) {
+            card->pairs = pair;
+          } else {
+            while(tail->next != NULL) tail = tail->next;
+            tail->next = pair;
+          }
+        } // there should be else's for all the mallocs and callocs!
+      }
+      
+      // FIXME: at this point we still have formulas and comments in the string,
+      //   we need to look for these and pull them out.
+      
+      //TESTING
+      printf("token='%s', split'%s'\n", token, split);
+    }
+    
+    // and get the next token
+    token = strtok(NULL, OUR_WHITESPACE OUR_SEPARATORS);
+  }
+    
+    //free(str);
+//    free(token);
+//    free(name);
+//    free(value);
+//    free(split);
+} /* end of parse_key_values() */
 
