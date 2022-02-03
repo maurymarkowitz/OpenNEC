@@ -129,7 +129,7 @@ Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
 #define	LF	0x0a
 
 /* max length of a line read from input file */
-#define	MAX_LINE_LEN	255
+#define	MAX_LINE_LEN 255
 /* max length of a path/filename */
 #define MAX_PATH_LEN 255
 /* max length of a single error message */
