@@ -183,18 +183,13 @@ void test_deck_structure(Deck *deck, Errors *errors) //, int level
       add_error(errors, msg, 1);
     }
     
-    // GF cards have to follow CE cards, or in an onec deck, an SY
+    // GF cards have to be the first item in the geometry section,
+    // which means they must follow CE cards, or in an onec deck, an SY
     if(strcmp(code, "GF") && !(strcmp(last_code, "CE") || strcmp(last_code, "SY"))) {
       sprintf(msg, "The card on line %d is a GF, but the line above it is not a CE or SY.", i);
       add_error(errors, msg, 1);
     }
 
-    // SY's have to follow the CE or another SY
-    if(strcmp(code, "SY") && !(strcmp(last_code, "CE") || strcmp(last_code, "SY"))) {
-      sprintf(msg, "The card on line %d is a SY, but the line above it is not a CE or SY.", i);
-      add_error(errors, msg, 1);
-    }
-    
     // SC cards have to follow an SP or SM, or another SC. this is not an exhaustive
     // test, it should really roll backward until it finds an SP or SM, but...
     if(strcmp(code, "SC") && !(strcmp(last_code, "SP") || strcmp(last_code, "SM") || strcmp(last_code, "SC"))) {
@@ -252,6 +247,8 @@ void test_deck_structure(Deck *deck, Errors *errors) //, int level
 // LDs and/or EXs should not be at open ends of wires
 // look for SY formulas that override system-wide items like mm or awg
 //   but overriding user-entered system variables is ok
+// also look for SY's that define the same formula more than once
+//   but this is OK, simply use the last definition
 // look for EX or LD cards and check that they are connected to wires with more than one segment
 //   wires that are connected must contact at segment ends (connection separation < len/1000)
 // look for wires that have the same endpoints, or are parallel and have different segmentation
