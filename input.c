@@ -52,12 +52,12 @@ void parse_card(Card *card, int card_num, Errors *errors);
 /*----------------------------------------------------------------------*/
 /* read_deck()
  *
- * Reads the entire deck line by line and fills out the decks's cards[]
- * array with the resulting data. After this completes, the caller should
- * call parse_deck() to process the data.
+ * Reads the entire deck line by line and fills out the deck's cards[]
+ * array with the resulting data. After this completes, the caller
+ * should call parse_deck() to process the data.
  *
  */
-void read_deck(Deck *deck, FILE *pfile)
+void read_deck(Deck *deck, FILE *input_fp)
 {
   Card *card = NULL;  // the card we're working on, have to null it or the Free() below may fail when this contains garbage
 
@@ -178,13 +178,7 @@ int read_line(char *buff, FILE *file)
       eof = EOF;
     }
   } /* end of while( num_chr < MAX_LINE_LEN ) */
-  
-  /* capitalize first two characters (mnemonic) */
-  if((buff[0] > 0x60) && (buff[0] < 0x79))
-    buff[0] -= 0x20;
-  if((buff[1] > 0x60) && (buff[1] < 0x79))
-    buff[1] -= 0x20;
-  
+
   /* terminate buffer as a string */
   buff[num_chr] = '\0';
   
@@ -194,7 +188,7 @@ int read_line(char *buff, FILE *file)
 /*----------------------------------------------------------------------*/
 /* parse_deck()
  *
- * parses the original data from the file once its all read in
+ * parses the original data from the file once it's all read in
  *
  * this starts by extracting the code from the front of the orig_str and
  * then looking for and clipping off any comment or extensions at the end
@@ -232,6 +226,9 @@ void parse_deck(Deck *deck, Errors *errors)
     } else {
       strncpy(type_buff, card->orig_str, 2);
     }
+    // capitalize it
+    type_buff[0] = toupper(type_buff[0]);
+    type_buff[1] = toupper(type_buff[1]);
     // null the end
     type_buff[2] = '\0';
 	
@@ -266,12 +263,12 @@ void parse_deck(Deck *deck, Errors *errors)
     // have NOT seen a CE or any Gx card, then this appears to be the
     // start of the comment section. but it's not if we've seen anything
     // else, like geometry.
-    if(strcmp(type_buff, "CM") == 0 && !sawCM && !sawCE && !sawGx && !sawGE && !sawEN) {
+    if(strcasecmp(type_buff, "CM") == 0 && !sawCM && !sawCE && !sawGx && !sawGE && !sawEN) {
       deck->comment_start = i;
       sawCM = TRUE;
     }
     // the CE case is similar, it has to be above any geometry
-    if(strcmp(type_buff, "CE") == 0 && !sawCE && !sawGx && !sawGE && !sawEN) {
+    if(strcasecmp(type_buff, "CE") == 0 && !sawCE && !sawGx && !sawGE && !sawEN) {
       deck->comment_end = i;
       sawCE = TRUE;
     }
@@ -281,12 +278,12 @@ void parse_deck(Deck *deck, Errors *errors)
       sawGx = TRUE;
     }
     // the GE just has to be above the end of the deck
-    if(strcmp(type_buff, "GE") == 0 && !sawGE && !sawEN) {
+    if(strcasecmp(type_buff, "GE") == 0 && !sawGE && !sawEN) {
       deck->geometry_end = i;
       sawGE = TRUE;
     }
     // and finally, the first EN that we see
-    if(strcmp(type_buff, "EN") == 0) {
+    if(strcasecmp(type_buff, "EN") == 0) {
       deck->deck_end = i;
       sawEN = TRUE;
     }
@@ -301,9 +298,9 @@ void parse_deck(Deck *deck, Errors *errors)
     if(isCmt && line_len > 3) {
       // skip forward to find anything after the comment marker
       int pos = 0;
-      if(strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0)  {
+      if(strcasecmp(type_buff, "CM") == 0 || strcasecmp(type_buff, "CE") == 0)  {
         pos = 2;
-      } else if (strcmp(type_buff, "!") == 0 || strcmp(type_buff, "#") == 0|| strcmp(type_buff, "'") == 0) {
+      } else if (strcasecmp(type_buff, "!") == 0 || strcasecmp(type_buff, "#") == 0|| strcasecmp(type_buff, "'") == 0) {
         pos = 1;
       } else {
         // how would this even happen?
@@ -315,35 +312,36 @@ void parse_deck(Deck *deck, Errors *errors)
           pos++;
         }
       }
-
+      
       // get the rest of the string after the comment marker
+      
+      // get the two characters *after* the comment marker
+      if((strcasecmp(type_buff, "CM") == 0 || strcasecmp(type_buff, "CE") == 0) && line_len > 4) {
+        strncpy(hidden_type_buff, &card->orig_str[2], 2);
+      } else if (strcasecmp(type_buff, "!") == 0 || strcasecmp(type_buff, "#") == 0|| strcasecmp(type_buff, "'") == 0) {
+        strncpy(hidden_type_buff, &card->orig_str[1], 2);
+      } else {
+        // we didn't find anything interesting
+        strcpy(hidden_type_buff, "");
+      }
+      // now we see if those two characters are one of the extensions
+      bool isHidden = FALSE;
+      for(int i = 0; i < NUM_ONEC_CODES; i++) {
+        if(strcasecmp(hidden_type_buff, onec_codes[i]) == 0) { // was card->card_code in the front?
+          isHidden = TRUE;
+          break;
+        }
+      }
+      if(isHidden) {
+        isCmt = FALSE;
+        isExt = TRUE;
+        card->extn_code[0] = '!';
+      }
+    } // checking for hidden info
     
-     // get the two characters *after* the comment marker
-     if((strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0) && line_len > 4) {
-       strncpy(hidden_type_buff, &card->orig_str[2], 2);
-     } else if (strcmp(type_buff, "!") == 0 || strcmp(type_buff, "#") == 0|| strcmp(type_buff, "'") == 0) {
-       strncpy(hidden_type_buff, &card->orig_str[1], 2);
-     } else {
-       // we didn't find anything interesting
-       strcpy(hidden_type_buff, "");
-     }
-     // now we see if those two characters are one of the extensions
-     bool isHidden = FALSE;
-     for(int i = 0; i < NUM_ONEC_CODES; i++) {
-       if(strcmp(hidden_type_buff, onec_codes[i]) == 0) { // was card->card_code in the front?
-         isHidden = TRUE;
-         break;
-       }
-     }
-     if(isHidden) {
-       isCmt = FALSE;
-       isExt = TRUE;
-       card->extn_code[0] = '!';
-     }
-  } // checking for hidden info
-
-    /* if we're past the end of the deck, don't do anything, just keep it in the orig_card
-     * but if we're still inside the deck and we don't recognize the card, make an error
+    /* if we're past the end of the deck, everything that appears is a comment,
+     * and we'll just copy it into the comment. but if we are not past the end,
+     * and we didn't recognize the type then we want to report an error
      */
     if (!sawEN && !isCmt && !isCtl && !isGeo && !isExt) {
       // make a string for the message
@@ -352,7 +350,7 @@ void parse_deck(Deck *deck, Errors *errors)
       add_error(errors, msg, 0);
       free(msg);
     }
-
+    
     /* if we did figure out the card type, then we want to put something in the card_str,
      * but first we want to see if there is a comment inside the line ( > 0, < len ) and
      * clip that part out separately into extn_str
@@ -405,9 +403,9 @@ void parse_deck(Deck *deck, Errors *errors)
     if(isExt) {
       parse_onec_card(card, errors);
     }
-
-    /* process inline comments to look for key/value pairs
-     */
+    
+    // process inline comments to look for key/value pairs
+    // this can apply to any card, even comments
     if(card->extn_code[0] != '\0') {
       parse_key_values(card, errors);
     }
@@ -424,17 +422,18 @@ void parse_deck(Deck *deck, Errors *errors)
 void parse_comment_card(Card *card, Errors *errors)
 {
   // look for the different comment markers in the card_code and then
-  // just copy everything else on the line to the comment
+  // just copy everything else on the line to the comment. this
+  // includes any leading whitespace, or lack of it
   int code_end;
-  if(strcmp(card->card_code, "CM") == 0) {
+  if(strcasecmp(card->card_code, "CM") == 0) {
     code_end = 2;
-  } else if(strcmp(card->card_code, "CE") == 0) {
+  } else if(strcasecmp(card->card_code, "CE") == 0) {
     code_end = 2;
-  } else if(strcmp(card->card_code, "!") == 0) {
+  } else if(strcasecmp(card->card_code, "!") == 0) {
     code_end = 1;
-  } else if(strcmp(card->card_code, "#") == 0) {
+  } else if(strcasecmp(card->card_code, "#") == 0) {
     code_end = 1;
-  } else if(strcmp(card->card_code, "\'") == 0) {
+  } else if(strcasecmp(card->card_code, "\'") == 0) {
     code_end = 1;
   } else {
     code_end = 0; // error case, shouldn't be able to happen
@@ -464,7 +463,7 @@ void parse_command_card(Card *card, Errors *errors)
 	size_t line_len = strlen(card->card_str);
 
   // calloc has zeroed everything, so if this card doesn't have any parameters,
-  // like a CE or GM, just return now.
+  // like a CE or GM, just return now
   if(line_len <= 2) return;
 
   // skip the first two chars, the mnemonic is still there
@@ -540,7 +539,7 @@ void parse_command_card(Card *card, Errors *errors)
  */
 void parse_geometry_card(Card *card, Errors *errors)
 {
-  int MAX_INTS = 2, MAX_FLOATS = 7; // maximum number of integers on a line, max number of floats
+  int MAX_INTS = 2, MAX_FLOATS = 10; // up to 10 inputs for a GW/GC pair
   char* end_ptr;
   
   /* get line length of the card part of the line */
@@ -595,7 +594,7 @@ void parse_geometry_card(Card *card, Errors *errors)
     if(str[0] == '#') {
       // see if we can find that code
       for(int i = 0; i < NUM_UNIT_CODES; i++) {
-        if(strcmp(unit_code, unit_codes[i]) == 0) {
+        if(strcasecmp(unit_code, unit_codes[i]) == 0) {
           unit = i;
           break;
         }
@@ -624,7 +623,7 @@ void parse_geometry_card(Card *card, Errors *errors)
         
         // see if we can find that code
         for(int i = 0; i < NUM_UNIT_CODES; i++) {
-          if(strcmp(unit_code, unit_codes[i]) == 0) {
+          if(strcasecmp(unit_code, unit_codes[i]) == 0) {
             unit = i;
             break;
           }
@@ -694,7 +693,7 @@ void parse_onec_card(Card *card, Errors *errors)
 {
   // see if this is an SY card, otherwise exit
   // TODO: add all onec_codes here, we currently only do SY
-  if(strcmp(card->card_code, "SY") == 0) {
+  if(strcasecmp(card->card_code, "SY") == 0) {
     // make a copy of the string so we can mangle it - DO WE NEED TO?
     char str[MAX_LINE_LEN];
     strcpy(str, card->card_str + 2);
@@ -758,13 +757,11 @@ void parse_key_values(Card *card, Errors *errors)
 {
   char str[MAX_LINE_LEN];
   char key[MAX_LINE_LEN], value[MAX_LINE_LEN];
-
-  // first off, check if the extension exists and has enough data
-  if(strlen(card->extn_str) < 2)
-    return;
-  // and that one of our onec separators is in there somewhere
-  if(strpbrk(card->extn_str, "=:") == NULL)
-    return;
+  
+  // track whether we found any onec extensions after the comment
+  // marker. if we didn't, everything after the marker is a
+  // comment all on its own
+  bool hasExtensions = false;
 
   // make a copy of the string so we can mangle it - DO WE NEED TO?
   strcpy(str, card->extn_str);
@@ -786,76 +783,90 @@ void parse_key_values(Card *card, Errors *errors)
       strncpy(key, token, split - token - 1);
       strcpy(value, split);
       
-      // now check that both sides are >0 len
-      if(strlen(key) > 0 && strlen(value) > 0) {
-        // there are a couple of cases here:
-        // 1) the key is "name", "group", which are stored separately
-        // 2) the key is "comment" - copy everything after it into comment string and exit
-        // 3) the key is a formula - make a KeyValue pair and add it to the formulas list
-        // 4) the key is anything else - make a KeyValue pair and add it to the pairs list
-        
-        // handle "name" or "group"
-        if(strcasecmp(key, "name") == 0) {
-          card->name = value;
-          continue;
-        }
-        if(strcasecmp(key, "group") == 0) {
-          card->group = value;
-          continue;
-        }
-        // and comments
-        if(strcasecmp(key, "comment") == 0) {
-          card->comment = value;
-          return;
-        }
-        
-        // now see if its a formula
-        bool isFormula = false;
-        for(int i = 0; i < NUM_FIELD_NAMES; i++) {
-          if(strcasestr(key, field_names[i]) != NULL) {
-            isFormula = true;
-            break;
-          }
-        }
-        
-        // formulas and all other tags are handled in the same fashion,
-        // we make a KeyValue pair to hold it. They differ only in
-        // where we put them in the end
-        KeyValue *pair = (KeyValue *)malloc(sizeof(KeyValue));
-        if(pair != NULL) {
-          // calloc the strings and store them...
-          pair->key = calloc(split - token, sizeof(char));
-          strncpy(pair->key, token, split - token - 1);
-          pair->value = calloc(strlen(split) + 1, sizeof(char)); // add one for a trailing null
-          strcpy(pair->value, split);
-          // and store the original separator so we can recreate it on output
-          pair->separator = token[split - token];
-          // and null this out, as its going on the end
-          pair->next = NULL;
-          
-          // now decide which list to add it to
-          KeyValue *head, *tail;
-          if(isFormula) {
-            head = card->formulas;
-          } else {
-            head = card->pairs;
-          }
-          tail = head;
+      // now check that both sides are >0 len, otherwise skip this one
+      if(strlen(key) > 0 && strlen(value) > 0)
+        goto NEXT_TOKEN;
 
-          // and then add it to the end of the list
-          if(tail == NULL) {
-            head = pair;
-          } else {
-            while(tail->next != NULL)
-              tail = tail->next;
-            tail->next = pair;
-          }
-        } // there should be else's for all the mallocs and callocs!
+      // getting here means we did find a valid key/value of some
+      // sort, so record that we got it
+      hasExtensions = true;
+      
+      // there are a couple of cases here:
+      // 1) the key is "name", "group", which are stored separately
+      // 2) the key is "comment" - copy everything after it into comment string and exit
+      // 3) the key is a formula - make a KeyValue pair and add it to the formulas list
+      // 4) the key is anything else - make a KeyValue pair and add it to the pairs list
+      
+      // handle "name" or "group"
+      if(strcasecmp(key, "name") == 0) {
+        card->name = value;
+        goto NEXT_TOKEN;
       }
+      if(strcasecmp(key, "group") == 0) {
+        card->group = value;
+        goto NEXT_TOKEN;
+      }
+      // and comments
+      if(strcasecmp(key, "comment") == 0) {
+        card->comment = value;
+        goto NEXT_TOKEN;
+      }
+      
+      // now see if its a formula
+      bool isFormula = false;
+      for(int i = 0; i < NUM_FIELD_NAMES; i++) {
+        if(strcasestr(key, field_names[i]) != NULL) {
+          isFormula = true;
+          break;
+        }
+      }
+      
+      // formulas and any other tags not pulled out above are handled,
+      // in the same fashion we make a KeyValue pair to hold it.
+      // They differ only in where we put them in the end
+      KeyValue *pair = (KeyValue *)malloc(sizeof(KeyValue));
+      if(pair != NULL) {
+        // calloc the strings and store them...
+        pair->key = calloc(split - token, sizeof(char));
+        strncpy(pair->key, token, split - token - 1);
+        pair->value = calloc(strlen(split) + 1, sizeof(char)); // add one for a trailing null
+        strcpy(pair->value, split);
+        // and store the original separator so we can recreate it on output
+        pair->separator = token[split - token];
+        // and null this out, as its going on the end
+        pair->next = NULL;
+        
+        // now decide which list to add it to
+        KeyValue *head, *tail;
+        if(isFormula) {
+          head = card->formulas;
+        } else {
+          head = card->pairs;
+        }
+        tail = head;
+        
+        // and then add it to the end of the list
+        if(tail == NULL) {
+          head = pair;
+        } else {
+          while(tail->next != NULL)
+            tail = tail->next;
+          tail->next = pair;
+        }
+      } // there should be else's for all the mallocs and callocs!
     } // split != NULL
     
+  NEXT_TOKEN:
     // and get the next token
     token = strtok(NULL, OUR_WHITESPACE OUR_SEPARATORS);
   }
+  
+  // we are done processing this line, now see if there were any extensions
+  // at all, if there weren't, then this is a pure comment line and we
+  // know there's *something* here because otherwise we exited above
+  if(!hasExtensions) {
+    card->comment = str;
+  }
+  
 } /* end of parse_key_values() */
 
