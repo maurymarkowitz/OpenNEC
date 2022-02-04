@@ -473,10 +473,16 @@ void parse_command_card(Card *card, Errors *errors)
   end_ptr = NULL;
   int ints_processed = 0;
   while(str <= card->card_str + line_len && ints_processed < MAX_INT) {
+    // try to process this as a number
     size_t value = strtol(str, &end_ptr, 10);
+    
+    // if that returned nothing and we've reached the end of the line, exit
     if(value == 0L && end_ptr == str) break;
+    
+    // otherwise move forward to the new point
     str = end_ptr ;
 
+    // and put the value in the right place
     ints_processed++;
     switch(ints_processed) {
       case 1:
@@ -539,88 +545,70 @@ void parse_command_card(Card *card, Errors *errors)
  */
 void parse_geometry_card(Card *card, Errors *errors)
 {
-  int MAX_INTS = 2, MAX_FLOATS = 10; // up to 10 inputs for a GW/GC pair
-  char* end_ptr;
-  
-  /* get line length of the card part of the line */
+  int MAX_INTS = 2, MAX_FLOATS = 7;
+  int ints_processed = 0;
+  int dbls_processed = 0;
+  char *token;
+  char *end_ptr;      // end point of a a number as we parse them
+  size_t int_value;   // used to parse ints...
+  double dbl_value;   // ... and doubles
+  char unit_code[MAX_UNIT_LEN]; // the unit code string (if any) found on this line
+  int unit;                     // ...and our internal code for that unit if we found it, or 0 for default
+  bool isFormula;               // was the double actually a formula?
+
+  // get line length of the card part of the line
   int line_len = (int)strlen(card->card_str);
   
-  // calloc has zeroed everything, so if this card doesn't have any parameters,
-  // like a GM, just return now
+  // calloc has zeroed everything we need to set, so if this card doesn't
+  // have any parameters, like a GM, just return now
   if(line_len <= 2) return;
   
   // skip the first two chars, the mnemonic is still there
-  char *str = card->card_str + 2; //strdup(card->card_str + 2);
-
-  // process up to four ints at the start of the line
-  // FIXME: comment says four, but this only looks for two?!
-  end_ptr = NULL;
-  int ints_processed = 0;
-  while(str <= card->card_str + line_len && ints_processed < MAX_INTS) {
-    // try to read an int on the line, and exit otherwise
-    size_t value = strtol(str, &end_ptr , 10);
-    if(value == 0L && end_ptr == str) break;
-    str = end_ptr ;
-
-    // if we got a value, put it into the right slot
-    ints_processed++;
-    switch(ints_processed) {
-      case 1:
-        card->i1 = (int)value;
-        break;
-      case 2:
-        card->i2 = (int)value;
-        break;
-    }
-  } // end while(str <= card->card_str...
+  // we'll use this as the pointer to the current start location
+  char *str = card->card_str + 2;
   
-  /* process up to seven doubles following the ints
-   *
-   * unlike cmd cards, geometry cards may also include a measurement unit
-   * immediately after the number. There is code at the bottom of this loop
-   * to test for this case.
-   *
-   */
-  end_ptr = NULL;
-  int dbls_processed = 0;
-  char unit_code[MAX_UNIT_LEN]; // the unit code string (if any) found on this line
-  size_t pos;                   // ...and it's position in the line
-  int unit;                     // ...and our internal code for that unit if we found it, or 0 for default
-  while(str <= card->card_str + line_len && dbls_processed < MAX_FLOATS) {
-    unit = 0; // if we don't find a unit code, this will ensure it is set to "default"
-
-    // look for a leading # indicating an awg measurement from 4nec2
-    // FIXME: this doesn't currently work because we trim off everything after the # above
-    if(str[0] == '#') {
-      // see if we can find that code
-      for(int i = 0; i < NUM_UNIT_CODES; i++) {
-        if(strcasecmp(unit_code, unit_codes[i]) == 0) {
-          unit = i;
-          break;
+  // and also skip any leading whitespace or separator characters
+  str += strspn(str, OUR_WHITESPACE);
+  
+  // tokenize the rest of the line on the remaining whitespace
+  token = strtok(str, OUR_WHITESPACE);
+  while(token != NULL) {
+    // we have a non-zero length token, which might be an int
+    // or float depending on what we've seen before
+    if(ints_processed < MAX_INTS) {
+      ints_processed++;
+      
+      // parse a number if we can find it
+      int_value = strtol(token, &end_ptr , 10);
+      
+      // if there was a number in there, end_ptr will no longer be at the
+      // start and that means we found one and can store it in the right slot
+      if(end_ptr != token) {
+        switch(ints_processed) {
+          case 1:
+            card->i1 = (int)int_value;
+            break;
+          case 2:
+            card->i2 = (int)int_value;
+            break;
         }
       }
-      // and then move forward to skip it
-      str += 1;
     }
     
-    // try to read another double on the line, and exit otherwise
-    double value = strtod(str , &end_ptr);
-    if(value == 0L && end_ptr == str) break;
-    str = end_ptr;
-    
-    /* now see if there is a potential measurement unit in the line, which we do simply
-     * by seeing if the next character is a whitespace or comma. If it's not, we read until
-     * we find one of those, and then look at the resulting string to see if we can match
-     * it with one of our units. Othewise report an error.
-     */
-    if(!isspace(str[0])) {
-      pos = strcspn(str, OUR_WHITESPACE); // you need the \0, but \n\r should have been pulled already
-      if(pos > 0) {
-        // copy out the code and then move up in the string
-        memset(unit_code, '\0', sizeof(unit));
-        strncpy(unit_code, str, pos);
-        str += pos;
-        
+    // doubles are more complicated because the fields may contain other
+    // bits like measurement indicators like "mm" or have formulas in them
+    // the code assumes that it's a number until proven wrong. if it is, we
+    // set isFormula
+    //
+    else if(dbls_processed < MAX_FLOATS) {
+      dbls_processed++;
+      
+      isFormula = FALSE;  // assume it's a number until proven otherwise
+      unit = 0;           // if we don't find a unit code, this will ensure it is set to "default"
+
+      // look for a leading # indicating an awg measurement from 4nec2
+      // FIXME: this doesn't currently work because we trim off everything after the # above
+      if(token[0] == '#') {
         // see if we can find that code
         for(int i = 0; i < NUM_UNIT_CODES; i++) {
           if(strcasecmp(unit_code, unit_codes[i]) == 0) {
@@ -628,52 +616,103 @@ void parse_geometry_card(Card *card, Errors *errors)
             break;
           }
         }
-        
-        /* test to see if we got a code we recognize */
-        if(unit < 1) {
-          char *msg = calloc(1, MAX_ERROR_LEN);
-          sprintf(msg,
-                  "Unknown unit type '%s' encountered in float field %d of card %d. Units left as 'default'.",
-                  unit_code, dbls_processed, card->card_num);
-          add_error(errors, msg, 0);
-          free(msg);
-        }
+        // and then move forward to skip it
+        str += 1;
       }
-    }
-
-    // if we got a value, put it into the right slot, along with any units
-    dbls_processed++;
-    switch(dbls_processed) {
-      case 1:
-        card->f1 = value;
-        card->m1 = unit;
-        break;
-      case 2:
-        card->f2 = value;
-        card->m2 = unit;
-        break;
-      case 3:
-        card->f3 = value;
-        card->m3 = unit;
-        break;
-      case 4:
-        card->f4 = value;
-        card->m4 = unit;
-        break;
-      case 5:
-        card->f5 = value;
-        card->m5 = unit;
-        break;
-      case 6:
-        card->f6 = value;
-        card->m6 = unit;
-        break;
-      case 7:
-        card->f7 = value;
-        card->m7 = unit;
-        break;
-    }
-  }
+      
+      // try to read a double in the token, which has to be at the start or
+      // strtod fails - this is what we want, in case someone does 'freq/2'
+      dbl_value = strtod(token , &end_ptr);
+      if(end_ptr != token) {
+        // we got a number at the front, but is that all we got?
+        char *leftover = end_ptr;
+        
+        if(strlen(leftover) > 0) {
+          // check to see if the leftover is one of our known units
+          bool isUnit = false;
+          for(int i = 0; i < NUM_UNIT_CODES; i++) {
+            if(strcasecmp(leftover, unit_codes[i]) == 0) {
+              unit = i;
+              isUnit = true;
+              break;
+            }
+          }
+          // if it was not a unit, and it wasn't zero length, we have to
+          // assume the entire thing was a formula
+          if(!isUnit) {
+            isFormula = true;
+          }
+        }
+      } else {
+        // we did not get a number at the front, so it must be a formula one way or the other
+        isFormula = true;
+      }
+      
+      // now we decide where to put it all...
+      if(!isFormula) {
+        // if it's not a formula, set the values and any unit we found
+        switch(dbls_processed) {
+          case 1:
+            card->f1 = dbl_value;
+            card->m1 = unit;
+            break;
+          case 2:
+            card->f2 = dbl_value;
+            card->m2 = unit;
+            break;
+          case 3:
+            card->f3 = dbl_value;
+            card->m3 = unit;
+            break;
+          case 4:
+            card->f4 = dbl_value;
+            card->m4 = unit;
+            break;
+          case 5:
+            card->f5 = dbl_value;
+            card->m5 = unit;
+            break;
+          case 6:
+            card->f6 = dbl_value;
+            card->m6 = unit;
+            break;
+          case 7:
+            card->f7 = dbl_value;
+            card->m7 = unit;
+            break;
+        }
+      } else {
+        // it is a formula, copy the entire token into the right formula field
+        switch(dbls_processed) {
+          case 1:
+            card->ff1 = token;
+            break;
+          case 2:
+            card->ff2 = token;
+            break;
+          case 3:
+            card->ff3 = token;
+            break;
+          case 4:
+            card->ff4 = token;
+            break;
+          case 5:
+            card->ff5 = token;
+            break;
+          case 6:
+            card->ff6 = token;
+            break;
+          case 7:
+            card->ff7 = token;
+            break;
+        }
+      } // isFormula = true
+    } // dbls_processed < MAX_FLOATS
+    
+    // and move on to the next bit
+  NEXT_TOKEN:
+    token = strtok(NULL, OUR_WHITESPACE);
+  } //token != NULL
 } /* end of parse_geometry_card() */
 
 /*----------------------------------------------------------------------*/
