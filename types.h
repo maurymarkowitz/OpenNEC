@@ -19,27 +19,27 @@
 #include <stdbool.h>  // we will use the bool type!
 
 // OpenNEC generally allows commas or any whitespace between fields
-#ifndef OUR_WHITESPACE_DEF
-#define OUR_WHITESPACE_DEF
-#define OUR_WHITESPACE ", \t\n\r\v\f\0" // should comma be a separator? look for examples
+#ifndef ONEC_WHITESPACE_DEF
+#define ONEC_WHITESPACE_DEF
+#define ONEC_WHITESPACE ", \t\n\r\v\f\0" // should comma be a separator? look for examples
 #endif
 
 // these are the markers for inline comments
-#ifndef OUR_COMMENTS_DEF
-#define OUR_COMMENTS_DEF
-#define OUR_COMMENTS "!'#"
+#ifndef ONEC_COMMENTS_DEF
+#define ONEC_COMMENTS_DEF
+#define ONEC_COMMENTS "!'#"
 #endif
 
 // these are the separators within an OpenNEC extension list
-#ifndef OUR_SEPARATORS_DEF
-#define OUR_SEPARATORS_DEF
-#define OUR_SEPARATORS ";"
+#ifndef ONEC_SEPARATORS_DEF
+#define ONEC_SEPARATORS_DEF
+#define ONEC_SEPARATORS ";"
 #endif
 
 // these are the delimeters between the key and value pairs
-#ifndef OUR_DELIMETERS_DEF
-#define OUR_DELIMETERS_DEF
-#define OUR_DELIMETERS "=:"
+#ifndef ONEC_DELIMETERS_DEF
+#define ONEC_DELIMETERS_DEF
+#define ONEC_DELIMETERS "=:"
 #endif
 
 /* card field names, like "I1" of "F4" */
@@ -75,11 +75,11 @@ extern char *geometry_codes[NUM_GEOMETRY_CODES];
 extern char *onec_codes[NUM_ONEC_CODES];
 #endif
 
-#ifndef UNITS_DEF
-#define UNITS_DEF
-#define NUM_UNIT_CODES 8
-extern char *unit_codes[NUM_UNIT_CODES];
-extern double unit_mult[NUM_UNIT_CODES];
+#ifndef ONEC_UNITS_DEF
+#define ONEC_UNITS_DEF
+#define NUM_ONEC_UNIT_CODES 8
+extern char *unit_codes[NUM_ONEC_UNIT_CODES];
+extern double unit_mult[NUM_ONEC_UNIT_CODES];
 #endif
 
 /*** Structs encapsulating global ("common") variables ***/

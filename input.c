@@ -358,7 +358,7 @@ void parse_deck(Deck *deck, Errors *errors)
     if(isCmt || isCtl || isGeo || isExt) {
       size_t len; // this is the length of the main card text
       // look for a comment marker, adjust length of card text based on that
-      const char *sep = strpbrk(card->orig_str, OUR_COMMENTS);
+      const char *sep = strpbrk(card->orig_str, ONEC_COMMENTS);
       if(sep == NULL) {
         // no comment was found, put everything into the string
         len = strlen(card->orig_str);
@@ -568,10 +568,10 @@ void parse_geometry_card(Card *card, Errors *errors)
   char *str = card->card_str + 2;
   
   // and also skip any leading whitespace or separator characters
-  str += strspn(str, OUR_WHITESPACE);
+  str += strspn(str, ONEC_WHITESPACE);
   
   // tokenize the rest of the line on the remaining whitespace
-  token = strtok(str, OUR_WHITESPACE);
+  token = strtok(str, ONEC_WHITESPACE);
   while(token != NULL) {
     // we have a non-zero length token, which might be an int
     // or float depending on what we've seen before
@@ -610,7 +610,7 @@ void parse_geometry_card(Card *card, Errors *errors)
       // FIXME: this doesn't currently work because we trim off everything after the # above
       if(token[0] == '#') {
         // see if we can find that code
-        for(int i = 0; i < NUM_UNIT_CODES; i++) {
+        for(int i = 0; i < NUM_ONEC_UNIT_CODES; i++) {
           if(strcasecmp(unit_code, unit_codes[i]) == 0) {
             unit = i;
             break;
@@ -630,7 +630,7 @@ void parse_geometry_card(Card *card, Errors *errors)
         if(strlen(leftover) > 0) {
           // check to see if the leftover is one of our known units
           bool isUnit = false;
-          for(int i = 0; i < NUM_UNIT_CODES; i++) {
+          for(int i = 0; i < NUM_ONEC_UNIT_CODES; i++) {
             if(strcasecmp(leftover, unit_codes[i]) == 0) {
               unit = i;
               isUnit = true;
@@ -711,7 +711,7 @@ void parse_geometry_card(Card *card, Errors *errors)
     
     // and move on to the next bit
   NEXT_TOKEN:
-    token = strtok(NULL, OUR_WHITESPACE);
+    token = strtok(NULL, ONEC_WHITESPACE);
   } //token != NULL
 } /* end of parse_geometry_card() */
 
@@ -778,7 +778,7 @@ void parse_onec_card(Card *card, Errors *errors)
         }
       } // split != NULL
       // and get the next token
-      token = strtok(NULL, OUR_WHITESPACE OUR_SEPARATORS);
+      token = strtok(NULL, ONEC_WHITESPACE ONEC_SEPARATORS);
     }
   }
 } /* end of parse_onec_card() */
@@ -808,7 +808,7 @@ void parse_key_values(Card *card, Errors *errors)
   // strtok should be perfect for this one because we don't want the delimiters to be handed back
   // ...so start by priming the strtok pump
   char *token, *split;
-  token = strtok(str, OUR_WHITESPACE OUR_SEPARATORS); // note the "concat the string literals" trick
+  token = strtok(str, ONEC_WHITESPACE ONEC_SEPARATORS); // note the "concat the string literals" trick
   while(token != NULL) {
     // make sure there's a equals or colon in it - note you can't nest another strtok!
     split = strpbrk(token, "=:");
@@ -831,7 +831,7 @@ void parse_key_values(Card *card, Errors *errors)
       hasExtensions = true;
       
       // there are a couple of cases here:
-      // 1) the key is "name", "group", which are stored separately
+      // 1) the key is "name" or "group", which are stored separately
       // 2) the key is "comment" - copy everything after it into comment string and exit
       // 3) the key is a formula - make a KeyValue pair and add it to the formulas list
       // 4) the key is anything else - make a KeyValue pair and add it to the pairs list
@@ -845,13 +845,13 @@ void parse_key_values(Card *card, Errors *errors)
         card->group = value;
         goto NEXT_TOKEN;
       }
-      // and comments
+      // and comments, which cause us to exit
       if(strcasecmp(key, "comment") == 0) {
         card->comment = value;
-        goto NEXT_TOKEN;
+         return;
       }
       
-      // now see if its a formula
+      // now see if it's a formula
       bool isFormula = false;
       for(int i = 0; i < NUM_FIELD_NAMES; i++) {
         if(strcasestr(key, field_names[i]) != NULL) {
@@ -897,7 +897,7 @@ void parse_key_values(Card *card, Errors *errors)
     
   NEXT_TOKEN:
     // and get the next token
-    token = strtok(NULL, OUR_WHITESPACE OUR_SEPARATORS);
+    token = strtok(NULL, ONEC_WHITESPACE ONEC_SEPARATORS);
   }
   
   // we are done processing this line, now see if there were any extensions
@@ -908,4 +908,3 @@ void parse_key_values(Card *card, Errors *errors)
   }
   
 } /* end of parse_key_values() */
-

@@ -41,11 +41,11 @@ char *onec_codes[NUM_ONEC_CODES] = {
 
 // the unit_codes and unit_mult are in the same order,
 // so if you change one, change the other!
-char *unit_codes[NUM_UNIT_CODES] = {
+char *unit_codes[NUM_ONEC_UNIT_CODES] = {
   "m", "cm", "mm", "ft", "in", "ftin", "awg", "#"
 };
 // the last three units, ftin and awg, require special conversions
-double unit_mult[NUM_UNIT_CODES] = {
+double unit_mult[NUM_ONEC_UNIT_CODES] = {
   1.0, 0.01, 0.001, 0.30480, 0.0254, 0, 0, 0
 };
 
