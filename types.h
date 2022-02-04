@@ -77,7 +77,7 @@ extern char *onec_codes[NUM_ONEC_CODES];
 
 #ifndef UNITS_DEF
 #define UNITS_DEF
-#define NUM_UNIT_CODES 9
+#define NUM_UNIT_CODES 8
 extern char *unit_codes[NUM_UNIT_CODES];
 extern double unit_mult[NUM_UNIT_CODES];
 #endif
@@ -148,10 +148,10 @@ typedef struct
 
   // onec extensions
   char extn_code[1];  // the one-letter code that marked the extension or inline comment, if any
-  char *extn_str;     // the entire inline comment, anything after the comment marker including key/values
+  char *extn_str;     // the entire inline comment, anything after the comment marker
   char *name;         // name for this card, if present
   char *group;        // group name, used to collect multiple cards into groups
-  char *comment;      // if a comment was found, it's placed here *without* the delimiter, this is not the same as extn_str
+  char *comment;      // if a comment was found, it's placed here, this is not the same as extn_str, it might be comment:
   KeyValue *pairs;    // pairs of name:value key/value entries, this will **not** include a comment if there was one
   KeyValue *formulas; // pairs of variable=formula pairs found in SY cards or in the extensions area
 } Card;
