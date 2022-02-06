@@ -20,13 +20,13 @@
  *
  * You will note that the code for reading lines is more complex
  * than you might see in most C programs - it reads char by char
- * instead of doing a read-line. This is because NEC decks are
+ * instead of using fgets or similar. This is because NEC decks are
  * sometimes edited by hand in editors that insert hard breaks
  * when saved, and this are relatively common on the 'net. So this
  * code is somewhat more complex and tries to merge broken lines
- * of this sort. This is an area that might be improved, but
- * performance on modern machines makes this a non-issue in all the
- * examples I fed it.
+ * of this sort. This is an area that might be improved by using
+ * fgets and somewhat smarter code, but performance on modern machines
+ * makes this a non-issue in all the examples I fed it.
  *
  * One lingering problem is when such a break has been inserted
  * precisely where an inline comment occurs. This causes the parser
@@ -46,10 +46,7 @@
 #include "opennec.h"
 #include "shared.h"
 
-/* forward declares */
-void parse_card(Card *card, int card_num, Errors *errors);
-
-/*----------------------------------------------------------------------*/
+/*******************************************************************
 /* read_deck()
  *
  * Reads the entire deck line by line and fills out the deck's cards[]
@@ -98,8 +95,8 @@ void read_deck(Deck *deck, FILE *input_fp)
   free(card);
 }
 
-/*----------------------------------------------------------------------*/
-/* read_line()
+/*******************************************************************
+ * read_line()
  *
  * reads a line from a file, aborts on failure
  *
@@ -185,8 +182,8 @@ int read_line(char *buff, FILE *file)
   return(eof);
 } /* end of read_line() */
 
-/*----------------------------------------------------------------------*/
-/* parse_deck()
+/*******************************************************************
+ * parse_deck()
  *
  * parses the original data from the file once it's all read in
  *
@@ -412,8 +409,8 @@ void parse_deck(Deck *deck, Errors *errors)
   } // foreach card
 } /* end of parse_deck() */
 
-/*----------------------------------------------------------------------*/
-/* parse_comment_card()
+/*******************************************************************
+ * parse_comment_card()
  *
  * copies the comment from the card_str into the comment string so that
  * it can be updated there. This is not used to process inline comments,
@@ -442,8 +439,8 @@ void parse_comment_card(Card *card, Errors *errors)
   strcpy(card->comment, &card->card_str[code_end]);
 }
 
-/*----------------------------------------------------------------------*/
-/* parse_command_card()
+/*******************************************************************
+ * parse_command_card()
  *
  * parses the contents of one command card. formerly readem()
  *
@@ -534,8 +531,8 @@ void parse_command_card(Card *card, Errors *errors)
   }
 } /* end of parse_command_card() */
 
-/*----------------------------------------------------------------------*/
-/* parse_geometry_card()
+/*******************************************************************
+ * parse_geometry_card()
  *
  * parses the contents of one geometry card. formerly ???()
  *
@@ -715,8 +712,8 @@ void parse_geometry_card(Card *card, Errors *errors)
   } //token != NULL
 } /* end of parse_geometry_card() */
 
-/*----------------------------------------------------------------------*/
-/* parse_onec_card()
+/*******************************************************************
+ * parse_onec_card()
  *
  * parses cards only understood by onec, which at this point is only
  * the SY. Although XT is also part of the onec list, there's nothing to
@@ -783,8 +780,8 @@ void parse_onec_card(Card *card, Errors *errors)
   }
 } /* end of parse_onec_card() */
 
-/*----------------------------------------------------------------------*/
-/* parse_key_values()
+/*******************************************************************
+ * parse_key_values()
  *
  * parses a string that may contain key/value pairs
  *
@@ -801,7 +798,7 @@ void parse_key_values(Card *card, Errors *errors)
   // marker. if we didn't, everything after the marker is a
   // comment all on its own
   bool hasExtensions = false;
-
+  
   // make a copy of the string so we can mangle it - DO WE NEED TO?
   strcpy(str, card->extn_str);
   
@@ -825,13 +822,13 @@ void parse_key_values(Card *card, Errors *errors)
       // now check that both sides are >0 len, otherwise skip this one
       if(strlen(key) > 0 && strlen(value) > 0)
         goto NEXT_TOKEN;
-
+      
       // getting here means we did find a valid key/value of some
       // sort, so record that we got it
       hasExtensions = true;
       
       // there are a couple of cases here:
-      // 1) the key is "name" or "group", which are stored separately
+      // 1) the key is "name", "group" or "ignore", which are stored separately
       // 2) the key is "comment" - copy everything after it into comment string and exit
       // 3) the key is a formula - make a KeyValue pair and add it to the formulas list
       // 4) the key is anything else - make a KeyValue pair and add it to the pairs list
@@ -845,10 +842,15 @@ void parse_key_values(Card *card, Errors *errors)
         card->group = value;
         goto NEXT_TOKEN;
       }
+      if(strcasecmp(key, "ignore") == 0) {
+        
+        card->ignore = TRUE;
+        goto NEXT_TOKEN;
+      }
       // and comments, which cause us to exit
       if(strcasecmp(key, "comment") == 0) {
         card->comment = value;
-         return;
+        return;
       }
       
       // now see if it's a formula
@@ -906,5 +908,4 @@ void parse_key_values(Card *card, Errors *errors)
   if(!hasExtensions) {
     card->comment = str;
   }
-  
 } /* end of parse_key_values() */
