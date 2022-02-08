@@ -1,4 +1,4 @@
-/*******************************************************************
+/******************************************************************************
  * input.c
  *
  * input.c contains the routines needed to read and parse a card
@@ -46,12 +46,16 @@
 #include "opennec.h"
 #include "shared.h"
 
-/*******************************************************************
-/* read_deck()
+/******************************************************************************
+ * read_deck()
  *
  * Reads the entire deck line by line and fills out the deck's cards[]
  * array with the resulting data. After this completes, the caller
  * should call parse_deck() to process the data.
+ *
+ * @param deck Deck structure that will hold the Cards
+ * @param input_fp file pointer to the file to be read, assumed
+ *  to have been opened previous to this call
  *
  */
 void read_deck(Deck *deck, FILE *input_fp)
@@ -61,26 +65,31 @@ void read_deck(Deck *deck, FILE *input_fp)
   char line_buf[MAX_LINE_LEN];  // make it large enough to hold any possible line
   size_t line_len;              // actual length of the current card being read
     
-  /* set the card count to 0, it might have !=0 default */
+  // set the card count to 0, it might have !=0 default
   deck->num_cards = 0;
+  
+  // and set the default comment marker to empty
+  deck->cmt_code = 0;
 
-  /* loop and read lines one-by-one until we hit the EOF */
+  // loop and read lines one-by-one until we hit the EOF
   while(TRUE) {
-    /* read a line from input file and exit if it's the end of the stack */
+    // read a line from input file and exit if it's the end of the stack
     if(read_line(line_buf, input_fp) == EOF) break;
     
-    /* store the line length because we do lots of comparisons against it */
+    // store the line length because we do lots of comparisons against it
     line_len = strlen(line_buf);
     
-    /* make a new card and copy in the line */
-    /* we save every line to a card, even blank lines */
+    // make a new card and copy in the line
+    // we save every line to a card, even blank lines
     card = calloc(1, sizeof(Card));
     card->orig_str = calloc(line_len +1, sizeof(char));
     card->edited = FALSE;
+    card->invisible = FALSE; // only applies to geometry, but set it in any case
+    card->ignore = FALSE; // should apply to geometery and commands?
     strcpy(card->orig_str, line_buf);
     
-    /* calloc/realloc the deck and add this card to it */
-    /* there may be performance improvements possible by allocing blocks of 10 or 20 cards at a time */
+    // calloc/realloc the deck and add this card to it
+    // there may be performance improvements possible by allocing blocks of 10 or 20 cards at a time
     if(deck->num_cards == 0) {
       deck->num_cards++;
       deck->cards = calloc(1, sizeof(Card));
@@ -91,11 +100,11 @@ void read_deck(Deck *deck, FILE *input_fp)
     deck->cards[deck->num_cards - 1] = *card;
   }
   
-  /* card is temp, free it */
+  // card is temp, free it
   free(card);
 }
 
-/*******************************************************************
+/******************************************************************************
  * read_line()
  *
  * reads a line from a file, aborts on failure
@@ -124,7 +133,10 @@ void read_deck(Deck *deck, FILE *input_fp)
  * This code also automatically capitalizes the first two characters
  * on the line.
  *
- */
+ * @param buff String containing the contents of one line
+ * @param file file pointer to the file to be read, assumed
+ *  to have been opened previous to this call
+*/
 int read_line(char *buff, FILE *file)
 {
   int
@@ -140,12 +152,12 @@ int read_line(char *buff, FILE *file)
     return(EOF);
   }
   
-  // the line parser below stops and returns as soon as it sees a single cr or lf
-  // that means that when we re-enter the routine, the file might have leading
-  // cr's or lf's left over. this code eats them. note that this also eats totally
-  // empty lines, and it's not clear that's what we want, we might want to save those
-  // in order to report a warning. if that's the case, it would seem we should do this
-  // eating at the end of the routine?
+  // the line parser below stops and returns as soon as it sees a single
+  // cr or lf that means that when we re-enter the routine, the file might
+  // have leading cr's or lf's left over. this code eats them. note that this
+  // also eats totally empty lines, and it's not clear that's what we want,
+  // we might want to save those in order to report a warning. if that's the
+  // case, it would seem we should do this eating at the end of the routine?
   while((chr == CR) || (chr == LF)) {
     // eat the next char, and return if that's the eof
     if((chr = getc(file)) == EOF) {
@@ -166,23 +178,24 @@ int read_line(char *buff, FILE *file)
     if((chr == CR) || (chr == LF))
       break;
     
-    /* enter new char to buffer */
+    // enter new char to buffer
     buff[num_chr++] = (char)chr;
     
-    /* if we get the EOF, end the string at that point by replacing it with a null */
+    // if we get the EOF, end the string at that point by replacing it
+    // with a null
     if((chr = getc(file)) == EOF) {
       buff[num_chr] = '\0';
       eof = EOF;
     }
   } /* end of while( num_chr < MAX_LINE_LEN ) */
 
-  /* terminate buffer as a string */
+  // terminate buffer as a string
   buff[num_chr] = '\0';
   
   return(eof);
 } /* end of read_line() */
 
-/*******************************************************************
+/******************************************************************************
  * parse_deck()
  *
  * parses the original data from the file once it's all read in
@@ -209,9 +222,6 @@ void parse_deck(Deck *deck, Errors *errors)
 
   for(int i = 0; i < deck->num_cards; i++) {
     card = &deck->cards[i];
-    
-    // set the card number, which is used in the parsers below to report errors
-    card->card_num = i;
 
     // get the card and the original string length
     line_len = strlen(card->orig_str);
@@ -383,8 +393,8 @@ void parse_deck(Deck *deck, Errors *errors)
      * add a new card programmatically and set a comment, it should default to using
      * this marker
      */
-    if(card->extn_code[0] != 0 && deck->cmt_code[0] == 0) {
-      deck->cmt_code[0] = card->extn_code[0];
+    if(card->extn_code[0] != 0 && deck->cmt_code == 0) {
+      deck->cmt_code = card->extn_code[0];
     }
     
     // now call the card parsers on the different card types
@@ -409,7 +419,7 @@ void parse_deck(Deck *deck, Errors *errors)
   } // foreach card
 } /* end of parse_deck() */
 
-/*******************************************************************
+/******************************************************************************
  * parse_comment_card()
  *
  * copies the comment from the card_str into the comment string so that
@@ -439,7 +449,7 @@ void parse_comment_card(Card *card, Errors *errors)
   strcpy(card->comment, &card->card_str[code_end]);
 }
 
-/*******************************************************************
+/******************************************************************************
  * parse_command_card()
  *
  * parses the contents of one command card. formerly readem()
@@ -531,7 +541,7 @@ void parse_command_card(Card *card, Errors *errors)
   }
 } /* end of parse_command_card() */
 
-/*******************************************************************
+/******************************************************************************
  * parse_geometry_card()
  *
  * parses the contents of one geometry card. formerly ???()
@@ -552,7 +562,7 @@ void parse_geometry_card(Card *card, Errors *errors)
   char unit_code[MAX_UNIT_LEN]; // the unit code string (if any) found on this line
   int unit;                     // ...and our internal code for that unit if we found it, or 0 for default
   bool isFormula;               // was the double actually a formula?
-
+  
   // get line length of the card part of the line
   int line_len = (int)strlen(card->card_str);
   
@@ -560,7 +570,8 @@ void parse_geometry_card(Card *card, Errors *errors)
   // have any parameters, like a GM, just return now
   if(line_len <= 2) return;
   
-  // skip the first two chars, the mnemonic is still there
+  // skip the first two chars, the mnemonic is still there and it
+  // can't be a single-char comment market, which was handled above
   // we'll use this as the pointer to the current start location
   char *str = card->card_str + 2;
   
@@ -712,7 +723,7 @@ void parse_geometry_card(Card *card, Errors *errors)
   } //token != NULL
 } /* end of parse_geometry_card() */
 
-/*******************************************************************
+/******************************************************************************
  * parse_onec_card()
  *
  * parses cards only understood by onec, which at this point is only
@@ -780,13 +791,13 @@ void parse_onec_card(Card *card, Errors *errors)
   }
 } /* end of parse_onec_card() */
 
-/*******************************************************************
+/******************************************************************************
  * parse_key_values()
  *
  * parses a string that may contain key/value pairs
  *
  * also looks for "comment:" markers within the string, and assumes
- * everything that marker is a comment
+ * everything after the marker is a comment
  *
  */
 void parse_key_values(Card *card, Errors *errors)
@@ -828,12 +839,12 @@ void parse_key_values(Card *card, Errors *errors)
       hasExtensions = true;
       
       // there are a couple of cases here:
-      // 1) the key is "name", "group" or "ignore", which are stored separately
+      // 1) the key is "name", "group", "visible" or "ignore", which are stored separately
       // 2) the key is "comment" - copy everything after it into comment string and exit
       // 3) the key is a formula - make a KeyValue pair and add it to the formulas list
       // 4) the key is anything else - make a KeyValue pair and add it to the pairs list
       
-      // handle "name" or "group"
+      // handle known
       if(strcasecmp(key, "name") == 0) {
         card->name = value;
         goto NEXT_TOKEN;
@@ -842,12 +853,19 @@ void parse_key_values(Card *card, Errors *errors)
         card->group = value;
         goto NEXT_TOKEN;
       }
-      if(strcasecmp(key, "ignore") == 0) {
-        
-        card->ignore = TRUE;
+      if(strcasecmp(key, "invisible") == 0) {
+        card->invisible = (strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0);
         goto NEXT_TOKEN;
       }
-      // and comments, which cause us to exit
+      if(strcasecmp(key, "visible") == 0) {
+        card->invisible = !(strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0);
+        goto NEXT_TOKEN;
+      }
+      if(strcasecmp(key, "ignore") == 0) {
+        card->invisible = (strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0);
+        goto NEXT_TOKEN;
+      }
+      // and comments, which cause us to exit because we have to be at the end
       if(strcasecmp(key, "comment") == 0) {
         card->comment = value;
         return;
@@ -862,8 +880,8 @@ void parse_key_values(Card *card, Errors *errors)
         }
       }
       
-      // formulas and any other tags not pulled out above are handled,
-      // in the same fashion we make a KeyValue pair to hold it.
+      // formulas and any other tags not pulled out above are handled
+      // in the same fashion - we make a KeyValue pair to hold it.
       // They differ only in where we put them in the end
       KeyValue *pair = (KeyValue *)malloc(sizeof(KeyValue));
       if(pair != NULL) {
@@ -905,7 +923,8 @@ void parse_key_values(Card *card, Errors *errors)
   // we are done processing this line, now see if there were any extensions
   // at all, if there weren't, then this is a pure comment line and we
   // know there's *something* here because otherwise we exited above
+  // make a copy because we might add extensions in the future
   if(!hasExtensions) {
-    card->comment = str;
+    card->comment = card->extn_str;
   }
 } /* end of parse_key_values() */
