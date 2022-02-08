@@ -1,25 +1,165 @@
-/*******************************************************************
+/******************************************************************************
  * deck.c
  *
- * deck.c contains the code that actually runs the simulations and
- * creates results. It also allows new cards to be inserted or
- * existing ones to be deleted.
+ * deck.c contains various routines that build decks and the cards in them,
+ * provides methods for checking the type of cards, and checking the basic
+ * validity of the data during reads and writes.
  *
- * Most of the functions here are simply wrappers for the original
- * nec2c code, but getting the data from the already-parsed deck
- * rather than reading it directly from the file. These outputs are
- * then used in the original nec2c code.
+ * deck also contains the high-level connections with the underlying nec
+ * code, building the required nec structures from the data in the card
+ * rather than reading it directly from the input file. This is intended
+ * to allow the deck to be easily modified and cards to be added or removed
+ * before triggering a calculation run. It also has links to all of the
+ * internal structures like the segmentation, which allows it to be used
+ * interactively without having to read and write files.
  *
- * OpenNEC adds the test_deck() function, which looks at the deck
- * trying to find common errors like a tapered wire missing a GC
- * card, as well as more difficult issues like crossed wires or
- * inputs that will cause the calculation to fail. There are a
- * variety of other functions for more mundane tasks.
- *
- *******************************************************************/
+ *****************************************************************************/
 
 #include "opennec.h"
 #include "shared.h"
+
+/******************************************************************************
+ * new_card
+ *
+ * creates and returns a new empty Card
+ *
+ * calloc'ing a card will set it up as wanted, but we'll use this explicit
+ * constructor mostly as a form of documentation and possible future changes.
+ *
+ */
+Card* new_card(void) {
+  Card *card = calloc(1, sizeof(Card));
+  card->edited = FALSE;     // new cards are not edited, by default. this only applies to USER edits!
+  card->invisible = FALSE;  // cards are visible by default. only applies to geometry, but set it in any case
+  card->ignore = FALSE;     // cards should not be ignored by default. should apply to geometery and commands?
+  card->extn_code[0] = 0;   // this will be applied if there is a code found on the line or the user adds one
+  return card;
+}
+
+/******************************************************************************
+ * free_card
+ *
+ * deletes an existing card and frees its various structures
+ *
+ */
+void free_card(Card *card) {
+  // start with the various strings
+  if(card->orig_str != NULL) free(card->orig_str);
+  if(card->card_str != NULL) free(card->card_str);
+  if(card->extn_str != NULL) free(card->extn_str);
+  if(card->name != NULL) free(card->name);
+  if(card->group != NULL) free(card->group);
+  if(card->comment != NULL) free(card->comment);
+  
+  // now the two lists
+  KeyValue *head, *temp;
+  head = card->formulas;
+  while(head != NULL) {
+    temp = head;
+    head = head->next;
+    free(temp);
+  }
+  head = card->pairs;
+  while(head != NULL) {
+    temp = head;
+    head = head->next;
+    free(temp);
+  }
+  
+  // and finally, the card itself
+  free(card);
+}
+
+/******************************************************************************
+ * append_card
+ *
+ * append_card adds the Card to the end of the Deck
+ *
+ * @param deck the Deck to add a new card to
+ * @param card the Card to add
+ *
+ */
+int append_card(Deck *deck, Card *card) {
+  // calloc/realloc the deck and add this card to it
+  // there may be performance improvements possible by allocing blocks of 10 or 20 cards at a time
+  if(deck->num_cards == 0) {
+    deck->num_cards++;
+    deck->cards = calloc(1, sizeof(Card));
+  } else {
+    deck->num_cards++;
+    deck->cards = realloc(deck->cards, deck->num_cards * sizeof(Card));
+  }
+  deck->cards[deck->num_cards - 1] = *card;
+  
+  return 0; // no error for now
+}
+
+/******************************************************************************
+ * insert_card
+ *
+ * inserts a card into a deck at the given index in the Deck's card array.
+ * may fail if the index is outside the bounds of the existing deck.
+ *
+ * @param deck the Deck to add a new card to
+ * @param card the Card to add
+ * @param location the index to add it at
+ *
+ */
+int insert_card(Deck *deck, Card *card, int location) {
+  // sanity check the location
+  if(location < 0 || location > deck->num_cards) return 1;
+  
+  // calloc/realloc space for another card
+  if(deck->num_cards == 0) {
+    deck->num_cards++;
+    deck->cards = calloc(1, sizeof(Card));
+  } else {
+    deck->num_cards++;
+    deck->cards = realloc(deck->cards, deck->num_cards * sizeof(Card));
+  }
+
+  // copy everything below the point down one space
+  for(int i = location + 1; i < deck->num_cards; i++) {
+    deck->cards[i + 1] = deck->cards[i];
+  }
+  
+  // then insert the new one
+  deck->cards[location] = *card;
+
+  // and we're good to go
+  return 0;
+}
+
+/******************************************************************************
+ * remove_card
+ *
+ * removes the card at the given location from the deck and deletes its memory
+ *
+ * @param deck the Deck to delete the card from
+ * @param location the index of the item to delete
+ *
+ */
+int remove_card(Deck *deck, int location) {
+  // sanity check the location
+  if(location < 0 || location > deck->num_cards) return 1;
+  
+  // get a handle to the card for future references
+  Card temp = deck->cards[location];
+  
+  // don't calloc/realloc the Deck smaller, see
+  // https://stackoverflow.com/questions/7078019/using-realloc-to-shrink-the-allocated-memory
+  // copy everything below it up one space
+  for(int i = deck->num_cards - 1; i >= location; i--) {
+    deck->cards[i - 1] = deck->cards[i];
+  }
+  
+  // free the card
+  free_card(&temp);
+  
+  // and we're good to go
+  return 0;
+}
+
 
 /*----------------------------------------------------------------------*/
 
@@ -27,7 +167,6 @@
  * lists and return boolean TRUE if the card belongs to that class,
  * like "isComment" which returns TRUE for any comment card.
  */
-
 int isComment(Card *card)
 {
   int isCmt = FALSE;
@@ -76,6 +215,95 @@ int isExtension(Card *card)
   return isExt;
 }
 
+/** min|min_int|float_fields returns the minimum or maximum number of
+ * fields expected for a given card type. For instance, the "GE" card has
+ * zero or one integer parameters, so min_int_fields would return 0 while
+ * max_int_fields would return 1, and both of the floats would return 0.
+ *
+ * Most of the time this can be determined purely by the type of card,
+ * for instance, almost every geometery card has two ints while command
+ * cards have four. In contrast, the number of floating point inputs
+ * is pretty much random.
+ *
+ */
+int min_int_fields(Card* card)
+{
+  // GE has zero minimum fields
+  if(strcasecmp(card->card_code, "GE")) return 0; // the ground type is optional
+  if(strcasecmp(card->card_code, "GF")) return 0; // there is an option to print extra data
+
+  // now the default cases
+  if(isComment(card)) {
+    return 0;
+  } else if(isGeometry(card)) {
+    return 2;
+  } else if (isControl(card)) {
+    return 4;
+  } else {
+    return 0; // need to check this!
+  }
+}
+
+int max_int_fields(Card* card)
+{
+  // GE has one optional field
+  if(strcasecmp(card->card_code, "GE")) return 1; // the ground type is optional
+  if(strcasecmp(card->card_code, "GF")) return 1; // there is an option to print extra data
+
+  // now the default cases
+  if(isComment(card)) {
+    return 0;
+  } else if(isGeometry(card)) {
+    return 2;
+  } else if (isControl(card)) {
+    return 4;
+  } else {
+    return 0; // need to check this!
+  }
+}
+
+int min_flt_fields(Card* card)
+{
+  // these are taken from the NEC-2 dox unless noted otherwise
+  // the dox indicate optional parameters with () around the name
+  if(strcasecmp(card->card_code, "GA")) return 4;
+  if(strcasecmp(card->card_code, "GE")) return 0;
+
+
+  // now the default cases
+  if(isComment(card)) {
+    return 0;
+  } else if(isGeometry(card)) {
+    return 7;
+  } else if (isControl(card)) {
+    return 4;
+  } else {
+    return 0; // need to check this!
+  }
+}
+
+int max_flt_fields(Card* card)
+{
+  // these are taken from the NEC-2 dox unless noted otherwise
+  // the dox indicate optional parameters with () around the name
+  if(strcasecmp(card->card_code, "GA")) return 4;
+  if(strcasecmp(card->card_code, "GE")) return 0;
+
+
+  // now the default cases
+  if(isComment(card)) {
+    return 0;
+  } else if(isGeometry(card)) {
+    return 7;
+  } else if (isControl(card)) {
+    return 4;
+  } else {
+    return 0; // need to check this!
+  }
+}
+
+
+
 /*----------------------------------------------------------------------*/
 
 /** update_deck_values()
@@ -88,7 +316,7 @@ int isExtension(Card *card)
 void update_deck_values(Deck *deck)
 {
   for(int i = 0; i < deck->num_cards; i++) {
-    update_card_values(&deck->cards[0]);
+    update_card_values(&deck->cards[i]);
   }
 }
 
