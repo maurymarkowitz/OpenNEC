@@ -21,7 +21,7 @@
 // OpenNEC generally allows commas or any whitespace between fields
 #ifndef ONEC_WHITESPACE_DEF
 #define ONEC_WHITESPACE_DEF
-#define ONEC_WHITESPACE ", \t\n\r\v\f\0" // should comma be a separator? look for examples
+#define ONEC_WHITESPACE ", \t\n\r\v\f\0"
 #endif
 
 // these are the markers for inline comments
@@ -33,7 +33,7 @@
 // these are the separators within an OpenNEC extension list
 #ifndef ONEC_SEPARATORS_DEF
 #define ONEC_SEPARATORS_DEF
-#define ONEC_SEPARATORS ";"
+#define ONEC_SEPARATORS ";,"
 #endif
 
 // these are the delimeters between the key and value pairs
@@ -85,7 +85,7 @@ extern double unit_mult[NUM_ONEC_UNIT_CODES];
 /*** Structs encapsulating global ("common") variables ***/
 
 /*** Error levels are used internally, external software should use negatives ***/
-enum error_level { MINOR, PROBLEM, FATAL };    // 0 = warning, 1 = error, 2 = fatal, <0 informational
+typedef enum { NONE, MINOR, PROBLEM, FATAL } error_level;    // 1 = warning, 2 = error, 3 = fatal, <0 informational
 
 /*** Error has information about a single error or warning ***/
 typedef struct
@@ -117,15 +117,20 @@ typedef struct KeyValue
 /*** Card encapsulates a single card ***/
 typedef struct
 {
+  /// NOTE: it is important these flags are set to the default values
+  ///       when a new Card is created
   // used to track whether this card has been edited since being read
   bool edited;
-  
+  // cards can be marked to be deliberately ignored
+  bool ignore;
+  // cards can be marked to be invisible in the display
+  bool invisible;
+
   // raw data from the original card
   char *orig_str;     // the original line, as read from the file in raw format
   char *card_str;     // the "card part" of the string, everything in front of the comment (if one exists)
   
   // processed NEC2 data
-  int card_num;       // card (line) number within the deck. mostly used for error reporting ("Card X has an error")
   char card_code[2];  // the two-letter code for this card, or one letter for some comment formats
   int i1, i2, i3, i4; // various bits read from the cards - i1 is normally the tag, for instance
   double f1, f2, f3;  // various floats/doubles read from the cards
@@ -151,7 +156,7 @@ typedef struct
   char *extn_str;     // the entire inline comment, anything after the comment marker
   char *name;         // name for this card, if present
   char *group;        // group name, used to collect multiple cards into groups
-  char *comment;      // if a comment was found, it's placed here, this is not the same as extn_str, it might be comment:
+  char *comment;      // if a comment was found, it's placed here, this is not the same as extn_str, it might be 'comment:'
   KeyValue *pairs;    // pairs of name:value key/value entries, this will **not** include a comment if there was one
   KeyValue *formulas; // pairs of variable=formula pairs found in SY cards or in the extensions area
 } Card;
@@ -166,7 +171,7 @@ typedef struct
   int geometry_start; // card number of the first geometry card, which definitely should exist. -1 if not found
   int geometry_end;   // card number of the GE card, which also has to exist. -1 if not found
   int deck_end;       // card number of the EN card or the last card in the deck otherwise. -1 if not found
-  char cmt_code[1];   // the default marker to use for comments, !, $ or '
+  char cmt_code;      // the default marker to use for inline comments, !, $ or '
   int unit_val;       // if there is a single GS, this is the f1 value, otherwise 1
   int unit_typ;       // if there is a single GS, and we recognize the value, put out index here
   KeyValue *symbols;  // any variables read in from SY cards, consisting of name/inital value pairs
