@@ -19,7 +19,7 @@
 #endif
 
 /** signal handler */
-static void sig_handler(int signal);
+//static void sig_handler(int signal);
 
 /* various switches for the command line arguments */
 static int run_simulation = TRUE;
@@ -39,12 +39,12 @@ static void print_version()
 /** usage, both for the user and for documenting the code below */
 static void print_usage(char *argv[])
 {
-  printf("Usage: %s [-hvtng] [-i output_file] [-o output_file] [-e error_file] source_file\n", argv[0]);
+  printf("Usage: %s [-hvntg] [-i input_file] [-o output_file] [-e error_file] source_file\n", argv[0]);
   puts("Options:");
   puts("  -h, --help: print this description");
   puts("  -v, --version: print version info");
   puts("  -i, --input-file: (path/)name of the input file");
-  puts("  -o, --output-file: (path/)name to the output file");
+  puts("  -o, --output-file: (path/)name of the output file");
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -n, --no-run: don't run the simulation after parsing");
   puts("  -t, --test-deck: run various sanity tests");
@@ -56,11 +56,11 @@ static struct option program_options[] =
   {"help", no_argument, NULL, 'h'},
   {"version", no_argument, NULL, 'v'},
   {"no-run", no_argument, NULL, 'n'},
+  {"test-deck", optional_argument, NULL, 't'},
+  {"greens", optional_argument, NULL, 'g'},
   {"input-file", required_argument, NULL, 'i'},
   {"output-file", required_argument,  NULL, 'o'},
   {"error-file", required_argument,  NULL, 'e'},
-  {"test-deck", optional_argument, NULL, 't'},
-  {"greens", optional_argument, NULL, 'g'},
   {0, 0, 0, 0}
 };
 
@@ -71,7 +71,7 @@ void parse_options(int argc, char *argv[])
   
   while(1) {
     // eat an option and exit if we're done
-    int c = getopt_long(argc, argv, "hvni:o:t:g:", program_options, &option_index); // should match the items above, but with flag-setters excluded
+    int c = getopt_long(argc, argv, "hvnti:o:t:g:", program_options, &option_index); // should match the items above, but with flag-setters excluded
     if (c == -1) break;
     
     switch (c) {
@@ -126,7 +126,7 @@ void parse_options(int argc, char *argv[])
     input_file = argv[argc - 1];
   else
     // not always a failure, we might have just been asked for usage
-    if (printed_help)
+    if(printed_help)
       exit(EXIT_SUCCESS);
     else
       exit(EXIT_FAILURE);
