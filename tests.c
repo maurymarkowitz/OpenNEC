@@ -17,42 +17,80 @@
  * both of which will cause the calculations to fail.
  *
  * Non-critical errors like a missing CE card will have a value
- * of 0. Oes that will cause evaluation to fail, like a missing GE,
- * have a value of 1, and critical errors are 2. Users can add their
- * own errors using these values or any value less than 0.
+ * of 0. Ones that will cause evaluation to fail, like a missing GE,
+ * have a value of 1, and critical errors like a missing file are 2.
+ * Users can add their own errors using these values or any value
+ * less than 0.
  *
  *******************************************************************/
 
 #include "opennec.h"
 #include "shared.h"
 
-/*----------------------------------------------------------------------*/
-
-/** test_deck_structure runs various tests on the deck and returns a
- * list of errors and warnings.
+/*******************************************************************
+ * test_deck_structure
+ *
+ * test_deck_structure runs various tests on the deck and returns
+ * a list of errors and warnings. This looks only for structure
+ * problems, like missing or duplicated cards, it does not look
+ * for logical problems, that's handled in other tests.
+ *
+ * @param deck the Deck to be tested
+ * @param errors the Errors list to add new messages to
  *
  */
-void test_deck_structure(Deck *deck, Errors *errors) //, int level
+void test_deck_structure(Deck *deck, Errors *errors)
 {
+  // A short list of the minimum structure is found in the 4nec2
+  // documentation:
+  //
+  // Zero or more CM (comment) cards
+  // One CE (comment end) card
+  // One or more GW (wire geometry) cards
+  // One GE (geometry end) card
+  // One FR (design frequency) card
+  // One or more EX (excitation point) cards
+  // Zero or one GN (Ground condition) card
+  // Zero or more LD (loading) cards
+  // One EN (end of file) card
+  //
+  // There are minor issues with this list:
+  //
+  // 1) some decks lack all comments, although we consider that fatal
+  // 2) you don't need a GW card specifically, any geometery will do
+  // 3) the EN is not really required, many decks lack it
+  //
+  // as a result, this code demands a minimum deck of five cards,
+  // one comment, two geometry cards, an FX, and a EX.
+  //
+  // there are also a number of additional tests performed
+  // below for other issues like duplicates of cards that should
+  // only exist once, cards in the wrong section of the deck, and
+  // similiar issues.
+
+  // although these look like they should be bools, we use int
+  // so we can report the card number where the duplicate was seen
   int sawCE = 0, sawGx = 0, sawGE = 0, sawEN = 0, sawGF = 0;
   int sawFR = 0, sawSC = 0, sawSP = 0, sawGN = 0, sawGD = 0;
   int sawGS = 0, sawLD = 0, sawEX = 0, sawSY = 0;
+  int GEType = 0;
+  // and some temps
   char *code, *last_code;
   char *msg = calloc(1, MAX_ERROR_LEN);
   
   // start with some obvious ones
   if(deck->num_cards == 0) {
     sprintf(msg, "A deck has to have at least one card.");
-    add_error(errors, msg, 2);  // this is a fatal error
+    add_error(errors, msg, 2);  // this is a major error, this deck will not process
     return;
   }
-  if(deck->num_cards < 3) {
-    sprintf(msg, "A deck has to have at least three cards; one or more Gx cards, a GE, and one or more EN or LD.");
-    add_error(errors, msg, 0);
+  if(deck->num_cards < 5) {
+    sprintf(msg, "A deck has to have at least five cards; one or more comments, one or more Gx cards, a GE, an FX, and an EX.");
+    add_error(errors, msg, 2);  // same here, there is no way this will calculate property
     return;
   }
   
-  // now let's make sure we can find all the required cards
+  // make sure we can find all the required cards
   last_code = "";
   for(int i = 0; i < deck->num_cards; i++) {
     // cache this
@@ -66,7 +104,7 @@ void test_deck_structure(Deck *deck, Errors *errors) //, int level
         sawGS = i;
       } else {
         sprintf(msg, "Card %d is a GS, but we already saw one on card %d. No single measurement type can be defined.", i, sawGS + 1);
-        add_error(errors, msg, 0);
+        add_error(errors, msg, 0);  // this will calculate fine, so this is mearly a warning
       }
     }
     // NOTE: nec4 does not require a CE or CM, but we'll demand them here for compatibility
@@ -81,6 +119,7 @@ void test_deck_structure(Deck *deck, Errors *errors) //, int level
     if(strcmp(code, "GE") == 0) {
       if(sawGE == FALSE) {
         sawGE = i;
+        GEType = deck->cards[i].i1;
       } else {
         sprintf(msg, "Card %d is a GE, but we already saw one on card %d.", i, sawGE + 1);
         add_error(errors, msg, 0);
@@ -185,6 +224,7 @@ void test_deck_structure(Deck *deck, Errors *errors) //, int level
     
     // GF cards have to be the first item in the geometry section,
     // which means they must follow CE cards, or in an onec deck, an SY
+    // FIXME: it could also follow onec comment cards, so this is somewhat complex
     if(strcmp(code, "GF") && !(strcmp(last_code, "CE") || strcmp(last_code, "SY"))) {
       sprintf(msg, "The card on line %d is a GF, but the line above it is not a CE or SY.", i);
       add_error(errors, msg, 1);
@@ -223,8 +263,8 @@ void test_deck_structure(Deck *deck, Errors *errors) //, int level
     add_error(errors, msg, 1);
   }
   if(!sawFR) {
-    sprintf(msg, "A deck has to have a FR card.");
-    add_error(errors, msg, 0);
+    sprintf(msg, "A deck has to have an FR card.");
+    add_error(errors, msg, 1);
   }
   if(!sawEN) {
     sprintf(msg, "A deck should end with a EN card.");
@@ -236,23 +276,66 @@ void test_deck_structure(Deck *deck, Errors *errors) //, int level
   }
   if(sawSY && !sawCE) {
     sprintf(msg, "We found SY cards in the deck, but there is no CE in the deck. SYs should follow the CE.");
+    add_error(errors, msg, 0);
+  }
+  
+  // if the GE card was -1, there has to be a GN
+  if(sawGE && GEType == -1 && !sawGN) {
+    sprintf(msg, "The GE is set to -1, but there is no GN card in the deck.");
     add_error(errors, msg, 1);
   }
-
-  // and get rid of the error
+  
+  // and get rid of the local string
   free(msg);
 }
 
+/*******************************************************************
+ * test_duplicate_tags
+ *
+ * test_duplicate_tags checks to see if there is more than one card
+ * with the same tag on it. this will not notice problems if there
+ * is a GM or similar card that creates new tags, that only happens
+ * when the geometery is segmented
+ *
+ * @param deck the Deck to be tested
+ * @param errors the Errors list to add new messages to
+ *
+ */
+void test_duplicate_tags(Deck *deck, Errors *errors)
+{
+  // we will also check to see if there are duplicate tags
+  int tags[deck->num_cards];
+  char *msg = calloc(1, MAX_ERROR_LEN);
+ 
+  // now check if there are any duplicate tags in the geometry
+  // NOTE: this doesn't test for new tags generated by GM or similar
+  for(int i = 0; i < deck->num_cards; i++) {
+    if(isGeometry(&deck->cards[i]) && deck->cards[i].i1 > 0) {
+      for(int j = 0; j < deck->num_cards; j++) {
+        if(tags[j] == deck->cards[i].i1) {
+          sprintf(msg, "The tag %d is found on card %d and card %d.", deck->cards[i].i1, i, tags[i]);
+          add_error(errors, msg, 1);
+        }
+      }
+    } else {
+      tags[i] = deck->cards[i].i1;
+    }
+  }
+  
+  free(msg);
+}
+
+
 // TODO: MISSING TESTS
-// GE -1 requires a GN
 // LDs and/or EXs should not be at open ends of wires
 // look for SY formulas that override system-wide items like mm or awg
 //   but overriding user-entered system variables is ok
 // also look for SY's that define the same formula more than once
-//   but this is OK, simply use the last definition
+//  but this is OK, simply use the last definition, but still warn
 // look for EX or LD cards and check that they are connected to wires with more than one segment
 //   wires that are connected must contact at segment ends (connection separation < len/1000)
-// look for wires that have the same endpoints, or are parallel and have different segmentation
+// look for wires that have the same endpoints
+//   or are parallel and have different segmentation
 // look for wires that extend into the ground
 // 4nec2 warns if parallel wires closer than 0.05 waves have different segmentation
 // segment length > .0001 WL in all cases
@@ -267,3 +350,4 @@ void test_deck_structure(Deck *deck, Errors *errors) //, int level
 //    rad < 2*len with extended thin wire kernel
 //    rad < len/10 default usage
 
+// GE card - from nec dox, If the height of a horizontal wire is less than 10^-3 times the segment length, I1 equal to 1 will connect the end of every segment in the wire to ground. I1 should be -1 to avoid this disaster.
