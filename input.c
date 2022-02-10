@@ -99,8 +99,8 @@ void read_deck(Deck *deck, FILE *input_fp)
     }
     deck->cards[deck->num_cards - 1] = *card;
   }
-  
-  // card is temp, free it
+
+    // card is temp, free it
   free(card);
 }
 
@@ -374,7 +374,7 @@ void parse_deck(Deck *deck, Errors *errors)
         len = sep - card->orig_str;
       }
       // malloc room for the card part, copy that in, and close the string
-      card->card_str = malloc((len * sizeof(char)) + 1);
+      card->card_str = (char *)malloc((len * sizeof(char)) + 1);
       strncpy(card->card_str, card->orig_str, len);
       card->card_str[len] = '\0';
       // and if there was any leftover, copy it into the extension, otherwise make sure its empty
@@ -445,7 +445,7 @@ void parse_comment_card(Card *card, Errors *errors)
   } else {
     code_end = 0; // error case, shouldn't be able to happen
   }
-  card->comment = calloc(strlen(card->orig_str) - code_end, sizeof(char));
+  card->comment = (char *)calloc(strlen(card->orig_str) - code_end, sizeof(char));
   strcpy(card->comment, &card->card_str[code_end]);
 }
 
@@ -464,7 +464,10 @@ void parse_comment_card(Card *card, Errors *errors)
 void parse_command_card(Card *card, Errors *errors)
 {
   int MAX_INT = 4, MAX_FLOAT = 6; // maximum number of integers on a line, max number of floats
+  char *token;
   char* end_ptr;
+  int ints_processed = 0;
+  int dbls_processed = 0;
 
 	// get line length of the card part of the line
 	size_t line_len = strlen(card->card_str);
@@ -473,72 +476,100 @@ void parse_command_card(Card *card, Errors *errors)
   // like a CE or GM, just return now
   if(line_len <= 2) return;
 
-  // skip the first two chars, the mnemonic is still there
-  char *str = card->card_str + 2; //strdup(card->card_str + 2);
+  // make a copy so we can munge it
+  char str[MAX_LINE_LEN];
+  strcpy(str, trim_start(card->card_str + 2)); // skip the card code and any whitespace
 
   // process up to four ints at the start of the line
-  end_ptr = NULL;
-  int ints_processed = 0;
-  while(str <= card->card_str + line_len && ints_processed < MAX_INT) {
-    // try to process this as a number
-    size_t value = strtol(str, &end_ptr, 10);
-    
-    // if that returned nothing and we've reached the end of the line, exit
-    if(value == 0L && end_ptr == str) break;
-    
-    // otherwise move forward to the new point
-    str = end_ptr ;
+  token = strtok(str, ONEC_WHITESPACE);
+  while(token != NULL) {
+    if(ints_processed < MAX_INT) {
+      // try to process this as an int
+      size_t value = strtol(token, &end_ptr, 10);
+      
+      // if that returned nothing and we've reached the end of the line, exit
+      if(value == 0L && end_ptr == token) break;
 
-    // and put the value in the right place
-    ints_processed++;
-    switch(ints_processed) {
-      case 1:
-        card->i1 = (int)value;
-        break;
-      case 2:
-        card->i2 = (int)value;
-        break;
-      case 3:
-        card->i3 = (int)value;
-        break;
-      case 4:
-        card->i4 = (int)value;
-        break;
+      // and put the value in the right place
+      ints_processed++;
+      switch(ints_processed) {
+        case 1:
+          card->i1 = (int)value;
+          break;
+        case 2:
+          card->i2 = (int)value;
+          break;
+        case 3:
+          card->i3 = (int)value;
+          break;
+        case 4:
+          card->i4 = (int)value;
+          break;
+      }
+    } else if (dbls_processed < MAX_FLOAT) {
+      // try to read a double on the line, and exit otherwise
+      double value = strtod(token, &end_ptr);
+      if(value == 0L && end_ptr == str) break;
+      
+      // if we got a value, put it into the right slot
+      dbls_processed++;
+      switch(dbls_processed) {
+        case 1:
+          card->f1 = value;
+          break;
+        case 2:
+          card->f3 = value;
+          break;
+        case 3:
+          card->f3 = value;
+          break;
+        case 4:
+          card->f4 = value;
+          break;
+        case 5:
+          card->f5 = value;
+          break;
+        case 6:
+          card->f6 = value;
+          break;
+      }
     }
+    
+  NEXT_TOKEN:
+    token = strtok(NULL, ONEC_WHITESPACE);
   }
-  
-  // process up to six doubles following the ints
-  end_ptr = NULL;
-  int dbls_processed = 0;
-  while(str <= card->card_str + line_len && dbls_processed < MAX_FLOAT) {
-    // try to read another double on the line, and exit otherwise
-    double value = strtod(str, &end_ptr);
-    if(value == 0L && end_ptr == str) break;
-    str = end_ptr ;
-
-    // if we got a value, put it into the right slot
-    dbls_processed++;
-    switch(dbls_processed) {
-      case 1:
-        card->f1 = value;
-        break;
-      case 2:
-        card->f3 = value;
-        break;
-      case 3:
-        card->f3 = value;
-        break;
-      case 4:
-        card->f4 = value;
-        break;
-      case 5:
-        card->f5 = value;
-        break;
-      case 6:
-        card->f6 = value;
-        break;
-    }
-  }
+    //
+//  // process up to six doubles following the ints
+//  end_ptr = NULL;
+//  int dbls_processed = 0;
+//  while(str <= card->card_str + line_len && dbls_processed < MAX_FLOAT) {
+//    // try to read another double on the line, and exit otherwise
+//    double value = strtod(str, &end_ptr);
+//    if(value == 0L && end_ptr == str) break;
+//    str = &end_ptr ;
+//
+//    // if we got a value, put it into the right slot
+//    dbls_processed++;
+//    switch(dbls_processed) {
+//      case 1:
+//        card->f1 = value;
+//        break;
+//      case 2:
+//        card->f3 = value;
+//        break;
+//      case 3:
+//        card->f3 = value;
+//        break;
+//      case 4:
+//        card->f4 = value;
+//        break;
+//      case 5:
+//        card->f5 = value;
+//        break;
+//      case 6:
+//        card->f6 = value;
+//        break;
+//    }
 } /* end of parse_command_card() */
 
 /******************************************************************************
@@ -573,10 +604,8 @@ void parse_geometry_card(Card *card, Errors *errors)
   // skip the first two chars, the mnemonic is still there and it
   // can't be a single-char comment market, which was handled above
   // we'll use this as the pointer to the current start location
-  char *str = card->card_str + 2;
-  
-  // and also skip any leading whitespace or separator characters
-  str += strspn(str, ONEC_WHITESPACE);
+  char str[MAX_LINE_LEN];
+  strcpy(str, trim_start(card->card_str + 2)); // skip the card code and any whitespace
   
   // tokenize the rest of the line on the remaining whitespace
   token = strtok(str, ONEC_WHITESPACE);
@@ -625,7 +654,7 @@ void parse_geometry_card(Card *card, Errors *errors)
           }
         }
         // and then move forward to skip it
-        str += 1;
+        token += 1;
       }
       
       // try to read a double in the token, which has to be at the start or
@@ -741,7 +770,7 @@ void parse_onec_card(Card *card, Errors *errors)
   // see if this is an SY card, otherwise exit
   // TODO: add all onec_codes here, we currently only do SY
   if(strcasecmp(card->card_code, "SY") == 0) {
-    // make a copy of the string so we can mangle it - DO WE NEED TO?
+    // make a copy of the string so we can mangle it in strtok
     char str[MAX_LINE_LEN];
     strcpy(str, card->card_str + 2);
 
@@ -766,9 +795,9 @@ void parse_onec_card(Card *card, Errors *errors)
           KeyValue *pair = (KeyValue *)malloc(sizeof(KeyValue));
           if(pair != NULL) {
             // calloc the strings and store them...
-            pair->key = calloc(split - token, sizeof(char));
+            pair->key = (char *)calloc(split - token, sizeof(char));
             strncpy(pair->key, token, split - token - 1);
-            pair->value = calloc(strlen(split) + 1, sizeof(char)); // add one for a trailing null
+            pair->value = (char *)calloc(strlen(split) + 1, sizeof(char)); // add one for a trailing null
             strcpy(pair->value, split);
             // and store the original separator so we can recreate it on output
             pair->separator = token[split - token];
@@ -810,11 +839,13 @@ void parse_key_values(Card *card, Errors *errors)
   // comment all on its own
   bool hasExtensions = false;
   
-  // make a copy of the string so we can mangle it - DO WE NEED TO?
+  // make a copy of the string so we can mangle it
   strcpy(str, card->extn_str);
   
-  // strtok should be perfect for this one because we don't want the delimiters to be handed back
-  // ...so start by priming the strtok pump
+  // strtok should be perfect for this one because we don't want the delimiters
+  // to be handed back ...but this will split up comments on their whitespace,
+  // which is why comments have to be at the end because they're the only thing
+  // that can have spaces inside them
   char *token, *split;
   token = strtok(str, ONEC_WHITESPACE ONEC_SEPARATORS); // note the "concat the string literals" trick
   while(token != NULL) {
@@ -827,11 +858,12 @@ void parse_key_values(Card *card, Errors *errors)
       if (split[0] == ':') split++;
       
       // and split these out for ease of use
-      strncpy(key, token, split - token - 1);
-      strcpy(value, split);
+      strncpy(key, token, split - token - 1); // move back over the delimiter
+      key[split - token - 1] = '\0'; // add the missing null, strncpy doesn't
+      strcpy(value, split); // this has a null at the end so we're ok
       
       // now check that both sides are >0 len, otherwise skip this one
-      if(strlen(key) > 0 && strlen(value) > 0)
+      if(strlen(key) == 0 && strlen(value) == 0)
         goto NEXT_TOKEN;
       
       // getting here means we did find a valid key/value of some
@@ -839,7 +871,7 @@ void parse_key_values(Card *card, Errors *errors)
       hasExtensions = true;
       
       // there are a couple of cases here:
-      // 1) the key is "name", "group", "visible" or "ignore", which are stored separately
+      // 1) the key is "name", "group", "material", "visible" or "ignore", which are stored separately
       // 2) the key is "comment" - copy everything after it into comment string and exit
       // 3) the key is a formula - make a KeyValue pair and add it to the formulas list
       // 4) the key is anything else - make a KeyValue pair and add it to the pairs list
@@ -851,6 +883,10 @@ void parse_key_values(Card *card, Errors *errors)
       }
       if(strcasecmp(key, "group") == 0) {
         card->group = value;
+        goto NEXT_TOKEN;
+      }
+      if(strcasecmp(key, "material") == 0) {
+        card->material = value;
         goto NEXT_TOKEN;
       }
       if(strcasecmp(key, "invisible") == 0) {
@@ -865,9 +901,14 @@ void parse_key_values(Card *card, Errors *errors)
         card->invisible = (strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0);
         goto NEXT_TOKEN;
       }
-      // and comments, which cause us to exit because we have to be at the end
+      // and comments, which cause us to exit because we have to be at the end of the line
+      // we can't just loop again because the comment might have whitespace and would still
+      // generate more tokens which are just bits of the comment
       if(strcasecmp(key, "comment") == 0) {
-        card->comment = value;
+        char *leftover = strstr(card->extn_str, "comment");
+        leftover += 8; // 7 chars for comment and 1 for the delimiter
+        card->comment = (char *)malloc(strlen(leftover));
+        strcpy(card->comment, leftover);
         return;
       }
       
@@ -891,7 +932,7 @@ void parse_key_values(Card *card, Errors *errors)
         pair->value = calloc(strlen(split) + 1, sizeof(char)); // add one for a trailing null
         strcpy(pair->value, split);
         // and store the original separator so we can recreate it on output
-        pair->separator = token[split - token];
+        pair->separator = token[split - token - 1];
         // and null this out, as its going on the end
         pair->next = NULL;
         
@@ -920,11 +961,12 @@ void parse_key_values(Card *card, Errors *errors)
     token = strtok(NULL, ONEC_WHITESPACE ONEC_SEPARATORS);
   }
   
-  // we are done processing this line, now see if there were any extensions
-  // at all, if there weren't, then this is a pure comment line and we
-  // know there's *something* here because otherwise we exited above
-  // make a copy because we might add extensions in the future
+  // if we entered this func we had to have *some* sort of trailing
+  // comment. by this point we've processed out all the extensions
+  // that might have been in there. if there were none, then the
+  // entire comment section was a comment text, so save that out
   if(!hasExtensions) {
+    card->comment = (char *)malloc(strlen(card->extn_str));
     card->comment = card->extn_str;
   }
 } /* end of parse_key_values() */
