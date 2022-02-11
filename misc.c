@@ -6,6 +6,7 @@
 
 /***  ONEC utils ***/
 
+
 void add_error(Errors *errors, char *message, int severity)
 {
   // make a new error object and fill it out
@@ -43,6 +44,14 @@ char* substr(char* dest, char *src, int start, int len)
   strncpy(dest, src+start, len);
   dest[len] = '\0';
   return dest;
+}
+
+/*-------------------------------------------------------------------*/
+char* trim(char* str)
+{
+  trim_start(str);
+  trim_end(str);
+  return str;
 }
 
 /*-------------------------------------------------------------------*/
