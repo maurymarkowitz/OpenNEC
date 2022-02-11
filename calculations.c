@@ -96,15 +96,14 @@ void cabc(complex double *curx)
   /* t1,t2 components to x,y,z components */
   jco1= data.np2m;
   jco2= jco1+ data.m;
-  for( i = 1; i <= data.m; i++ )
-  {
-	jco1 -= 2;
-	jco2 -= 3;
-	cs1= curx[jco1];
-	cs2= curx[jco1+1];
-	curx[jco2]  = cs1* data.t1x[data.m-i]+ cs2* data.t2x[data.m-i];
-	curx[jco2+1]= cs1* data.t1y[data.m-i]+ cs2* data.t2y[data.m-i];
-	curx[jco2+2]= cs1* data.t1z[data.m-i]+ cs2* data.t2z[data.m-i];
+  for( i = 1; i <= data.m; i++ ) {
+    jco1 -= 2;
+    jco2 -= 3;
+    cs1= curx[jco1];
+    cs2= curx[jco1+1];
+    curx[jco2]  = cs1* data.t1x[data.m-i]+ cs2* data.t2x[data.m-i];
+    curx[jco2+1]= cs1* data.t1y[data.m-i]+ cs2* data.t2y[data.m-i];
+    curx[jco2+2]= cs1* data.t1z[data.m-i]+ cs2* data.t2z[data.m-i];
   }
 
   return;
@@ -230,197 +229,182 @@ void load( int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
   int i, iwarn, istep, istepx, l1, l2, ldtags, jump, ichk;
   complex double zt=CPLX_00, tpcj;
   size_t mreq;
-
+  
   tpcj = (0.0+I*1.883698955e+9);
   fprintf( output_fp, "\n"
-	  "  LOCATION        RESISTANCE  INDUCTANCE  CAPACITANCE   "
-	  "  IMPEDANCE (OHMS)   CONDUCTIVITY  CIRCUIT\n"
-	  "  ITAG FROM THRU     OHMS       HENRYS      FARADS     "
-	  "  REAL     IMAGINARY   MHOS/METER      TYPE" );
-
+          "  LOCATION        RESISTANCE  INDUCTANCE  CAPACITANCE   "
+          "  IMPEDANCE (OHMS)   CONDUCTIVITY  CIRCUIT\n"
+          "  ITAG FROM THRU     OHMS       HENRYS      FARADS     "
+          "  REAL     IMAGINARY   MHOS/METER      TYPE" );
+  
   /* initialize d array, used for temporary */
   /* storage of loading information. */
   mreq = (size_t)data.npm;
   mreq *= sizeof(complex double);
   mem_realloc( (void *)&zload.zarray, mreq );
   for( i = 0; i < data.n; i++ )
-	zload.zarray[i]=CPLX_00;
-
+    zload.zarray[i]=CPLX_00;
+  
   iwarn=FALSE;
   istep=0;
-
+  
   /* cycle over loading cards */
-  while( TRUE )
-  {
-	istepx = istep;
-	istep++;
-
-	if( istep > zload.nload)
-	{
-	  if( iwarn == TRUE )
-		fprintf( output_fp,
-			"\n  NOTE, SOME OF THE ABOVE SEGMENTS "
-			"HAVE BEEN LOADED TWICE - IMPEDANCES ADDED" );
-
-	  smat.nop = data.n/data.np;
-	  if( smat.nop == 1)
-		return;
-
-	  for( i = 0; i < data.np; i++ )
-	  {
-		zt= zload.zarray[i];
-		l1= i;
-
-		for( l2 = 1; l2 < smat.nop; l2++ )
-		{
-		  l1 += data.np;
-		  zload.zarray[l1]= zt;
-		}
-	  }
-	  return;
-
-	} /* if( istep > zload.nload) */
-
-	if( ldtyp[istepx] > 5 )
-	{
-	  fprintf( output_fp,
-		  "\n  IMPROPER LOAD TYPE CHOSEN,"
-		  " REQUESTED TYPE IS %d", ldtyp[istepx] );
-	  stop(-1);
-	}
-
-	/* search segments for proper itags */
-	ldtags= ldtag[istepx];
-	jump= ldtyp[istepx]+1;
-	ichk=0;
-	l1= 1;
-	l2= data.n;
-
-	if( ldtags == 0)
-	{
-	  if( (ldtagf[istepx] != 0) || (ldtagt[istepx] != 0) )
-	  {
-		l1= ldtagf[istepx];
-		l2= ldtagt[istepx];
-
-	  } /* if( (ldtagf[istepx] != 0) || (ldtagt[istepx] != 0) ) */
-
-	} /* if( ldtags == 0) */
-
-	for( i = l1-1; i < l2; i++ )
-	{
-	  if( ldtags != 0)
-	  {
-		if( ldtags != data.itag[i])
-		  continue;
-
-		if( ldtagf[istepx] != 0)
-		{
-		  ichk++;
-		  if( (ichk < ldtagf[istepx]) || (ichk > ldtagt[istepx]) )
-			continue;
-		}
-		else
-		  ichk=1;
-
-	  } /* if( ldtags != 0) */
-	  else
-		ichk=1;
-
-	  /* calculation of lamda*imped. per unit length, */
-	  /* jump to appropriate section for loading type */
-	  switch( jump )
-	  {
-		case 1:
-		  zt= zlr[istepx]/ data.si[i]+ tpcj* zli[istepx]/( data.si[i]* data.wlam);
-		  if( fabs( zlc[istepx]) > 1.0e-20)
-			zt += data.wlam/( tpcj* data.si[i]* zlc[istepx]);
-		  break;
-
-		case 2:
-		  zt= tpcj* data.si[i]* zlc[istepx]/ data.wlam;
-		  if( fabs( zli[istepx]) > 1.0e-20)
-			zt += data.si[i]* data.wlam/( tpcj* zli[istepx]);
-		  if( fabs( zlr[istepx]) > 1.0e-20)
-			zt += data.si[i]/ zlr[istepx];
-		  zt=1./ zt;
-		  break;
-
-		case 3:
-		  zt= zlr[istepx]* data.wlam+ tpcj* zli[istepx];
-		  if( fabs( zlc[istepx]) > 1.0e-20)
-			zt += 1./( tpcj* data.si[i]* data.si[i]* zlc[istepx]);
-		  break;
-
-		case 4:
-		  zt= tpcj* data.si[i]* data.si[i]* zlc[istepx];
-		  if( fabs( zli[istepx]) > 1.0e-20)
-			zt += 1./( tpcj* zli[istepx]);
-		  if( fabs( zlr[istepx]) > 1.0e-20)
-			zt += 1./( zlr[istepx]* data.wlam);
-		  zt=1./ zt;
-		  break;
-
-		case 5:
-		  zt= cmplx( zlr[istepx], zli[istepx])/ data.si[i];
-		  break;
-
-		case 6:
-		  zint( zlr[istepx]* data.wlam, data.bi[i], &zt );
-
-	  } /* switch( jump ) */
-
-	  if(( fabs( creal( zload.zarray[i]))+ fabs( cimag( zload.zarray[i]))) > 1.0e-20)
-		iwarn=TRUE;
-	  zload.zarray[i] += zt;
-
-	} /* for( i = l1-1; i < l2; i++ ) */
-
-	if( ichk == 0 )
-	{
-	  fprintf( output_fp,
-		  "\n  LOADING DATA CARD ERROR,"
-		  " NO SEGMENT HAS AN ITAG = %d", ldtags );
-	  stop(-1);
-	}
-
-	/* printing the segment loading data, jump to proper print */
-	switch( jump )
-	{
-	  case 1:
-		prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-			zli[istepx], zlc[istepx],0.,0.,0.," SERIES ", 2);
-		break;
-
-	  case 2:
-		prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-			zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL",2);
-		break;
-
-	  case 3:
-		prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-			zli[istepx], zlc[istepx],0.,0.,0., "SERIES (PER METER)", 5);
-		break;
-
-	  case 4:
-		prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-			zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL (PER METER)",5);
-		break;
-
-	  case 5:
-		prnt( ldtags, ldtagf[istepx], ldtagt[istepx],0.,0.,0.,
-			zlr[istepx], zli[istepx],0.,"FIXED IMPEDANCE ",4);
-		break;
-
-	  case 6:
-		prnt( ldtags, ldtagf[istepx], ldtagt[istepx],
-			0.,0.,0.,0.,0., zlr[istepx],"  WIRE  ",2);
-
-	} /* switch( jump ) */
-
+  while( TRUE ) {
+    istepx = istep;
+    istep++;
+    
+    if( istep > zload.nload)  {
+      if( iwarn == TRUE )
+        fprintf( output_fp,
+                "\n  NOTE, SOME OF THE ABOVE SEGMENTS "
+                "HAVE BEEN LOADED TWICE - IMPEDANCES ADDED" );
+      
+      smat.nop = data.n/data.np;
+      if( smat.nop == 1)
+        return;
+      
+      for( i = 0; i < data.np; i++ ) {
+        zt= zload.zarray[i];
+        l1= i;
+        
+        for( l2 = 1; l2 < smat.nop; l2++ )
+        {
+          l1 += data.np;
+          zload.zarray[l1]= zt;
+        }
+      }
+      return;
+      
+    } /* if( istep > zload.nload) */
+    
+    if( ldtyp[istepx] > 5 )
+    {
+      fprintf( output_fp,
+              "\n  IMPROPER LOAD TYPE CHOSEN,"
+              " REQUESTED TYPE IS %d", ldtyp[istepx] );
+      stop(-1);
+    }
+    
+    /* search segments for proper itags */
+    ldtags= ldtag[istepx];
+    jump= ldtyp[istepx]+1;
+    ichk=0;
+    l1= 1;
+    l2= data.n;
+    
+    if( ldtags == 0) {
+      if( (ldtagf[istepx] != 0) || (ldtagt[istepx] != 0) ) {
+        l1= ldtagf[istepx];
+        l2= ldtagt[istepx];
+      } /* if( (ldtagf[istepx] != 0) || (ldtagt[istepx] != 0) ) */
+    } /* if( ldtags == 0) */
+    
+    for( i = l1-1; i < l2; i++ ) {
+      if( ldtags != 0) {
+        if( ldtags != data.itag[i])
+          continue;
+        
+        if( ldtagf[istepx] != 0) {
+          ichk++;
+          if( (ichk < ldtagf[istepx]) || (ichk > ldtagt[istepx]) )
+            continue;
+        }
+        else
+          ichk=1;
+        
+      } /* if( ldtags != 0) */
+      else
+        ichk=1;
+      
+      /* calculation of lamda*imped. per unit length, */
+      /* jump to appropriate section for loading type */
+      switch( jump ) {
+        case 1:
+          zt= zlr[istepx]/ data.si[i]+ tpcj* zli[istepx]/( data.si[i]* data.wlam);
+          if( fabs( zlc[istepx]) > 1.0e-20)
+            zt += data.wlam/( tpcj* data.si[i]* zlc[istepx]);
+          break;
+          
+        case 2:
+          zt= tpcj* data.si[i]* zlc[istepx]/ data.wlam;
+          if( fabs( zli[istepx]) > 1.0e-20)
+            zt += data.si[i]* data.wlam/( tpcj* zli[istepx]);
+          if( fabs( zlr[istepx]) > 1.0e-20)
+            zt += data.si[i]/ zlr[istepx];
+          zt=1./ zt;
+          break;
+          
+        case 3:
+          zt= zlr[istepx]* data.wlam+ tpcj* zli[istepx];
+          if( fabs( zlc[istepx]) > 1.0e-20)
+            zt += 1./( tpcj* data.si[i]* data.si[i]* zlc[istepx]);
+          break;
+          
+        case 4:
+          zt= tpcj* data.si[i]* data.si[i]* zlc[istepx];
+          if( fabs( zli[istepx]) > 1.0e-20)
+            zt += 1./( tpcj* zli[istepx]);
+          if( fabs( zlr[istepx]) > 1.0e-20)
+            zt += 1./( zlr[istepx]* data.wlam);
+          zt=1./ zt;
+          break;
+          
+        case 5:
+          zt= cmplx( zlr[istepx], zli[istepx])/ data.si[i];
+          break;
+          
+        case 6:
+          zint( zlr[istepx]* data.wlam, data.bi[i], &zt );
+          
+      } /* switch( jump ) */
+      
+      if(( fabs( creal( zload.zarray[i]))+ fabs( cimag( zload.zarray[i]))) > 1.0e-20)
+        iwarn=TRUE;
+      zload.zarray[i] += zt;
+      
+    } /* for( i = l1-1; i < l2; i++ ) */
+    
+    if( ichk == 0 ) {
+      fprintf( output_fp,
+              "\n  LOADING DATA CARD ERROR,"
+              " NO SEGMENT HAS AN ITAG = %d", ldtags );
+      stop(-1);
+    }
+    
+    /* printing the segment loading data, jump to proper print */
+    switch( jump ) {
+      case 1:
+        prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+             zli[istepx], zlc[istepx],0.,0.,0.," SERIES ", 2);
+        break;
+        
+      case 2:
+        prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+             zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL",2);
+        break;
+        
+      case 3:
+        prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+             zli[istepx], zlc[istepx],0.,0.,0., "SERIES (PER METER)", 5);
+        break;
+        
+      case 4:
+        prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+             zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL (PER METER)",5);
+        break;
+        
+      case 5:
+        prnt( ldtags, ldtagf[istepx], ldtagt[istepx],0.,0.,0.,
+             zlr[istepx], zli[istepx],0.,"FIXED IMPEDANCE ",4);
+        break;
+        
+      case 6:
+        prnt( ldtags, ldtagf[istepx], ldtagt[istepx],
+             0.,0.,0.,0.,0., zlr[istepx],"  WIRE  ",2);
+        
+    } /* switch( jump ) */
   } /* while( TRUE ) */
-
-}
+} /* load */
 
 /*-----------------------------------------------------------------------*/
 
