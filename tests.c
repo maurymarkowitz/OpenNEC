@@ -329,7 +329,7 @@ void test_duplicate_tags(Deck *deck, Errors *errors)
 // TODO: MISSING TESTS
 // LDs and/or EXs should not be at open ends of wires
 // look for SY formulas that override system-wide items like mm or awg
-//   but overriding user-entered system variables is ok
+//   but overriding user-entered system variables is ok but should warn
 // also look for SY's that define the same formula more than once
 //  but this is OK, simply use the last definition, but still warn
 // look for EX or LD cards and check that they are connected to wires with more than one segment
