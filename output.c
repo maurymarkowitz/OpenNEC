@@ -122,11 +122,11 @@ void write_deck_onec(Deck *deck, FILE *file)
 
     // int fields depending on the card type
     if(isControl(card) || isGeometry(card)) {
-      for(int j = 0; j < card->ints_used && j < MAX_INTS; j++) {
-        fprintf(file, " %d", card->i[1]);
+      for(int j = 0; j <= card->ints_used && j <= MAX_INTS; j++) {
+        fprintf(file, " %d", card->i[j]);
       }
-      for(int j = 0; j < card->flts_used && j < MAX_FLTS; j++) {
-        fprintf(file, " %G", card->f[1]);
+      for(int j = 0; j <= card->flts_used && j <= MAX_FLTS; j++) {
+        fprintf(file, " %G", card->f[j]);
       }
 
       // the basic NEC fields are output, now see if there's anything after that
