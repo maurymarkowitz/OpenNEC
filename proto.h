@@ -16,14 +16,21 @@ void parse_command_card(Card *card, Errors *errors);
 void parse_geometry_card(Card *card, Errors *errors);
 void parse_onec_card(Card *card, Errors *errors);
 void parse_key_values(Card *card, Errors *errors);
+/* output.c */
+void write_deck_onec(Deck *deck, FILE *pfile);
 /* deck.c */
 void update_deck_values(Deck *deck);
 void update_card_values(Card *card);
+void add_key_value(Card *card, KeyValue *list, char *key, char *value, char separator);
 void test_deck_structure(Deck *deck, Errors *errors);
 int isComment(Card *card);
 int isGeometry(Card *card);
 int isControl(Card *card);
 int isExtension(Card *card);
+int min_int_fields(Card *card);
+int max_int_fields(Card *card);
+int min_flt_fields(Card *card);
+int max_flt_fields(Card *card);
 /* misc.c */
 void add_error(Errors *errors, char *message, int severity);
 int fpeek(FILE *stream);
