@@ -376,7 +376,7 @@ int max_flt_fields(Card* card)
   } else if(isGeometry(card)) {
     return 7;
   } else if (isControl(card)) {
-    return 4;
+    return 6;
   } else {
     return 0; // need to check this!
   }
