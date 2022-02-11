@@ -244,11 +244,15 @@ int main(int argc, char **argv)
     printf("%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
   }
   
-  //  for(int i = 0; i < deck.num_cards; i++) {
-  //    printf("%d %s\n", i, deck.cards[i].card_str);
-  //    printf("%d %s\n", i, deck.cards[i].extn_str);
-  //    printf("%d %s\n", i, deck.cards[i].comment);
-  //  }
+    for(int i = 0; i < deck.num_cards; i++) {
+      printf("%d %s\n", i, deck.cards[i].orig_str);
+      printf("%d %s\n", i, deck.cards[i].card_str);
+      printf("%d %s\n", i, deck.cards[i].extn_str);
+      printf("%d %s\n", i, deck.cards[i].comment);
+    }
+  
+  // write it
+  write_deck_onec(&deck, output_fp);
   
   return 0;
 } /* main */
