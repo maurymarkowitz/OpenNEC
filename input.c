@@ -492,20 +492,7 @@ void parse_command_card(Card *card, Errors *errors)
 
       // and put the value in the right place
       ints_processed++;
-      switch(ints_processed) {
-        case 1:
-          card->i1 = (int)value;
-          break;
-        case 2:
-          card->i2 = (int)value;
-          break;
-        case 3:
-          card->i3 = (int)value;
-          break;
-        case 4:
-          card->i4 = (int)value;
-          break;
-      }
+      card->i[ints_processed] = (int)value;
     } else if (dbls_processed < MAX_FLOAT) {
       // try to read a double on the line, and exit otherwise
       double value = strtod(token, &end_ptr);
@@ -513,26 +500,7 @@ void parse_command_card(Card *card, Errors *errors)
       
       // if we got a value, put it into the right slot
       dbls_processed++;
-      switch(dbls_processed) {
-        case 1:
-          card->f1 = value;
-          break;
-        case 2:
-          card->f3 = value;
-          break;
-        case 3:
-          card->f3 = value;
-          break;
-        case 4:
-          card->f4 = value;
-          break;
-        case 5:
-          card->f5 = value;
-          break;
-        case 6:
-          card->f6 = value;
-          break;
-      }
+      card->f[dbls_processed] = value;
     }
     
   NEXT_TOKEN:
@@ -621,14 +589,7 @@ void parse_geometry_card(Card *card, Errors *errors)
       // if there was a number in there, end_ptr will no longer be at the
       // start and that means we found one and can store it in the right slot
       if(end_ptr != token) {
-        switch(ints_processed) {
-          case 1:
-            card->i1 = (int)int_value;
-            break;
-          case 2:
-            card->i2 = (int)int_value;
-            break;
-        }
+        card->i[ints_processed] = (int)int_value;
       }
     }
     
@@ -688,75 +649,17 @@ void parse_geometry_card(Card *card, Errors *errors)
       // now we decide where to put it all...
       if(!isFormula) {
         // if it's not a formula, set the values and any unit we found
-        switch(flts_processed) {
-          case 1:
-            card->f1 = dbl_value;
-            card->m[1] = unit;
-            break;
-          case 2:
-            card->f2 = dbl_value;
-            card->m[2] = unit;
-            break;
-          case 3:
-            card->f3 = dbl_value;
-            card->m[3] = unit;
-            break;
-          case 4:
-            card->f4 = dbl_value;
-            card->m[4] = unit;
-            break;
-          case 5:
-            card->f5 = dbl_value;
-            card->m[5] = unit;
-            break;
-          case 6:
-            card->f6 = dbl_value;
-            card->m[6] = unit;
-            break;
-          case 7:
-            card->f7 = dbl_value;
-            card->m[7] = unit;
-            break;
-        }
+        card->f[flts_processed] = dbl_value;
+        card->m[flts_processed] = unit;
       } else {
         // it is a formula, copy the entire token into the right formula field
-        switch(flts_processed) {
-          case 1:
-            card->f1 = 0;
-            card->ff[1] = TRUE;  // indicate that we did have a formula inline
-            add_key_value(card, card->formulas, "F1", token, '=');
-            break;
-          case 2:
-            card->f2 = 0;
-            card->ff[2] = TRUE;
-            add_key_value(card, card->formulas, "F2", token, '=');
-            break;
-          case 3:
-            card->f3 = 0;
-            card->ff[3] = TRUE;
-            add_key_value(card, card->formulas, "F3", token, '=');
-            break;
-          case 4:
-            card->f4 = 0;
-            card->ff[4] = TRUE;
-            add_key_value(card, card->formulas, "F4", token, '=');
-            break;
-          case 5:
-            card->f5 = 0;
-            card->ff[5] = TRUE;
-            add_key_value(card, card->formulas, "F5", token, '=');
-            break;
-          case 6:
-            card->f6 = 0;
-            card->ff[6] = TRUE;
-            add_key_value(card, card->formulas, "F6", token, '=');
-            break;
-          case 7:
-            card->f7 = 0;
-            card->ff[7] = TRUE;
-            add_key_value(card, card->formulas, "F7", token, '=');
-            break;
-        }
+        card->f[flts_processed] = 0;
+        card->ff[flts_processed] = TRUE;  // indicate that we did have a formula inline
+        char fld_name[2];
+        fld_name[0] = 'F';
+        fld_name[1] = sprintf("%d", flts_processed);
+        add_key_value(card, card->formulas, fld_name, token, '=');
+
       } // isFormula = true
     } // dbls_processed < MAX_FLOATS
     

@@ -135,10 +135,6 @@ typedef struct
   // than it has to be and just leave the zeroth entry empty
   int i[5];           // i1 is normally the tag, etc.
   double f[8];        // geometery and so forth
-  
-  int i1, i2, i3, i4; // various bits read from the cards - i1 is normally the tag, for instance
-  double f1, f2, f3;  // various floats/doubles read from the cards
-  double f4, f5, f6, f7;
 
   // onec values
   int m[8];           // measurement units on the fields, or 0 for "default"

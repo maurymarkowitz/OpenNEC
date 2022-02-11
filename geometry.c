@@ -74,14 +74,14 @@ void calculate_geometry(Deck *deck, Errors *errors)
     }
     // now read in the values, which are the same for all the cards
     //parse_geometry_card(gm, &itg, &ns, &xw1, &yw1, &zw1, &xw2, &yw2, &zw2, &rad);
-    itg = card.i1;
-    ns = card.i2;
-    xw1 = card.f1;
-    yw1 = card.f2;
-    zw1 = card.f3;
-    xw2 = card.f4;
-    yw2 = card.f5;
-    zw2 = card.f6;
+    itg = card.i[1];
+    ns = card.i[2];
+    xw1 = card.f[1];
+    yw1 = card.f[2];
+    zw1 = card.f[3];
+    xw2 = card.f[4];
+    yw2 = card.f[5];
+    zw2 = card.f[6];
 
     // and now the switch. basically all this does is call the appropriate
     // function to insert the segments for that card type
@@ -89,8 +89,8 @@ void calculate_geometry(Deck *deck, Errors *errors)
         
       case 0: // GW, make a wire
         // the radius could be in the f7 field, or it could be on the next card if its tapered
-        if(card.f7 != 0.0) {
-          rad = card.f7;
+        if(card.f[7] != 0.0) {
+          rad = card.f[7];
           xs1 = 1.0;
           ys1 = 1.0;
         } else {
@@ -101,16 +101,16 @@ void calculate_geometry(Deck *deck, Errors *errors)
             continue;
           }
           // and also that the values in it are valid
-          if(deck->cards[i + 1].f2 == 0.0 || deck->cards[i + 1].f3 == 0.0) {
+          if(deck->cards[i + 1].f[2] == 0.0 || deck->cards[i + 1].f[3] == 0.0) {
             sprintf(msg, "Card %d is a GC with tapering info for GW in card %d, but there is a zero in Y1 or Z1.", i + 1, i);
             add_error(errors, msg, 1);
             continue;
           }
           // override the original inputs with the ones from the GC
           //read_geometry_card(gm, &ix, &iy, &xs1, &ys1, &zs1, &dummy, &dummy, &dummy, &dummy);
-          xs1 = deck->cards[i + 1].f1;  // check this!
-          ys1 = deck->cards[i + 1].f2;
-          zs1 = deck->cards[i + 1].f3;
+          xs1 = deck->cards[i + 1].f[1];  // check this!
+          ys1 = deck->cards[i + 1].f[2];
+          zs1 = deck->cards[i + 1].f[3];
           rad = ys1;
           ys1 = pow((zs1 / ys1), (1. / (ns - 1.)));
           
@@ -242,7 +242,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
         zw1 = zw1 * TA;
         
         // convert the original float value in F7 to int
-        int its = (int)(card.f7 + .5);
+        int its = (int)(card.f[7] + .5);
         
         duplicate(xw1, yw1, zw1, xw2, yw2, zw2, its, ns, itg);
         continue;
@@ -280,20 +280,20 @@ void calculate_geometry(Deck *deck, Errors *errors)
           // if it's a triangle we just read one more point from the new card and go...
           if(ns == 2) {
             //read_geometry_card(gm, &ix, &iy, &x3, &y3, &z3, &x4, &y4, &z4, &dummy);
-            x3 = deck->cards[i + 1].f1;
-            y3 = deck->cards[i + 1].f2;
-            z3 = deck->cards[i + 1].f3;
+            x3 = deck->cards[i + 1].f[1];
+            y3 = deck->cards[i + 1].f[2];
+            z3 = deck->cards[i + 1].f[3];
             i++; // skip the SC card next time through the loop
             patch(itg, ns, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, 0.0, 0.0, 0.0);
           } /* ns == 2 */
           // if it's not a triangle, we have to loop over the following cards
           else {
-            x3 = deck->cards[i + 1].f1;
-            y3 = deck->cards[i + 1].f2;
-            z3 = deck->cards[i + 1].f3;
-            x3 = deck->cards[i + 1].f4;
-            y3 = deck->cards[i + 1].f5;
-            z3 = deck->cards[i + 1].f6;
+            x3 = deck->cards[i + 1].f[1];
+            y3 = deck->cards[i + 1].f[2];
+            z3 = deck->cards[i + 1].f[3];
+            x3 = deck->cards[i + 1].f[4];
+            y3 = deck->cards[i + 1].f[5];
+            z3 = deck->cards[i + 1].f[6];
             i++;
             patch(itg, ns, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
             
@@ -307,12 +307,12 @@ void calculate_geometry(Deck *deck, Errors *errors)
               yw2 = y4;
               zw2 = z4;
               // and then get the next set of end coords
-              x3 = deck->cards[i + 1].f1;
-              y3 = deck->cards[i + 1].f2;
-              z3 = deck->cards[i + 1].f3;
-              x3 = deck->cards[i + 1].f4;
-              y3 = deck->cards[i + 1].f5;
-              z3 = deck->cards[i + 1].f6;
+              x3 = deck->cards[i + 1].f[1];
+              y3 = deck->cards[i + 1].f[2];
+              z3 = deck->cards[i + 1].f[3];
+              x3 = deck->cards[i + 1].f[4];
+              y3 = deck->cards[i + 1].f[5];
+              z3 = deck->cards[i + 1].f[6];
               i++;
               patch(itg, ns, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
             } /* while cards are SC's */
@@ -354,9 +354,9 @@ void calculate_geometry(Deck *deck, Errors *errors)
         }
         
         // read the sc and skip it
-        x3 = deck->cards[i + 1].f1;
-        y3 = deck->cards[i + 1].f2;
-        z3 = deck->cards[i + 1].f3;
+        x3 = deck->cards[i + 1].f[1];
+        y3 = deck->cards[i + 1].f[2];
+        z3 = deck->cards[i + 1].f[3];
         i++;
         
         // calculate corner 4
