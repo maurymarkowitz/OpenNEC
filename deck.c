@@ -3,10 +3,11 @@
  *
  * deck.c contains various routines that build decks and the cards in them,
  * provides methods for checking the type of cards, and checking the basic
- * validity of the data during reads and writes.
+ * validity of the data during reads and writes like the number and type
+ * of data fields for a particular card type.
  *
- * deck also contains the high-level connections with the underlying nec
- * code, building the required nec structures from the data in the card
+ * deck.c also contains the high-level connections with the underlying NEC
+ * code, building the required NEC structures from the data in the card
  * rather than reading it directly from the input file. This is intended
  * to allow the deck to be easily modified and cards to be added or removed
  * before triggering a calculation run. It also has links to all of the
@@ -41,6 +42,8 @@ Card* new_card(void) {
  *
  * deletes an existing card and frees its various structures
  *
+ * @param card the Card to free
+ *
  */
 void free_card(Card *card) {
   // start with the various strings
@@ -49,8 +52,9 @@ void free_card(Card *card) {
   if(card->extn_str != NULL) free(card->extn_str);
   if(card->name != NULL) free(card->name);
   if(card->group != NULL) free(card->group);
+  if(card->material != NULL) free(card->material);
   if(card->comment != NULL) free(card->comment);
-  
+
   // now the two lists
   KeyValue *head, *temp;
   head = card->formulas;
@@ -71,6 +75,49 @@ void free_card(Card *card) {
 }
 
 /******************************************************************************
+ * new_deck
+ *
+ * creates and returns a new empty Deck
+ *
+ */
+Deck* new_deck(void) {
+  Deck *deck = calloc(1, sizeof(Card));
+  return deck;
+}
+
+/******************************************************************************
+ * free_deck
+ *
+ * deletes all the Cards in this Deck and then any local bits
+ *
+ * @param deck the Deck to free
+ *
+ */
+void free_deck(Deck *deck) {
+  // free all of the cards
+  for(int i = 0; i < deck->num_cards; i++) {
+    free_card(&deck->cards[i]);
+  }
+  // now the two lists
+  KeyValue *head, *temp;
+  head = deck->formulas;
+  while(head != NULL) {
+    temp = head;
+    head = head->next;
+    free(temp);
+  }
+  head = deck->symbols;
+  while(head != NULL) {
+    temp = head;
+    head = head->next;
+    free(temp);
+  }
+  
+  // and finally the material, if defined
+  if(deck->material != NULL) free(deck->material);
+}
+
+/******************************************************************************
  * append_card
  *
  * append_card adds the Card to the end of the Deck
@@ -78,6 +125,7 @@ void free_card(Card *card) {
  * @param deck the Deck to add a new card to
  * @param card the Card to add
  *
+ * TODO: all of these methods need to recalculate geometry_start etc.
  */
 int append_card(Deck *deck, Card *card) {
   // calloc/realloc the deck and add this card to it
@@ -160,12 +208,52 @@ int remove_card(Deck *deck, int location) {
   return 0;
 }
 
+/******************************************************************************
+ * add_key_value
+ *
+ * adds a key/value pair at the end of a card's formula or extensions list
+ *
+ * @param card the Deck to delete the card from
+ * @param list which list we're adding it to
+ * @param key a string for the key
+ * @param value a string for the value
+ *
+ */
+void add_key_value(Card *card, KeyValue *list, char *key, char *value, char separator)
+{
+  KeyValue *pair = (KeyValue *)malloc(sizeof(KeyValue));
+  if(pair != NULL) {
+    // calloc the strings and store them...
+    pair->key = (char *)calloc(strlen(key) + 1, sizeof(char));
+    strcpy(pair->key, key);
+    pair->value = (char *)calloc(strlen(value) + 1, sizeof(char));
+    strcpy(pair->value, value);
+    // now store the separator based on the list
+    if(separator != '\n') {
+      pair->separator = separator;
+    } else if(list == card->formulas) {
+      pair->separator = '=';
+    } else {
+      pair->separator = ':';
+    }
+    // and then add it to the end of the list
+    KeyValue *tail = list;
+    if(tail == NULL) {
+      list = pair;
+    } else {
+      while(tail->next != NULL) tail = tail->next;
+      tail->next = pair;
+    }
+  } // there should be else's for all the mallocs and callocs!
+}
 
-/*----------------------------------------------------------------------*/
-
-/** The series of "is" functions test a card code against the mnemonic
+/******************************************************************************
+ * isComment/isGeometry/isControl/isExtension
+ *
+ * The series of "is" functions test a card code against the mnemonic
  * lists and return boolean TRUE if the card belongs to that class,
  * like "isComment" which returns TRUE for any comment card.
+ *
  */
 int isComment(Card *card)
 {
@@ -215,10 +303,13 @@ int isExtension(Card *card)
   return isExt;
 }
 
-/** min|min_int|float_fields returns the minimum or maximum number of
+/******************************************************************************
+ * min_int_fields/max_int_fields/min_flt_fields/max_flt_fields
+ *
+ * min|min_int|flt_fields returns the minimum or maximum number of
  * fields expected for a given card type. For instance, the "GE" card has
  * zero or one integer parameters, so min_int_fields would return 0 while
- * max_int_fields would return 1, and both of the floats would return 0.
+ * max_int_fields would return 1, and both of the flts would return 0.
  *
  * Most of the time this can be determined purely by the type of card,
  * for instance, almost every geometery card has two ints while command
@@ -246,10 +337,6 @@ int min_int_fields(Card* card)
 
 int max_int_fields(Card* card)
 {
-  // GE has one optional field
-  if(strcasecmp(card->card_code, "GE")) return 1; // the ground type is optional
-  if(strcasecmp(card->card_code, "GF")) return 1; // there is an option to print extra data
-
   // now the default cases
   if(isComment(card)) {
     return 0;
@@ -269,7 +356,6 @@ int min_flt_fields(Card* card)
   if(strcasecmp(card->card_code, "GA")) return 4;
   if(strcasecmp(card->card_code, "GE")) return 0;
 
-
   // now the default cases
   if(isComment(card)) {
     return 0;
@@ -284,12 +370,6 @@ int min_flt_fields(Card* card)
 
 int max_flt_fields(Card* card)
 {
-  // these are taken from the NEC-2 dox unless noted otherwise
-  // the dox indicate optional parameters with () around the name
-  if(strcasecmp(card->card_code, "GA")) return 4;
-  if(strcasecmp(card->card_code, "GE")) return 0;
-
-
   // now the default cases
   if(isComment(card)) {
     return 0;
@@ -302,14 +382,11 @@ int max_flt_fields(Card* card)
   }
 }
 
-
-
-/*----------------------------------------------------------------------*/
-
-/** update_deck_values()
+/******************************************************************************
+ * update_deck_values
  *
- * update_deck_values() loops through the entire deck and calls
- * update_card_values() on any card that has a formula. Normally called
+ * update_deck_values loops through the entire deck and calls
+ * update_card_values on any card that has a formula. Normally called
  * after making a change to any of the SY cards, or just before any
  * deck-wide actions like saving it out or running a calculation
  */
@@ -320,15 +397,14 @@ void update_deck_values(Deck *deck)
   }
 }
 
-/*----------------------------------------------------------------------*/
-
-/** update_card_values()
+/******************************************************************************
+ * update_card_values
  *
- * update_card_values() looks for any formulas in the card and updates
+ * update_card_values looks for any formulas in the card and updates
  * their values. Generally called after any changes to the card or as
- * part of update_deck_values()
+ * part of update_deck_values
  */
 void update_card_values(Card *card)
 {
-  // TODO do this!
+  // TODO: do this!
 }
