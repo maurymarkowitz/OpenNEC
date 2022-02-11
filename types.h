@@ -1,4 +1,4 @@
-/*******************************************************************
+/******************************************************************************
  *
  * types.h
  *
@@ -9,7 +9,7 @@
  * instead of using globals. Other new types include Error and
  * Errors, KeyValue, and various definitions of measurements and such.
  *
- *******************************************************************/
+ *****************************************************************************/
 
 #ifndef types_h
 #define types_h
@@ -112,53 +112,55 @@ typedef struct KeyValue
   char separator; // what separator was used, a colon or an equals?
   struct KeyValue* next;
 } KeyValue;
-//typedef struct KeyValue KeyValue;
 
 /*** Card encapsulates a single card ***/
 typedef struct
 {
-  /// NOTE: it is important these flags are set to the default values
-  ///       when a new Card is created
   // used to track whether this card has been edited since being read
   bool edited;
-  // cards can be marked to be deliberately ignored
-  bool ignore;
-  // cards can be marked to be invisible in the display
-  bool invisible;
-
+  
   // raw data from the original card
   char *orig_str;     // the original line, as read from the file in raw format
   char *card_str;     // the "card part" of the string, everything in front of the comment (if one exists)
   
   // processed NEC2 data
   char card_code[2];  // the two-letter code for this card, or one letter for some comment formats
+  int ints_used;      // the number if int parameters actually used
+  int flts_used;      // and floats
+  
+  // NEC uses i1 through i1 and f1 through f7. We'll put these in an
+  // array to ease access when we're looping... f[i]. However, this could
+  // lead to some serious confusion because normally C would be zero-indexed
+  // so f1 would be in f[0]. To avoid this we'll make the array one larger
+  // than it has to be and just leave the zeroth entry empty
+  int i[5];           // i1 is normally the tag, etc.
+  double f[8];        // geometery and so forth
+  
   int i1, i2, i3, i4; // various bits read from the cards - i1 is normally the tag, for instance
   double f1, f2, f3;  // various floats/doubles read from the cards
-  double f4, f5, f6;
-  double f7, f8, f9;
-  double f10;         // last possible input, happens in a GW/GC pair
-  
+  double f4, f5, f6, f7;
+
   // onec values
-  int m1, m2, m3;     // measurement units on the fields, or 0 for "default"
-  int m4, m5, m6;
-  int m7, m8, m9;
-  int m10;
-  char *if1, *if2;    // holds the formula for each of the possible fields, i or f
-  char *if3, *if4;    // formulas can also be placed in the extensions
-  char *ff1, *ff2;
-  char *ff3, *ff4;
-  char *ff5, *ff6;
-  char *ff7, *ff8;
-  char *ff9, *ff10;
+  int m[8];           // measurement units on the fields, or 0 for "default"
+  bool ff[10];        // formula was found in a double field, as opposed to extensions
 
   // onec extensions
   char extn_code[1];  // the one-letter code that marked the extension or inline comment, if any
   char *extn_str;     // the entire inline comment, anything after the comment marker
-  char *name;         // name for this card, if present
-  char *group;        // group name, used to collect multiple cards into groups
-  char *comment;      // if a comment was found, it's placed here, this is not the same as extn_str, it might be 'comment:'
+  char *comment;      // if a comment was found, it's placed here, this is *not* the same
+                      //    as extn_str, it might be found in a 'comment:' key/value pair
   KeyValue *pairs;    // pairs of name:value key/value entries, this will **not** include a comment if there was one
   KeyValue *formulas; // pairs of variable=formula pairs found in SY cards or in the extensions area
+
+  // onec flags
+  /// NOTE: it is important these flags are set to the default values
+  ///       when a new Card is created. for this reason they are all
+  ///       intended to default to FALSE
+  bool ignore;        // cards can be marked to be deliberately ignored
+  bool invisible;     // cards can be marked to be invisible in the display
+  char *name;         // name for this card, if present
+  char *group;        // group name, used to collect multiple cards into groups
+  char *material;     // the material name, if explicitly defined
 } Card;
 
 /*** Deck encapsulates a single deck of cards ***/
@@ -176,6 +178,7 @@ typedef struct
   int unit_typ;       // if there is a single GS, and we recognize the value, put out index here
   KeyValue *symbols;  // any variables read in from SY cards, consisting of name/inital value pairs
   KeyValue *formulas; // any *global* formulas found on any of the cards, consists of variable=formula pairs
+  char *material;     // default material for the stack as a whole. empty=6061-T6
 } Deck;
 
 /* common  /crnt/ */
