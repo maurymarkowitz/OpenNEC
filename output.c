@@ -1,4 +1,4 @@
-/*******************************************************************
+/******************************************************************************
  * output.c
  *
  * output.c contains a number of routines that write data from the
@@ -13,46 +13,200 @@
  * non-standard comment markers and such, simply load up the
  * deck and then save it again.
  *
- *******************************************************************/
+ *****************************************************************************/
 
 #include "opennec.h"
 #include "shared.h"
 #include <stdio.h>
+#include <string.h>
 
-/*----------------------------------------------------------------------*/
-/* write_deck_nec()
+/******************************************************************************
+ * write_deck_nec
  *
  * Writes a deck in the original NEC2 format. This strips out any
  * extensions like SY, replaces formulas and variables with their
- * numeric values, and optionally stips out any inline or in-deck
+ * numeric values, and optionally strips out any inline or in-deck
  * comments. With this last option turned off, the deck is compatible
  * with nec2c, with it turned on, it is the original NEC2 format.
  *
  */
-void write_deck_nec(Deck *deck, FILE *file, int include_inline_comments)
+void write_deck_nec(Deck *deck, FILE *file, int remove_inline_comments)
 {
-  Card card;
+  Card *card;
   
   for(int i = 0; i < deck->num_cards; i++) {
-    card = deck->cards[i];
+    card = &deck->cards[i];
     
-    // for comment cards with the CM or CE, simply export the card
-    if(strcmp(card.card_code, "CM") == 0 || strcmp(card.card_code, "CE") == 0) {
+    // for comment cards with the CM or CE *in the header*, simply export the card
+    if(i <= deck->geometry_start && (strcmp(card->card_code, "CM") == 0 || strcmp(card->card_code, "CE") == 0)) {
       fprintf(file, "%s%s", deck->cards[i].card_code, deck->cards[i].comment);
     }
+    // for comment cards with other headers, only export if the option is on
+    if(isComment(card)) {
+      fprintf(file, "%s%s", deck->cards[i].card_code, deck->cards[i].comment);
+    }
+    // for geometry,
+
     
   }
 }
 
-/*----------------------------------------------------------------------*/
-/* write_deck_onec()
+/******************************************************************************
+ * write_deck_onec
  *
- * Writes a deck in the ONEC format, which is basically everything
+ * Writes a deck in the onec format, which is basically everything in the
+ * deck. This will cause the deck to be written in cannoical onec format,
+ * so reading in a deck and then writing it back out may result in
+ * differences in ordering of options, spacing and separators being stripped,
+ * etc. This is by design.
  *
  */
 void write_deck_onec(Deck *deck, FILE *file)
 {
+  Card *card;
+  int MAX_FLTS, MAX_INTS;
+  
+  for(int i = 0; i < deck->num_cards; i++) {
+    card = &deck->cards[i];
 
+    // start with the easy case, basic comment cards
+    if(isComment(card)) {
+      fputs(card->card_code, file);
+      fputs(card->comment, file);
+      fputc('\n', file);
+      continue;
+    }
+    
+    // the ONEC cards like SY are also generally simple
+    if(isExtension(card)) {
+      if(strcmp(card->extn_code, "") != 0) {
+        fputs(card->extn_code, file);
+      }
+      fputs(card->card_code, file);
+      
+      KeyValue *head = card->formulas;
+      while(head != NULL) {
+        // whitespace and the key
+        fputs(" ", file);
+        fputs(head->key, file);
+        // use the separator they used, or default to = because it's likely an SY
+        if(strcmp(&head->separator, "") != 0) {
+          fputc(head->separator, file);
+        } else {
+          fputc('=', file);
+        }
+        // now the value
+        fputs(head->value, file);
+        
+        // move to the next pair, adding a comment if there is another
+        head = head->next;
+        if(head != NULL) fputs(",", file);
+      }
+      // is there also a comment?
+      if(card->comment != NULL && strlen(card->comment) > 0) {
+        fputs(" !", file); // this means we always convert to ! comments
+        fputs(card->comment, file);
+      }
+      fputc('\n', file);
+      continue;
+    }
+    
+    // all the rest of the cards have multiple parts to put together
+    
+    // start with the card code
+    fputs(card->card_code, file);
+    
+    // get the number of fields for this sort of card
+    MAX_INTS = max_int_fields(card);
+    MAX_FLTS = max_flt_fields(card);
+
+    // int fields depending on the card type
+    if(isControl(card) || isGeometry(card)) {
+      for(int j = 0; j < card->ints_used && j < MAX_INTS; j++) {
+        fprintf(file, " %d", card->i1);
+      }
+      for(int j = 0; j < card->flts_used && j < MAX_FLTS; j++) {
+        fprintf(file, " %G", card->f1);
+      }
+
+      // the basic NEC fields are output, now see if there's anything after that
+      bool hasComment = (card->comment != NULL && strlen(card->comment) > 0);
+      
+      bool hasOnec = false;
+      if(card->name != NULL && strlen(card->name) > 0) hasOnec = true;
+      if(card->group != NULL && strlen(card->group) > 0) hasOnec = true;
+      if(card->ignore) hasOnec = true;
+      if(card->invisible) hasOnec = true;
+      if(card->pairs != NULL ) hasOnec = true;
+      if(card->formulas != NULL ) hasOnec = true;
+      
+      // if we found anything, print the comment marker found on this
+      // card, the global one in the deck, or the onec default, !
+      if(hasComment || hasOnec) {
+        fputc(' ', file);
+        if(strlen(card->extn_code) > 0) {
+          fputs(card->extn_code, file);
+        } else if(deck->cmt_code != 0 ){
+          fputc(deck->cmt_code, file);
+        } else {
+          fputc('!', file);
+        }
+      }
+      
+      // if we have *only* a comment, just print that and we're done,
+      // otherwise we have to export the fields one by one
+      if(hasComment && !hasOnec) {
+        fputs(card->comment, file);
+      } else {
+        // in the field-by-field case, start with the known extensions
+        if(card->name != NULL && strlen(card->name) > 0) {
+          fputs(" name:", file);
+          fputs(card->name, file);
+        }
+        if(card->group != NULL && strlen(card->group) > 0) {
+          fputs(" group:", file);
+          fputs(card->group, file);
+        }
+        if(card->ignore) {
+          fputs(" ignore:true", file);
+        }
+        if(card->invisible) {
+          fputs(" invisible:true", file);
+        }
+        // formulas next
+        if(card->formulas != NULL) {
+          KeyValue *form = card->formulas;
+          while(form != NULL) {
+            fputc(' ', file);
+            fputs(form->key, file);
+            fputc('=', file);
+            fputs(form->value, file);
+            form = form->next;
+          }
+        }
+        // any other key/value pairs
+        if(card->pairs != NULL) {
+          KeyValue *pair = card->pairs;
+          while(pair != NULL) {
+            fputc(' ', file);
+            fputs(pair->key, file);
+            fputc('=', file);
+            fputs(pair->value, file);
+            pair = pair->next;
+          }
+        }
+        // and then finally the comment which has to be at the end
+        if(card->comment != NULL && strlen(card->comment) > 0) {
+          fputs(" comment:", file);
+          fputs(card->comment, file);
+        }
+      }
+      // close the line
+      fputc('\n', file);
+    } /* if command or geometry */
+    
+    
+  } /* for over cards */
 }
 
 /*----------------------------------------------------------------------*/
@@ -86,8 +240,8 @@ void write_structure(Deck *deck, FILE *file)
   
 }
 
-/*----------------------------------------------------------------------*/
-/* write_segments()
+/***---------------------------------------------------------------------
+ * write_segments()
  *
  * writes the segment data section of the nec2 output.
  *
