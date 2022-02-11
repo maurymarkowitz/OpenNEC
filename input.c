@@ -463,11 +463,13 @@ void parse_comment_card(Card *card, Errors *errors)
  */
 void parse_command_card(Card *card, Errors *errors)
 {
-  int MAX_INT = 4, MAX_FLOAT = 6; // maximum number of integers on a line, max number of floats
   char *token;
   char* end_ptr;
   int ints_processed = 0;
-  int dbls_processed = 0;
+  int floats_processed = 0;
+  
+  int MAX_INT = max_int_fields(card);
+  int MAX_FLT = max_flt_fields(card);
 
 	// get line length of the card part of the line
 	size_t line_len = strlen(card->card_str);
@@ -493,51 +495,23 @@ void parse_command_card(Card *card, Errors *errors)
       // and put the value in the right place
       ints_processed++;
       card->i[ints_processed] = (int)value;
-    } else if (dbls_processed < MAX_FLOAT) {
+    } else if (floats_processed < MAX_FLT) {
       // try to read a double on the line, and exit otherwise
       double value = strtod(token, &end_ptr);
       if(value == 0L && end_ptr == str) break;
       
       // if we got a value, put it into the right slot
-      dbls_processed++;
-      card->f[dbls_processed] = value;
+      floats_processed++;
+      card->f[floats_processed] = value;
     }
     
   NEXT_TOKEN:
     token = strtok(NULL, ONEC_WHITESPACE);
   }
-    //
-//  // process up to six doubles following the ints
-//  end_ptr = NULL;
-//  int dbls_processed = 0;
-//  while(str <= card->card_str + line_len && dbls_processed < MAX_FLOAT) {
-//    // try to read another double on the line, and exit otherwise
-//    double value = strtod(str, &end_ptr);
-//    if(value == 0L && end_ptr == str) break;
-//    str = &end_ptr ;
-//
-//    // if we got a value, put it into the right slot
-//    dbls_processed++;
-//    switch(dbls_processed) {
-//      case 1:
-//        card->f1 = value;
-//        break;
-//      case 2:
-//        card->f3 = value;
-//        break;
-//      case 3:
-//        card->f3 = value;
-//        break;
-//      case 4:
-//        card->f4 = value;
-//        break;
-//      case 5:
-//        card->f5 = value;
-//        break;
-//      case 6:
-//        card->f6 = value;
-//        break;
-//    }
+  
+  // now we copy down the number of ints and floats we actually saw
+  card->ints_used = ints_processed;
+  card->flts_used = floats_processed;
 } /* end of parse_command_card() */
 
 /******************************************************************************
@@ -551,7 +525,6 @@ void parse_command_card(Card *card, Errors *errors)
  */
 void parse_geometry_card(Card *card, Errors *errors)
 {
-  int MAX_INTS = 2, MAX_FLOATS = 7;
   int ints_processed = 0;
   int flts_processed = 0;
   char *token;
@@ -561,6 +534,9 @@ void parse_geometry_card(Card *card, Errors *errors)
   char unit_code[MAX_UNIT_LEN]; // the unit code string (if any) found on this line
   int unit;                     // ...and our internal code for that unit if we found it, or 0 for default
   bool isFormula;               // was the double actually a formula?
+  
+  int MAX_INTS = max_int_fields(card);
+  int MAX_FLTS = max_flt_fields(card);
   
   // get line length of the card part of the line
   int line_len = (int)strlen(card->card_str);
@@ -598,7 +574,7 @@ void parse_geometry_card(Card *card, Errors *errors)
     // the code assumes that it's a number until proven wrong. if it is, we
     // set isFormula
     //
-    else if(flts_processed < MAX_FLOATS) {
+    else if(flts_processed < MAX_FLTS) {
       flts_processed++;
       
       isFormula = FALSE;  // assume it's a number until proven otherwise
@@ -657,7 +633,7 @@ void parse_geometry_card(Card *card, Errors *errors)
         card->ff[flts_processed] = TRUE;  // indicate that we did have a formula inline
         char fld_name[2];
         fld_name[0] = 'F';
-        fld_name[1] = sprintf("%d", flts_processed);
+        fld_name[1] = flts_processed + '0';
         add_key_value(card, card->formulas, fld_name, token, '=');
 
       } // isFormula = true
@@ -696,7 +672,7 @@ void parse_onec_card(Card *card, Errors *errors)
     strcpy(str, card->card_str + 2);
 
     // SY allows only a comma as a delimeter
-    char *token, *split;
+    char *token, *split, sep = '=';
     token = strtok(str, " ,");
     while(token != NULL) {
       // make sure there's a equals in it
@@ -708,7 +684,10 @@ void parse_onec_card(Card *card, Errors *errors)
 
         // if the split was successful, meaning we found the = somewhere,
         // the = is still on the front so let's kill it
-        if (split[0] == '=') split++;
+        if (split[0] == '=') {
+          sep = split[0];
+          split++;
+        }
 
         // now check that both sides are >0 len
         if(strlen(token) > 0 && strlen(split) > 0) {
@@ -721,7 +700,7 @@ void parse_onec_card(Card *card, Errors *errors)
             pair->value = (char *)calloc(strlen(split) + 1, sizeof(char)); // add one for a trailing null
             strcpy(pair->value, split);
             // and store the original separator so we can recreate it on output
-            pair->separator = token[split - token];
+            pair->separator = sep;
             // and null this out, as its going on the end
             pair->next = NULL;
             // and then add it to the end of the list
