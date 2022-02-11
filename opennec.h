@@ -57,8 +57,6 @@ Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
 //#ifdef _COMPLEX_DEFINED
 //#endif
 
-/* added for OpenNEC to handle modern command line switch formats */
-//#include "argp.h"
 #include "types.h"
 #include "proto.h"
 
