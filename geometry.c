@@ -11,13 +11,18 @@
 #include "opennec.h"
 #include "shared.h"
 
-/*-----------------------------------------------------------------------*/
-
-/* calculate_geometry (formerly datagn) is the main routine for creation
- * of geometry data. it reads cards, prints out various messages, and
- * when it reaches the end of the geometry it calls the various worker
- * functions to calculate the segment and patch data. the resulting 
+/******************************************************************************
+ * calculate_geometry
+ *
+ * calculate_geometry (formerly datagn) is the main routine for creation
+ * of geometry data. it reads the geometry cards, prints out various messages
+ * and when it reaches the end of the geometry it calls the various worker
+ * functions to calculate the segment and patch data. the resulting
  * data, in /data/, can then be used to draw a diagram of the antenna.
+ *
+ * @param deck Deck structure that will hold the Cards
+ * @param errors a list of errors to add to
+ *
  */
 void calculate_geometry(Deck *deck, Errors *errors)
 {
@@ -26,7 +31,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
 
 	//char gm[3];
   int gm_num; /* geometry card id as a number */
-	int nwire, isct, iphd, i1, i2, itg, iy, iz;
+	int num_wires, isct, iphd, i1, i2, itg, iy, iz;
 	size_t mreq;
 	int ix, i, ns;
 	double rad, xs1, xs2, ys1, ys2, zs1, zs2, x4 = 0, y4 = 0, z4 = 0;
@@ -35,7 +40,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
 
   // set up the counters
 	data.ipsym = 0;
-	nwire = 0;
+	num_wires = 0;
 	data.n = 0;
 	data.np = 0;
 	data.m = 0;
@@ -86,8 +91,8 @@ void calculate_geometry(Deck *deck, Errors *errors)
         // the radius could be in the f7 field, or it could be on the next card if its tapered
         if(card.f7 != 0.0) {
           rad = card.f7;
-          xs1 = 1.;
-          ys1 = 1.;
+          xs1 = 1.0;
+          ys1 = 1.0;
         } else {
           // make sure the next card is a GC, although we should have already done that
           if(strcmp(deck->cards[i + 1].card_code, "GC") != 0) {
@@ -114,7 +119,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
         }
         
         // update the number of wires and the segment counts
-        nwire++;
+        num_wires++;
         i1 = data.n + 1;
         i2 = data.n + ns;
         
@@ -236,7 +241,10 @@ void calculate_geometry(Deck *deck, Errors *errors)
         yw1 = yw1 * TA;
         zw1 = zw1 * TA;
         
-        duplicate(xw1, yw1, zw1, xw2, yw2, zw2, (int)(rad + .5), ns, itg);
+        // convert the original float value in F7 to int
+        int its = (int)(card.f7 + .5);
+        
+        duplicate(xw1, yw1, zw1, xw2, yw2, zw2, its, ns, itg);
         continue;
         
       case 6: /* "sp" card, generate single new patch or a series of patches with SC */
@@ -256,8 +264,8 @@ void calculate_geometry(Deck *deck, Errors *errors)
         
         // start with the simple case of a simple, single patch
         if(ns == 0) {
-          xw2 = xw2* TA;
-          yw2 = yw2* TA;
+          xw2 = xw2 * TA;
+          yw2 = yw2 * TA;
           patch(itg, ns, xw1, yw1, zw1, xw2, yw2, zw2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         }
         // this is the case where there is going to be one or more SC's following
@@ -352,7 +360,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
         i++;
         
         // calculate corner 4
-        if (ns == 2 || itg > 0) {
+        if(ns == 2 || itg > 0) {
           x4 = xw1 + x3 - xw2;
           y4 = yw1 + y3 - yw2;
           z4 = zw1 + z3 - zw2;
@@ -362,7 +370,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
         continue;
 
       case 8: /* "ga" card, generate segment data for wire arc */
-        nwire++;
+        num_wires++;
         i1 = data.n + 1;
         i2 = data.n + ns;
   
@@ -378,16 +386,19 @@ void calculate_geometry(Deck *deck, Errors *errors)
         
 
       case 10: /* "gh" card, generate helix */
-        nwire++;
+        num_wires++;
         i1 = data.n + 1;
         i2 = data.n + ns;
   
-        fprintf(output_fp, "\n"
-          " %5d HELIX STRUCTURE - SPACING OF TURNS: %8.3f AXIAL"
-          " LENGTH: %8.3f  %8.3f %5d %5d %5d %4d\n      "
-          " RADIUS X1:%8.3f Y1:%8.3f X2:%8.3f Y2:%8.3f ",
-          nwire, xw1, yw1, rad, ns, i1, i2, itg, zw1, xw2, yw2, zw2);
+//        fprintf(output_fp, "\n"
+//          " %5d HELIX STRUCTURE - SPACING OF TURNS: %8.3f AXIAL"
+//          " LENGTH: %8.3f  %8.3f %5d %5d %5d %4d\n      "
+//          " RADIUS X1:%8.3f Y1:%8.3f X2:%8.3f Y2:%8.3f ",
+//          nwire, xw1, yw1, rad, ns, i1, i2, itg, zw1, xw2, yw2, zw2);
   
+        // convert the original float value in F7 to int
+         //its = (int)(card.f7 + .5);
+
         helix(xw1, yw1, zw1, xw2, yw2, zw2, rad, ns, itg);
         continue;
   
@@ -395,11 +406,14 @@ void calculate_geometry(Deck *deck, Errors *errors)
         abort_on_error(-5);
 
       default: /* error message */
-        sprintf(msg, "Card %d has an unknown mnemonic, '%s'.", i, card.card_code);
+        sprintf(msg, "Geometry card %d has an unknown mnemonic, '%s'.", i, card.card_code);
         add_error(errors, msg, 1);
 
-    } /* switch */
+    } /* switch on card type */
   } /* for over cards */
+  
+  // free any message we might have made
+  free(msg);
 } /* calculate_geometry */
 
     
@@ -872,7 +886,8 @@ int isegno(int itagi, int m)
 	stop(-1);
 
 	return(0);
-}
+} /* end of isegno */
+
 /*-------------------------------------------------------------------*/
 
 /* arc generates segment geometry data for an arc of ns segments */
@@ -940,9 +955,7 @@ void arc( int itg, int ns, double rada, double ang1, double ang2, double rad )
 	fprintf( output_fp, "\n  ERROR -- ARC ANGLE EXCEEDS 360 DEGREES");
 	stop(-1);
   }
-
-  return;
-}
+} /* end of arc */
 
 /*-----------------------------------------------------------------------*/
 
@@ -1315,9 +1328,7 @@ void connect_segments( int ignd )
   mem_realloc( (void *)&segj.ax, mreq );
   mem_realloc( (void *)&segj.bx, mreq );
   mem_realloc( (void *)&segj.cx, mreq );
-
-  return;
-}
+} /* end of connect_segments */
 
 /*-----------------------------------------------------------------------*/
 
@@ -1440,9 +1451,7 @@ void helix( double s, double hl, double a1, double b1,
   fprintf( output_fp, "\n"
 	  "       THE PITCH ANGLE IS: %.4f    THE LENGTH OF WIRE/TURN IS: %.4f",
 	  pitch, turn );
-
-  return;
-}
+} /* end of helix */
 
 /*-----------------------------------------------------------------------*/
 
@@ -1474,7 +1483,7 @@ void scale(double xw1)
       data.pbi[i] = data.pbi[i] * yw1;
     }
   } /* if( data.m >= m2) */
-}
+} /* end of scale */
 
 /*-----------------------------------------------------------------------*/
 /* copy() moves the structure with respect to its coordinate system
@@ -1631,14 +1640,12 @@ void duplicate( double rox, double roy, double roz, double xs,
   } /* if( data.m >= m2) */
 
   if( (nrpt == 0) && (ix == 1) )
-	return;
+    return;
 
   data.np= data.n;
   data.mp= data.m;
   data.ipsym=0;
-
-  return;
-}
+} /* end of duplicate */
 
 /*-----------------------------------------------------------------------*/
 
@@ -2047,9 +2054,7 @@ void reflect( int ix, int iy, int iz, int itx, int nop )
     data.psalp[i]= data.psalp[k];
     data.pbi[i]= data.pbi[k];
   } /* for( i = nx; i < data.m; i++ ) */
-  
-  return;
-}
+} /* end of reflect */
 
 /*-----------------------------------------------------------------------*/
 
@@ -2250,9 +2255,7 @@ void patch( int nx, int ny,
   data.ipsym = 0;
   data.np = data.n;
   data.mp = data.m;
-
-  return;
-}
+} /* end of patch */
 
 /*-----------------------------------------------------------------------*/
 
@@ -2352,14 +2355,12 @@ void subph( int nx, int ny )
     mia++;
   }
 
-  if( nx <= data.mp)
-	data.mp += 3;
+  if(nx <= data.mp)
+    data.mp += 3;
 
-  if( ny > 0 )
-	data.pz[mi]=10000.;
-
-  return;
-}
+  if(ny > 0)
+    data.pz[mi]=10000.0;
+} /* end of subph */
 
 /*-----------------------------------------------------------------------*/
 
@@ -2413,9 +2414,7 @@ void wire( double xw1, double yw1, double zw1,
     zd /= delz;
     delz = delz*(1.- rdel)/(1.- pow(rdel, ns) );
     rd = rdel;
-  }
-  else
-  {
+  } else {
     fns= (double)ns;
     xd /= fns;
     yd /= fns;
@@ -2455,9 +2454,4 @@ void wire( double xw1, double yw1, double zw1,
   data.x2[data.n-1] = xw2;
   data.y2[data.n-1] = yw2;
   data.z2[data.n-1] = zw2;
-
-  return;
-}
-
-/*-----------------------------------------------------------------------*/
-
+} /* end of wire() */
