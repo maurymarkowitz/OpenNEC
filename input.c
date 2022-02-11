@@ -585,7 +585,7 @@ void parse_geometry_card(Card *card, Errors *errors)
 {
   int MAX_INTS = 2, MAX_FLOATS = 7;
   int ints_processed = 0;
-  int dbls_processed = 0;
+  int flts_processed = 0;
   char *token;
   char *end_ptr;      // end point of a a number as we parse them
   size_t int_value;   // used to parse ints...
@@ -637,8 +637,8 @@ void parse_geometry_card(Card *card, Errors *errors)
     // the code assumes that it's a number until proven wrong. if it is, we
     // set isFormula
     //
-    else if(dbls_processed < MAX_FLOATS) {
-      dbls_processed++;
+    else if(flts_processed < MAX_FLOATS) {
+      flts_processed++;
       
       isFormula = FALSE;  // assume it's a number until proven otherwise
       unit = 0;           // if we don't find a unit code, this will ensure it is set to "default"
@@ -688,59 +688,73 @@ void parse_geometry_card(Card *card, Errors *errors)
       // now we decide where to put it all...
       if(!isFormula) {
         // if it's not a formula, set the values and any unit we found
-        switch(dbls_processed) {
+        switch(flts_processed) {
           case 1:
             card->f1 = dbl_value;
-            card->m1 = unit;
+            card->m[1] = unit;
             break;
           case 2:
             card->f2 = dbl_value;
-            card->m2 = unit;
+            card->m[2] = unit;
             break;
           case 3:
             card->f3 = dbl_value;
-            card->m3 = unit;
+            card->m[3] = unit;
             break;
           case 4:
             card->f4 = dbl_value;
-            card->m4 = unit;
+            card->m[4] = unit;
             break;
           case 5:
             card->f5 = dbl_value;
-            card->m5 = unit;
+            card->m[5] = unit;
             break;
           case 6:
             card->f6 = dbl_value;
-            card->m6 = unit;
+            card->m[6] = unit;
             break;
           case 7:
             card->f7 = dbl_value;
-            card->m7 = unit;
+            card->m[7] = unit;
             break;
         }
       } else {
         // it is a formula, copy the entire token into the right formula field
-        switch(dbls_processed) {
+        switch(flts_processed) {
           case 1:
-            card->ff1 = token;
+            card->f1 = 0;
+            card->ff[1] = TRUE;  // indicate that we did have a formula inline
+            add_key_value(card, card->formulas, "F1", token, '=');
             break;
           case 2:
-            card->ff2 = token;
+            card->f2 = 0;
+            card->ff[2] = TRUE;
+            add_key_value(card, card->formulas, "F2", token, '=');
             break;
           case 3:
-            card->ff3 = token;
+            card->f3 = 0;
+            card->ff[3] = TRUE;
+            add_key_value(card, card->formulas, "F3", token, '=');
             break;
           case 4:
-            card->ff4 = token;
+            card->f4 = 0;
+            card->ff[4] = TRUE;
+            add_key_value(card, card->formulas, "F4", token, '=');
             break;
           case 5:
-            card->ff5 = token;
+            card->f5 = 0;
+            card->ff[5] = TRUE;
+            add_key_value(card, card->formulas, "F5", token, '=');
             break;
           case 6:
-            card->ff6 = token;
+            card->f6 = 0;
+            card->ff[6] = TRUE;
+            add_key_value(card, card->formulas, "F6", token, '=');
             break;
           case 7:
-            card->ff7 = token;
+            card->f7 = 0;
+            card->ff[7] = TRUE;
+            add_key_value(card, card->formulas, "F7", token, '=');
             break;
         }
       } // isFormula = true
@@ -750,6 +764,10 @@ void parse_geometry_card(Card *card, Errors *errors)
   NEXT_TOKEN:
     token = strtok(NULL, ONEC_WHITESPACE);
   } //token != NULL
+  
+  // now we copy down the number of ints and floats we actually saw
+  card->ints_used = ints_processed;
+  card->flts_used = flts_processed;
 } /* end of parse_geometry_card() */
 
 /******************************************************************************
@@ -898,7 +916,7 @@ void parse_key_values(Card *card, Errors *errors)
         goto NEXT_TOKEN;
       }
       if(strcasecmp(key, "ignore") == 0) {
-        card->invisible = (strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0);
+        card->ignore = (strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0);
         goto NEXT_TOKEN;
       }
       // and comments, which cause us to exit because we have to be at the end of the line
