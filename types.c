@@ -11,8 +11,9 @@ char *field_names[NUM_FIELD_NAMES] = {
   "I1", "I2", "I3", "I4", "F1", "F2", "F3", "F4", "F5", "F6"
 };
 
+// MSM 2022-02-12 "#" turning off hash for now until we actually find it somehere
 char *comment_codes[NUM_COMMENT_CODES] = {
-  "CM", "CE", "!", "'", "#"
+  "CM", "CE", "!", "'"
 };
 
 char *control_codes[NUM_CONTROL_CODES] = {
@@ -24,7 +25,7 @@ char *control_codes[NUM_CONTROL_CODES] = {
 
 // note that the continuation cards like GC are not here, but SC is,
 // this is because you can have multiple SC's in a row so they need
-// to show up in the list.
+// to show up in the list
 // FIXME: they don't, the SP handler should read forward until it finds all the SCs
 char *geometry_codes[NUM_GEOMETRY_CODES] = {
   "GW", "GX", "GR", "GS", "GE", "GM", \
@@ -41,11 +42,13 @@ char *onec_codes[NUM_ONEC_CODES] = {
 
 // the unit_codes and unit_mult are in the same order,
 // so if you change one, change the other!
+// type zero means "none", or default, instead of using
+// -1 or something so that it is set properly on calloc
 char *unit_codes[NUM_ONEC_UNIT_CODES] = {
-  "m", "cm", "mm", "ft", "in", "ftin", "awg", "#"
+  "", "m", "cm", "mm", "ft", "in", "ftin", "awg", "#"
 };
 // the last three units, ftin and awg, require special conversions
 double unit_mult[NUM_ONEC_UNIT_CODES] = {
-  1.0, 0.01, 0.001, 0.30480, 0.0254, 0, 0, 0
+  0, 1.0, 0.01, 0.001, 0.30480, 0.0254, 0, 0, 0
 };
 

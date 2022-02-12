@@ -53,7 +53,7 @@ extern char *field_names[NUM_FIELD_NAMES];
 /* "XT" stands for "exit", added for testing, not included in these lists */
 #ifndef COMMENT_CODES_DEF
 #define COMMENT_CODES_DEF
-#define NUM_COMMENT_CODES  5
+#define NUM_COMMENT_CODES  4
 extern char *comment_codes[NUM_COMMENT_CODES];
 #endif
 
@@ -77,7 +77,7 @@ extern char *onec_codes[NUM_ONEC_CODES];
 
 #ifndef ONEC_UNITS_DEF
 #define ONEC_UNITS_DEF
-#define NUM_ONEC_UNIT_CODES 8
+#define NUM_ONEC_UNIT_CODES 9
 extern char *unit_codes[NUM_ONEC_UNIT_CODES];
 extern double unit_mult[NUM_ONEC_UNIT_CODES];
 #endif
