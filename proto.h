@@ -12,8 +12,7 @@ int read_line(char *buff, FILE *pfile);
 void read_deck(Deck *deck, FILE *pfile);
 void parse_deck(Deck *deck, Errors *errors);
 void parse_comment_card(Card *card, Errors *errors);
-void parse_command_card(Card *card, Errors *errors);
-void parse_geometry_card(Card *card, Errors *errors);
+void parse_geometry_or_command_card(Card *card, Errors *errors);
 void parse_onec_card(Card *card, Errors *errors);
 void parse_key_values(Card *card, Errors *errors);
 /* output.c */
