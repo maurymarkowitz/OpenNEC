@@ -401,11 +401,8 @@ void parse_deck(Deck *deck, Errors *errors)
     if(isCmt) {
       parse_comment_card(card, errors);
     }
-    if(isGeo) {
-      parse_geometry_card(card, errors);
-    }
-    if(isCtl) {
-      parse_command_card(card, errors);
+    if(isGeo || isCtl) {
+      parse_geometry_or_command_card(card, errors);
     }
     if(isExt) {
       parse_onec_card(card, errors);
@@ -448,82 +445,83 @@ void parse_comment_card(Card *card, Errors *errors)
   card->comment = (char *)calloc(strlen(card->orig_str) - code_end, sizeof(char));
   strcpy(card->comment, &card->card_str[code_end]);
 }
+//
+///******************************************************************************
+// * parse_command_card()
+// *
+// * parses the contents of one command card. formerly readem()
+// *
+// * The original nec2C code was invoked with a big list of byref variables,
+// * read the card, parsed it, and passed everything back through the byrefs
+// * to the main loop for processing. This version takes the card, parses
+// * the card_str part, and then stores everything in the card's internal
+// * variables.
+// *
+// */
+//void parse_command_card(Card *card, Errors *errors)
+//{
+//  char *token;
+//  char* end_ptr;
+//  int ints_processed = 0;
+//  int floats_processed = 0;
+//
+//  int MAX_INT = max_int_fields(card);
+//  int MAX_FLT = max_flt_fields(card);
+//
+//	// get line length of the card part of the line
+//	size_t line_len = strlen(card->card_str);
+//
+//  // calloc has zeroed everything, so if this card doesn't have any parameters,
+//  // like a CE or GM, just return now
+//  if(line_len <= 2) return;
+//
+//  // make a copy so we can munge it
+//  char str[MAX_LINE_LEN];
+//  strcpy(str, trim_start(card->card_str + 2)); // skip the card code and any whitespace
+//
+//  // process up to four ints at the start of the line
+//  token = strtok(str, ONEC_WHITESPACE);
+//  while(token != NULL) {
+//    if(ints_processed < MAX_INT) {
+//      // try to process this as an int
+//      size_t value = strtol(token, &end_ptr, 10);
+//
+//      // if that returned nothing and we've reached the end of the line, exit
+//      if(value == 0L && end_ptr == token) break;
+//
+//      // and put the value in the right place
+//      ints_processed++;
+//      card->i[ints_processed] = (int)value;
+//    } else if (floats_processed < MAX_FLT) {
+//      // try to read a double on the line, and exit otherwise
+//      double value = strtod(token, &end_ptr);
+//      if(value == 0L && end_ptr == str) break;
+//
+//      // if we got a value, put it into the right slot
+//      floats_processed++;
+//      card->f[floats_processed] = value;
+//    }
+//
+//  NEXT_TOKEN:
+//    token = strtok(NULL, ONEC_WHITESPACE);
+//  }
+//
+//  // now we copy down the number of ints and floats we actually saw
+//  card->ints_used = ints_processed;
+//  card->flts_used = floats_processed;
+//} /* end of parse_command_card() */
 
 /******************************************************************************
- * parse_command_card()
- *
- * parses the contents of one command card. formerly readem()
- *
- * The original nec2C code was invoked with a big list of byref variables,
- * read the card, parsed it, and passed everything back through the byrefs
- * to the main loop for processing. This version takes the card, parses
- * the card_str part, and then stores everything in the card's internal
- * variables.
- *
- */
-void parse_command_card(Card *card, Errors *errors)
-{
-  char *token;
-  char* end_ptr;
-  int ints_processed = 0;
-  int floats_processed = 0;
-  
-  int MAX_INT = max_int_fields(card);
-  int MAX_FLT = max_flt_fields(card);
-
-	// get line length of the card part of the line
-	size_t line_len = strlen(card->card_str);
-
-  // calloc has zeroed everything, so if this card doesn't have any parameters,
-  // like a CE or GM, just return now
-  if(line_len <= 2) return;
-
-  // make a copy so we can munge it
-  char str[MAX_LINE_LEN];
-  strcpy(str, trim_start(card->card_str + 2)); // skip the card code and any whitespace
-
-  // process up to four ints at the start of the line
-  token = strtok(str, ONEC_WHITESPACE);
-  while(token != NULL) {
-    if(ints_processed < MAX_INT) {
-      // try to process this as an int
-      size_t value = strtol(token, &end_ptr, 10);
-      
-      // if that returned nothing and we've reached the end of the line, exit
-      if(value == 0L && end_ptr == token) break;
-
-      // and put the value in the right place
-      ints_processed++;
-      card->i[ints_processed] = (int)value;
-    } else if (floats_processed < MAX_FLT) {
-      // try to read a double on the line, and exit otherwise
-      double value = strtod(token, &end_ptr);
-      if(value == 0L && end_ptr == str) break;
-      
-      // if we got a value, put it into the right slot
-      floats_processed++;
-      card->f[floats_processed] = value;
-    }
-    
-  NEXT_TOKEN:
-    token = strtok(NULL, ONEC_WHITESPACE);
-  }
-  
-  // now we copy down the number of ints and floats we actually saw
-  card->ints_used = ints_processed;
-  card->flts_used = floats_processed;
-} /* end of parse_command_card() */
-
-/******************************************************************************
- * parse_geometry_card()
+ * parse_geometry_or_command_card()
  *
  * parses the contents of one geometry card. formerly ???()
+ * parses the contents of one command card. formerly readem()
  *
  * The main difference between this code and the original nec2c code is
  * the addition of parsers for measurement units and formulas.
  *
  */
-void parse_geometry_card(Card *card, Errors *errors)
+void parse_geometry_or_command_card(Card *card, Errors *errors)
 {
   int ints_processed = 0;
   int flts_processed = 0;
@@ -612,7 +610,7 @@ void parse_geometry_card(Card *card, Errors *errors)
             }
           }
           // if it was not a unit, and it wasn't zero length, we have to
-          // assume the entire thing was a formula
+          // assume the entire thing was a formula with a leading number
           if(!isUnit) {
             isFormula = true;
           }
@@ -853,6 +851,12 @@ void parse_key_values(Card *card, Errors *errors)
             tail = tail->next;
           tail->next = pair;
         }
+        if(isFormula) {
+          card->formulas = head;
+        } else {
+          card->pairs = head;
+        }
+
       } // there should be else's for all the mallocs and callocs!
     } // split != NULL
     
