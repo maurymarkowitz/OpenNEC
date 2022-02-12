@@ -33,22 +33,51 @@
 void write_deck_nec(Deck *deck, FILE *file, int remove_inline_comments)
 {
   Card *card;
+  int MAX_INTS, MAX_FLTS;
   
   for(int i = 0; i < deck->num_cards; i++) {
     card = &deck->cards[i];
     
+    // if we are past the end of the deck, just write out the whole string
+    if(i > deck->deck_end) {
+      fputs(card->card_str, file);
+      fputc('\n', file);
+      continue;
+    }
+    
+    // skip extension cards in pure NEC files
+    if(isExtension(card)) continue;
+
     // for comment cards with the CM or CE *in the header*, simply export the card
     if(i <= deck->geometry_start && (strcmp(card->card_code, "CM") == 0 || strcmp(card->card_code, "CE") == 0)) {
       fprintf(file, "%s%s", deck->cards[i].card_code, deck->cards[i].comment);
+      fputc('\n', file);
     }
     // for comment cards with other headers, only export if the option is on
     if(isComment(card)) {
       fprintf(file, "%s%s", deck->cards[i].card_code, deck->cards[i].comment);
+      fputc('\n', file);
     }
-    // for geometry,
 
+    // for geometry and command cards, start with the code
+    fputs(card->card_code, file);
     
-  }
+    // get the number of fields for this sort of card
+    MAX_INTS = max_int_fields(card);
+    MAX_FLTS = max_flt_fields(card);
+
+    // int fields depending on the card type
+    if(isControl(card) || isGeometry(card)) {
+      for(int j = 0; j <= card->ints_used && j <= MAX_INTS; j++) {
+        fprintf(file, " %d", card->i[j]);
+      }
+      for(int j = 0; j <= card->flts_used && j <= MAX_FLTS; j++) {
+        fprintf(file, " %G", card->f[j]);
+      }
+      // close the line
+      fputc('\n', file);
+    } /* if command or geometry */
+  } /* for over cards */
 }
 
 /******************************************************************************
@@ -68,8 +97,15 @@ void write_deck_onec(Deck *deck, FILE *file)
   
   for(int i = 0; i < deck->num_cards; i++) {
     card = &deck->cards[i];
+    
+    // if we are past the end of the deck, just write out the whole string
+    if(i > deck->deck_end) {
+      fputs(card->card_str, file);
+      fputc('\n', file);
+      continue;
+    }
 
-    // start with the easy case, basic comment cards
+    // comment cards care also easy
     if(isComment(card)) {
       fputs(card->card_code, file);
       fputs(card->comment, file);
@@ -173,6 +209,10 @@ void write_deck_onec(Deck *deck, FILE *file)
         if(card->invisible) {
           fputs(" invisible:true", file);
         }
+        if(card->material != NULL) {
+          fputs(" material:", file);
+          fputs(card->material, file);
+        }
         // formulas next
         if(card->formulas != NULL) {
           KeyValue *form = card->formulas;
@@ -204,8 +244,6 @@ void write_deck_onec(Deck *deck, FILE *file)
       // close the line
       fputc('\n', file);
     } /* if command or geometry */
-    
-    
   } /* for over cards */
 }
 
