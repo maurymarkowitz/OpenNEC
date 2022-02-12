@@ -29,6 +29,9 @@
  * comments. With this last option turned off, the deck is compatible
  * with nec2c, with it turned on, it is the original NEC2 format.
  *
+ * TODO: need to calculate all float values and run any conversions
+ *       to base units before exporting!
+ *
  */
 void write_deck_nec(Deck *deck, FILE *file, int remove_inline_comments)
 {
@@ -66,7 +69,7 @@ void write_deck_nec(Deck *deck, FILE *file, int remove_inline_comments)
     MAX_INTS = max_int_fields(card);
     MAX_FLTS = max_flt_fields(card);
 
-    // int fields depending on the card type
+    // int and float fields
     if(isControl(card) || isGeometry(card)) {
       for(int j = 0; j <= card->ints_used && j <= MAX_INTS; j++) {
         fprintf(file, " %d", card->i[j]);
@@ -162,7 +165,25 @@ void write_deck_onec(Deck *deck, FILE *file)
         fprintf(file, " %d", card->i[j]);
       }
       for(int j = 0; j <= card->flts_used && j <= MAX_FLTS; j++) {
-        fprintf(file, " %G", card->f[j]);
+        // if this field uses hash as the measurement type, write it first
+        if(card->m[j] == 8) {
+          fputc('#', file);
+        }
+
+        // if this field has an inline formula, write it
+        if(card->ff[j] == TRUE) {
+          fputc(' ', file);
+          fputs(unit_codes[card->m[j]], file);
+        }
+        // otherwise write the number itself
+        else {
+          fprintf(file, " %G", card->f[j]);
+        }
+        
+        // if there is any other measurment type, add it at the end
+        if(card->m[j] != 0 && card->m[j] != 8) {
+          fputs(unit_codes[card->m[j]], file);
+        }
       }
 
       // the basic NEC fields are output, now see if there's anything after that
