@@ -129,26 +129,28 @@ typedef struct
   int flts_used;      // and floats
   
   // NEC uses i1 through i1 and f1 through f7. We'll put these in an
-  // array to ease access when we're looping... f[i]. However, this could
-  // lead to some serious confusion because normally C would be zero-indexed
-  // so f1 would be in f[0]. To avoid this we'll make the array one larger
-  // than it has to be and just leave the zeroth entry empty
+  // array to ease access when we're looping: f[i]. This could lead
+  // to confusion because normally C would be zero-indexed in f[0].
+  // To avoid this we'll make the array one larger than it has to be
+  // and just leave the zeroth entry empty
   int i[5];           // i1 is normally the tag, etc.
   double f[8];        // geometery and so forth
 
   // onec values
-  int m[8];           // measurement units on the fields, or 0 for "default"
-  bool ff[10];        // formula was found in a double field, as opposed to extensions
-
+  int units[8];           // measurement units on the fields, or 0 for "default"
+  bool int_form_inline[4];// was this formula found inline, or in a comment?
+  bool flt_form_inline[8];
+  
   // onec extensions
   char extn_code[1];  // the one-letter code that marked the extension or inline comment, if any
   char *extn_str;     // the entire inline comment, anything after the comment marker
   char *comment;      // if a comment was found, it's placed here, this is *not* the same
                       //    as extn_str, it might be found in a 'comment:' key/value pair
-  KeyValue *pairs;    // pairs of name:value key/value entries, this will **not** include a comment if there was one
-  KeyValue *formulas; // pairs of variable=formula pairs found in SY cards or in the extensions area
+  KeyValue *extensns;    // pairs of name:value key/value entries, this will **not** include a comment if there was one
+  KeyValue *formulas; // pairs of name:value key/value entries for any formulas
 
   // onec flags
+  // these are caches for particular values we check in various places
   /// NOTE: it is important these flags are set to the default values
   ///       when a new Card is created. for this reason they are all
   ///       intended to default to FALSE
@@ -157,6 +159,7 @@ typedef struct
   char *name;         // name for this card, if present
   char *group;        // group name, used to collect multiple cards into groups
   char *material;     // the material name, if explicitly defined
+  char *shape;        // the shape of the element - circular, square, etc.
 } Card;
 
 /*** Deck encapsulates a single deck of cards ***/
@@ -173,8 +176,6 @@ typedef struct
   int unit_val;       // if there is a single GS, this is the f1 value, otherwise 1
   int unit_typ;       // if there is a single GS, and we recognize the value, put out index here
   KeyValue *symbols;  // any variables read in from SY cards, consisting of name/inital value pairs
-  KeyValue *formulas; // any *global* formulas found on any of the cards, consists of variable=formula pairs
-  char *material;     // default material for the stack as a whole. empty=6061-T6
 } Deck;
 
 /* common  /crnt/ */

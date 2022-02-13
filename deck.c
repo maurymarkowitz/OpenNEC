@@ -63,7 +63,7 @@ void free_card(Card *card) {
     head = head->next;
     free(temp);
   }
-  head = card->pairs;
+  head = card->extensns;
   while(head != NULL) {
     temp = head;
     head = head->next;
@@ -100,21 +100,12 @@ void free_deck(Deck *deck) {
   }
   // now the two lists
   KeyValue *head, *temp;
-  head = deck->formulas;
-  while(head != NULL) {
-    temp = head;
-    head = head->next;
-    free(temp);
-  }
   head = deck->symbols;
   while(head != NULL) {
     temp = head;
     head = head->next;
     free(temp);
   }
-  
-  // and finally the material, if defined
-  if(deck->material != NULL) free(deck->material);
 }
 
 /******************************************************************************

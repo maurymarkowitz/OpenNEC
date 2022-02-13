@@ -624,11 +624,11 @@ void parse_geometry_or_command_card(Card *card, Errors *errors)
       if(!isFormula) {
         // if it's not a formula, set the values and any unit we found
         card->f[flts_processed] = dbl_value;
-        card->m[flts_processed] = unit;
+        card->units[flts_processed] = unit;
       } else {
         // it is a formula, copy the entire token into the right formula field
         card->f[flts_processed] = 0;
-        card->ff[flts_processed] = TRUE;  // indicate that we did have a formula inline
+        card->flt_form_inline[flts_processed] = TRUE;  // indicate that we did have a formula inline
         char fld_name[2];
         fld_name[0] = 'F';
         fld_name[1] = flts_processed + '0';
@@ -839,7 +839,7 @@ void parse_key_values(Card *card, Errors *errors)
         if(isFormula) {
           head = card->formulas;
         } else {
-          head = card->pairs;
+          head = card->extensns;
         }
         tail = head;
         
@@ -854,7 +854,7 @@ void parse_key_values(Card *card, Errors *errors)
         if(isFormula) {
           card->formulas = head;
         } else {
-          card->pairs = head;
+          card->extensns = head;
         }
 
       } // there should be else's for all the mallocs and callocs!

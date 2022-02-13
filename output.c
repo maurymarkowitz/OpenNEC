@@ -166,14 +166,14 @@ void write_deck_onec(Deck *deck, FILE *file)
       }
       for(int j = 0; j <= card->flts_used && j <= MAX_FLTS; j++) {
         // if this field uses hash as the measurement type, write it first
-        if(card->m[j] == 8) {
+        if(card->units[j] == 8) {
           fputc('#', file);
         }
 
         // if this field has an inline formula, write it
-        if(card->ff[j] == TRUE) {
+        if(card->flt_form_inline[j] == TRUE) {
           fputc(' ', file);
-          fputs(unit_codes[card->m[j]], file);
+          fputs(unit_codes[card->units[j]], file);
         }
         // otherwise write the number itself
         else {
@@ -181,8 +181,8 @@ void write_deck_onec(Deck *deck, FILE *file)
         }
         
         // if there is any other measurment type, add it at the end
-        if(card->m[j] != 0 && card->m[j] != 8) {
-          fputs(unit_codes[card->m[j]], file);
+        if(card->units[j] != 0 && card->units[j] != 8) {
+          fputs(unit_codes[card->units[j]], file);
         }
       }
 
@@ -194,7 +194,7 @@ void write_deck_onec(Deck *deck, FILE *file)
       if(card->group != NULL && strlen(card->group) > 0) hasOnec = true;
       if(card->ignore) hasOnec = true;
       if(card->invisible) hasOnec = true;
-      if(card->pairs != NULL ) hasOnec = true;
+      if(card->extensns != NULL ) hasOnec = true;
       if(card->formulas != NULL ) hasOnec = true;
       
       // if we found anything, print the comment marker found on this
@@ -234,7 +234,7 @@ void write_deck_onec(Deck *deck, FILE *file)
           fputs(" material:", file);
           fputs(card->material, file);
         }
-        // formulas next
+        // formulas next - only the ones that aren't inline
         if(card->formulas != NULL) {
           KeyValue *form = card->formulas;
           while(form != NULL) {
@@ -246,8 +246,8 @@ void write_deck_onec(Deck *deck, FILE *file)
           }
         }
         // any other key/value pairs
-        if(card->pairs != NULL) {
-          KeyValue *pair = card->pairs;
+        if(card->extensns != NULL) {
+          KeyValue *pair = card->extensns;
           while(pair != NULL) {
             fputc(' ', file);
             fputs(pair->key, file);
@@ -256,7 +256,7 @@ void write_deck_onec(Deck *deck, FILE *file)
             pair = pair->next;
           }
         }
-        // and then finally the comment which has to be at the end
+        // and then finally the comment which has to be at the end of the line
         if(card->comment != NULL && strlen(card->comment) > 0) {
           fputs(" comment:", file);
           fputs(card->comment, file);
