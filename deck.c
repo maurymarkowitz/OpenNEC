@@ -31,7 +31,6 @@
 Card* new_card(void) {
   Card *card = calloc(1, sizeof(Card));
   card->edited = FALSE;     // new cards are not edited, by default. this only applies to USER edits!
-  card->invisible = FALSE;  // cards are visible by default. only applies to geometry, but set it in any case
   card->ignore = FALSE;     // cards should not be ignored by default. should apply to geometery and commands?
   card->extn_code[0] = 0;   // this will be applied if there is a code found on the line or the user adds one
   return card;
@@ -50,9 +49,6 @@ void free_card(Card *card) {
   if(card->orig_str != NULL) free(card->orig_str);
   if(card->card_str != NULL) free(card->card_str);
   if(card->extn_str != NULL) free(card->extn_str);
-  if(card->name != NULL) free(card->name);
-  if(card->group != NULL) free(card->group);
-  if(card->material != NULL) free(card->material);
   if(card->comment != NULL) free(card->comment);
 
   // now the two lists

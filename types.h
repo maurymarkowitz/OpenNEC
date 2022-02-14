@@ -125,14 +125,14 @@ typedef struct
   
   // processed NEC2 data
   char card_code[2];  // the two-letter code for this card, or one letter for some comment formats
-  int ints_used;      // the number if int parameters actually used
-  int flts_used;      // and floats
   
   // NEC uses i1 through i1 and f1 through f7. We'll put these in an
   // array to ease access when we're looping: f[i]. This could lead
   // to confusion because normally C would be zero-indexed in f[0].
   // To avoid this we'll make the array one larger than it has to be
   // and just leave the zeroth entry empty
+  int ints_used;      // the number if int parameters actually used
+  int flts_used;      // and floats
   int i[5];           // i1 is normally the tag, etc.
   double f[8];        // geometery and so forth
 
@@ -146,20 +146,11 @@ typedef struct
   char *extn_str;     // the entire inline comment, anything after the comment marker
   char *comment;      // if a comment was found, it's placed here, this is *not* the same
                       //    as extn_str, it might be found in a 'comment:' key/value pair
-  KeyValue *extensns;    // pairs of name:value key/value entries, this will **not** include a comment if there was one
+  KeyValue *extensns; // pairs of name:value key/value entries, this will **not** include a comment if there was one
   KeyValue *formulas; // pairs of name:value key/value entries for any formulas
 
-  // onec flags
-  // these are caches for particular values we check in various places
-  /// NOTE: it is important these flags are set to the default values
-  ///       when a new Card is created. for this reason they are all
-  ///       intended to default to FALSE
+  // onec flags - only this one needs to be known here in onec
   bool ignore;        // cards can be marked to be deliberately ignored
-  bool invisible;     // cards can be marked to be invisible in the display
-  char *name;         // name for this card, if present
-  char *group;        // group name, used to collect multiple cards into groups
-  char *material;     // the material name, if explicitly defined
-  char *shape;        // the shape of the element - circular, square, etc.
 } Card;
 
 /*** Deck encapsulates a single deck of cards ***/

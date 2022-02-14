@@ -84,7 +84,6 @@ void read_deck(Deck *deck, FILE *input_fp)
     card = calloc(1, sizeof(Card));
     card->orig_str = calloc(line_len +1, sizeof(char));
     card->edited = FALSE;
-    card->invisible = FALSE; // only applies to geometry, but set it in any case
     card->ignore = FALSE; // should apply to geometery and commands?
     strcpy(card->orig_str, line_buf);
     
@@ -775,26 +774,6 @@ void parse_key_values(Card *card, Errors *errors)
       // 4) the key is anything else - make a KeyValue pair and add it to the pairs list
       
       // handle known
-      if(strcasecmp(key, "name") == 0) {
-        card->name = value;
-        goto NEXT_TOKEN;
-      }
-      if(strcasecmp(key, "group") == 0) {
-        card->group = value;
-        goto NEXT_TOKEN;
-      }
-      if(strcasecmp(key, "material") == 0) {
-        card->material = value;
-        goto NEXT_TOKEN;
-      }
-      if(strcasecmp(key, "invisible") == 0) {
-        card->invisible = (strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0);
-        goto NEXT_TOKEN;
-      }
-      if(strcasecmp(key, "visible") == 0) {
-        card->invisible = !(strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0);
-        goto NEXT_TOKEN;
-      }
       if(strcasecmp(key, "ignore") == 0) {
         card->ignore = (strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0);
         goto NEXT_TOKEN;

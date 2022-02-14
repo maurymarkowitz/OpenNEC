@@ -190,10 +190,7 @@ void write_deck_onec(Deck *deck, FILE *file)
       bool hasComment = (card->comment != NULL && strlen(card->comment) > 0);
       
       bool hasOnec = false;
-      if(card->name != NULL && strlen(card->name) > 0) hasOnec = true;
-      if(card->group != NULL && strlen(card->group) > 0) hasOnec = true;
       if(card->ignore) hasOnec = true;
-      if(card->invisible) hasOnec = true;
       if(card->extensns != NULL ) hasOnec = true;
       if(card->formulas != NULL ) hasOnec = true;
       
@@ -215,24 +212,8 @@ void write_deck_onec(Deck *deck, FILE *file)
       if(hasComment && !hasOnec) {
         fputs(card->comment, file);
       } else {
-        // in the field-by-field case, start with the known extensions
-        if(card->name != NULL && strlen(card->name) > 0) {
-          fputs(" name:", file);
-          fputs(card->name, file);
-        }
-        if(card->group != NULL && strlen(card->group) > 0) {
-          fputs(" group:", file);
-          fputs(card->group, file);
-        }
         if(card->ignore) {
           fputs(" ignore:true", file);
-        }
-        if(card->invisible) {
-          fputs(" invisible:true", file);
-        }
-        if(card->material != NULL) {
-          fputs(" material:", file);
-          fputs(card->material, file);
         }
         // formulas next - only the ones that aren't inline
         if(card->formulas != NULL) {
