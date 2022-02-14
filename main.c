@@ -3,7 +3,7 @@
  * main.c is the entry point for the command-line version of OpenNEC
  * It works along with input.c and output.c. Together they parse the
  * command line, read an input file if provided, run the commands in
- * the deck, and then print the output to another file.
+ * the deck, and then print the output to more files.
  *
  *******************************************************************/
 
@@ -30,25 +30,35 @@ static char *output_file = "";
 static char *error_file = "";
 static char *greens_file = "";
 
-/** simple version info for --version command line option */
+/******************************************************************************
+ * print_version()
+ *
+ * as the name implies, this simply prints the VERSION_STRING
+ *
+ */
 static void print_version()
 {
     puts("OpenNEC " VERSION_STRING);
 }
 
-/** usage, both for the user and for documenting the code below */
+/******************************************************************************
+ * print_usage()
+ *
+ * prints the usage notes
+ *
+ */
 static void print_usage(char *argv[])
 {
   printf("Usage: %s [-hvntg] [-i input_file] [-o output_file] [-e error_file] source_file\n", argv[0]);
   puts("Options:");
   puts("  -h, --help: print this description");
   puts("  -v, --version: print version info");
+  puts("  -n, --no-run: don't run the simulation after parsing");
+  puts("  -t, --test-deck: run various sanity tests");
   puts("  -i, --input-file: (path/)name of the input file");
   puts("  -o, --output-file: (path/)name of the output file");
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
-  puts("  -n, --no-run: don't run the simulation after parsing");
-  puts("  -t, --test-deck: run various sanity tests");
-  puts("  -g, --greens: write a greens function file to *.ngf or provided filename. same as placing a WG in a deck.");
+  puts("  -g, --greens: write a greens function file to *.ngf or provided filename");
 }
 
 static struct option program_options[] =
@@ -57,13 +67,19 @@ static struct option program_options[] =
   {"version", no_argument, NULL, 'v'},
   {"no-run", no_argument, NULL, 'n'},
   {"test-deck", optional_argument, NULL, 't'},
-  {"greens", optional_argument, NULL, 'g'},
   {"input-file", required_argument, NULL, 'i'},
   {"output-file", required_argument,  NULL, 'o'},
   {"error-file", required_argument,  NULL, 'e'},
+  {"greens", optional_argument, NULL, 'g'},
   {0, 0, 0, 0}
 };
 
+/******************************************************************************
+ * parse_options()
+ *
+ * parses the command line options
+ *
+ */
 void parse_options(int argc, char *argv[])
 {
   int option_index = 0;
@@ -71,12 +87,12 @@ void parse_options(int argc, char *argv[])
   
   while(1) {
     // eat an option and exit if we're done
-    int c = getopt_long(argc, argv, "hvnti:o:t:g:", program_options, &option_index); // should match the items above, but with flag-setters excluded
-    if (c == -1) break;
+    int c = getopt_long(argc, argv, "hvnti:o:e:g:", program_options, &option_index); // should match the items above, but with flag-setters excluded
+    if(c == -1) break;
     
-    switch (c) {
+    switch(c) {
       case 0:
-        // flag-setting options return 0 - these are s, p and n
+        // flag-setting options return 0 - these are t and n
         if (program_options[option_index].flag != 0)
           break;
         
@@ -120,16 +136,21 @@ void parse_options(int argc, char *argv[])
     }
   } // while
   
-  // now see if there's a filename
+  // now see if there's a filename at the end without an option
+  // flag, if so it overrides -i if it was supplied
   if (optind < argc)
-    // we'll just assume one file if any
     input_file = argv[argc - 1];
-  else
+  
+  // if the above isn't true, make sure we got a name in -i
+  else if (input_file == NULL ) {
     // not always a failure, we might have just been asked for usage
     if(printed_help)
       exit(EXIT_SUCCESS);
     else
       exit(EXIT_FAILURE);
+  }
+  // getting here means we have an input file and we processed
+  // all of the inputs, which implies we got the file via -i
 }
 
 /*-------------------------------------------------------------------*/
@@ -146,112 +167,67 @@ int main(int argc, char **argv)
   test_errors.num_errors = 0;
   test_errors.errors = NULL;
 
-  /* getopt() variables */
-  int option;
-  char infile[81] = "", otfile[81] = "", erfile[81] = "";
-  
-  /*** command line arguments handler ***/
-  
-  /* if there are no command line arguments, print usage */
+  // if there are no command line arguments, print usage and exit
   if(argc == 1) {
     usage();
     exit(-1);
   }
   
-  /* if there are command line arguments, process them */
-  while((option = getopt(argc, argv, "i:o:hv") ) != -1) {
-    switch(option) {
-      case 'i' : /* specify input file name */
-        if(strlen(optarg) > MAX_PATH_LEN) {
-          abort_on_error(-1);
-        }
-        strcpy(infile, optarg);
-        break;
-        
-      case 'o' : /* specify output file name */
-        if(strlen(optarg) > MAX_PATH_LEN) abort_on_error(-2);
-        strcpy(otfile, optarg);
-        break;
-        
-      case 'e' : /* specify error file name */
-        if(strlen(optarg) > MAX_PATH_LEN) abort_on_error(-2);
-        strcpy(erfile, optarg);
-        break;
-        
-      case 'g': /* return only the maximum gain to stdout, from nec2c++ */
-        //s_output_flags.set_gain_only(true);
-        break;
-        
-      case 'v' : /* print version */
-        puts(VERSION_STRING);
-        exit(0);
-        
-      case 'h' : /* print usage and exit */
-        usage();
-        exit(0);
-        
-      default: /* print usage and exit */
-        usage();
-        exit(-1);
-        
-    } /* end of switch( option ) */
-  } /* while( (option = getopt(argc, argv, "i:o:hv") ) != -1 ) */
+  // process the command line options, if we did not get an
+  // input file we should have exited
+  parse_options(argc, argv);
   
-  // if we got this far, we have a file to process
-  
-  /*** open input file ***/
-  if((input_fp = fopen(infile, "r")) == NULL) {
+  // open input file
+  if((input_fp = fopen(input_file, "r")) == NULL) {
     char mesg[88] = "opennec: ";
-    
-    strcat(mesg, infile);
+    strcat(mesg, input_file);
     perror(mesg);
     exit(-1);
   }
   
-  /** make an output file name if not specified by user **/
-  if(strlen(otfile) == 0) {
-    /* strip file name extension if there is one */
+  // make an output file name if not specified by user
+  if(strlen(output_file) == 0) {
+    // give it some room, with a little at the end for a potential extension
+    output_file = malloc(strlen(input_file) + 10);
+    // start with the input file name
+    strcpy(output_file, input_file);
+    // strip file name extension if there is one
     int idx = 0;
-    while( (infile[++idx] != '.') && (infile[idx] != '\0') );
-    infile[idx] = '\0';
-    
-    /* make the output file name from input file */
-    strcpy(otfile, infile);
-    strcat(otfile, ".out"); /* add extension */
+    while( (output_file[++idx] != '.') && (output_file[idx] != '\0') );
+    output_file[idx] = '\0';
+    // add the extension
+    strcat(output_file, ".out");
   }
   
-  /*** open output file ***/
-  if((output_fp = fopen(otfile, "w")) == NULL) {
+  // open output file
+  if((output_fp = fopen(output_file, "w")) == NULL) {
     char mesg[88] = "opennec: ";
     
-    strcat( mesg, otfile );
-    perror( mesg );
+    strcat(mesg, output_file );
+    perror(mesg);
     exit(-1);
   }
   
-  /*** read input file into a deck ***/
+  // read input file into a deck
   read_deck(&deck, input_fp);
   
-  /*** and then parse what we read into the cards ***/
+  // and then parse what we read into the card
   parse_deck(&deck, &import_errors);
   
+  // TESTING: print any fille errors
   for(int i = 0; i < import_errors.num_errors; i++) {
     printf("%s\n", import_errors.errors[i].message);
   }
   
+  // run basic sanity checks on the structure
   test_deck_structure(&deck, &test_errors);
+  
+  // TESTING: print any structure errors
   for(int i = 0; i < test_errors.num_errors; i++) {
     printf("%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
   }
   
-    for(int i = 0; i < deck.num_cards; i++) {
-      printf("%d %s\n", i, deck.cards[i].orig_str);
-      printf("%d %s\n", i, deck.cards[i].card_str);
-      printf("%d %s\n", i, deck.cards[i].extn_str);
-      printf("%d %s\n", i, deck.cards[i].comment);
-    }
-  
-  // write it
+  // TESTING: write it back out
   write_deck_onec(&deck, output_fp);
   
   return 0;
