@@ -165,8 +165,8 @@ typedef struct
 /*** Deck encapsulates a single deck of cards ***/
 typedef struct
 {
-  int num_cards;      // total number of cards read in, including any trailing lines
   Card *cards;        // array of cards
+  int num_cards;      // total number of cards read in, including any trailing lines
   int comment_start;  // card number of the start of the comments section, normally 0. -1 if there are no CM or CE cards
   int comment_end;    // card number of the last continuous CM card, or the CE card if present. -1 if there are no CM or CE cards
   int geometry_start; // card number of the first geometry card, which definitely should exist. -1 if not found
@@ -197,7 +197,7 @@ typedef struct
 * A given deck will have only one data_t object at a given time.
 * This is populated by parsing the geometry section of the deck, and
 * can be used in external programs to build 3D models and similar
-* tasks.
+* tasks. It only has to be recalculated if the geometry changes.
 */
 typedef struct
 {
