@@ -22,7 +22,7 @@
 /******************************************************************************
  * new_card
  *
- * creates and returns a new empty Card
+ * Creates and returns a new empty Card.
  *
  * calloc'ing a card will set it up as wanted, but we'll use this explicit
  * constructor mostly as a form of documentation and possible future changes.
@@ -71,13 +71,65 @@ void free_card(Card *card) {
 }
 
 /******************************************************************************
+ * recalculate_sections
+ *
+ * Loops over the deck and finds the start and end of the various sections
+ * like comments and geometry.
+ *
+ * @param deck the Deck to recalculate
+ *
+ */
+void recalculate_sections(Deck *deck)
+{
+  Card *card;
+  
+  // reset the indexes
+  deck->comment_start = -1;
+  deck->comment_end = -1;
+  deck->geometry_start = -1;
+  deck->geometry_end = -1;
+  deck->deck_end = -1;
+
+  // re-calculate the section limits
+  for(int i = 0; i < deck->num_cards; i++) {
+    card = &deck->cards[i];
+    
+    // the logic here is pretty simple: get the section this card belongs to,
+    // if we haven't see a card in that section yet then it's the start, but
+    // if we have, keep updating the end until we stop seeing them. that way
+    // things like a missing CE won't cause the _end to be -1
+    bool isCmt = isComment(card);
+    if(isCmt) {
+      if(deck->comment_start == -1)
+        deck->comment_start = i;
+      if(deck->comment_start != -1)
+        deck->comment_end = i;
+      continue;
+    }
+    bool isGeo = isGeometry(card);
+    if(isGeo) {
+      if(deck->geometry_start == -1)
+        deck->geometry_start = i;
+      if(deck->geometry_end != -1)
+        deck->geometry_end = i;
+      continue;
+    }
+    // the oddball is the end, which is only at the EN card
+    if(strcasecmp(card->card_code, "EN") == 0) {
+      deck->deck_end = i;
+    }
+  } /* for loop over cards */
+}
+
+
+/******************************************************************************
  * new_deck
  *
  * creates and returns a new empty Deck
  *
  */
 Deck* new_deck(void) {
-  Deck *deck = calloc(1, sizeof(Card));
+  Deck *deck = (Deck *)calloc(1, sizeof(Deck));
   return deck;
 }
 
@@ -94,14 +146,14 @@ void free_deck(Deck *deck) {
   for(int i = 0; i < deck->num_cards; i++) {
     free_card(&deck->cards[i]);
   }
-  // now the two lists
+  // now the list of symbols/formulas
   KeyValue *head, *temp;
   head = deck->symbols;
   while(head != NULL) {
     temp = head;
     head = head->next;
     free(temp);
-  }
+  } /* while loop over cards */
 }
 
 /******************************************************************************
@@ -112,7 +164,6 @@ void free_deck(Deck *deck) {
  * @param deck the Deck to add a new card to
  * @param card the Card to add
  *
- * TODO: all of these methods need to recalculate geometry_start etc.
  */
 int append_card(Deck *deck, Card *card) {
   // calloc/realloc the deck and add this card to it
@@ -126,6 +177,13 @@ int append_card(Deck *deck, Card *card) {
   }
   deck->cards[deck->num_cards - 1] = *card;
   
+  // appending a card changes the deck and requires a recalc of that section
+  // so we need to make the card edited so this will be noticed
+  card->edited = TRUE;
+
+  // refresh the deck layout
+  recalculate_sections(deck);
+
   return 0; // no error for now
 }
 
@@ -160,6 +218,13 @@ int insert_card(Deck *deck, Card *card, int location) {
   
   // then insert the new one
   deck->cards[location] = *card;
+  
+  // appending a card changes the deck and requires a recalc of that section
+  // so we need to make the card edited so this will be noticed
+  card->edited = TRUE;
+
+  // refresh the deck layout
+  recalculate_sections(deck);
 
   // and we're good to go
   return 0;
@@ -190,6 +255,9 @@ int remove_card(Deck *deck, int location) {
   
   // free the card
   free_card(&temp);
+  
+  // refresh the deck layout
+  recalculate_sections(deck);
   
   // and we're good to go
   return 0;
@@ -309,11 +377,11 @@ int min_int_fields(Card* card)
   // GE has zero minimum fields
   if(strcasecmp(card->card_code, "GE")) return 0; // the ground type is optional
   if(strcasecmp(card->card_code, "GF")) return 0; // there is an option to print extra data
+  if(strcasecmp(card->card_code, "GC")) return 0; // tapers use I's from previous GW
+  // SP/SC uses only one int or none, but it's in position 2, so nothing to do here
 
   // now the default cases
-  if(isComment(card)) {
-    return 0;
-  } else if(isGeometry(card)) {
+  if(isGeometry(card)) {
     return 2;
   } else if (isControl(card)) {
     return 4;
@@ -324,10 +392,12 @@ int min_int_fields(Card* card)
 
 int max_int_fields(Card* card)
 {
+  if(strcasecmp(card->card_code, "GF")) return 1; // there is an option to print extra data
+  if(strcasecmp(card->card_code, "GC")) return 0; // tapers use I's from previous GW
+  // SP/SC uses only one int or none, but it's in position 2, so nothing to do here
+
   // now the default cases
-  if(isComment(card)) {
-    return 0;
-  } else if(isGeometry(card)) {
+  if(isGeometry(card)) {
     return 2;
   } else if (isControl(card)) {
     return 4;
@@ -340,13 +410,18 @@ int min_flt_fields(Card* card)
 {
   // these are taken from the NEC-2 dox unless noted otherwise
   // the dox indicate optional parameters with () around the name
-  if(strcasecmp(card->card_code, "GA")) return 4;
-  if(strcasecmp(card->card_code, "GE")) return 0;
+  if(strcasecmp(card->card_code, "GA")) return 4; // arcs have four inputs
+  if(strcasecmp(card->card_code, "GE")) return 0; // no floats
+  if(strcasecmp(card->card_code, "GR")) return 0; // no floats
+  if(strcasecmp(card->card_code, "GS")) return 1; // scale
+  if(strcasecmp(card->card_code, "GC")) return 0; // tapers have three inputs
+  if(strcasecmp(card->card_code, "GX")) return 0; // uses only the ints
+  if(strcasecmp(card->card_code, "SP")) return 6; // last field unused
+  if(strcasecmp(card->card_code, "SM")) return 6; // last field unused
+  if(strcasecmp(card->card_code, "SC")) return 6; // this might only be three if it follows SM, but filled with zeros
 
   // now the default cases
-  if(isComment(card)) {
-    return 0;
-  } else if(isGeometry(card)) {
+  if(isGeometry(card)) {
     return 7;
   } else if (isControl(card)) {
     return 4;
@@ -357,16 +432,44 @@ int min_flt_fields(Card* card)
 
 int max_flt_fields(Card* card)
 {
+  if(strcasecmp(card->card_code, "GA")) return 4; // arcs have four inputs
+  if(strcasecmp(card->card_code, "GE")) return 0; // no floats
+  if(strcasecmp(card->card_code, "GR")) return 0; // no floats
+  if(strcasecmp(card->card_code, "GS")) return 1; // scale
+  if(strcasecmp(card->card_code, "GC")) return 0; // tapers have three inputs
+  if(strcasecmp(card->card_code, "GX")) return 0; // uses only the ints
+  if(strcasecmp(card->card_code, "SP")) return 6; // last field unused
+  if(strcasecmp(card->card_code, "SC")) return 6; // even in the three-used case, zeros are used
+
   // now the default cases
-  if(isComment(card)) {
-    return 0;
-  } else if(isGeometry(card)) {
+  if(isGeometry(card)) {
     return 7;
   } else if (isControl(card)) {
     return 6;
   } else {
     return 0; // need to check this!
   }
+}
+
+/******************************************************************************
+ * isGeometryEdited
+ *
+ * isGeometryEdited loops through the geometry section of the deck and looks
+ * for any new or edited card, which means we need to re-run the geometry
+ * creation code. It's the only section that needs this, there's nothing
+ * to recalculate for the comments, and the command section
+ *
+ */
+bool isGeometryEdited(Deck *deck)
+{
+  bool isEdited = FALSE;
+  for(int i = deck->geometry_start; i < deck->geometry_end; i++) {
+    if(deck->cards[i].edited) {
+      isEdited = TRUE;
+      break;
+    }
+  }
+  return isEdited;
 }
 
 /******************************************************************************
