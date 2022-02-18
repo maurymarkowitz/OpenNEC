@@ -63,6 +63,8 @@ void test_deck_structure(Deck *deck, Errors *errors)
   // as a result, this code demands a minimum deck of five cards,
   // one comment, two geometry cards, an FX, and a EX.
   //
+  // TODO: do you need an EX? what about transmission?
+  //
   // there are also a number of additional tests performed
   // below for other issues like duplicates of cards that should
   // only exist once, cards in the wrong section of the deck, and
@@ -103,7 +105,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
       if(sawGS == FALSE) {
         sawGS = i;
       } else {
-        sprintf(msg, "Card %d is a GS, but we already saw one on card %d. No single measurement type can be defined.", i, sawGS + 1);
+        sprintf(msg, "The card on line %d is a GS, but we already saw one on card %d. No single measurement type can be defined.", i, sawGS + 1);
         add_error(errors, msg, 0);  // this will calculate fine, so this is mearly a warning
       }
     }
@@ -112,7 +114,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
       if(sawCE == FALSE) {
         sawCE = i;
       } else {
-        sprintf(msg, "Card %d is a CE, but we already saw one on card %d.", i, sawCE + 1);
+        sprintf(msg, "The card on line %d is a CE, but we already saw one on card %d.", i, sawCE + 1);
         add_error(errors, msg, 0);
       }
     }
@@ -121,7 +123,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
         sawGE = i;
         GEType = deck->cards[i].i[1];
       } else {
-        sprintf(msg, "Card %d is a GE, but we already saw one on card %d.", i, sawGE + 1);
+        sprintf(msg, "The card on line %d is a GE, but we already saw one on card %d.", i, sawGE + 1);
         add_error(errors, msg, 0);
       }
     }
@@ -129,7 +131,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
       if(sawEN == FALSE) {
         sawEN = i;
       } else {
-        sprintf(msg, "Card %d is an EN, but we already saw one on card %d.", i, sawEN + 1);
+        sprintf(msg, "The card on line %d is an EN, but we already saw one on card %d.", i, sawEN + 1);
         add_error(errors, msg, 0);
       }
     }
@@ -141,7 +143,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
       if(sawGF == FALSE) {
         sawGF = i;
       } else {
-        sprintf(msg, "Card %d is an GF, but we already saw one on card %d.", i, sawGF + 1);
+        sprintf(msg, "The card on line %d is a GF, but we already saw one on card %d.", i, sawGF + 1);
         add_error(errors, msg, 0);
       }
     }
@@ -149,7 +151,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
       if(sawFR == FALSE) {
         sawFR = i;
       } else {
-        sprintf(msg, "Card %d is an FR, but we already saw one on card %d.", i, sawFR + 1);
+        sprintf(msg, "The card on line %d is an FR, but we already saw one on card %d.", i, sawFR + 1);
         add_error(errors, msg, 0);
       }
     }
@@ -188,7 +190,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
 
     // geometry cards are a little harder because there are many of them
     for(int j = 0; j < NUM_GEOMETRY_CODES; j++) {
-      if(strcmp(code, geometry_codes[j]) == 0 && !strcmp(code, "GE")) {
+      if(strcmp(code, geometry_codes[j]) == 0 && strcmp(code, "GE") != 0) {
         if(sawGx == FALSE) {
           sawGx = i;
           break;
@@ -196,7 +198,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
         // there's no else in this case, multiple Gx cards are fine, however
         // we do have a potential problem when we find Gx cards after a GE
         if(sawGx > 0 && sawGE > 0) {
-          sprintf(msg, "Card %d has geometry code %s, but we already saw the GE on card %d.", i, code, sawGE + 1);
+          sprintf(msg, "The card on line %d has geometry code %s, but we already saw the GE on card %d.", i, code, sawGE + 1);
           add_error(errors, msg, 1);
         }
       }
@@ -211,38 +213,50 @@ void test_deck_structure(Deck *deck, Errors *errors)
     // now we look for card pairs, where one card has to follow another
     
     // GC cards have to follow GW cards
-    if(strcmp(code, "GC") && !strcmp(last_code, "GW")) {
-      sprintf(msg, "The card on line %d is a GC, but the line above it is not a GW.", i);
+    if(strcmp(code, "GC") == 0 && strcmp(last_code, "GW") != 0) {
+      sprintf(msg, "The card on line %d is a GC, but the line above it is not a GW.", i + 1);
+      add_error(errors, msg, 1);
+    }
+    
+    // GW cards with zero radius have to have a GC after it
+    if(strcmp(code, "GW") == 0 && deck->cards[i].f[7] == 0.0 && strcmp(deck->cards[i+1].card_code, "GC") != 0) {
+      sprintf(msg, "The card on line %d is a GW with a zero radius, but the line after it is not a GC.", i + 1);
       add_error(errors, msg, 1);
     }
     
     // GD cards have to follow GN cards
-    if(strcmp(code, "GD") && !strcmp(last_code, "GN")) {
-      sprintf(msg, "The card on line %d is a GD, but the line above it is not a GN.", i);
+    if(strcmp(code, "GD") == 0 && !strcmp(last_code, "GN")) {
+      sprintf(msg, "The card on line %d is a GD, but the line above it is not a GN.", i + 1);
       add_error(errors, msg, 1);
     }
     
-    // GF cards have to be the first item in the geometry section,
-    // which means they must follow CE cards, or in an onec deck, an SY
+    // GF cards have to be the first item in the geometry section, which
+    // means they must follow CE cards, or in an onec deck, an SY
     // FIXME: it could also follow onec comment cards, so this is somewhat complex
-    if(strcmp(code, "GF") && !(strcmp(last_code, "CE") || strcmp(last_code, "SY"))) {
-      sprintf(msg, "The card on line %d is a GF, but the line above it is not a CE or SY.", i);
+    if(strcmp(code, "GF") == 0 && !(strcmp(last_code, "CE") == 0 || strcmp(last_code, "SY") == 0)) {
+      sprintf(msg, "The card on line %d is a GF, but the line above it is not a CE or SY.", i + 1);
       add_error(errors, msg, 1);
     }
 
     // SC cards have to follow an SP or SM, or another SC. this is not an exhaustive
     // test, it should really roll backward until it finds an SP or SM, but...
-    if(strcmp(code, "SC") && !(strcmp(last_code, "SP") || strcmp(last_code, "SM") || strcmp(last_code, "SC"))) {
-      sprintf(msg, "The card on line %d is an SC, but the line above it is not an SP, SM or another SC.", i);
+    if(strcmp(code, "SC") == 0 && !(strcmp(last_code, "SP") || strcmp(last_code, "SM") || strcmp(last_code, "SC"))) {
+      sprintf(msg, "The card on line %d is an SC, but the line above it is not an SP, SM or another SC.", i + 1);
       add_error(errors, msg, 1);
     }
     // SM cards *must* be followed by a SC
     if(strcmp(last_code, "SM") && !strcmp(code, "SC")) {
-      sprintf(msg, "The card on line %d is an SM, but the line after it is not an SC.", i - 1);
+      sprintf(msg, "The card on line %d is an SM, but the line after it is not an SC.", i);
       add_error(errors, msg, 1);
     }
     
     // QUESTION: it appears GR cards have to follow some other sort of geometry card, but it's not clear what
+    
+    // FR cards have to have either one input or three
+    if(strcmp(code, "SC") == 0) {
+      sprintf(msg, "The card on line %d is an SM, but the line after it is not an SC.", i);
+      add_error(errors, msg, 1);
+    }
 
     //TODO: modifiers have to follow normal geometry, not another modifier or some other card
     //      if (["GM", "GR", "GX"] && !["GA", "GH", "GW", "SP", "CW"].contains(lastCard)) {
@@ -327,6 +341,7 @@ void test_duplicate_tags(Deck *deck, Errors *errors)
 
 
 // TODO: MISSING TESTS
+// test FR so that i1=1 means i2<>0 and f2<>0
 // LDs and/or EXs should not be at open ends of wires
 // look for SY formulas that override system-wide items like mm or awg
 //   but overriding user-entered system variables is ok but should warn
@@ -339,6 +354,7 @@ void test_duplicate_tags(Deck *deck, Errors *errors)
 // look for wires that extend into the ground
 // 4nec2 warns if parallel wires closer than 0.05 waves have different segmentation
 // segment length > .0001 WL in all cases
+// NEC2 dox part 2 page 30 says wavelenth ~=0.1 or 0.05 in critical sections
 // check for segment length is greater than 0.1 wavelengths, which NEC-4 says lead to bad results
 //    more generally:
 //    len < WL/10 in most cases
