@@ -22,9 +22,9 @@ void cabc(complex double *curx)
   double ar, ai, sh;
   complex double  curd, cs1, cs2;
 
-  if( data.n != 0)
+  if( geometry.n != 0)
   {
-	for( i = 0; i < data.n; i++ )
+	for( i = 0; i < geometry.n; i++ )
 	{
 	  crnt.air[i]=0.;
 	  crnt.aii[i]=0.;
@@ -34,7 +34,7 @@ void cabc(complex double *curx)
 	  crnt.cii[i]=0.;
 	}
 
-	for( i = 0; i < data.n; i++ )
+	for( i = 0; i < geometry.n; i++ )
 	{
 	  ar= creal( curx[i]);
 	  ai= cimag( curx[i]);
@@ -58,14 +58,14 @@ void cabc(complex double *curx)
 	  for( is = 0; is < vsorc.nqds; is++ )
 	  {
 		i= vsorc.iqds[is]-1;
-		jx= data.icon1[i];
-		data.icon1[i]=0;
+		jx= geometry.icon1[i];
+		geometry.icon1[i]=0;
 		tbf(i+1,0);
-		data.icon1[i]= jx;
-		sh= data.si[i]*.5;
-		curd= CCJ* vsorc.vqds[is]/( (log(2.* sh/ data.bi[i])-1.)*
+		geometry.icon1[i]= jx;
+		sh= geometry.si[i]*.5;
+		curd= CCJ* vsorc.vqds[is]/( (log(2.* sh/ geometry.bi[i])-1.)*
 			(segj.bx[segj.jsno-1]* cos(TP* sh)+ segj.cx[segj.jsno-1]*
-			 sin(TP* sh))* data.wlam );
+			 sin(TP* sh))* geometry.wlam );
 		ar= creal( curd);
 		ai= cimag( curd);
 
@@ -84,26 +84,26 @@ void cabc(complex double *curx)
 
 	} /* if( vsorc.nqds != 0) */
 
-	for( i = 0; i < data.n; i++ )
+	for( i = 0; i < geometry.n; i++ )
 	  curx[i]= cmplx( crnt.air[i]+crnt.cir[i], crnt.aii[i]+crnt.cii[i] );
 
   } /* if( n != 0) */
 
-  if( data.m == 0)
+  if( geometry.m == 0)
 	return;
 
   /* convert surface currents from */
   /* t1,t2 components to x,y,z components */
-  jco1= data.np2m;
-  jco2= jco1+ data.m;
-  for( i = 1; i <= data.m; i++ ) {
+  jco1= geometry.np2m;
+  jco2= jco1+ geometry.m;
+  for( i = 1; i <= geometry.m; i++ ) {
     jco1 -= 2;
     jco2 -= 3;
     cs1= curx[jco1];
     cs2= curx[jco1+1];
-    curx[jco2]  = cs1* data.t1x[data.m-i]+ cs2* data.t2x[data.m-i];
-    curx[jco2+1]= cs1* data.t1y[data.m-i]+ cs2* data.t2y[data.m-i];
-    curx[jco2+2]= cs1* data.t1z[data.m-i]+ cs2* data.t2z[data.m-i];
+    curx[jco2]  = cs1* geometry.t1x[geometry.m-i]+ cs2* geometry.t2x[geometry.m-i];
+    curx[jco2+1]= cs1* geometry.t1y[geometry.m-i]+ cs2* geometry.t2y[geometry.m-i];
+    curx[jco2+2]= cs1* geometry.t1z[geometry.m-i]+ cs2* geometry.t2z[geometry.m-i];
   }
 
   return;
@@ -122,7 +122,7 @@ void couple( complex double *cur, double wlam )
   if( (vsorc.nsant != 1) || (vsorc.nvqd != 0) )
 	return;
 
-  j= isegno( yparm.nctag[yparm.icoup], yparm.ncseg[yparm.icoup]);
+  j= segment_number( yparm.nctag[yparm.icoup], yparm.ncseg[yparm.icoup]);
   if( j != vsorc.isant[0] )
 	return;
 
@@ -143,7 +143,7 @@ void couple( complex double *cur, double wlam )
 	mreq = (size_t)l1;
 	mreq *= sizeof( complex double);
 	mem_realloc( (void *)&yparm.y12a, mreq );
-	k= isegno( yparm.nctag[i], yparm.ncseg[i]);
+	k= segment_number( yparm.nctag[i], yparm.ncseg[i]);
 	yparm.y12a[l1-1]= cur[k-1]* wlam/ zin;
   }
 
@@ -166,14 +166,14 @@ void couple( complex double *cur, double wlam )
   {
 	itt1= yparm.nctag[i];
 	its1= yparm.ncseg[i];
-	isg1= isegno( itt1, its1);
+	isg1= segment_number( itt1, its1);
 	l1= i+1;
 
 	for( j = l1; j < yparm.ncoup; j++ )
 	{
 	  itt2= yparm.nctag[j];
 	  its2= yparm.ncseg[j];
-	  isg2= isegno( itt2, its2);
+	  isg2= segment_number( itt2, its2);
 	  j1= j+ i* npm1-1;
 	  j2= i+ j* npm1;
 	  y11= yparm.y11a[i];
@@ -229,82 +229,90 @@ void load( int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
   int i, iwarn, istep, istepx, l1, l2, ldtags, jump, ichk;
   complex double zt=CPLX_00, tpcj;
   size_t mreq;
-  
+
   tpcj = (0.0+I*1.883698955e+9);
   fprintf( output_fp, "\n"
-          "  LOCATION        RESISTANCE  INDUCTANCE  CAPACITANCE   "
-          "  IMPEDANCE (OHMS)   CONDUCTIVITY  CIRCUIT\n"
-          "  ITAG FROM THRU     OHMS       HENRYS      FARADS     "
-          "  REAL     IMAGINARY   MHOS/METER      TYPE" );
-  
+	  "  LOCATION        RESISTANCE  INDUCTANCE  CAPACITANCE   "
+	  "  IMPEDANCE (OHMS)   CONDUCTIVITY  CIRCUIT\n"
+	  "  ITAG FROM THRU     OHMS       HENRYS      FARADS     "
+	  "  REAL     IMAGINARY   MHOS/METER      TYPE" );
+
   /* initialize d array, used for temporary */
   /* storage of loading information. */
-  mreq = (size_t)data.npm;
+  mreq = (size_t)geometry.npm;
   mreq *= sizeof(complex double);
   mem_realloc( (void *)&zload.zarray, mreq );
-  for( i = 0; i < data.n; i++ )
-    zload.zarray[i]=CPLX_00;
-  
+  for( i = 0; i < geometry.n; i++ )
+	zload.zarray[i]=CPLX_00;
+
   iwarn=FALSE;
   istep=0;
-  
+
   /* cycle over loading cards */
-  while( TRUE ) {
-    istepx = istep;
-    istep++;
-    
-    if( istep > zload.nload)  {
-      if( iwarn == TRUE )
-        fprintf( output_fp,
-                "\n  NOTE, SOME OF THE ABOVE SEGMENTS "
-                "HAVE BEEN LOADED TWICE - IMPEDANCES ADDED" );
-      
-      smat.nop = data.n/data.np;
-      if( smat.nop == 1)
-        return;
-      
-      for( i = 0; i < data.np; i++ ) {
-        zt= zload.zarray[i];
-        l1= i;
-        
-        for( l2 = 1; l2 < smat.nop; l2++ )
-        {
-          l1 += data.np;
-          zload.zarray[l1]= zt;
-        }
-      }
-      return;
-      
-    } /* if( istep > zload.nload) */
-    
-    if( ldtyp[istepx] > 5 )
-    {
-      fprintf( output_fp,
-              "\n  IMPROPER LOAD TYPE CHOSEN,"
-              " REQUESTED TYPE IS %d", ldtyp[istepx] );
-      stop(-1);
-    }
-    
-    /* search segments for proper itags */
-    ldtags= ldtag[istepx];
-    jump= ldtyp[istepx]+1;
-    ichk=0;
-    l1= 1;
-    l2= data.n;
-    
-    if( ldtags == 0) {
-      if( (ldtagf[istepx] != 0) || (ldtagt[istepx] != 0) ) {
-        l1= ldtagf[istepx];
-        l2= ldtagt[istepx];
-      } /* if( (ldtagf[istepx] != 0) || (ldtagt[istepx] != 0) ) */
-    } /* if( ldtags == 0) */
-    
-    for( i = l1-1; i < l2; i++ ) {
-      if( ldtags != 0) {
-        if( ldtags != data.itag[i])
+  while( TRUE )
+  {
+	istepx = istep;
+	istep++;
+
+	if( istep > zload.nload)
+	{
+	  if( iwarn == TRUE )
+		fprintf( output_fp,
+			"\n  NOTE, SOME OF THE ABOVE SEGMENTS "
+			"HAVE BEEN LOADED TWICE - IMPEDANCES ADDED" );
+
+	  smat.nop = geometry.n/geometry.np;
+	  if( smat.nop == 1)
+		return;
+
+	  for( i = 0; i < geometry.np; i++ )
+	  {
+		zt= zload.zarray[i];
+		l1= i;
+
+		for( l2 = 1; l2 < smat.nop; l2++ )
+		{
+		  l1 += geometry.np;
+		  zload.zarray[l1]= zt;
+		}
+	  }
+	  return;
+
+	} /* if( istep > zload.nload) */
+
+	if( ldtyp[istepx] > 5 )
+	{
+	  fprintf( output_fp,
+		  "\n  IMPROPER LOAD TYPE CHOSEN,"
+		  " REQUESTED TYPE IS %d", ldtyp[istepx] );
+	  stop(-1);
+	}
+
+	/* search segments for proper itags */
+	ldtags= ldtag[istepx];
+	jump= ldtyp[istepx]+1;
+	ichk=0;
+	l1= 1;
+	l2= geometry.n;
+
+	if( ldtags == 0)
+	{
+	  if( (ldtagf[istepx] != 0) || (ldtagt[istepx] != 0) )
+	  {
+		l1= ldtagf[istepx];
+		l2= ldtagt[istepx];
+
+	  } /* if( (ldtagf[istepx] != 0) || (ldtagt[istepx] != 0) ) */
+
+	} /* if( ldtags == 0) */
+
+    for(i = l1-1; i < l2; i++) {
+      if(ldtags != 0) {
+        if( ldtags != geometry.tag_nums[i])
           continue;
         
-        if( ldtagf[istepx] != 0) {
+        if( ldtagf[istepx] != 0)
+        {
           ichk++;
           if( (ichk < ldtagf[istepx]) || (ichk > ldtagt[istepx]) )
             continue;
@@ -320,41 +328,41 @@ void load( int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
       /* jump to appropriate section for loading type */
       switch( jump ) {
         case 1:
-          zt= zlr[istepx]/ data.si[i]+ tpcj* zli[istepx]/( data.si[i]* data.wlam);
+          zt= zlr[istepx]/ geometry.si[i]+ tpcj* zli[istepx]/( geometry.si[i]* geometry.wlam);
           if( fabs( zlc[istepx]) > 1.0e-20)
-            zt += data.wlam/( tpcj* data.si[i]* zlc[istepx]);
+            zt += geometry.wlam/( tpcj* geometry.si[i]* zlc[istepx]);
           break;
           
         case 2:
-          zt= tpcj* data.si[i]* zlc[istepx]/ data.wlam;
+          zt= tpcj* geometry.si[i]* zlc[istepx]/ geometry.wlam;
           if( fabs( zli[istepx]) > 1.0e-20)
-            zt += data.si[i]* data.wlam/( tpcj* zli[istepx]);
+            zt += geometry.si[i]* geometry.wlam/( tpcj* zli[istepx]);
           if( fabs( zlr[istepx]) > 1.0e-20)
-            zt += data.si[i]/ zlr[istepx];
+            zt += geometry.si[i]/ zlr[istepx];
           zt=1./ zt;
           break;
           
         case 3:
-          zt= zlr[istepx]* data.wlam+ tpcj* zli[istepx];
+          zt= zlr[istepx]* geometry.wlam+ tpcj* zli[istepx];
           if( fabs( zlc[istepx]) > 1.0e-20)
-            zt += 1./( tpcj* data.si[i]* data.si[i]* zlc[istepx]);
+            zt += 1./( tpcj* geometry.si[i]* geometry.si[i]* zlc[istepx]);
           break;
           
         case 4:
-          zt= tpcj* data.si[i]* data.si[i]* zlc[istepx];
+          zt= tpcj* geometry.si[i]* geometry.si[i]* zlc[istepx];
           if( fabs( zli[istepx]) > 1.0e-20)
             zt += 1./( tpcj* zli[istepx]);
           if( fabs( zlr[istepx]) > 1.0e-20)
-            zt += 1./( zlr[istepx]* data.wlam);
+            zt += 1./( zlr[istepx]* geometry.wlam);
           zt=1./ zt;
           break;
           
         case 5:
-          zt= cmplx( zlr[istepx], zli[istepx])/ data.si[i];
+          zt= cmplx( zlr[istepx], zli[istepx])/ geometry.si[i];
           break;
           
         case 6:
-          zint( zlr[istepx]* data.wlam, data.bi[i], &zt );
+          zint( zlr[istepx]* geometry.wlam, geometry.bi[i], &zt );
           
       } /* switch( jump ) */
       
@@ -363,48 +371,50 @@ void load( int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
       zload.zarray[i] += zt;
       
     } /* for( i = l1-1; i < l2; i++ ) */
-    
-    if( ichk == 0 ) {
-      fprintf( output_fp,
-              "\n  LOADING DATA CARD ERROR,"
-              " NO SEGMENT HAS AN ITAG = %d", ldtags );
-      stop(-1);
-    }
-    
-    /* printing the segment loading data, jump to proper print */
-    switch( jump ) {
-      case 1:
-        prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-             zli[istepx], zlc[istepx],0.,0.,0.," SERIES ", 2);
-        break;
-        
-      case 2:
-        prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-             zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL",2);
-        break;
-        
-      case 3:
-        prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-             zli[istepx], zlc[istepx],0.,0.,0., "SERIES (PER METER)", 5);
-        break;
-        
-      case 4:
-        prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-             zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL (PER METER)",5);
-        break;
-        
-      case 5:
-        prnt( ldtags, ldtagf[istepx], ldtagt[istepx],0.,0.,0.,
-             zlr[istepx], zli[istepx],0.,"FIXED IMPEDANCE ",4);
-        break;
-        
-      case 6:
-        prnt( ldtags, ldtagf[istepx], ldtagt[istepx],
-             0.,0.,0.,0.,0., zlr[istepx],"  WIRE  ",2);
-        
-    } /* switch( jump ) */
+
+	if( ichk == 0 )
+	{
+	  fprintf( output_fp,
+		  "\n  LOADING DATA CARD ERROR,"
+		  " NO SEGMENT HAS AN ITAG = %d", ldtags );
+	  stop(-1);
+	}
+
+	/* printing the segment loading data, jump to proper print */
+	switch( jump )
+	{
+	  case 1:
+		prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+			zli[istepx], zlc[istepx],0.,0.,0.," SERIES ", 2);
+		break;
+
+	  case 2:
+		prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+			zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL",2);
+		break;
+
+	  case 3:
+		prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+			zli[istepx], zlc[istepx],0.,0.,0., "SERIES (PER METER)", 5);
+		break;
+
+	  case 4:
+		prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+			zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL (PER METER)",5);
+		break;
+
+	  case 5:
+		prnt( ldtags, ldtagf[istepx], ldtagt[istepx],0.,0.,0.,
+			zlr[istepx], zli[istepx],0.,"FIXED IMPEDANCE ",4);
+		break;
+
+	  case 6:
+		prnt( ldtags, ldtagf[istepx], ldtagt[istepx],
+			0.,0.,0.,0.,0., zlr[istepx],"  WIRE  ",2);
+
+	} /* switch( jump ) */
   } /* while( TRUE ) */
-} /* load */
+} /* while( TRUE ) */ 
 
 /*-----------------------------------------------------------------------*/
 
@@ -859,7 +869,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
   pp=0.;
   ix=i-1;
 
-  jcox= data.icon1[ix];
+  jcox= geometry.icon1[ix];
   if( jcox > PCHCON) jcox= i;
 
   jend=-1;
@@ -880,7 +890,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
 	  jcoxx = jcox-1;
 
 	  jsno++;
-	  d= PI* data.si[jcoxx];
+	  d= PI* geometry.si[jcoxx];
 	  sdh= sin( d);
 	  cdh= cos( d);
 	  sd=2.* sdh* cdh;
@@ -893,7 +903,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
 	  else
 		omc=1.- cdh* cdh+ sdh* sdh;
 
-	  aj=1./( log(1./( PI* data.bi[jcoxx]))-.577215664);
+	  aj=1./( log(1./( PI* geometry.bi[jcoxx]))-.577215664);
 	  pp -= omc/ sd* aj;
 
 	  if( jcox == is)
@@ -907,9 +917,9 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
 	  if( jcox != i )
 	  {
 		if( jend != 1)
-		  jcox= data.icon1[jcoxx];
+		  jcox= geometry.icon1[jcoxx];
 		else
-		  jcox= data.icon2[jcoxx];
+		  jcox= geometry.icon2[jcoxx];
 
 		if( abs(jcox) != i )
 		{
@@ -937,7 +947,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
 	pp=0.;
 	njun1= jsno;
 
-	jcox= data.icon2[ix];
+	jcox= geometry.icon2[ix];
 	if( jcox > PCHCON) jcox= i;
 
 	jend=1;
@@ -948,7 +958,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
   while( jcox != 0 );
 
   njun2= jsno- njun1;
-  d= PI* data.si[ix];
+  d= PI* geometry.si[ix];
   sdh= sin( d);
   cdh= cos( d);
   sd=2.* sdh* cdh;
@@ -962,7 +972,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
   else
 	omc=1.- cd;
 
-  ap=1./( log(1./( PI* data.bi[ix])) -.577215664);
+  ap=1./( log(1./( PI* geometry.bi[ix])) -.577215664);
   aj= ap;
 
   if( njun1 == 0)
@@ -970,14 +980,14 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
 	if( njun2 == 0)
 	{
 	  *aa =-1.;
-	  qp= PI* data.bi[ix];
+	  qp= PI* geometry.bi[ix];
 	  xxi= qp* qp;
 	  xxi= qp*(1.-.5* xxi)/(1.- xxi);
 	  *cc=1./( cdh- xxi* sdh);
 	  return;
 	}
 
-	qp= PI* data.bi[ix];
+	qp= PI* geometry.bi[ix];
 	xxi= qp* qp;
 	xxi= qp*(1.-.5* xxi)/(1.- xxi);
 	qp=-( omc+ xxi* sd)/( sd*( ap+ xxi* pp)+ cd*( xxi* ap- pp));
@@ -1001,7 +1011,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
 
   if( njun2 == 0)
   {
-	qm= PI* data.bi[ix];
+	qm= PI* geometry.bi[ix];
 	xxi= qm* qm;
 	xxi= qm*(1.-.5* xxi)/(1.- xxi);
 	qm=( omc+ xxi* sd)/( sd*( aj- xxi* pm)+ cd*( pm+ xxi* aj));
@@ -1066,7 +1076,7 @@ void tbf( int i, int icap )
   segj.jsno=0;
   pp=0.;
   ix = i-1;
-  jcox= data.icon1[ix];
+  jcox= geometry.icon1[ix];
 
   if( jcox > PCHCON) jcox= i;
 
@@ -1088,7 +1098,7 @@ void tbf( int i, int icap )
       segj.jsno++;
       jsnox = segj.jsno-1;
       segj.jco[jsnox]= jcox;
-      d= PI* data.si[jcoxx];
+      d= PI* geometry.si[jcoxx];
       sdh= sin( d);
       cdh= cos( d);
       sd=2.* sdh* cdh;
@@ -1101,7 +1111,7 @@ void tbf( int i, int icap )
       else
       omc=1.- cdh* cdh+ sdh* sdh;
 
-      aj=1./( log(1./( PI* data.bi[jcoxx]))-.577215664);
+      aj=1./( log(1./( PI* geometry.bi[jcoxx]))-.577215664);
       pp= pp- omc/ sd* aj;
       segj.ax[jsnox]= aj/ sd* sig;
       segj.bx[jsnox]= aj/(2.* cdh);
@@ -1110,9 +1120,9 @@ void tbf( int i, int icap )
       if( jcox != i)
       {
       if( jend == 1)
-        jcox= data.icon2[jcoxx];
+        jcox= geometry.icon2[jcoxx];
       else
-        jcox= data.icon1[jcoxx];
+        jcox= geometry.icon1[jcoxx];
 
       if( abs(jcox) != i )
       {
@@ -1139,7 +1149,7 @@ void tbf( int i, int icap )
     pp=0.;
     njun1= segj.jsno;
 
-    jcox= data.icon2[ix];
+    jcox= geometry.icon2[ix];
     if( jcox > PCHCON) jcox= i;
 
     jend=1;
@@ -1152,7 +1162,7 @@ void tbf( int i, int icap )
   njun2= segj.jsno- njun1;
   jsnop= segj.jsno;
   segj.jco[jsnop]= i;
-  d= PI* data.si[ix];
+  d= PI* geometry.si[ix];
   sdh= sin( d);
   cdh= cos( d);
   sd=2.* sdh* cdh;
@@ -1166,7 +1176,7 @@ void tbf( int i, int icap )
   else
 	omc=1.- cd;
 
-  ap=1./( log(1./( PI* data.bi[ix]))-.577215664);
+  ap=1./( log(1./( PI* geometry.bi[ix]))-.577215664);
   aj= ap;
 
   if( njun1 == 0)
@@ -1179,7 +1189,7 @@ void tbf( int i, int icap )
 		xxi=0.;
 	  else
 	  {
-		qp= PI* data.bi[ix];
+		qp= PI* geometry.bi[ix];
 		xxi= qp* qp;
 		xxi= qp*(1.-.5* xxi)/(1.- xxi);
 	  }
@@ -1195,7 +1205,7 @@ void tbf( int i, int icap )
 	  xxi=0.;
 	else
 	{
-	  qp= PI* data.bi[ix];
+	  qp= PI* geometry.bi[ix];
 	  xxi= qp* qp;
 	  xxi= qp*(1.-.5* xxi)/(1.- xxi);
 	}
@@ -1224,7 +1234,7 @@ void tbf( int i, int icap )
 	  xxi=0.;
 	else
 	{
-	  qm= PI* data.bi[ix];
+	  qm= PI* geometry.bi[ix];
 	  xxi= qm* qm;
 	  xxi= qm*(1.-.5* xxi)/(1.- xxi);
 	}
@@ -1281,7 +1291,7 @@ void trio( int j )
 
   segj.jsno=0;
   jx = j-1;
-  jcox= data.icon1[jx];
+  jcox= geometry.icon1[jx];
 
   if( jcox <= PCHCON)
   {
@@ -1291,7 +1301,7 @@ void trio( int j )
 
   if( (jcox == 0) || (jcox > PCHCON) )
   {
-	jcox= data.icon2[jx];
+	jcox= geometry.icon2[jx];
 
 	if( jcox <= PCHCON)
 	{
@@ -1356,9 +1366,9 @@ void trio( int j )
 	  segj.jco[jsnox]= jcox;
 
 	  if( jend != 1)
-		jcox= data.icon1[jcoxx];
+		jcox= geometry.icon1[jcoxx];
 	  else
-		jcox= data.icon2[jcoxx];
+		jcox= geometry.icon2[jcoxx];
 
 	  if( jcox == 0 )
 	  {
@@ -1374,7 +1384,7 @@ void trio( int j )
 	if( iend == 1)
 	  break;
 
-	jcox= data.icon2[jx];
+	jcox= geometry.icon2[jx];
 
 	if( jcox > PCHCON ) break;
 
