@@ -45,7 +45,7 @@
 /* card field names, like "I1" of "F4" */
 #ifndef FIELD_NAMES_DEF
 #define FIELD_NAMES_DEF
-#define NUM_FIELD_NAMES 10
+#define NUM_FIELD_NAMES 11
 extern char *field_names[NUM_FIELD_NAMES];
 #endif
 
@@ -65,7 +65,7 @@ extern char *control_codes[NUM_CONTROL_CODES];
 
 #ifndef GEOMETRY_CODES_DEF
 #define GEOMETRY_CODES_DEF
-#define NUM_GEOMETRY_CODES  12
+#define NUM_GEOMETRY_CODES  13
 extern char *geometry_codes[NUM_GEOMETRY_CODES];
 #endif
 
@@ -135,6 +135,13 @@ typedef struct
   int flts_used;      // and floats
   int i[5];           // i1 is normally the tag, etc.
   double f[8];        // geometery and so forth
+  
+  // tags and segments are normally printed as they are calculated,
+  // but onec only does that once, so we'll store them here
+  int tag;
+  int num_segments;
+  int start_segment;
+  int end_segment;
 
   // onec values
   int units[8];           // measurement units on the fields, or 0 for "default"
@@ -156,6 +163,7 @@ typedef struct
 /*** Deck encapsulates a single deck of cards ***/
 typedef struct
 {
+  // input data
   Card *cards;        // array of cards
   int num_cards;      // total number of cards read in, including any trailing lines
   int comment_start;  // card number of the start of the comments section, normally 0. -1 if there are no CM or CE cards
@@ -167,6 +175,9 @@ typedef struct
   int unit_val;       // if there is a single GS, this is the f1 value, otherwise 1
   int unit_typ;       // if there is a single GS, and we recognize the value, put out index here
   KeyValue *symbols;  // any variables read in from SY cards, consisting of name/inital value pairs
+  
+  // calculated bits
+  //geometry_t geometry;  // a deck can have only one geometry, but it might change
 } Deck;
 
 /* common  /crnt/ */
@@ -183,48 +194,51 @@ typedef struct
   complex double *cur; /* Amplitude of basis function */
 } crnt_t;
 
-/* common  /data/ (geometry data) */
-/* Holds segment and patch data for the entire geometry of the deck.
-* A given deck will have only one data_t object at a given time.
-* This is populated by parsing the geometry section of the deck, and
-* can be used in external programs to build 3D models and similar
-* tasks. It only has to be recalculated if the geometry changes.
-*/
-typedef struct
+/** common  /geometry/ (geometry data)
+ * Holds segment and patch data for the entire geometry of the deck.
+ * A given deck will have only one geometry_t object at a given time.
+ * This is populated by parsing the geometry section of the deck, and
+ * can be used in external programs to build 3D models and similar
+ * tasks. It only has to be recalculated if the geometry changes,
+ * although that might occur as part of an optimization loop.
+ */
+typedef struct geometry_t
 {
 	int
-		n,		  /* Number of wire segments */
-		np,		  /* Number of wire segments in symmetry cell */
-		m,		  /* Number of surface patches */
-		mp,		  /* Number of surface patches in symmetry cell */
-		npm,	  /* = n+m  */
-		np2m,	  /* = n+2m */
-		np3m,	  /* = n+3m */
-		ipsym,	/* Symmetry flag */
-		*icon1, /* Segments end 1 connection */
-		*icon2,	/* Segments end 2 connection */
-		*itag;	/* Segments tag number */
-
+		n,		      // Number of wire segments in total
+		np,		      // Number of wire segments in symmetry cell
+		m,		      // Number of surface patches
+		mp,		      // Number of surface patches in symmetry cell
+		npm,	      // = n+m
+  // FIXME: these two are used only during mallocs and don't seem to be needed
+		np2m,	      // = n+2m
+		np3m,	      // = n+3m
+		ipsym,	    // Symmetry flag
+		*icon1,     // Segments end 1 connection
+		*icon2,	    // Segments end 2 connection
+		*tag_nums,	// Segment's tag number, which may be zero
+    *card_nums; // which card number generated this bit, never zero
+  
 	double
-    /* Wire segment data */
-    *x1, *y1, *z1,	/* End 1 coordinates of wire segments */
-		*x2, *y2, *z2,	/* End 2 coordinates of wire segments */
-		*x, *y, *z,		  /* Coordinates of segment centers */
-		*si, *bi,		    /* Length and radius of segments  */
-		*cab,			      /* cos(a)*cos(b) */
-		*sab,			      /* cos(a)*sin(b) */
-		*salp,			    /* Z component - sin(a) */
+    // Wire segment data
+    *x1, *y1, *z1,	// End 1 coordinates of wire segments
+		*x2, *y2, *z2,	// End 2 coordinates of wire segments
+		*x, *y, *z,		  // Coordinates of segment centers
+		*si, *bi,		    // Length and radius of segments
+		*cab,			      // cos(a)*cos(b)
+		*sab,			      // cos(a)*sin(b)
+		*salp,			    // Z component - sin(a)
 
-    /* Surface patch data */
-		*px, *py, *pz,		/* Coordinates of patch center */
-		*t1x, *t1y, *t1z,	/* Coordinates of t1 vector */
-		*t2x, *t2y, *t2z,	/* Coordinates of t2 vector */
-		*pbi,				      /* Patch surface area */
-		*psalp,				    /* Z component - sin(a) */
+    // Surface patch data
+		*px, *py, *pz,		// Coordinates of patch center
+		*t1x, *t1y, *t1z,	// Coordinates of t1 vector
+		*t2x, *t2y, *t2z,	// Coordinates of t2 vector
+		*pbi,				      // Patch surface area
+		*psalp,				    // Z component - sin(a)
   
     /* Wavelength in meters */
     wlam;
-} data_t;
+} geometry_t;
 
 /* common  /dataj/ */
 typedef struct

@@ -1,14 +1,18 @@
-/*******************************************************************
+/******************************************************************************
  * types.c
  *
  * types.c defines the various enums
  *
- *******************************************************************/
+ *****************************************************************************/
  
 #include "types.h"
 
+// NOTE: ordering of these lists is important! they are used in
+//       various places to convert the code back to a number for
+//       a switch statement
+
 char *field_names[NUM_FIELD_NAMES] = {
-  "I1", "I2", "I3", "I4", "F1", "F2", "F3", "F4", "F5", "F6"
+  "I1", "I2", "I3", "I4", "F1", "F2", "F3", "F4", "F5", "F6", "F7"
 };
 
 // MSM 2022-02-12 "#" turning off hash for now until we actually find it somehere
@@ -23,13 +27,15 @@ char *control_codes[NUM_CONTROL_CODES] = {
   "EN", "WG"
 };
 
-// note that the continuation cards like GC are not here, but SC is,
-// this is because you can have multiple SC's in a row so they need
-// to show up in the list
-// FIXME: they don't, the SP handler should read forward until it finds all the SCs
+// this list is from the original nec2c but has been expanded with
+// some that nec2c left off. The original code didn't need something
+// like GC because it only follow a GW, so instead of decoding the
+// code into a number and handling it, it triggered the decode right
+// in the GW section. In this code the reading and decoding is separate
+// so we need every code in here somewhere.
 char *geometry_codes[NUM_GEOMETRY_CODES] = {
   "GW", "GX", "GR", "GS", "GE", "GM", \
-  "SP", "SM", "GA", "SC", "GH", "GF"
+  "SP", "SM", "GA", "SC", "GH", "GF", "GC"
 };
 
 // XT = "eXiT"     - from nec2c
@@ -51,4 +57,3 @@ char *unit_codes[NUM_ONEC_UNIT_CODES] = {
 double unit_mult[NUM_ONEC_UNIT_CODES] = {
   0, 1.0, 0.01, 0.001, 0.30480, 0.0254, 0, 0, 0
 };
-
