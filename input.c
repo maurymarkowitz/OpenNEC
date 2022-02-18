@@ -269,12 +269,12 @@ void parse_deck(Deck *deck, Errors *errors)
     // have NOT seen a CE or any Gx card, then this appears to be the
     // start of the comment section. but it's not if we've seen anything
     // else, like geometry.
-    if(strcasecmp(type_buff, "CM") == 0 && !sawCM && !sawCE && !sawGx && !sawGE && !sawEN) {
+    if(strcmp(type_buff, "CM") == 0 && !sawCM && !sawCE && !sawGx && !sawGE && !sawEN) {
       deck->comment_start = i;
       sawCM = TRUE;
     }
     // the CE case is similar, it has to be above any geometry
-    if(strcasecmp(type_buff, "CE") == 0 && !sawCE && !sawGx && !sawGE && !sawEN) {
+    if(strcmp(type_buff, "CE") == 0 && !sawCE && !sawGx && !sawGE && !sawEN) {
       deck->comment_end = i;
       sawCE = TRUE;
     }
@@ -284,12 +284,12 @@ void parse_deck(Deck *deck, Errors *errors)
       sawGx = TRUE;
     }
     // the GE just has to be above the end of the deck
-    if(strcasecmp(type_buff, "GE") == 0 && !sawGE && !sawEN) {
+    if(strcmp(type_buff, "GE") == 0 && !sawGE && !sawEN) {
       deck->geometry_end = i;
       sawGE = TRUE;
     }
     // and finally, the first EN that we see
-    if(strcasecmp(type_buff, "EN") == 0) {
+    if(strcmp(type_buff, "EN") == 0) {
       deck->deck_end = i;
       sawEN = TRUE;
     }
@@ -304,9 +304,9 @@ void parse_deck(Deck *deck, Errors *errors)
     if(isCmt && line_len > 3) {
       // skip forward to find anything after the comment marker
       int pos = 0;
-      if(strcasecmp(type_buff, "CM") == 0 || strcasecmp(type_buff, "CE") == 0)  {
+      if(strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0)  {
         pos = 2;
-      } else if (strcasecmp(type_buff, "!") == 0 || strcasecmp(type_buff, "#") == 0|| strcasecmp(type_buff, "'") == 0) {
+      } else if (strcmp(type_buff, "!") == 0 || strcmp(type_buff, "#") == 0|| strcmp(type_buff, "'") == 0) {
         pos = 1;
       } else {
         // how would this even happen?
@@ -322,9 +322,9 @@ void parse_deck(Deck *deck, Errors *errors)
       // get the rest of the string after the comment marker
       
       // get the two characters *after* the comment marker
-      if((strcasecmp(type_buff, "CM") == 0 || strcasecmp(type_buff, "CE") == 0) && line_len > 4) {
+      if((strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0) && line_len > 4) {
         strncpy(hidden_type_buff, &card->orig_str[2], 2);
-      } else if (strcasecmp(type_buff, "!") == 0 || strcasecmp(type_buff, "#") == 0|| strcasecmp(type_buff, "'") == 0) {
+      } else if (strcmp(type_buff, "!") == 0 || strcmp(type_buff, "#") == 0|| strcmp(type_buff, "'") == 0) {
         strncpy(hidden_type_buff, &card->orig_str[1], 2);
       } else {
         // we didn't find anything interesting
@@ -333,7 +333,7 @@ void parse_deck(Deck *deck, Errors *errors)
       // now we see if those two characters are one of the extensions
       bool isHidden = FALSE;
       for(int i = 0; i < NUM_ONEC_CODES; i++) {
-        if(strcasecmp(hidden_type_buff, onec_codes[i]) == 0) { // was card->card_code in the front?
+        if(strcmp(hidden_type_buff, onec_codes[i]) == 0) { // was card->card_code in the front?
           isHidden = TRUE;
           break;
         }
@@ -428,15 +428,15 @@ void parse_comment_card(Card *card, Errors *errors)
   // just copy everything else on the line to the comment. this
   // includes any leading whitespace, or lack of it
   int code_end;
-  if(strcasecmp(card->card_code, "CM") == 0) {
+  if(strcmp(card->card_code, "CM") == 0) {
     code_end = 2;
-  } else if(strcasecmp(card->card_code, "CE") == 0) {
+  } else if(strcmp(card->card_code, "CE") == 0) {
     code_end = 2;
-  } else if(strcasecmp(card->card_code, "!") == 0) {
+  } else if(strcmp(card->card_code, "!") == 0) {
     code_end = 1;
-  } else if(strcasecmp(card->card_code, "#") == 0) {
+  } else if(strcmp(card->card_code, "#") == 0) {
     code_end = 1;
-  } else if(strcasecmp(card->card_code, "\'") == 0) {
+  } else if(strcmp(card->card_code, "\'") == 0) {
     code_end = 1;
   } else {
     code_end = 0; // error case, shouldn't be able to happen
@@ -580,7 +580,7 @@ void parse_geometry_or_command_card(Card *card, Errors *errors)
       // look for a leading # indicating an awg measurement from 4nec2
       // FIXME: this doesn't currently work because we trim off everything after the # above
       if(token[0] == '#') {
-        // see if we can find that code
+        // see if we can find that code (NOTE: case insensitive)
         for(int i = 0; i < NUM_ONEC_UNIT_CODES; i++) {
           if(strcasecmp(unit_code, unit_codes[i]) == 0) {
             unit = i;
@@ -599,7 +599,7 @@ void parse_geometry_or_command_card(Card *card, Errors *errors)
         char *leftover = end_ptr;
         
         if(strlen(leftover) > 0) {
-          // check to see if the leftover is one of our known units
+          // check to see if the leftover is one of our known units (NOTE: case insensitive here!)
           bool isUnit = false;
           for(int i = 0; i < NUM_ONEC_UNIT_CODES; i++) {
             if(strcasecmp(leftover, unit_codes[i]) == 0) {
@@ -663,7 +663,7 @@ void parse_onec_card(Card *card, Errors *errors)
 {
   // see if this is an SY card, otherwise exit
   // TODO: add all onec_codes here, we currently only do SY
-  if(strcasecmp(card->card_code, "SY") == 0) {
+  if(strcmp(card->card_code, "SY") == 0) {
     // make a copy of the string so we can mangle it in strtok
     char str[MAX_LINE_LEN];
     strcpy(str, card->card_str + 2);
@@ -792,7 +792,7 @@ void parse_key_values(Card *card, Errors *errors)
       // now see if it's a formula
       bool isFormula = false;
       for(int i = 0; i < NUM_FIELD_NAMES; i++) {
-        if(strcasestr(key, field_names[i]) != NULL) {
+        if(strcasestr(key, field_names[i]) == 0) {
           isFormula = true;
           break;
         }
