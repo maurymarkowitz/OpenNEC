@@ -42,7 +42,7 @@ void secnds(double *x);
 int stop(int flag);
 void mem_alloc(void **ptr, size_t req);
 void mem_realloc(void **ptr, size_t req);
-void free_ptr(void **ptr);
+void mem_free(void **ptr);
 /* calculations.c */
 void cabc(complex double *curx);
 void couple(complex double *cur, double wlam);
@@ -77,18 +77,18 @@ void nhfld(double xob, double yob, double zob, complex double *hx, complex doubl
 void pcint(double xi, double yi, double zi, double cabi, double sabi, double salpi, complex double *e);
 void unere(double xob, double yob, double zob);
 /* geometry.c */
-int isegno(int itagi, int mx);
+int segment_number(int tag, int m);
 void calculate_geometry(Deck *deck, Errors *errors);
 void connect_segments(int ignd);
-void qdsrc(int is, complex double v, complex double *e);
-void arc(int itg, int ns, double rada, double ang1, double ang2, double rad);
-void helix(double s, double hl, double a1, double b1, double a2, double b2, double rad, int ns, int itg);
+void wire(int card_num, int tag_num, int segs, double xw1, double yw1, double zw1, double xw2, double yw2, double zsw2, double rad, double rdel, double rrad);
+void arc(int card_num, int tag_num, int segs, double rada, double ang1, double ang2, double rad);
+void helix(int card_num, int tag_num, int segs, double s, double hl, double a1, double b1, double a2, double b2, double rad);
 void patch(int nx, int ny, double ax1, double ay1, double az1, double ax2, double ay2, double az2, double ax3, double ay3, double az3, double ax4, double ay4, double az4);
-void wire(double xw1, double yw1, double zw1, double xw2, double yw2, double zsw2, double rad, double rdel, double rrad, int ns, int itg);
 void subph(int nx, int ny);
 void duplicate(double rox, double roy, double roz, double xs, double ys, double zs, int its, int nrpt, int itgi);
 void reflect(int ix, int iy, int iz, int itx, int nop);
 void scale(double xw1);
+void qdsrc(int is, complex double v, complex double *e);
 /* ground.c */
 void rom2(double a, double b, complex double *sum, double dmin);
 void sflds(double t, complex double *e);
