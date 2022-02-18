@@ -160,12 +160,15 @@ int main(int argc, char **argv)
   Deck deck;              // the deck we're processing, we'll make it local as it disappears on exit
   Errors import_errors;   // a list of errors that occured during import
   Errors test_errors;     // a list of errors and warnings about the deck's format
-  
+  Errors geometry_errors; // a list of errors and warnings during the conversion to segments
+
   // empty these out so we can test them easier
   import_errors.num_errors = 0;
   import_errors.errors = NULL;
   test_errors.num_errors = 0;
   test_errors.errors = NULL;
+  geometry_errors.num_errors = 0;
+  geometry_errors.errors = NULL;
 
   // if there are no command line arguments, print usage and exit
   if(argc == 1) {
@@ -202,7 +205,6 @@ int main(int argc, char **argv)
   // open output file
   if((output_fp = fopen(output_file, "w")) == NULL) {
     char mesg[88] = "opennec: ";
-    
     strcat(mesg, output_file );
     perror(mesg);
     exit(-1);
@@ -213,20 +215,28 @@ int main(int argc, char **argv)
   
   // and then parse what we read into the card
   parse_deck(&deck, &import_errors);
-  
-  // TESTING: print any fille errors
+  // TESTING: print any file errors
   for(int i = 0; i < import_errors.num_errors; i++) {
     printf("%s\n", import_errors.errors[i].message);
   }
   
   // run basic sanity checks on the structure
-  test_deck_structure(&deck, &test_errors);
-  
+  if(run_tests)
+    test_deck_structure(&deck, &test_errors);
   // TESTING: print any structure errors
   for(int i = 0; i < test_errors.num_errors; i++) {
     printf("%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
   }
   
+  // run it if we've been asked to
+  if(run_simulation) {
+    calculate_geometry(&deck, &geometry_errors);
+    // now actually perform the run
+  }
+  for(int i = 0; i < geometry_errors.num_errors; i++) {
+    printf("%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
+  }
+
   // TESTING: write it back out
   write_deck_onec(&deck, output_fp);
   
@@ -2068,16 +2078,16 @@ Null_Pointers( void )
   crnt.cir = crnt.cii = NULL;
   crnt.cur = NULL;
 
-  data.x = data.y = data.z = NULL;
-  data.x1 = data.y1 = data.z1 = NULL;
-  data.x2 = data.y2 = data.z2 = NULL;
-  data.si = data.bi = data.sab = NULL;
-  data.cab = data.salp = NULL;
-  data.itag = data.icon1 = data.icon2 = NULL;
-  data.px = data.py = data.pz = NULL;
-  data.t1x = data.t1y = data.t1z = NULL;
-  data.t2x = data.t2y = data.t2z = NULL;
-  data.pbi = data.psalp = NULL;
+  geometry.x = geometry.y = geometry.z = NULL;
+  geometry.x1 = geometry.y1 = geometry.z1 = NULL;
+  geometry.x2 = geometry.y2 = geometry.z2 = NULL;
+  geometry.si = geometry.bi = geometry.sab = NULL;
+  geometry.cab = geometry.salp = NULL;
+  geometry.tag_nums = geometry.icon1 = geometry.icon2 = NULL;
+  geometry.px = geometry.py = geometry.pz = NULL;
+  geometry.t1x = geometry.t1y = geometry.t1z = NULL;
+  geometry.t2x = geometry.t2y = geometry.t2z = NULL;
+  geometry.pbi = geometry.psalp = NULL;
 
   netcx.ntyp = netcx.iseg1 = netcx.iseg2 = NULL;
   netcx.x11r = netcx.x11i = NULL;
