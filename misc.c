@@ -160,12 +160,12 @@ void secnds( double *x)
 int stop( int flag )
 {
   if( input_fp != NULL )
-	fclose( input_fp );
+    fclose( input_fp );
   if( output_fp != NULL )
-	fclose( output_fp );
+    fclose( output_fp );
   if( plot_fp != NULL )
-	fclose( plot_fp );
-
+    fclose( plot_fp );
+  
   exit( flag );
 }
 
@@ -175,7 +175,7 @@ int stop( int flag )
 
 void mem_alloc( void **ptr, size_t req )
 {
-  free_ptr( ptr );
+  mem_free( ptr );
   *ptr = malloc( req );
   if( *ptr == NULL )
 	abort_on_error( -4 );
@@ -194,7 +194,7 @@ void mem_realloc( void **ptr, size_t req )
 
 /*------------------------------------------------------------------------*/
 
-void free_ptr( void **ptr )
+void mem_free( void **ptr )
 {
   if( *ptr != NULL )
 	free( *ptr );
