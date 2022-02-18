@@ -28,7 +28,7 @@ void rom2( double a, double b, complex double *sum, double dmin )
 	stop(-1);
   }
 
-  ep= s/(1.e4* data.npm);
+  ep= s/(1.e4* geometry.npm);
   zend= ze- ep;
 
   for( i = 0; i < n; i++ )
@@ -134,7 +134,7 @@ void rom2( double a, double b, complex double *sum, double dmin )
 	if( tr > rx)
 	{
 	  nt=0;
-	  if( ns < data.npm )
+	  if( ns < geometry.npm )
 	  {
 		ns= ns*2;
 		dz= s/ ns;

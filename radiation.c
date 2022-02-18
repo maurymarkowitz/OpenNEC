@@ -54,7 +54,7 @@ void ffld( double thet, double phi,
   roy= thz* phx;
 
   jump = FALSE;
-  if( data.n != 0)
+  if( geometry.n != 0)
   {
 	/* loop for structure image if any */
 	/* calculation of reflection coeffecients */
@@ -105,10 +105,10 @@ void ffld( double thet, double phi,
 	  ciz=CPLX_00;
 
 	  /* loop over structure segments */
-	  for( i = 0; i < data.n; i++ )
+	  for( i = 0; i < geometry.n; i++ )
 	  {
-		omega=-( rox* data.cab[i]+ roy* data.sab[i]+ roz* data.salp[i]);
-		el= PI* data.si[i];
+		omega=-( rox* geometry.cab[i]+ roy* geometry.sab[i]+ roz* geometry.salp[i]);
+		el= PI* geometry.si[i];
 		sill= omega* el;
 		top= el+ sill;
 		bot= el- sill;
@@ -132,15 +132,15 @@ void ffld( double thet, double phi,
 		c= el*( boo+ too);
 		rr= a* crnt.air[i]+ b* crnt.bii[i]+ c* crnt.cir[i];
 		ri= a* crnt.aii[i]- b* crnt.bir[i]+ c* crnt.cii[i];
-		arg= TP*( data.x[i]* rox+ data.y[i]* roy+ data.z[i]* roz);
+		arg= TP*( geometry.x[i]* rox+ geometry.y[i]* roy+ geometry.z[i]* roz);
 
 		if( (k != 1) || (gnd.ifar < 2) )
 		{
 		  /* summation for far field integral */
 		  exa= cmplx( cos( arg), sin( arg))* cmplx( rr, ri);
-		  cix= cix+ exa* data.cab[i];
-		  ciy= ciy+ exa* data.sab[i];
-		  ciz= ciz+ exa* data.salp[i];
+		  cix= cix+ exa* geometry.cab[i];
+		  ciy= ciy+ exa* geometry.sab[i];
+		  ciz= ciz+ exa* geometry.salp[i];
 		  continue;
 		}
 
@@ -148,9 +148,9 @@ void ffld( double thet, double phi,
 		/* in cliff and ground screen problems */
 
 		/* specular point distance */
-		dr= data.z[i]* tthet;
+		dr= geometry.z[i]* tthet;
 
-		d= dr* phy+ data.x[i];
+		d= dr* phy+ geometry.x[i];
 		if( gnd.ifar == 2)
 		{
 		  if(( gnd.cl- d) > 0.)
@@ -167,7 +167,7 @@ void ffld( double thet, double phi,
 		} /* if( gnd.ifar == 2) */
 		else
 		{
-		  d= sqrt( d*d + (data.y[i]-dr*phx)*(data.y[i]-dr*phx) );
+		  d= sqrt( d*d + (geometry.y[i]-dr*phx)*(geometry.y[i]-dr*phx) );
 		  if( gnd.ifar == 3)
 		  {
 			if(( gnd.cl- d) > 0.)
@@ -204,7 +204,7 @@ void ffld( double thet, double phi,
 			  else
 			  {
 				if( gnd.ifar == 5)
-				  d= dr* phy+ data.x[i];
+				  d= dr* phy+ geometry.x[i];
 
 				if(( gnd.cl- d) > 0.)
 				{
@@ -229,9 +229,9 @@ void ffld( double thet, double phi,
 		/* contribution of each image segment modified by */
 		/* reflection coef, for cliff and ground screen problems */
 		exa= cmplx( cos( arg), sin( arg))* cmplx( rr, ri);
-		tix= exa* data.cab[i];
-		tiy= exa* data.sab[i];
-		tiz= exa* data.salp[i];
+		tix= exa* geometry.cab[i];
+		tiy= exa* geometry.sab[i];
+		tiz= exa* geometry.salp[i];
 		cdp=( tix* phx+ tiy* phy)*( rrh- rrv);
 		cix= cix+ tix* rrv+ cdp* phx;
 		ciy= ciy+ tiy* rrv+ cdp* phy;
@@ -259,7 +259,7 @@ void ffld( double thet, double phi,
 
 	} /* for( k=0; k < gnd.ksymp; k++ ) */
 
-	if( data.m > 0)
+	if( geometry.m > 0)
 	  jump = TRUE;
 	else
 	{
@@ -284,7 +284,7 @@ void ffld( double thet, double phi,
   {
 	rfl= -rfl;
 	rrz= roz* rfl;
-	fflds( rox, roy, rrz, &crnt.cur[data.n], &gx, &gy, &gz);
+	fflds( rox, roy, rrz, &crnt.cur[geometry.n], &gx, &gy, &gz);
 
 	if( ip != 1 )
 	{
@@ -342,17 +342,17 @@ void fflds( double rox, double roy, double roz,
   double arg;
   complex double ct;
 
-  xs = data.px;
-  ys = data.py;
-  zs = data.pz;
-  s = data.pbi;
+  xs = geometry.px;
+  ys = geometry.py;
+  zs = geometry.pz;
+  s = geometry.pbi;
 
   *ex=CPLX_00;
   *ey=CPLX_00;
   *ez=CPLX_00;
 
   i= -1;
-  for( j = 0; j < data.m; j++ )
+  for( j = 0; j < geometry.m; j++ )
   {
 	i++;
 	arg= TP*( rox* xs[i]+ roy* ys[i]+ roz* zs[i]);
@@ -415,13 +415,13 @@ void gfld( double rho, double phi, double rz,
   ciz=CPLX_00;
 
   /* summation of field from individual segments */
-  for( i = 0; i < data.n; i++ )
+  for( i = 0; i < geometry.n; i++ )
   {
-	dx= data.cab[i];
-	dy= data.sab[i];
-	dz= data.salp[i];
-	rix= rx- data.x[i];
-	riy= ry- data.y[i];
+	dx= geometry.cab[i];
+	dy= geometry.sab[i];
+	dz= geometry.salp[i];
+	rix= rx- geometry.x[i];
+	riy= ry- geometry.y[i];
 	rhs= rix* rix+ riy* riy;
 	rhp= sqrt( rhs);
 
@@ -451,7 +451,7 @@ void gfld( double rho, double phi, double rz,
 	  sph= rhy;
 	}
 
-	el= PI* data.si[i];
+	el= PI* geometry.si[i];
 	rfl=-1.;
 
 	/* integration of (current)*(phase factor) over segment and image for */
@@ -459,7 +459,7 @@ void gfld( double rho, double phi, double rz,
 	for( k = 0; k < 2; k++ )
 	{
 	  rfl= -rfl;
-	  riz= rz- data.z[i]* rfl;
+	  riz= rz- geometry.z[i]* rfl;
 	  rxyz= sqrt( rix* rix+ riy* riy+ riz* riz);
 	  rnx= rix/ rxyz;
 	  rny= riy/ rxyz;
@@ -488,7 +488,7 @@ void gfld( double rho, double phi, double rz,
 	  c= el*( boo+ too);
 	  rr= a* crnt.air[i]+ b* crnt.bii[i]+ c* crnt.cir[i];
 	  ri= a* crnt.aii[i]- b* crnt.bir[i]+ c* crnt.cii[i];
-	  arg= TP*( data.x[i]* rnx+ data.y[i]* rny+ data.z[i]* rnz* rfl);
+	  arg= TP*( geometry.x[i]* rnx+ geometry.y[i]* rny+ geometry.z[i]* rnz* rfl);
 	  exa= cmplx( cos( arg), sin( arg))* cmplx( rr, ri)/ TP;
 
 	  if( k != 1 )
@@ -597,9 +597,9 @@ void rdpat( void )
 	  if( (gnd.ifar == 3) || (gnd.ifar == 6) )
 		hclif= "CIRCULAR";
 
-	  gnd.cl= fpat.clt/ data.wlam;
-	  gnd.ch= fpat.cht/ data.wlam;
-	  gnd.zrati2= csqrt(1./ cmplx( fpat.epsr2,- fpat.sig2* data.wlam*59.96));
+	  gnd.cl= fpat.clt/ geometry.wlam;
+	  gnd.ch= fpat.cht/ geometry.wlam;
+	  gnd.zrati2= csqrt(1./ cmplx( fpat.epsr2,- fpat.sig2* geometry.wlam*59.96));
 
 	  fprintf( output_fp, "\n"
 		  "                               "
@@ -644,7 +644,7 @@ void rdpat( void )
 	if( fpat.rfld >= 1.0e-20)
 	{
 	  exrm=1./ fpat.rfld;
-	  exra= fpat.rfld/ data.wlam;
+	  exra= fpat.rfld/ geometry.wlam;
 	  exra=-360.*( exra- floor( exra));
 
 	  fprintf( output_fp, "\n"
@@ -668,7 +668,7 @@ void rdpat( void )
 
   if( (fpat.ixtyp == 0) || (fpat.ixtyp == 5) )
   {
-	gcop= data.wlam* data.wlam*2.* PI/(376.73* fpat.pinr);
+	gcop= geometry.wlam* geometry.wlam*2.* PI/(376.73* fpat.pinr);
 	prad= fpat.pinr- fpat.ploss- fpat.pnlr;
 	gcon= gcop;
 	if( fpat.ipd != 0)
@@ -677,8 +677,8 @@ void rdpat( void )
   else
 	if( fpat.ixtyp == 4)
 	{
-	  fpat.pinr=394.51* fpat.xpr6* fpat.xpr6* data.wlam* data.wlam;
-	  gcop= data.wlam* data.wlam*2.* PI/(376.73* fpat.pinr);
+	  fpat.pinr=394.51* fpat.xpr6* fpat.xpr6* geometry.wlam* geometry.wlam;
+	  gcop= geometry.wlam* geometry.wlam*2.* PI/(376.73* fpat.pinr);
 	  prad= fpat.pinr- fpat.ploss- fpat.pnlr;
 	  gcon= gcop;
 	  if( fpat.ipd != 0)
@@ -714,7 +714,7 @@ void rdpat( void )
 		ffld( tha, pha, &eth, &eph);
 	  else
 	  {
-		gfld( fpat.rfld/data.wlam, pha, thet/data.wlam,
+		gfld( fpat.rfld/geometry.wlam, pha, thet/geometry.wlam,
 			&eth, &eph, &erd, gnd.zrati, gnd.ksymp);
 		erdm= cabs( erd);
 		erda= cang( erd);
@@ -842,8 +842,8 @@ void rdpat( void )
 		  tmp6= gnh;
 		}
 
-		ethm= ethm* data.wlam;
-		ephm= ephm* data.wlam;
+		ethm= ethm* geometry.wlam;
+		ephm= ephm* geometry.wlam;
 
 		if( fpat.rfld >= 1.0e-20 )
 		{
@@ -993,14 +993,14 @@ void rdpat( void )
 		  fprintf( output_fp, "\n"
 			  " %9.2f %9.2f %9.2f   %9.2f %9.2f %9.2f   ",
 			  tmp1, tmp2, tstor1, tmp3, tmp4, tstor2 );
-		  free_ptr( (void *)&gain );
+		  mem_free( (void *)&gain );
 		  return;
 		}
 
 		fprintf( output_fp, "\n"
 			" %9.2f %9.2f %9.2f   ",
 			tmp1, tmp2, tstor1 );
-		free_ptr( (void *)&gain );
+		mem_free( (void *)&gain );
 		return;
 
 	  } /* if( ((i+1) == itmp1) && (itmp2 != 0) ) */
@@ -1015,7 +1015,7 @@ void rdpat( void )
 	} /* for( i = 0; i < itmp1; i++ ) */
   }
 
-  free_ptr( (void *)&gain );
+  mem_free( (void *)&gain );
 
   return;
 }

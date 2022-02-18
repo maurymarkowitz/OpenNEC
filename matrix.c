@@ -35,9 +35,9 @@ void cmset( int nrow, complex double *cm, double rkhx, int iexkx )
   int im1, im2, ist, ij, ipr, jss, jm1, jm2, jst, k, ka, kk;
   complex double zaj, deter, *scm = NULL;
 
-  mp2=2* data.mp;
-  npeq= data.np+ mp2;
-  neq= data.n+2* data.m;
+  mp2=2* geometry.mp;
+  npeq= geometry.np+ mp2;
+  neq= geometry.n+2* geometry.m;
   smat.nop = neq/npeq;
 
   dataj.rkh= rkhx;
@@ -52,29 +52,29 @@ void cmset( int nrow, complex double *cm, double rkhx, int iexkx )
   i2= it;
   in2= i2;
 
-  if( in2 > data.np)
-	in2= data.np;
+  if( in2 > geometry.np)
+	in2= geometry.np;
 
-  im1= i1- data.np;
-  im2= i2- data.np;
+  im1= i1- geometry.np;
+  im2= i2- geometry.np;
 
   if( im1 < 1)
 	im1=1;
 
   ist=1;
-  if( i1 <= data.np)
-	ist= data.np- i1+2;
+  if( i1 <= geometry.np)
+	ist= geometry.np- i1+2;
 
   /* wire source loop */
-  if( data.n != 0)
+  if( geometry.n != 0)
   {
-	for( j = 1; j <= data.n; j++ )
+	for( j = 1; j <= geometry.n; j++ )
 	{
 	  trio(j);
 	  for( i = 0; i < segj.jsno; i++ )
 	  {
 		ij= segj.jco[i];
-		segj.jco[i]=(( ij-1)/ data.np)* mp2+ ij;
+		segj.jco[i]=(( ij-1)/ geometry.np)* mp2+ ij;
 	  }
 
 	  if( i1 <= in2)
@@ -87,7 +87,7 @@ void cmset( int nrow, complex double *cm, double rkhx, int iexkx )
 	  if( zload.nload == 0)
 		continue;
 
-	  if( j > data.np)
+	  if( j > geometry.np)
 		continue;
 
 	  ipr= j;
@@ -106,17 +106,17 @@ void cmset( int nrow, complex double *cm, double rkhx, int iexkx )
 
   } /* if( n != 0) */
 
-  if( data.m != 0)
+  if( geometry.m != 0)
   {
 	/* matrix elements for patch current sources */
-	jm1=1- data.mp;
+	jm1=1- geometry.mp;
 	jm2=0;
 	jst=1- mp2;
 
 	for( i = 0; i < smat.nop; i++ )
 	{
-	  jm1 += data.mp;
-	  jm2 += data.mp;
+	  jm1 += geometry.mp;
+	  jm2 += geometry.mp;
 	  jst += npeq;
 
 	  if( i1 <= in2)
@@ -132,7 +132,7 @@ void cmset( int nrow, complex double *cm, double rkhx, int iexkx )
 	return;
 
   /* Allocate to scratch memory */
-  size_t mreq = (size_t)data.np2m;
+  size_t mreq = (size_t)geometry.np2m;
   mreq *= sizeof(complex double);
   mem_alloc( (void *)&scm, mreq );
 
@@ -171,7 +171,7 @@ void cmset( int nrow, complex double *cm, double rkhx, int iexkx )
 
   } /* for( i = 0; i < it; i++ ) */
 
-  free_ptr( (void *)&scm );
+  mem_free( (void *)&scm );
 
   return;
 }
@@ -202,15 +202,15 @@ void cmss( int j1, int j2, int im1, int im2,
 	ii1 += 2;
 	ii2 = ii1+1;
 
-	t1xi= data.t1x[il]* data.psalp[il];
-	t1yi= data.t1y[il]* data.psalp[il];
-	t1zi= data.t1z[il]* data.psalp[il];
-	t2xi= data.t2x[il]* data.psalp[il];
-	t2yi= data.t2y[il]* data.psalp[il];
-	t2zi= data.t2z[il]* data.psalp[il];
-	xi= data.px[il];
-	yi= data.py[il];
-	zi= data.pz[il];
+	t1xi= geometry.t1x[il]* geometry.psalp[il];
+	t1yi= geometry.t1y[il]* geometry.psalp[il];
+	t1zi= geometry.t1z[il]* geometry.psalp[il];
+	t2xi= geometry.t2x[il]* geometry.psalp[il];
+	t2yi= geometry.t2y[il]* geometry.psalp[il];
+	t2zi= geometry.t2z[il]* geometry.psalp[il];
+	xi= geometry.px[il];
+	yi= geometry.py[il];
+	zi= geometry.pz[il];
 
 	/* loop over source patches */
 	jj1=-2;
@@ -220,16 +220,16 @@ void cmss( int j1, int j2, int im1, int im2,
 	  jj1 += 2;
 	  jj2 = jj1+1;
 
-	  dataj.s= data.pbi[jl];
-	  dataj.xj= data.px[jl];
-	  dataj.yj= data.py[jl];
-	  dataj.zj= data.pz[jl];
-	  dataj.t1xj= data.t1x[jl];
-	  dataj.t1yj= data.t1y[jl];
-	  dataj.t1zj= data.t1z[jl];
-	  dataj.t2xj= data.t2x[jl];
-	  dataj.t2yj= data.t2y[jl];
-	  dataj.t2zj= data.t2z[jl];
+	  dataj.s= geometry.pbi[jl];
+	  dataj.xj= geometry.px[jl];
+	  dataj.yj= geometry.py[jl];
+	  dataj.zj= geometry.pz[jl];
+	  dataj.t1xj= geometry.t1x[jl];
+	  dataj.t1yj= geometry.t1y[jl];
+	  dataj.t1zj= geometry.t1z[jl];
+	  dataj.t2xj= geometry.t2x[jl];
+	  dataj.t2yj= geometry.t2y[jl];
+	  dataj.t2zj= geometry.t2z[jl];
 
 	  hintg( xi, yi, zi);
 
@@ -305,23 +305,23 @@ void cmsw( int j1, int j2, int i1, int i2, complex double *cm,
 	for( i = i1-1; i < i2; i++ )
 	{
 	  k++;
-	  xi= data.x[i];
-	  yi= data.y[i];
-	  zi= data.z[i];
-	  cabi= data.cab[i];
-	  sabi= data.sab[i];
-	  salpi= data.salp[i];
+	  xi= geometry.x[i];
+	  yi= geometry.y[i];
+	  zi= geometry.z[i];
+	  cabi= geometry.cab[i];
+	  sabi= geometry.sab[i];
+	  salpi= geometry.salp[i];
 	  ipch=0;
 
-	  if( data.icon1[i] >= PCHCON)
+	  if( geometry.icon1[i] >= PCHCON)
 	  {
-		ipch= data.icon1[i]-PCHCON;
+		ipch= geometry.icon1[i]-PCHCON;
 		fsign=-1.;
 	  }
 
-	  if( data.icon2[i] >= PCHCON)
+	  if( geometry.icon2[i] >= PCHCON)
 	  {
-		ipch= data.icon2[i]-PCHCON;
+		ipch= geometry.icon2[i]-PCHCON;
 		fsign=1.;
 	  }
 
@@ -331,16 +331,16 @@ void cmsw( int j1, int j2, int i1, int i2, complex double *cm,
 	  {
 		jl += 2;
 		js = j-1;
-		dataj.t1xj= data.t1x[js];
-		dataj.t1yj= data.t1y[js];
-		dataj.t1zj= data.t1z[js];
-		dataj.t2xj= data.t2x[js];
-		dataj.t2yj= data.t2y[js];
-		dataj.t2zj= data.t2z[js];
-		dataj.xj= data.px[js];
-		dataj.yj= data.py[js];
-		dataj.zj= data.pz[js];
-		dataj.s= data.pbi[js];
+		dataj.t1xj= geometry.t1x[js];
+		dataj.t1yj= geometry.t1y[js];
+		dataj.t1zj= geometry.t1z[js];
+		dataj.t2xj= geometry.t2x[js];
+		dataj.t2yj= geometry.t2y[js];
+		dataj.t2zj= geometry.t2z[js];
+		dataj.xj= geometry.px[js];
+		dataj.yj= geometry.py[js];
+		dataj.zj= geometry.pz[js];
+		dataj.s= geometry.pbi[js];
 
 		/* ground loop */
 		for( ip = 1; ip <= gnd.ksymp; ip++ )
@@ -353,7 +353,7 @@ void cmsw( int j1, int j2, int i1, int i2, complex double *cm,
 			{
 			  pcint( xi, yi, zi, cabi, sabi, salpi, emel);
 
-			  pyl= PI* data.si[i]* fsign;
+			  pyl= PI* geometry.si[i]* fsign;
 			  pxl= sin( pyl);
 			  pyl= cos( pyl);
 			  dataj.exc= emel[8]* fsign;
@@ -361,8 +361,8 @@ void cmsw( int j1, int j2, int i1, int i2, complex double *cm,
 			  trio(i+1);
 
 			  il= i-ncw;
-			  if( i < data.np)
-				il += (il/data.np)*2*data.mp;
+			  if( i < geometry.np)
+				il += (il/geometry.np)*2*geometry.mp;
 
 			  if( itrp == 0 )
 				cw[k+il*nrow] +=
@@ -428,14 +428,14 @@ void cmws( int j, int i1, int i2, complex double *cm,
   complex double etk, ets, etc;
 
   j--;
-  dataj.s= data.si[j];
-  dataj.b= data.bi[j];
-  dataj.xj= data.x[j];
-  dataj.yj= data.y[j];
-  dataj.zj= data.z[j];
-  dataj.cabj= data.cab[j];
-  dataj.sabj= data.sab[j];
-  dataj.salpj= data.salp[j];
+  dataj.s= geometry.si[j];
+  dataj.b= geometry.bi[j];
+  dataj.xj= geometry.x[j];
+  dataj.yj= geometry.y[j];
+  dataj.zj= geometry.z[j];
+  dataj.cabj= geometry.cab[j];
+  dataj.sabj= geometry.sab[j];
+  dataj.salpj= geometry.salp[j];
 
   /* observation loop */
   ipr= -1;
@@ -448,36 +448,36 @@ void cmws( int j, int i1, int i2, complex double *cm,
 	if( (ik != 0) || (ipr == 0) )
 	{
 	  js= ipatch-1;
-	  xi= data.px[js];
-	  yi= data.py[js];
-	  zi= data.pz[js];
+	  xi= geometry.px[js];
+	  yi= geometry.py[js];
+	  zi= geometry.pz[js];
 	  hsfld( xi, yi, zi,0.);
 
 	  if( ik != 0 )
 	  {
-		tx= data.t2x[js];
-		ty= data.t2y[js];
-		tz= data.t2z[js];
+		tx= geometry.t2x[js];
+		ty= geometry.t2y[js];
+		tz= geometry.t2z[js];
 	  }
 	  else
 	  {
-		tx= data.t1x[js];
-		ty= data.t1y[js];
-		tz= data.t1z[js];
+		tx= geometry.t1x[js];
+		ty= geometry.t1y[js];
+		tz= geometry.t1z[js];
 	  }
 
 	} /* if( (ik != 0) || (ipr == 0) ) */
 	else
 	{
-	  tx= data.t1x[js];
-	  ty= data.t1y[js];
-	  tz= data.t1z[js];
+	  tx= geometry.t1x[js];
+	  ty= geometry.t1y[js];
+	  tz= geometry.t1z[js];
 
 	} /* if( (ik != 0) || (ipr == 0) ) */
 
-	etk=-( dataj.exk* tx+ dataj.eyk* ty+ dataj.ezk* tz)* data.psalp[js];
-	ets=-( dataj.exs* tx+ dataj.eys* ty+ dataj.ezs* tz)* data.psalp[js];
-	etc=-( dataj.exc* tx+ dataj.eyc* ty+ dataj.ezc* tz)* data.psalp[js];
+	etk=-( dataj.exk* tx+ dataj.eyk* ty+ dataj.ezk* tz)* geometry.psalp[js];
+	ets=-( dataj.exs* tx+ dataj.eys* ty+ dataj.ezs* tz)* geometry.psalp[js];
+	etc=-( dataj.exc* tx+ dataj.eyc* ty+ dataj.ezc* tz)* geometry.psalp[js];
 
 	/* fill matrix elements.  element locations */
 	/* determined by connection data. */
@@ -537,31 +537,31 @@ void cmww( int j, int i1, int i2, complex double *cm,
   /* set source segment parameters */
   jx = j;
   j--;
-  dataj.s= data.si[j];
-  dataj.b= data.bi[j];
-  dataj.xj= data.x[j];
-  dataj.yj= data.y[j];
-  dataj.zj= data.z[j];
-  dataj.cabj= data.cab[j];
-  dataj.sabj= data.sab[j];
-  dataj.salpj= data.salp[j];
+  dataj.s= geometry.si[j];
+  dataj.b= geometry.bi[j];
+  dataj.xj= geometry.x[j];
+  dataj.yj= geometry.y[j];
+  dataj.zj= geometry.z[j];
+  dataj.cabj= geometry.cab[j];
+  dataj.sabj= geometry.sab[j];
+  dataj.salpj= geometry.salp[j];
 
   /* decide whether ext. t.w. approx. can be used */
   if( dataj.iexk != 0)
   {
-	ipr = data.icon1[j];
+	ipr = geometry.icon1[j];
 	if (ipr > PCHCON) dataj.ind1 = 0;
 	else if( ipr < 0 )
 	{
 	  ipr= -ipr;
 	  iprx= ipr-1;
 
-	  if( -data.icon1[iprx] != jx )	dataj.ind1 = 2;
+	  if( -geometry.icon1[iprx] != jx )	dataj.ind1 = 2;
 	  else
 	  {
-		xi= fabs( dataj.cabj* data.cab[iprx]+ dataj.sabj*
-			data.sab[iprx]+ dataj.salpj* data.salp[iprx]);
-		if( (xi < 0.999999) || (fabs(data.bi[iprx]/dataj.b-1.) > 1.e-6) )
+		xi= fabs( dataj.cabj* geometry.cab[iprx]+ dataj.sabj*
+			geometry.sab[iprx]+ dataj.salpj* geometry.salp[iprx]);
+		if( (xi < 0.999999) || (fabs(geometry.bi[iprx]/dataj.b-1.) > 1.e-6) )
 		  dataj.ind1=2;
 		else
 		  dataj.ind1=0;
@@ -577,12 +577,12 @@ void cmww( int j, int i1, int i2, complex double *cm,
 	  {
 		if( ipr != jx )
 		{
-		  if( data.icon2[iprx] != jx ) dataj.ind1=2;
+		  if( geometry.icon2[iprx] != jx ) dataj.ind1=2;
 		  else
 		  {
-			xi= fabs( dataj.cabj* data.cab[iprx]+ dataj.sabj*
-				data.sab[iprx]+ dataj.salpj* data.salp[iprx]);
-			if( (xi < 0.999999) || (fabs(data.bi[iprx]/dataj.b-1.) > 1.e-6) )
+			xi= fabs( dataj.cabj* geometry.cab[iprx]+ dataj.sabj*
+				geometry.sab[iprx]+ dataj.salpj* geometry.salp[iprx]);
+			if( (xi < 0.999999) || (fabs(geometry.bi[iprx]/dataj.b-1.) > 1.e-6) )
 			  dataj.ind1=2;
 			else
 			  dataj.ind1=0;
@@ -600,19 +600,19 @@ void cmww( int j, int i1, int i2, complex double *cm,
 
 	} /* if( ipr < 0 ) */
 
-	ipr = data.icon2[j];
+	ipr = geometry.icon2[j];
 	if (ipr > PCHCON) dataj.ind2 = 2;
 	else if( ipr < 0 )
 	{
 	  ipr= -ipr;
 	  iprx = ipr-1;
-	  if( -data.icon2[iprx] != jx )
+	  if( -geometry.icon2[iprx] != jx )
 		dataj.ind2=2;
 	  else
 	  {
-		xi= fabs( dataj.cabj* data.cab[iprx]+ dataj.sabj*
-			data.sab[iprx]+ dataj.salpj* data.salp[iprx]);
-		if( (xi < 0.999999) || (fabs(data.bi[iprx]/dataj.b-1.) > 1.e-6) )
+		xi= fabs( dataj.cabj* geometry.cab[iprx]+ dataj.sabj*
+			geometry.sab[iprx]+ dataj.salpj* geometry.salp[iprx]);
+		if( (xi < 0.999999) || (fabs(geometry.bi[iprx]/dataj.b-1.) > 1.e-6) )
 		  dataj.ind2=2;
 		else
 		  dataj.ind2=0;
@@ -628,13 +628,13 @@ void cmww( int j, int i1, int i2, complex double *cm,
 	  {
 		if( ipr != jx )
 		{
-		  if( data.icon1[iprx] != jx )
+		  if( geometry.icon1[iprx] != jx )
 			dataj.ind2=2;
 		  else
 		  {
-			xi= fabs( dataj.cabj* data.cab[iprx]+ dataj.sabj*
-				data.sab[iprx]+ dataj.salpj* data.salp[iprx]);
-			if( (xi < 0.999999) || (fabs(data.bi[iprx]/dataj.b-1.) > 1.e-6) )
+			xi= fabs( dataj.cabj* geometry.cab[iprx]+ dataj.sabj*
+				geometry.sab[iprx]+ dataj.salpj* geometry.salp[iprx]);
+			if( (xi < 0.999999) || (fabs(geometry.bi[iprx]/dataj.b-1.) > 1.e-6) )
 			  dataj.ind2=2;
 			else
 			  dataj.ind2=0;
@@ -660,13 +660,13 @@ void cmww( int j, int i1, int i2, complex double *cm,
   {
 	ipr++;
 	ij= i-j;
-	xi= data.x[i];
-	yi= data.y[i];
-	zi= data.z[i];
-	ai= data.bi[i];
-	cabi= data.cab[i];
-	sabi= data.sab[i];
-	salpi= data.salp[i];
+	xi= geometry.x[i];
+	yi= geometry.y[i];
+	zi= geometry.z[i];
+	ai= geometry.bi[i];
+	cabi= geometry.cab[i];
+	sabi= geometry.sab[i];
+	salpi= geometry.salp[i];
 
 	efld( xi, yi, zi, ai, ij);
 
@@ -731,7 +731,7 @@ void etmns( double p1, double p2, double p3, double p4,
   double wy, wz, qx, qy, qz, arg, ds, dsh, rs, r;
   complex double cx, cy, cz, er, et, ezh, erh, rrv=CPLX_00, rrh=CPLX_00, tt1, tt2;
 
-  neq= data.n+2*data.m;
+  neq= geometry.n+2*geometry.m;
   vsorc.nqds=0;
 
   /* applied field of voltage sources for transmitting case */
@@ -745,7 +745,7 @@ void etmns( double p1, double p2, double p3, double p4,
 	  for( i = 0; i < vsorc.nsant; i++ )
 	  {
 		is= vsorc.isant[i]-1;
-		e[is]= -vsorc.vsant[i]/( data.si[is]* data.wlam);
+		e[is]= -vsorc.vsant[i]/( geometry.si[is]* geometry.wlam);
 	  }
 	}
 
@@ -800,13 +800,13 @@ void etmns( double p1, double p2, double p3, double p4,
 
 	if( ipr == 1)
 	{
-	  if( data.n != 0)
+	  if( geometry.n != 0)
 	  {
-		for( i = 0; i < data.n; i++ )
+		for( i = 0; i < geometry.n; i++ )
 		{
-		  arg= -TP*( wx* data.x[i]+ wy* data.y[i]+ wz* data.z[i]);
-		  e[i]=-( pxl* data.cab[i]+ pyl* data.sab[i]+ pzl*
-			  data.salp[i])* cmplx( cos( arg), sin( arg));
+		  arg= -TP*( wx* geometry.x[i]+ wy* geometry.y[i]+ wz* geometry.z[i]);
+		  e[i]=-( pxl* geometry.cab[i]+ pyl* geometry.sab[i]+ pzl*
+			  geometry.salp[i])* cmplx( cos( arg), sin( arg));
 		}
 
 		if( gnd.ksymp != 1)
@@ -816,31 +816,31 @@ void etmns( double p1, double p2, double p3, double p4,
 		  cy= rrv* pyl+ tt1* cph;
 		  cz= -rrv* pzl;
 
-		  for( i = 0; i < data.n; i++ )
+		  for( i = 0; i < geometry.n; i++ )
 		  {
-			arg= -TP*( wx* data.x[i]+ wy* data.y[i]- wz* data.z[i]);
-			e[i]= e[i]-( cx* data.cab[i]+ cy* data.sab[i]+
-				cz* data.salp[i])* cmplx(cos( arg), sin( arg));
+			arg= -TP*( wx* geometry.x[i]+ wy* geometry.y[i]- wz* geometry.z[i]);
+			e[i]= e[i]-( cx* geometry.cab[i]+ cy* geometry.sab[i]+
+				cz* geometry.salp[i])* cmplx(cos( arg), sin( arg));
 		  }
 
 		} /* if( gnd.ksymp != 1) */
 
 	  } /* if( data.n != 0) */
 
-	  if( data.m == 0)
+	  if( geometry.m == 0)
 		return;
 
 	  i= -1;
-	  i1= data.n-2;
-	  for( is = 0; is < data.m; is++ )
+	  i1= geometry.n-2;
+	  for( is = 0; is < geometry.m; is++ )
 	  {
 		i++;
 		i1 += 2;
 		i2 = i1+1;
-		arg= -TP*( wx* data.px[i]+ wy* data.py[i]+ wz* data.pz[i]);
-		tt1= cmplx( cos( arg), sin( arg))* data.psalp[i]* RETA;
-		e[i2]=( qx* data.t1x[i]+ qy* data.t1y[i]+ qz* data.t1z[i])* tt1;
-		e[i1]=( qx* data.t2x[i]+ qy* data.t2y[i]+ qz* data.t2z[i])* tt1;
+		arg= -TP*( wx* geometry.px[i]+ wy* geometry.py[i]+ wz* geometry.pz[i]);
+		tt1= cmplx( cos( arg), sin( arg))* geometry.psalp[i]* RETA;
+		e[i2]=( qx* geometry.t1x[i]+ qy* geometry.t1y[i]+ qz* geometry.t1z[i])* tt1;
+		e[i1]=( qx* geometry.t2x[i]+ qy* geometry.t2y[i]+ qz* geometry.t2z[i])* tt1;
 	  }
 
 	  if( gnd.ksymp == 1)
@@ -852,16 +852,16 @@ void etmns( double p1, double p2, double p3, double p4,
 	  cz= rrh* qz;
 
 	  i= -1;
-	  i1= data.n-2;
-	  for( is = 0; is < data.m; is++ )
+	  i1= geometry.n-2;
+	  for( is = 0; is < geometry.m; is++ )
 	  {
 		i++;
 		i1 += 2;
 		i2 = i1+1;
-		arg= -TP*( wx* data.px[i]+ wy* data.py[i]- wz* data.pz[i]);
-		tt1= cmplx( cos( arg), sin( arg))* data.psalp[i]* RETA;
-		e[i2]= e[i2]+( cx* data.t1x[i]+ cy* data.t1y[i]+ cz* data.t1z[i])* tt1;
-		e[i1]= e[i1]+( cx* data.t2x[i]+ cy* data.t2y[i]+ cz* data.t2z[i])* tt1;
+		arg= -TP*( wx* geometry.px[i]+ wy* geometry.py[i]- wz* geometry.pz[i]);
+		tt1= cmplx( cos( arg), sin( arg))* geometry.psalp[i]* RETA;
+		e[i2]= e[i2]+( cx* geometry.t1x[i]+ cy* geometry.t1y[i]+ cz* geometry.t1z[i])* tt1;
+		e[i1]= e[i1]+( cx* geometry.t2x[i]+ cy* geometry.t2y[i]+ cz* geometry.t2z[i])* tt1;
 	  }
 	  return;
 
@@ -872,17 +872,17 @@ void etmns( double p1, double p2, double p3, double p4,
 	if( ipr == 3)
 	  tt1= -tt1;
 
-	if( data.n != 0)
+	if( geometry.n != 0)
 	{
 	  cx= pxl+ tt1* qx;
 	  cy= pyl+ tt1* qy;
 	  cz= pzl+ tt1* qz;
 
-	  for( i = 0; i < data.n; i++ )
+	  for( i = 0; i < geometry.n; i++ )
 	  {
-		arg= -TP*( wx* data.x[i]+ wy* data.y[i]+ wz* data.z[i]);
-		e[i]=-( cx* data.cab[i]+ cy* data.sab[i]+ cz*
-			data.salp[i])* cmplx( cos( arg), sin( arg));
+		arg= -TP*( wx* geometry.x[i]+ wy* geometry.y[i]+ wz* geometry.z[i]);
+		e[i]=-( cx* geometry.cab[i]+ cy* geometry.sab[i]+ cz*
+			geometry.salp[i])* cmplx( cos( arg), sin( arg));
 	  }
 
 	  if( gnd.ksymp != 1)
@@ -892,18 +892,18 @@ void etmns( double p1, double p2, double p3, double p4,
 		cy= rrv* cy+ tt2* cph;
 		cz= -rrv* cz;
 
-		for( i = 0; i < data.n; i++ )
+		for( i = 0; i < geometry.n; i++ )
 		{
-		  arg= -TP*( wx* data.x[i]+ wy* data.y[i]- wz* data.z[i]);
-		  e[i]= e[i]-( cx* data.cab[i]+ cy* data.sab[i]+
-			  cz* data.salp[i])* cmplx(cos( arg), sin( arg));
+		  arg= -TP*( wx* geometry.x[i]+ wy* geometry.y[i]- wz* geometry.z[i]);
+		  e[i]= e[i]-( cx* geometry.cab[i]+ cy* geometry.sab[i]+
+			  cz* geometry.salp[i])* cmplx(cos( arg), sin( arg));
 		}
 
 	  } /* if( gnd.ksymp != 1) */
 
 	} /* if( n != 0) */
 
-	if( data.m == 0)
+	if( geometry.m == 0)
 	  return;
 
 	cx= qx- tt1* pxl;
@@ -911,16 +911,16 @@ void etmns( double p1, double p2, double p3, double p4,
 	cz= qz- tt1* pzl;
 
 	i= -1;
-	i1= data.n-2;
-	for( is = 0; is < data.m; is++ )
+	i1= geometry.n-2;
+	for( is = 0; is < geometry.m; is++ )
 	{
 	  i++;
 	  i1 += 2;
 	  i2 = i1+1;
-	  arg= -TP*( wx* data.px[i]+ wy* data.py[i]+ wz* data.pz[i]);
-	  tt2= cmplx( cos( arg), sin( arg))* data.psalp[i]* RETA;
-	  e[i2]=( cx* data.t1x[i]+ cy* data.t1y[i]+ cz* data.t1z[i])* tt2;
-	  e[i1]=( cx* data.t2x[i]+ cy* data.t2y[i]+ cz* data.t2z[i])* tt2;
+	  arg= -TP*( wx* geometry.px[i]+ wy* geometry.py[i]+ wz* geometry.pz[i]);
+	  tt2= cmplx( cos( arg), sin( arg))* geometry.psalp[i]* RETA;
+	  e[i2]=( cx* geometry.t1x[i]+ cy* geometry.t1y[i]+ cz* geometry.t1z[i])* tt2;
+	  e[i1]=( cx* geometry.t2x[i]+ cy* geometry.t2y[i]+ cz* geometry.t2z[i])* tt2;
 	}
 
 	if( gnd.ksymp == 1)
@@ -932,16 +932,16 @@ void etmns( double p1, double p2, double p3, double p4,
 	cz= rrh* cz;
 
 	i= -1;
-	i1= data.n-2;
-	for( is=0; is < data.m; is++ )
+	i1= geometry.n-2;
+	for( is=0; is < geometry.m; is++ )
 	{
 	  i++;
 	  i1 += 2;
 	  i2 = i1+1;
-	  arg= -TP*( wx* data.px[i]+ wy* data.py[i]- wz* data.pz[i]);
-	  tt1= cmplx( cos( arg), sin( arg))* data.psalp[i]* RETA;
-	  e[i2]= e[i2]+( cx* data.t1x[i]+ cy* data.t1y[i]+ cz* data.t1z[i])* tt1;
-	  e[i1]= e[i1]+( cx* data.t2x[i]+ cy* data.t2y[i]+ cz* data.t2z[i])* tt1;
+	  arg= -TP*( wx* geometry.px[i]+ wy* geometry.py[i]- wz* geometry.pz[i]);
+	  tt1= cmplx( cos( arg), sin( arg))* geometry.psalp[i]* RETA;
+	  e[i2]= e[i2]+( cx* geometry.t1x[i]+ cy* geometry.t1y[i]+ cz* geometry.t1z[i])* tt1;
+	  e[i1]= e[i1]+( cx* geometry.t2x[i]+ cy* geometry.t2y[i]+ cz* geometry.t2z[i])* tt1;
 	}
 
 	return;
@@ -957,22 +957,22 @@ void etmns( double p1, double p2, double p3, double p4,
   dsh= p6/(2.* TP);
 
   is= 0;
-  i1= data.n-2;
-  for( i = 0; i < data.npm; i++ )
+  i1= geometry.n-2;
+  for( i = 0; i < geometry.npm; i++ )
   {
-	if( i >= data.n )
+	if( i >= geometry.n )
 	{
 	  i1 += 2;
 	  i2 = i1+1;
-	  pxl= data.px[is]- p1;
-	  pyl= data.py[is]- p2;
-	  pzl= data.pz[is]- p3;
+	  pxl= geometry.px[is]- p1;
+	  pyl= geometry.py[is]- p2;
+	  pzl= geometry.pz[is]- p3;
 	}
 	else
 	{
-	  pxl= data.x[i]- p1;
-	  pyl= data.y[i]- p2;
-	  pzl= data.z[i]- p3;
+	  pxl= geometry.x[i]- p1;
+	  pyl= geometry.y[i]- p2;
+	  pzl= geometry.z[i]- p3;
 	}
 
 	rs= pxl* pxl+ pyl* pyl+ pzl* pzl;
@@ -1007,7 +1007,7 @@ void etmns( double p1, double p2, double p3, double p4,
 	arg= -TP* r;
 	tt1= cmplx( cos( arg), sin( arg));
 
-	if( i < data.n )
+	if( i < geometry.n )
 	{
 	  tt2= cmplx(1.0,-1.0/( r* TP))/ rs;
 	  er= ds* tt1* tt2* cth;
@@ -1017,19 +1017,19 @@ void etmns( double p1, double p2, double p3, double p4,
 	  cx= ezh* wx+ erh* qx;
 	  cy= ezh* wy+ erh* qy;
 	  cz= ezh* wz+ erh* qz;
-	  e[i]=-( cx* data.cab[i]+ cy* data.sab[i]+ cz* data.salp[i]);
+	  e[i]=-( cx* geometry.cab[i]+ cy* geometry.sab[i]+ cz* geometry.salp[i]);
 	}
 	else
 	{
 	  pxl= wy* qz- wz* qy;
 	  pyl= wz* qx- wx* qz;
 	  pzl= wx* qy- wy* qx;
-	  tt2= dsh* tt1* cmplx(1./ r, TP)/ r* sth* data.psalp[is];
+	  tt2= dsh* tt1* cmplx(1./ r, TP)/ r* sth* geometry.psalp[is];
 	  cx= tt2* pxl;
 	  cy= tt2* pyl;
 	  cz= tt2* pzl;
-	  e[i2]= cx* data.t1x[is]+ cy* data.t1y[is]+ cz* data.t1z[is];
-	  e[i1]= cx* data.t2x[is]+ cy* data.t2y[is]+ cz* data.t2z[is];
+	  e[i2]= cx* geometry.t1x[is]+ cy* geometry.t1y[is]+ cz* geometry.t1z[is];
+	  e[i1]= cx* geometry.t2x[is]+ cy* geometry.t2y[is]+ cz* geometry.t2z[is];
 	  is++;
 	} /* if( i < data.n) */
 
@@ -1053,7 +1053,7 @@ void factr( int n, complex double *a, int *ip, int ndim)
   complex double arj, *scm = NULL;
 
   /* Allocate to scratch memory */
-  size_t mreq = (size_t)data.np2m;
+  size_t mreq = (size_t)geometry.np2m;
   mreq *= sizeof(complex double);
   mem_alloc( (void *)&scm, mreq );
 
@@ -1135,7 +1135,7 @@ void factr( int n, complex double *a, int *ip, int ndim)
 
   } /* for( r=0; r < n; r++ ) */
 
-  free_ptr( (void *)&scm );
+  mem_free( (void *)&scm );
 
   return;
 }
@@ -1251,7 +1251,7 @@ void solve( int n, complex double *a, int *ip,
   complex double sum, *scm = NULL;
 
   /* Allocate to scratch memory */
-  size_t mreq = (size_t)data.np2m;
+  size_t mreq = (size_t)geometry.np2m;
   mreq *= sizeof(complex double);
   mem_alloc( (void *)&scm, mreq );
 
@@ -1282,7 +1282,7 @@ void solve( int n, complex double *a, int *ip,
 	b[i]=( scm[i]- sum)/ a[i+i*ndim];
   }
 
-  free_ptr( (void *)&scm );
+  mem_free( (void *)&scm );
 
   return;
 }
@@ -1306,7 +1306,7 @@ void solves( complex double *a, int *ip, complex double *b,
   nrow= neq;
 
   /* Allocate to scratch memory */
-  size_t mreq = (size_t)data.np2m;
+  size_t mreq = (size_t)geometry.np2m;
   mreq *= sizeof(complex double);
   mem_alloc( (void *)&scm, mreq );
 
@@ -1396,7 +1396,7 @@ void solves( complex double *a, int *ip, complex double *b,
 
   if( smat.nop == 1)
   {
-	free_ptr( (void *)&scm );
+	mem_free( (void *)&scm );
 	return;
   }
 
@@ -1467,7 +1467,7 @@ void solves( complex double *a, int *ip, complex double *b,
 
   } /* for( ic = 0; ic < nrh; ic++ ) */
 
-  free_ptr( (void *)&scm );
+  mem_free( (void *)&scm );
 
   return;
 }

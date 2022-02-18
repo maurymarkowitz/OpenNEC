@@ -12,8 +12,8 @@ crnt_t crnt;
 /* common  /dataj/ */
 dataj_t dataj;
 
-/* common  /data/ */
-data_t data;
+/* common  /geometry/ */
+geometry_t geometry;
 
 /* pointers to input/output files */
 FILE *input_fp=NULL, *output_fp=NULL, *plot_fp=NULL;

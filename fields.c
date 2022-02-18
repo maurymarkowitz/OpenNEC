@@ -1111,20 +1111,20 @@ void nefld( double xob, double yob, double zob,
   *ez=CPLX_00;
   ax=0.;
 
-  if( data.n != 0)
+  if( geometry.n != 0)
   {
-	for( i = 0; i < data.n; i++ )
+	for( i = 0; i < geometry.n; i++ )
 	{
-	  dataj.xj= xob- data.x[i];
-	  dataj.yj= yob- data.y[i];
-	  dataj.zj= zob- data.z[i];
-	  zp= data.cab[i]* dataj.xj+ data.sab[i]* dataj.yj+ data.salp[i]* dataj.zj;
+	  dataj.xj= xob- geometry.x[i];
+	  dataj.yj= yob- geometry.y[i];
+	  dataj.zj= zob- geometry.z[i];
+	  zp= geometry.cab[i]* dataj.xj+ geometry.sab[i]* dataj.yj+ geometry.salp[i]* dataj.zj;
 
-	  if( fabs( zp) > 0.5001* data.si[i])
+	  if( fabs( zp) > 0.5001* geometry.si[i])
 		continue;
 
 	  zp= dataj.xj* dataj.xj+ dataj.yj* dataj.yj+ dataj.zj* dataj.zj- zp* zp;
-	  dataj.xj= data.bi[i];
+	  dataj.xj= geometry.bi[i];
 
 	  if( zp > 0.9* dataj.xj* dataj.xj)
 		continue;
@@ -1134,21 +1134,21 @@ void nefld( double xob, double yob, double zob,
 
 	} /* for( i = 0; i < n; i++ ) */
 
-	for( i = 0; i < data.n; i++ )
+	for( i = 0; i < geometry.n; i++ )
 	{
 	  ix = i+1;
-	  dataj.s= data.si[i];
-	  dataj.b= data.bi[i];
-	  dataj.xj= data.x[i];
-	  dataj.yj= data.y[i];
-	  dataj.zj= data.z[i];
-	  dataj.cabj= data.cab[i];
-	  dataj.sabj= data.sab[i];
-	  dataj.salpj= data.salp[i];
+	  dataj.s= geometry.si[i];
+	  dataj.b= geometry.bi[i];
+	  dataj.xj= geometry.x[i];
+	  dataj.yj= geometry.y[i];
+	  dataj.zj= geometry.z[i];
+	  dataj.cabj= geometry.cab[i];
+	  dataj.sabj= geometry.sab[i];
+	  dataj.salpj= geometry.salp[i];
 
 	  if( dataj.iexk != 0)
 	  {
-		ipr= data.icon1[i];
+		ipr= geometry.icon1[i];
 
 		if(ipr > PCHCON) dataj.ind1 = 2;
 		else if( ipr < 0 )
@@ -1156,13 +1156,13 @@ void nefld( double xob, double yob, double zob,
 		  ipr = -ipr;
 		  iprx = ipr-1;
 
-		  if( -data.icon1[iprx] != ix )
+		  if( -geometry.icon1[iprx] != ix )
 			dataj.ind1=2;
 		  else
 		  {
-			xi= fabs( dataj.cabj* data.cab[iprx]+ dataj.sabj*
-				data.sab[iprx]+ dataj.salpj* data.salp[iprx]);
-			if( (xi < 0.999999) || (fabs(data.bi[iprx]/dataj.b-1.) > 1.0e-6) )
+			xi= fabs( dataj.cabj* geometry.cab[iprx]+ dataj.sabj*
+				geometry.sab[iprx]+ dataj.salpj* geometry.salp[iprx]);
+			if( (xi < 0.999999) || (fabs(geometry.bi[iprx]/dataj.b-1.) > 1.0e-6) )
 			  dataj.ind1=2;
 			else
 			  dataj.ind1=0;
@@ -1177,13 +1177,13 @@ void nefld( double xob, double yob, double zob,
 
 			if( ipr != ix )
 			{
-			  if( data.icon2[iprx] != ix )
+			  if( geometry.icon2[iprx] != ix )
 				dataj.ind1=2;
 			  else
 			  {
-				xi= fabs( dataj.cabj* data.cab[iprx]+ dataj.sabj*
-					data.sab[iprx]+ dataj.salpj* data.salp[iprx]);
-				if( (xi < 0.999999) || (fabs(data.bi[iprx]/dataj.b-1.) > 1.0e-6) )
+				xi= fabs( dataj.cabj* geometry.cab[iprx]+ dataj.sabj*
+					geometry.sab[iprx]+ dataj.salpj* geometry.salp[iprx]);
+				if( (xi < 0.999999) || (fabs(geometry.bi[iprx]/dataj.b-1.) > 1.0e-6) )
 				  dataj.ind1=2;
 				else
 				  dataj.ind1=0;
@@ -1198,7 +1198,7 @@ void nefld( double xob, double yob, double zob,
 			}
 		  } /* else */
 
-		ipr= data.icon2[i];
+		ipr= geometry.icon2[i];
 
 		if (ipr > PCHCON) dataj.ind2 = 2;
 		else if( ipr < 0 )
@@ -1206,13 +1206,13 @@ void nefld( double xob, double yob, double zob,
 		  ipr = -ipr;
 		  iprx = ipr-1;
 
-		  if( -data.icon2[iprx] != ix )
+		  if( -geometry.icon2[iprx] != ix )
 			dataj.ind1=2;
 		  else
 		  {
-			xi= fabs( dataj.cabj* data.cab[iprx]+ dataj.sabj*
-				data.sab[iprx]+ dataj.salpj* data.salp[iprx]);
-			if( (xi < 0.999999) || (fabs(data.bi[iprx]/dataj.b-1.) > 1.0e-6) )
+			xi= fabs( dataj.cabj* geometry.cab[iprx]+ dataj.sabj*
+				geometry.sab[iprx]+ dataj.salpj* geometry.salp[iprx]);
+			if( (xi < 0.999999) || (fabs(geometry.bi[iprx]/dataj.b-1.) > 1.0e-6) )
 			  dataj.ind1=2;
 			else
 			  dataj.ind1=0;
@@ -1227,13 +1227,13 @@ void nefld( double xob, double yob, double zob,
 
 			if( ipr != ix )
 			{
-			  if( data.icon1[iprx] != ix )
+			  if( geometry.icon1[iprx] != ix )
 				dataj.ind2=2;
 			  else
 			  {
-				xi= fabs( dataj.cabj* data.cab[iprx]+ dataj.sabj*
-					data.sab[iprx]+ dataj.salpj* data.salp[iprx]);
-				if( (xi < 0.999999) || (fabs(data.bi[iprx]/dataj.b-1.) > 1.0e-6) )
+				xi= fabs( dataj.cabj* geometry.cab[iprx]+ dataj.sabj*
+					geometry.sab[iprx]+ dataj.salpj* geometry.salp[iprx]);
+				if( (xi < 0.999999) || (fabs(geometry.bi[iprx]/dataj.b-1.) > 1.0e-6) )
 				  dataj.ind2=2;
 				else
 				  dataj.ind2=0;
@@ -1261,24 +1261,24 @@ void nefld( double xob, double yob, double zob,
 
 	} /* for( i = 0; i < n; i++ ) */
 
-	if( data.m == 0)
+	if( geometry.m == 0)
 	  return;
 
   } /* if( n != 0) */
 
-  jc= data.n-1;
-  for( i = 0; i < data.m; i++ )
+  jc= geometry.n-1;
+  for( i = 0; i < geometry.m; i++ )
   {
-	dataj.s= data.pbi[i];
-	dataj.xj= data.px[i];
-	dataj.yj= data.py[i];
-	dataj.zj= data.pz[i];
-	dataj.t1xj= data.t1x[i];
-	dataj.t1yj= data.t1y[i];
-	dataj.t1zj= data.t1z[i];
-	dataj.t2xj= data.t2x[i];
-	dataj.t2yj= data.t2y[i];
-	dataj.t2zj= data.t2z[i];
+	dataj.s= geometry.pbi[i];
+	dataj.xj= geometry.px[i];
+	dataj.yj= geometry.py[i];
+	dataj.zj= geometry.pz[i];
+	dataj.t1xj= geometry.t1x[i];
+	dataj.t1yj= geometry.t1y[i];
+	dataj.t1zj= geometry.t1z[i];
+	dataj.t2xj= geometry.t2x[i];
+	dataj.t2yj= geometry.t2y[i];
+	dataj.t2zj= geometry.t2z[i];
 	jc += 3;
 	acx= dataj.t1xj* crnt.cur[jc-2]+ dataj.t1yj* crnt.cur[jc-1]+ dataj.t1zj* crnt.cur[jc];
 	bcx= dataj.t2xj* crnt.cur[jc-2]+ dataj.t2yj* crnt.cur[jc-1]+ dataj.t2zj* crnt.cur[jc];
@@ -1307,13 +1307,13 @@ void qdsrc( int is, complex double v, complex double *e )
   complex double curd, etk, ets, etc;
   
   is--;
-  i= data.icon1[is];
-  data.icon1[is]=0;
+  i= geometry.icon1[is];
+  geometry.icon1[is]=0;
   tbf( is+1,0);
-  data.icon1[is]= i;
-  dataj.s= data.si[is]*.5;
-  curd= CCJ* v/(( log(2.* dataj.s/ data.bi[is])-1.)*( segj.bx[segj.jsno-1]*
-                                                     cos( TP* dataj.s)+ segj.cx[segj.jsno-1]* sin( TP* dataj.s))* data.wlam);
+  geometry.icon1[is]= i;
+  dataj.s= geometry.si[is]*.5;
+  curd= CCJ* v/(( log(2.* dataj.s/ geometry.bi[is])-1.)*( segj.bx[segj.jsno-1]*
+                                                     cos( TP* dataj.s)+ segj.cx[segj.jsno-1]* sin( TP* dataj.s))* geometry.wlam);
   vsorc.vqds[vsorc.nqds]= v;
   vsorc.iqds[vsorc.nqds]= is+1;
   vsorc.nqds++;
@@ -1322,31 +1322,31 @@ void qdsrc( int is, complex double v, complex double *e )
   {
     j= segj.jco[jx]-1;
     jp1 = j+1;
-    dataj.s= data.si[j];
-    dataj.b= data.bi[j];
-    dataj.xj= data.x[j];
-    dataj.yj= data.y[j];
-    dataj.zj= data.z[j];
-    dataj.cabj= data.cab[j];
-    dataj.sabj= data.sab[j];
-    dataj.salpj= data.salp[j];
+    dataj.s= geometry.si[j];
+    dataj.b= geometry.bi[j];
+    dataj.xj= geometry.x[j];
+    dataj.yj= geometry.y[j];
+    dataj.zj= geometry.z[j];
+    dataj.cabj= geometry.cab[j];
+    dataj.sabj= geometry.sab[j];
+    dataj.salpj= geometry.salp[j];
     
     if( dataj.iexk != 0)
     {
-      ipr= data.icon1[j];
+      ipr= geometry.icon1[j];
       
       if (ipr > PCHCON) dataj.ind1=2;
       else if( ipr < 0 )
       {
         ipr= -ipr;
         ipr--;
-        if( -data.icon1[ipr-1] != jp1 )
+        if( -geometry.icon1[ipr-1] != jp1 )
           dataj.ind1=2;
         else
         {
-          xi= fabs( dataj.cabj* data.cab[ipr]+ dataj.sabj*
-                   data.sab[ipr]+ dataj.salpj* data.salp[ipr]);
-          if( (xi < 0.999999) || (fabs(data.bi[ipr]/dataj.b-1.) > 1.0e-6) )
+          xi= fabs( dataj.cabj* geometry.cab[ipr]+ dataj.sabj*
+                   geometry.sab[ipr]+ dataj.salpj* geometry.salp[ipr]);
+          if( (xi < 0.999999) || (fabs(geometry.bi[ipr]/dataj.b-1.) > 1.0e-6) )
             dataj.ind1=2;
           else
             dataj.ind1=0;
@@ -1360,13 +1360,13 @@ void qdsrc( int is, complex double v, complex double *e )
           ipr--;
           if( ipr != j )
           {
-            if( data.icon2[ipr] != jp1)
+            if( geometry.icon2[ipr] != jp1)
               dataj.ind1=2;
             else
             {
-              xi= fabs( dataj.cabj* data.cab[ipr]+ dataj.sabj*
-                       data.sab[ipr]+ dataj.salpj* data.salp[ipr]);
-              if( (xi < 0.999999) || (fabs(data.bi[ipr]/dataj.b-1.) > 1.0e-6) )
+              xi= fabs( dataj.cabj* geometry.cab[ipr]+ dataj.sabj*
+                       geometry.sab[ipr]+ dataj.salpj* geometry.salp[ipr]);
+              if( (xi < 0.999999) || (fabs(geometry.bi[ipr]/dataj.b-1.) > 1.0e-6) )
                 dataj.ind1=2;
               else
                 dataj.ind1=0;
@@ -1381,19 +1381,19 @@ void qdsrc( int is, complex double v, complex double *e )
           }
         } /* else */
       
-      ipr= data.icon2[j];
+      ipr= geometry.icon2[j];
       if (ipr > PCHCON) dataj.ind2=2;
       else if( ipr < 0 )
       {
         ipr = -ipr;
         ipr--;
-        if( -data.icon2[ipr] != jp1 )
+        if( -geometry.icon2[ipr] != jp1 )
           dataj.ind1=2;
         else
         {
-          xi= fabs( dataj.cabj* data.cab[ipr]+ dataj.sabj*
-                   data.sab[ipr]+ dataj.salpj* data.salp[ipr]);
-          if( (xi < 0.999999) || (fabs(data.bi[ipr]/dataj.b-1.) > 1.0e-6) )
+          xi= fabs( dataj.cabj* geometry.cab[ipr]+ dataj.sabj*
+                   geometry.sab[ipr]+ dataj.salpj* geometry.salp[ipr]);
+          if( (xi < 0.999999) || (fabs(geometry.bi[ipr]/dataj.b-1.) > 1.0e-6) )
             dataj.ind1=2;
           else
             dataj.ind1=0;
@@ -1407,13 +1407,13 @@ void qdsrc( int is, complex double v, complex double *e )
           ipr--;
           if( ipr != j )
           {
-            if( data.icon1[ipr] != jp1)
+            if( geometry.icon1[ipr] != jp1)
               dataj.ind2=2;
             else
             {
-              xi= fabs( dataj.cabj* data.cab[ipr]+ dataj.sabj*
-                       data.sab[ipr]+ dataj.salpj* data.salp[ipr]);
-              if( (xi < 0.999999) || (fabs(data.bi[ipr]/dataj.b-1.) > 1.0e-6) )
+              xi= fabs( dataj.cabj* geometry.cab[ipr]+ dataj.sabj*
+                       geometry.sab[ipr]+ dataj.salpj* geometry.salp[ipr]);
+              if( (xi < 0.999999) || (fabs(geometry.bi[ipr]/dataj.b-1.) > 1.0e-6) )
                 dataj.ind2=2;
               else
                 dataj.ind2=0;
@@ -1430,50 +1430,50 @@ void qdsrc( int is, complex double v, complex double *e )
       
     } /* if( dataj.iexk != 0) */
     
-    for( i = 0; i < data.n; i++ )
+    for( i = 0; i < geometry.n; i++ )
     {
       ij= i- j;
-      xi= data.x[i];
-      yi= data.y[i];
-      zi= data.z[i];
-      ai= data.bi[i];
+      xi= geometry.x[i];
+      yi= geometry.y[i];
+      zi= geometry.z[i];
+      ai= geometry.bi[i];
       efld( xi, yi, zi, ai, ij);
-      cabi= data.cab[i];
-      sabi= data.sab[i];
-      salpi= data.salp[i];
+      cabi= geometry.cab[i];
+      sabi= geometry.sab[i];
+      salpi= geometry.salp[i];
       etk= dataj.exk* cabi+ dataj.eyk* sabi+ dataj.ezk* salpi;
       ets= dataj.exs* cabi+ dataj.eys* sabi+ dataj.ezs* salpi;
       etc= dataj.exc* cabi+ dataj.eyc* sabi+ dataj.ezc* salpi;
       e[i]= e[i]-( etk* segj.ax[jx]+ ets* segj.bx[jx]+ etc* segj.cx[jx])* curd;
     }
     
-    if( data.m != 0)
+    if( geometry.m != 0)
     {
-      i1= data.n-1;
-      for( i = 0; i < data.m; i++ )
+      i1= geometry.n-1;
+      for( i = 0; i < geometry.m; i++ )
       {
-        xi= data.px[i];
-        yi= data.py[i];
-        zi= data.pz[i];
+        xi= geometry.px[i];
+        yi= geometry.py[i];
+        zi= geometry.pz[i];
         hsfld( xi, yi, zi,0.);
         i1++;
-        tx= data.t2x[i];
-        ty= data.t2y[i];
-        tz= data.t2z[i];
+        tx= geometry.t2x[i];
+        ty= geometry.t2y[i];
+        tz= geometry.t2z[i];
         etk= dataj.exk* tx+ dataj.eyk* ty+ dataj.ezk* tz;
         ets= dataj.exs* tx+ dataj.eys* ty+ dataj.ezs* tz;
         etc= dataj.exc* tx+ dataj.eyc* ty+ dataj.ezc* tz;
         e[i1] += ( etk* segj.ax[jx]+ ets* segj.bx[jx]+
-                  etc* segj.cx[jx] )* curd* data.psalp[i];
+                  etc* segj.cx[jx] )* curd* geometry.psalp[i];
         i1++;
-        tx= data.t1x[i];
-        ty= data.t1y[i];
-        tz= data.t1z[i];
+        tx= geometry.t1x[i];
+        ty= geometry.t1y[i];
+        tz= geometry.t1z[i];
         etk= dataj.exk* tx+ dataj.eyk* ty+ dataj.ezk* tz;
         ets= dataj.exs* tx+ dataj.eys* ty+ dataj.ezs* tz;
         etc= dataj.exc* tx+ dataj.eyc* ty+ dataj.ezc* tz;
         e[i1] += ( etk* segj.ax[jx]+ ets* segj.bx[jx]+
-                  etc* segj.cx[jx])* curd* data.psalp[i];
+                  etc* segj.cx[jx])* curd* geometry.psalp[i];
       }
       
     } /* if( m != 0) */
@@ -1552,9 +1552,9 @@ void nfpat( void )
 		  zob= znrt;
 		}
 
-		tmp1= xob/ data.wlam;
-		tmp2= yob/ data.wlam;
-		tmp3= zob/ data.wlam;
+		tmp1= xob/ geometry.wlam;
+		tmp2= yob/ geometry.wlam;
+		tmp3= zob/ geometry.wlam;
 
 		if( fpat.nfeh != 1)
 		  nefld( tmp1, tmp2, tmp3, &ex, &ey, &ez);
@@ -1641,80 +1641,76 @@ void nhfld( double xob, double yob, double zob,
   int i, jc;
   double ax, zp;
   complex double acx, bcx, ccx;
-
+  
   *hx=CPLX_00;
   *hy=CPLX_00;
   *hz=CPLX_00;
   ax=0.;
-
-  if( data.n != 0)
-  {
-	for( i = 0; i < data.n; i++ )
-	{
-	  dataj.xj= xob- data.x[i];
-	  dataj.yj= yob- data.y[i];
-	  dataj.zj= zob- data.z[i];
-	  zp= data.cab[i]* dataj.xj+ data.sab[i]* dataj.yj+ data.salp[i]* dataj.zj;
-
-	  if( fabs( zp) > 0.5001* data.si[i])
-		continue;
-
-	  zp= dataj.xj* dataj.xj+ dataj.yj* dataj.yj+ dataj.zj* dataj.zj- zp* zp;
-	  dataj.xj= data.bi[i];
-
-	  if( zp > 0.9* dataj.xj* dataj.xj)
-		continue;
-
-	  ax= dataj.xj;
-	  break;
-	}
-
-	for( i = 0; i < data.n; i++ )
-	{
-	  dataj.s= data.si[i];
-	  dataj.b= data.bi[i];
-	  dataj.xj= data.x[i];
-	  dataj.yj= data.y[i];
-	  dataj.zj= data.z[i];
-	  dataj.cabj= data.cab[i];
-	  dataj.sabj= data.sab[i];
-	  dataj.salpj= data.salp[i];
-	  hsfld( xob, yob, zob, ax);
-	  acx= cmplx( crnt.air[i], crnt.aii[i]);
-	  bcx= cmplx( crnt.bir[i], crnt.bii[i]);
-	  ccx= cmplx( crnt.cir[i], crnt.cii[i]);
-	  *hx += dataj.exk* acx+ dataj.exs* bcx+ dataj.exc* ccx;
-	  *hy += dataj.eyk* acx+ dataj.eys* bcx+ dataj.eyc* ccx;
-	  *hz += dataj.ezk* acx+ dataj.ezs* bcx+ dataj.ezc* ccx;
-	}
-
-	if( data.m == 0)
-	  return;
-
+  
+  if(geometry.n != 0) {
+    for(i = 0; i < geometry.n; i++) {
+      dataj.xj= xob- geometry.x[i];
+      dataj.yj= yob- geometry.y[i];
+      dataj.zj= zob- geometry.z[i];
+      zp= geometry.cab[i]* dataj.xj+ geometry.sab[i]* dataj.yj+ geometry.salp[i]* dataj.zj;
+      
+      if( fabs( zp) > 0.5001* geometry.si[i])
+        continue;
+      
+      zp= dataj.xj* dataj.xj+ dataj.yj* dataj.yj+ dataj.zj* dataj.zj- zp* zp;
+      dataj.xj= geometry.bi[i];
+      
+      if( zp > 0.9* dataj.xj* dataj.xj)
+        continue;
+      
+      ax= dataj.xj;
+      break;
+    }
+    
+    for(i = 0; i < geometry.n; i++) {
+      dataj.s= geometry.si[i];
+      dataj.b= geometry.bi[i];
+      dataj.xj= geometry.x[i];
+      dataj.yj= geometry.y[i];
+      dataj.zj= geometry.z[i];
+      dataj.cabj= geometry.cab[i];
+      dataj.sabj= geometry.sab[i];
+      dataj.salpj= geometry.salp[i];
+      hsfld( xob, yob, zob, ax);
+      acx= cmplx( crnt.air[i], crnt.aii[i]);
+      bcx= cmplx( crnt.bir[i], crnt.bii[i]);
+      ccx= cmplx( crnt.cir[i], crnt.cii[i]);
+      *hx += dataj.exk* acx+ dataj.exs* bcx+ dataj.exc* ccx;
+      *hy += dataj.eyk* acx+ dataj.eys* bcx+ dataj.eyc* ccx;
+      *hz += dataj.ezk* acx+ dataj.ezs* bcx+ dataj.ezc* ccx;
+    }
+    
+    if(geometry.m == 0)
+      return;
+    
   } /* if( data.n != 0) */
-
-  jc= data.n-1;
-  for( i = 0; i < data.m; i++ )
-  {
-	dataj.s= data.pbi[i];
-	dataj.xj= data.px[i];
-	dataj.yj= data.py[i];
-	dataj.zj= data.pz[i];
-	dataj.t1xj= data.t1x[i];
-	dataj.t1yj= data.t1y[i];
-	dataj.t1zj= data.t1z[i];
-	dataj.t2xj= data.t2x[i];
-	dataj.t2yj= data.t2y[i];
-	dataj.t2zj= data.t2z[i];
-	hintg( xob, yob, zob);
-	jc += 3;
-	acx= dataj.t1xj* crnt.cur[jc-2]+ dataj.t1yj* crnt.cur[jc-1]+ dataj.t1zj* crnt.cur[jc];
-	bcx= dataj.t2xj* crnt.cur[jc-2]+ dataj.t2yj* crnt.cur[jc-1]+ dataj.t2zj* crnt.cur[jc];
-	*hx= *hx+ acx* dataj.exk+ bcx* dataj.exs;
-	*hy= *hy+ acx* dataj.eyk+ bcx* dataj.eys;
-	*hz= *hz+ acx* dataj.ezk+ bcx* dataj.ezs;
+  
+  jc = geometry.n - 1;
+  for(i = 0; i < geometry.m; i++) {
+    dataj.s= geometry.pbi[i];
+    dataj.xj= geometry.px[i];
+    dataj.yj= geometry.py[i];
+    dataj.zj= geometry.pz[i];
+    dataj.t1xj= geometry.t1x[i];
+    dataj.t1yj= geometry.t1y[i];
+    dataj.t1zj= geometry.t1z[i];
+    dataj.t2xj= geometry.t2x[i];
+    dataj.t2yj= geometry.t2y[i];
+    dataj.t2zj= geometry.t2z[i];
+    hintg( xob, yob, zob);
+    jc += 3;
+    acx= dataj.t1xj* crnt.cur[jc-2]+ dataj.t1yj* crnt.cur[jc-1]+ dataj.t1zj* crnt.cur[jc];
+    bcx= dataj.t2xj* crnt.cur[jc-2]+ dataj.t2yj* crnt.cur[jc-1]+ dataj.t2zj* crnt.cur[jc];
+    *hx= *hx+ acx* dataj.exk+ bcx* dataj.exs;
+    *hy= *hy+ acx* dataj.eyk+ bcx* dataj.eys;
+    *hz= *hz+ acx* dataj.ezk+ bcx* dataj.ezs;
   }
-
+  
   return;
 }
 

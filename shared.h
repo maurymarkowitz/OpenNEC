@@ -22,7 +22,7 @@ extern crnt_t crnt;
 extern dataj_t dataj;
 
 /* common  /data/ */
-extern data_t data;
+extern geometry_t geometry;
 
 /* pointers to input/output files */
 extern FILE *input_fp, *output_fp, *plot_fp;

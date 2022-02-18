@@ -25,7 +25,7 @@ void network( complex double *cm, int *ip, complex double *einc )
   /* Allocate network buffers */
   if( netcx.nonet != 0 )
   {
-	mreq = (size_t)data.np3m;
+	mreq = (size_t)geometry.np3m;
 	mreq *= sizeof(complex double);
 	mem_alloc( (void *)&rhs, mreq );
 
@@ -126,13 +126,13 @@ void network( complex double *cm, int *ip, complex double *einc )
 		for( i = 0; i < irow1; i++ )
 		{
 		  isc1= ipnt[i]-1;
-		  asmx= data.si[isc1];
+		  asmx= geometry.si[isc1];
 
 		  for( j = 0; j < neqt; j++ )
 			rhs[j] = CPLX_00;
 
 		  rhs[isc1] = CPLX_10;
-		  solves( cm, ip, rhs, netcx.neq, 1, data.np, data.n, data.mp, data.m);
+		  solves( cm, ip, rhs, netcx.neq, 1, geometry.np, geometry.n, geometry.mp, geometry.m);
 		  cabc( rhs);
 
 		  for( j = 0; j < irow1; j++ )
@@ -211,7 +211,7 @@ void network( complex double *cm, int *ip, complex double *einc )
 		}
 		else
 		{
-		  y22r= TP* netcx.x11i[j]/ data.wlam;
+		  y22r= TP* netcx.x11i[j]/ geometry.wlam;
 		  y12r=0.;
 		  y12i=1./( netcx.x11r[j]* sin( y22r));
 		  y11r= netcx.x12r[j];
@@ -359,24 +359,24 @@ void network( complex double *cm, int *ip, complex double *einc )
 		/* network short-circuit admittance matrix coefficients. */
 		if( isc1 == -1)
 		{
-		  cmn[irow1+irow1*ndimn] -= cmplx( y11r, y11i)* data.si[nseg1-1];
-		  cmn[irow1+irow2*ndimn] -= cmplx( y12r, y12i)* data.si[nseg1-1];
+		  cmn[irow1+irow1*ndimn] -= cmplx( y11r, y11i)* geometry.si[nseg1-1];
+		  cmn[irow1+irow2*ndimn] -= cmplx( y12r, y12i)* geometry.si[nseg1-1];
 		}
 		else
 		{
-		  rhnx[irow1] += cmplx( y11r, y11i)* vsorc.vsant[isc1]/data.wlam;
-		  rhnx[irow2] += cmplx( y12r, y12i)* vsorc.vsant[isc1]/data.wlam;
+		  rhnx[irow1] += cmplx( y11r, y11i)* vsorc.vsant[isc1]/geometry.wlam;
+		  rhnx[irow2] += cmplx( y12r, y12i)* vsorc.vsant[isc1]/geometry.wlam;
 		}
 
 		if( isc2 == -1)
 		{
-		  cmn[irow2+irow2*ndimn] -= cmplx( y22r, y22i)* data.si[nseg2-1];
-		  cmn[irow2+irow1*ndimn] -= cmplx( y12r, y12i)* data.si[nseg2-1];
+		  cmn[irow2+irow2*ndimn] -= cmplx( y22r, y22i)* geometry.si[nseg2-1];
+		  cmn[irow2+irow1*ndimn] -= cmplx( y12r, y12i)* geometry.si[nseg2-1];
 		}
 		else
 		{
-		  rhnx[irow1] += cmplx( y12r, y12i)* vsorc.vsant[isc2]/data.wlam;
-		  rhnx[irow2] += cmplx( y22r, y22i)* vsorc.vsant[isc2]/data.wlam;
+		  rhnx[irow1] += cmplx( y12r, y12i)* vsorc.vsant[isc2]/geometry.wlam;
+		  rhnx[irow2] += cmplx( y22r, y22i)* vsorc.vsant[isc2]/geometry.wlam;
 		}
 
 	  } /* for( j = 0; j < netcx.nonet; j++ ) */
@@ -390,7 +390,7 @@ void network( complex double *cm, int *ip, complex double *einc )
 
 		irow1= nteqa[i]-1;
 		rhs[irow1]=CPLX_10;
-		solves( cm, ip, rhs, netcx.neq, 1, data.np, data.n, data.mp, data.m);
+		solves( cm, ip, rhs, netcx.neq, 1, geometry.np, geometry.n, geometry.mp, geometry.m);
 		cabc( rhs);
 
 		for( j = 0; j < nteq; j++ )
@@ -415,7 +415,7 @@ void network( complex double *cm, int *ip, complex double *einc )
 	for( i = 0; i < neqt; i++ )
 	  rhs[i]= einc[i];
 
-	solves( cm, ip, rhs, netcx.neq, 1, data.np, data.n, data.mp, data.m);
+	solves( cm, ip, rhs, netcx.neq, 1, geometry.np, geometry.n, geometry.mp, geometry.m);
 	cabc( rhs);
 
 	for( i = 0; i < nteq; i++ )
@@ -435,7 +435,7 @@ void network( complex double *cm, int *ip, complex double *einc )
 	  einc[irow1] -= rhnt[i];
 	}
 
-	solves( cm, ip, einc, netcx.neq, 1, data.np, data.n, data.mp, data.m);
+	solves( cm, ip, einc, netcx.neq, 1, geometry.np, geometry.n, geometry.mp, geometry.m);
 	cabc( einc);
 
 	if( netcx.nprint == 0)
@@ -454,11 +454,11 @@ void network( complex double *cm, int *ip, complex double *einc )
 	for( i = 0; i < nteq; i++ )
 	{
 	  irow1= nteqa[i]-1;
-	  vlt= rhnt[i]* data.si[irow1]* data.wlam;
-	  cux= einc[irow1]* data.wlam;
+	  vlt= rhnt[i]* geometry.si[irow1]* geometry.wlam;
+	  cux= einc[irow1]* geometry.wlam;
 	  ymit= cux/ vlt;
 	  netcx.zped= vlt/ cux;
-	  irow2= data.itag[irow1];
+	  irow2= geometry.tag_nums[irow1];
 	  pwr=.5* creal( vlt* conj( cux));
 	  netcx.pnls= netcx.pnls- pwr;
 
@@ -476,10 +476,10 @@ void network( complex double *cm, int *ip, complex double *einc )
 	  {
 		irow1= ntsca[i]-1;
 		vlt= vsrc[i];
-		cux= einc[irow1]* data.wlam;
+		cux= einc[irow1]* geometry.wlam;
 		ymit= cux/ vlt;
 		netcx.zped= vlt/ cux;
-		irow2= data.itag[irow1];
+		irow2= geometry.tag_nums[irow1];
 		pwr=.5* creal( vlt* conj( cux));
 		netcx.pnls= netcx.pnls- pwr;
 
@@ -498,14 +498,14 @@ void network( complex double *cm, int *ip, complex double *einc )
   else
   {
 	/* solve for currents when no networks are present */
-	solves( cm, ip, einc, netcx.neq, 1, data.np, data.n, data.mp, data.m);
+	solves( cm, ip, einc, netcx.neq, 1, geometry.np, geometry.n, geometry.mp, geometry.m);
 	cabc( einc);
 	ntsc=0;
   }
 
   if( (vsorc.nsant+vsorc.nvqd) == 0)
   {
-	free_ptr( (void *)&ipnt );
+	mem_free( (void *)&ipnt );
 	return;
   }
 
@@ -530,7 +530,7 @@ void network( complex double *cm, int *ip, complex double *einc )
 
 	  if( ntsc == 0)
 	  {
-		cux= einc[isc1]* data.wlam;
+		cux= einc[isc1]* geometry.wlam;
 		irow1=0;
 	  }
 	  else
@@ -543,7 +543,7 @@ void network( complex double *cm, int *ip, complex double *einc )
 		cux= rhnx[irow1];
 		for( j = 0; j < nteq; j++ )
 		  cux -= cmn[j+irow1*ndimn]*rhnt[j];
-		cux=(einc[isc1]+ cux)* data.wlam;
+		cux=(einc[isc1]+ cux)* geometry.wlam;
 		irow1++;
 
 	  } /* if( ntsc == 0) */
@@ -556,7 +556,7 @@ void network( complex double *cm, int *ip, complex double *einc )
 	  if( irow1 != 0)
 		netcx.pnls= netcx.pnls+ pwr;
 
-	  irow2= data.itag[isc1];
+	  irow2= geometry.tag_nums[isc1];
 	  fprintf( output_fp, "\n"
 		  " %4d %5d %11.4E %11.4E %11.4E %11.4E"
 		  " %11.4E %11.4E %11.4E %11.4E %11.4E",
@@ -575,13 +575,13 @@ void network( complex double *cm, int *ip, complex double *einc )
 	  cux= cmplx( crnt.air[isc1], crnt.aii[isc1]);
 	  ymit= cmplx( crnt.bir[isc1], crnt.bii[isc1]);
 	  netcx.zped= cmplx( crnt.cir[isc1], crnt.cii[isc1]);
-	  pwr= data.si[isc1]* TP*.5;
-	  cux=( cux- ymit* sin( pwr)+ netcx.zped* cos( pwr))* data.wlam;
+	  pwr= geometry.si[isc1]* TP*.5;
+	  cux=( cux- ymit* sin( pwr)+ netcx.zped* cos( pwr))* geometry.wlam;
 	  ymit= cux/ vlt;
 	  netcx.zped= vlt/ cux;
 	  pwr=.5* creal( vlt* conj( cux));
 	  netcx.pin= netcx.pin+ pwr;
-	  irow2= data.itag[isc1];
+	  irow2= geometry.tag_nums[isc1];
 
 	  fprintf( output_fp,	"\n"
 		  " %4d %5d %11.4E %11.4E %11.4E %11.4E"
@@ -592,14 +592,14 @@ void network( complex double *cm, int *ip, complex double *einc )
 	} /* for( i = 0; i < vsorc.nvqd; i++ ) */
 
   /* Free network buffers */
-  free_ptr( (void *)&ipnt );
-  free_ptr( (void *)&nteqa );
-  free_ptr( (void *)&ntsca );
-  free_ptr( (void *)&vsrc );
-  free_ptr( (void *)&rhs );
-  free_ptr( (void *)&cmn );
-  free_ptr( (void *)&rhnt );
-  free_ptr( (void *)&rhnx );
+  mem_free( (void *)&ipnt );
+  mem_free( (void *)&nteqa );
+  mem_free( (void *)&ntsca );
+  mem_free( (void *)&vsrc );
+  mem_free( (void *)&rhs );
+  mem_free( (void *)&cmn );
+  mem_free( (void *)&rhnt );
+  mem_free( (void *)&rhnx );
 
   return;
 }
