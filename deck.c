@@ -73,7 +73,7 @@ void free_card(Card *card) {
 /******************************************************************************
  * recalculate_sections
  *
- * Loops over the deck and finds the start and end of the various sections
+ * Loops over the deck and finds the start and end of the various sections,
  * like comments and geometry.
  *
  * @param deck the Deck to recalculate
@@ -115,7 +115,7 @@ void recalculate_sections(Deck *deck)
       continue;
     }
     // the oddball is the end, which is only at the EN card
-    if(strcasecmp(card->card_code, "EN") == 0) {
+    if(strcmp(card->card_code, "EN") == 0) {
       deck->deck_end = i;
     }
   } /* for loop over cards */
@@ -375,10 +375,13 @@ int isExtension(Card *card)
 int min_int_fields(Card* card)
 {
   // GE has zero minimum fields
-  if(strcasecmp(card->card_code, "GE")) return 0; // the ground type is optional
-  if(strcasecmp(card->card_code, "GF")) return 0; // there is an option to print extra data
-  if(strcasecmp(card->card_code, "GC")) return 0; // tapers use I's from previous GW
+  if(strcmp(card->card_code, "GE") == 0) return 0; // the ground type is optional
+  if(strcmp(card->card_code, "GF") == 0) return 0; // there is an option to print extra data
+  if(strcmp(card->card_code, "GC") == 0) return 0; // tapers use I's from previous GW
   // SP/SC uses only one int or none, but it's in position 2, so nothing to do here
+  
+  if(strcmp(card->card_code, "EK") == 0) return 1; // flag for on or off
+  if(strcmp(card->card_code, "EN") == 0) return 0;
 
   // now the default cases
   if(isGeometry(card)) {
@@ -392,9 +395,12 @@ int min_int_fields(Card* card)
 
 int max_int_fields(Card* card)
 {
-  if(strcasecmp(card->card_code, "GF")) return 1; // there is an option to print extra data
-  if(strcasecmp(card->card_code, "GC")) return 0; // tapers use I's from previous GW
+  if(strcmp(card->card_code, "GF") == 0) return 1; // there is an option to print extra data
+  if(strcmp(card->card_code, "GC") == 0) return 0; // tapers use I's from previous GW
   // SP/SC uses only one int or none, but it's in position 2, so nothing to do here
+
+  if(strcmp(card->card_code, "EK") == 0) return 1; // flag for on or off
+  if(strcmp(card->card_code, "EN") == 0) return 0;
 
   // now the default cases
   if(isGeometry(card)) {
@@ -410,15 +416,25 @@ int min_flt_fields(Card* card)
 {
   // these are taken from the NEC-2 dox unless noted otherwise
   // the dox indicate optional parameters with () around the name
-  if(strcasecmp(card->card_code, "GA")) return 4; // arcs have four inputs
-  if(strcasecmp(card->card_code, "GE")) return 0; // no floats
-  if(strcasecmp(card->card_code, "GR")) return 0; // no floats
-  if(strcasecmp(card->card_code, "GS")) return 1; // scale
-  if(strcasecmp(card->card_code, "GC")) return 0; // tapers have three inputs
-  if(strcasecmp(card->card_code, "GX")) return 0; // uses only the ints
-  if(strcasecmp(card->card_code, "SP")) return 6; // last field unused
-  if(strcasecmp(card->card_code, "SM")) return 6; // last field unused
-  if(strcasecmp(card->card_code, "SC")) return 6; // this might only be three if it follows SM, but filled with zeros
+  if(strcmp(card->card_code, "GA") == 0) return 4; // arcs have four inputs
+  if(strcmp(card->card_code, "GE") == 0) return 0; // no floats
+  if(strcmp(card->card_code, "GR") == 0) return 0; // no floats
+  if(strcmp(card->card_code, "GS") == 0) return 1; // scale
+  if(strcmp(card->card_code, "GC") == 0) return 0; // tapers have three inputs
+  if(strcmp(card->card_code, "GX") == 0) return 0; // uses only the ints
+  if(strcmp(card->card_code, "SP") == 0) return 6; // last field unused
+  if(strcmp(card->card_code, "SM") == 0) return 6; // last field unused
+  if(strcmp(card->card_code, "SC") == 0) return 6; // this might only be three if it follows SM, but filled with zeros
+
+  // this one is annoying as the format depends on the value in I1
+  if(strcmp(card->card_code, "EX") == 0) {
+    if(card->i[1] == 0 || card->i[1] == 5)
+      return 3;
+    else
+      return 6;
+  }
+  
+  if(strcmp(card->card_code, "RF")) return 1; // can be a single frequency
 
   // now the default cases
   if(isGeometry(card)) {
@@ -432,14 +448,24 @@ int min_flt_fields(Card* card)
 
 int max_flt_fields(Card* card)
 {
-  if(strcasecmp(card->card_code, "GA")) return 4; // arcs have four inputs
-  if(strcasecmp(card->card_code, "GE")) return 0; // no floats
-  if(strcasecmp(card->card_code, "GR")) return 0; // no floats
-  if(strcasecmp(card->card_code, "GS")) return 1; // scale
-  if(strcasecmp(card->card_code, "GC")) return 0; // tapers have three inputs
-  if(strcasecmp(card->card_code, "GX")) return 0; // uses only the ints
-  if(strcasecmp(card->card_code, "SP")) return 6; // last field unused
-  if(strcasecmp(card->card_code, "SC")) return 6; // even in the three-used case, zeros are used
+  if(strcmp(card->card_code, "GA") == 0) return 4; // arcs have four inputs
+  if(strcmp(card->card_code, "GE") == 0) return 0; // no floats
+  if(strcmp(card->card_code, "GR") == 0) return 0; // no floats
+  if(strcmp(card->card_code, "GS") == 0) return 1; // scale
+  if(strcmp(card->card_code, "GC") == 0) return 0; // tapers have three inputs
+  if(strcmp(card->card_code, "GX") == 0) return 0; // uses only the ints
+  if(strcmp(card->card_code, "SP") == 0) return 6; // last field unused
+  if(strcmp(card->card_code, "SC") == 0) return 6; // even in the three-used case, zeros are used
+
+  // EX format depends on the value in I1
+  if(strcmp(card->card_code, "EX") == 0) {
+    if(card->i[1] == 0 || card->i[1] == 5)
+      return 3;
+    else
+      return 6;
+  }
+  
+  if(strcmp(card->card_code, "FR") == 0) return 2; // can be stepped
 
   // now the default cases
   if(isGeometry(card)) {
