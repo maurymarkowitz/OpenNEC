@@ -1,17 +1,16 @@
 /******************************************************************************
  * output.c
  *
- * output.c contains a number of routines that write data from the
- * deck to various types of files. This includes the main output
- * file in write_nec_out(), which attempts to match the format of
- * the nec2c .out files as closely as possible.
+ * output.c contains a number of routines that write data from the deck to
+ * various types of files. This includes the main output file in write_nec_out
+ * which attempts to match the format of the nec2c .out files as closely as
+ * possible.
  *
- * OpenNEC adds functions for writing the decks themselves, in
- * .nec or .onec formats. In addition to allowing a deck to be
- * created in code and then written, these can also be used as a
- * way to fix problems in existing files, like split lines or
- * non-standard comment markers and such, simply load up the
- * deck and then save it again.
+ * OpenNEC adds functions for writing the decks themselves, in .onec format.
+ * in addition to allowing a deck to be created in code in code and then
+ * written, these can also be used as a way to fix problems in existing files,
+ * like split lines or non-standard comment markers and such, simply load up
+ * the deck and then save it again.
  *
  *****************************************************************************/
 
@@ -31,6 +30,8 @@
  *
  * TODO: need to calculate all float values and run any conversions
  *       to base units before exporting!
+ *
+ * TODO: move this to an export.c
  *
  */
 void write_deck_nec(Deck *deck, FILE *file, int remove_inline_comments)
@@ -271,6 +272,19 @@ void write_deck_onec(Deck *deck, FILE *file)
 }
 
 /******************************************************************************
+ * write_nec_output()
+ *
+ * Writes a standard NEC-style output file, using various work functions.
+ *
+ */
+void write_nec_output(Deck *deck, FILE *file)
+{
+  write_header(deck, file);
+  write_structure(deck, file);
+}
+
+
+/******************************************************************************
  * write_headers()
  *
  * writes the header area and comments to the standard NEC output file
@@ -297,7 +311,7 @@ void write_header(Deck *deck, FILE *file)
   // write comments to output file
   for(int i = deck->comment_start; i <= deck->comment_end; i++) {
     fprintf( output_fp,
-            "                              %s\n",
+            "               %s\n",
             deck->cards[i].comment);
   }
 }
@@ -342,7 +356,8 @@ void write_structure(Deck *deck, FILE *file)
   
   // print the header
   fprintf(file, "\n\n\n"
-          "-------- STRUCTURE SPECIFICATION --------\n"
+          "                               "
+          "-------- STRUCTURE SPECIFICATION ---------\n"
           "                                     "
           "COORDINATES MUST BE INPUT IN\n"
           "                                     "
@@ -353,8 +368,8 @@ void write_structure(Deck *deck, FILE *file)
   fprintf(output_fp, "\n"
           "  WIRE                                           "
           "                                      SEG FIRST  LAST  TAG\n"
-          "   No:        X1         Y1         Z1         X2      "
-          "   Y2         Z2       RADIUS   No:   SEG   SEG  No:");
+          "   NO.        X1         Y1         Z1         X2      "
+          "   Y2         Z2       RADIUS   NO. SEG.   SEG.  NO.");
   
   for(int i = deck->geometry_start; i <= deck->geometry_end; i++) {
     card = deck->cards[i];
@@ -374,7 +389,7 @@ void write_structure(Deck *deck, FILE *file)
           " %5d  %10.5f %10.5f %10.5f %10.5f"
           " %10.5f %10.5f %10.5f %5d %5d %5d %4d",
                 num_wires, card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6], card.f[7],
-                card.tag, card.start_segment, card.end_segment, card.tag );
+                card.tag, card.start_segment, card.end_segment, card.tag);
         break;
         
       case 1: // GX card, reflection or rotation
@@ -453,6 +468,40 @@ void write_structure(Deck *deck, FILE *file)
         
     } /* switch on the card type */
   } /* for loop over cards */
+  
+  // and now a final report on the cards
+  fprintf( output_fp, "\n\n"
+          "     TOTAL SEGMENTS USED: %d   SEGMENTS IN A"
+          " SYMMETRIC CELL: %d   SYMMETRY FLAG: %d",
+          geometry.n, geometry.np, geometry.ipsym );
+  
+  if(geometry.m > 0)
+    fprintf( output_fp,  "\n"
+            "       TOTAL PATCHES USED: %d   PATCHES"
+            " IN A SYMMETRIC CELL: %d",  geometry.m, geometry.mp );
+  
+  int iseg = (geometry.n + geometry.m) / (geometry.np + geometry.mp);
+  if(iseg != 1)  {
+    /*** may be error condition?? ***/
+    if(geometry.ipsym == 0) {
+      fprintf( output_fp,
+              "\n  ERROR: IPSYM=0 IN CONECT()" );
+      stop(-1);
+    }
+  } /* if( iseg == 1) */
+
+  if(geometry.ipsym < 0)
+    fprintf( output_fp,
+            "\n  STRUCTURE HAS %d FOLD ROTATIONAL SYMMETRY\n", iseg );
+  else {
+    int ic = iseg / 2;
+    if(iseg == 8)
+      ic = 3;
+    fprintf( output_fp,
+            "\n  STRUCTURE HAS %d PLANES OF SYMMETRY\n", ic );
+  } /* if( data.ipsym < 0 ) */
+
+
 }
 
 /******************************************************************************

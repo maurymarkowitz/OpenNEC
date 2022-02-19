@@ -16,12 +16,11 @@
  *
  * calculate_geometry (formerly datagn) is the main routine for creation
  * of geometry data. It reads the geometry cards, builds segments and patches,
- * returns various errors, and when it reaches the end of the geometry it
- * calls the various worker functions to calculate the segment and patch data.
- * The resulting data, in geometry, can then be used to draw a diagram of the
- *  antenna.
+ * and returns various errors. The resulting data, in geometry, can then be
+ * used to draw a diagram of the antenna as well as being used in the
+ * calculations.
  *
- * @param deck Deck structure that will hold the Cards
+ * @param deck Deck structure that has the geometry Cards
  * @param errors a list of errors to add to
  *
  */
@@ -90,13 +89,13 @@ void calculate_geometry(Deck *deck, Errors *errors)
         } else {
           // make sure the next card is a GC, although we should have already done that
           if(strcmp(deck->cards[i + 1].card_code, "GC") != 0) {
-            sprintf(msg, "Card %d is a GW with a zero radius, but the next card is not a GC with the tapering info.", i);
+            sprintf(msg, "The card on line %d is a GW with a zero radius, but the next card is not a GC with the tapering info.", i);
             add_error(errors, msg, 1);
             continue;
           }
           // and also that the values in it are valid
           if(deck->cards[i + 1].f[2] == 0.0 || deck->cards[i + 1].f[3] == 0.0) {
-            sprintf(msg, "Card %d is a GC with tapering info for GW in card %d, but there is a zero in Y1 or Z1.", i + 1, i);
+            sprintf(msg, "The card on line %d is a GC with tapering info for GW in card %d, but there is a zero in Y1 or Z1.", i + 1, i);
             add_error(errors, msg, 1);
             continue;
           }
@@ -116,6 +115,12 @@ void calculate_geometry(Deck *deck, Errors *errors)
         i1 = geometry.n + 1;
         i2 = geometry.n + ns;
         
+        // and set the card's tag and segments
+        card.tag = itg;
+        card.num_segments = ns;
+        card.start_segment = geometry.n;
+        card.end_segment = geometry.n + ns - 1;
+
         // now we have all the data, so turn it into segments
         wire(i, itg, ns, xw1, yw1, zw1, xw2, yw2, zw2, rad, xs1, ys1);
         continue;
@@ -178,6 +183,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
           mem_realloc((void *)&geometry.z, mreq);
           
           // and run the calcs
+          // NOTE: since it's going to exit at this point it simply re-uses i, but this seems bad form
           for(i = 0; i < geometry.n; i++) {
             xw1 = geometry.x2[i] - geometry.x1[i];
             yw1 = geometry.y2[i] - geometry.y1[i];
@@ -185,26 +191,26 @@ void calculate_geometry(Deck *deck, Errors *errors)
             geometry.x[i] = (geometry.x1[i] + geometry.x2[i]) / 2.;
             geometry.y[i] = (geometry.y1[i] + geometry.y2[i]) / 2.;
             geometry.z[i] = (geometry.z1[i] + geometry.z2[i]) / 2.;
-            xw2 = xw1* xw1 + yw1* yw1 + zw1* zw1;
+            xw2 = xw1 * xw1 + yw1 * yw1 + zw1 * zw1;
             yw2 = sqrt(xw2);
-            yw2 = (xw2 / yw2 + yw2)*.5;
+            yw2 = (xw2 / yw2 + yw2) * 0.5;
             geometry.si[i] = yw2;
             geometry.cab[i] = xw1 / yw2;
             geometry.sab[i] = yw1 / yw2;
             xw2 = zw1 / yw2;
             
-            if(xw2 > 1.) xw2 = 1.;
-            if(xw2 < -1.) xw2 = -1.;
+            if(xw2 > 1.0) xw2 = 1.0;
+            if(xw2 < -1.0) xw2 = -1.0;
             
             geometry.salp[i] = xw2;
-            xw2 = asin(xw2)* TD;
-            yw2 = atan2(yw1, xw1)* TD;
+            xw2 = asin(xw2) * TD;
+            yw2 = atan2(yw1, xw1) * TD;
             
             if(geometry.si[i] <= 1.e-20) {
                 sprintf(msg, "The length of segment %d is too small to process.", i);
                 add_error(errors, msg, 1);
             }
-            if(geometry.bi[i] <= 0.) {
+            if(geometry.bi[i] <= 0.0) {
               sprintf(msg, "The radius of segment %d is too small to process.", i);
               add_error(errors, msg, 1);
             }
@@ -212,13 +218,12 @@ void calculate_geometry(Deck *deck, Errors *errors)
         } /* if( data.n != 0) */
         
         // and finally, do the same basic calculations for the patches
-        // print out the patch data if there is any
         if (geometry.m != 0) {
           // don't really need the if, because nothing seems to be realloced
           for(i = 0; i < geometry.m; i++) {
-            xw1 = (geometry.t1y[i] * geometry.t2z[i] - geometry.t1z[i] * geometry.t2y[i])* geometry.psalp[i];
-            yw1 = (geometry.t1z[i] * geometry.t2x[i] - geometry.t1x[i] * geometry.t2z[i])* geometry.psalp[i];
-            zw1 = (geometry.t1x[i] * geometry.t2y[i] - geometry.t1y[i] * geometry.t2x[i])* geometry.psalp[i];
+            xw1 = (geometry.t1y[i] * geometry.t2z[i] - geometry.t1z[i] * geometry.t2y[i]) * geometry.psalp[i];
+            yw1 = (geometry.t1z[i] * geometry.t2x[i] - geometry.t1x[i] * geometry.t2z[i]) * geometry.psalp[i];
+            zw1 = (geometry.t1x[i] * geometry.t2y[i] - geometry.t1y[i] * geometry.t2x[i]) * geometry.psalp[i];
           } /* for( i = 0; i < data.m; i++ ) */
         } /* if( data.m == 0) */
         
@@ -235,9 +240,9 @@ void calculate_geometry(Deck *deck, Errors *errors)
         zw1 = zw1 * TA;
         
         // convert the original float value in F7 to int
-        int its = (int)(card.f[7] + .5);
+        int tag_increment = (int)(card.f[7] + .5);
         
-        duplicate(xw1, yw1, zw1, xw2, yw2, zw2, its, ns, itg);
+        duplicate(xw1, yw1, zw1, xw2, yw2, zw2, tag_increment, ns, itg);
         continue;
         
       case 6: /* "sp" card, generate single new patch or a series of patches with SC */
@@ -266,7 +271,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
           // make sure the next one is an SC
           // TODO: we should test the sanity of the inputs based on the ns
           if(strcmp(deck->cards[i + 1].card_code, "SC") != 0) {
-            sprintf(msg, "Card %d is a SP with type %d, but the next card is not an SC, which it needs.", i, ns);
+            sprintf(msg, "The card on line %d is a SP with type %d, but the next card is not an SC, which it needs.", i + 1, ns);
             add_error(errors, msg, 1);
             continue;
           }
@@ -306,7 +311,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
               x3 = deck->cards[i + 1].f[4];
               y3 = deck->cards[i + 1].f[5];
               z3 = deck->cards[i + 1].f[6];
-              i++;
+              i++; // skip the card in the main loop
               patch(itg, ns, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
             } /* while cards are SC's */
           }/* ns > 2 */
@@ -336,12 +341,12 @@ void calculate_geometry(Deck *deck, Errors *errors)
         i1 = geometry.m + 1;
   
         if(itg < 1 ||ns < 1) {
-          sprintf(msg, "Card %d is a SM, but the number of patches in I1 or I2 is too small.", i);
+          sprintf(msg, "The card on line %d is a SM, but the number of patches in I1 or I2 is too small.", i);
           add_error(errors, msg, 1);
           continue;
         }
         if(strcmp(deck->cards[i + 1].card_code, "SC") != 0) {
-          sprintf(msg, "Card %d is a SM, but the next card is not an SC, which it needs.", i);
+          sprintf(msg, "The card on line %d is a SM, but the next card is not an SC, which it needs.", i);
           add_error(errors, msg, 1);
           continue;
         }
@@ -375,8 +380,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
         arc(i, itg, ns, xw1, yw1, zw1, xw2);
         continue;
         
-      case 9:
-        
+      case 9: // SC card, skip it but it should never happen because GW should have read it
 
       case 10: /* "gh" card, generate helix */
         num_wires++;
@@ -390,11 +394,12 @@ void calculate_geometry(Deck *deck, Errors *errors)
 //          nwire, xw1, yw1, rad, ns, i1, i2, itg, zw1, xw2, yw2, zw2);
   
         // convert the original float value in F7 to int
-        its = (int)(card.f[7] + .5);
-        helix(i, card.i[1], card.i[2], card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6], its);
+        //tag_increment = (int)(card.f[7] + .5);
+        helix(i, card.i[1], card.i[2], card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6], card.f[6]);
         continue;
   
       case 11: /* "gf" card, not supported */
+        // TODO: support this!
         abort_on_error(-5);
 
       default: // error message if this isn't a comment
@@ -402,7 +407,6 @@ void calculate_geometry(Deck *deck, Errors *errors)
           sprintf(msg, "Geometry card on line %d has an unknown mnemonic, '%s'.", i + 1, card.card_code);
           add_error(errors, msg, 1);
         }
-
     } /* switch on card type */
   } /* for over cards */
   
@@ -421,8 +425,6 @@ void calculate_geometry(Deck *deck, Errors *errors)
  * @param m The segment number within that structure
  *
  */
-/* isegno returns the segment number of the mth segment having the */
-/* tag number itagi. if itagi=0 segment number m is returned. */
 int segment_number(int tag, int m)
 {
 	int icnt, iseg;
@@ -444,8 +446,7 @@ int segment_number(int tag, int m)
 	// if the tag isn't zero, look for it in the segment collection
 	icnt = 0;
 	if (geometry.n > 0) {
-		int i;	// shouldn't this be defined in the for?
-		for (i = 0; i < geometry.n; i++) {
+		for (int i = 0; i < geometry.n; i++) {
 			if (geometry.tag_nums[i] != tag)
 				continue;
 
@@ -458,7 +459,7 @@ int segment_number(int tag, int m)
 	} /* if( data.n > 0) */
 
 	fprintf(output_fp, "\n\n"
-		"  NO SEGMENT HAS AN ITAG OF %d", tag);
+		"  NO SEGMENT HAS AN TAG OF %d", tag);
 	stop(-1);
 
 	return(0);
@@ -479,7 +480,7 @@ void connect_segments(int ignd)
   double sep=0., xi1, yi1, zi1, xi2, yi2, zi2;
   double slen, xa, ya, za, xs, ys, zs;
   size_t mreq;
-
+  
   segj.maxcon = 1;
   
   if(ignd != 0) {
@@ -511,14 +512,14 @@ void connect_segments(int ignd)
       geometry.ipsym=0;
     
   } /* if( ignd != 0) */
-
+  
   if(geometry.n != 0) {
-  /* Allocate memory to connections */
-  mreq = (size_t)(geometry.n + geometry.m);
-  mreq *= sizeof(int);
-  mem_realloc((void *)&geometry.icon1, mreq);
-  mem_realloc((void *)&geometry.icon2, mreq);
-
+    /* Allocate memory to connections */
+    mreq = (size_t)(geometry.n + geometry.m);
+    mreq *= sizeof(int);
+    mem_realloc((void *)&geometry.icon1, mreq);
+    mem_realloc((void *)&geometry.icon2, mreq);
+    
     for(i = 0; i < geometry.n; i++) {
       geometry.icon1[i] = geometry.icon2[i] = 0;
       iz = i+1;
@@ -613,228 +614,198 @@ void connect_segments(int ignd)
         
       } /* for( j = 1; j < data.n; j++ ) */
     } /* for( i = 0; i < data.n; i++ ) */
-
-  /* find wire-surface connections for new patches */
-  if( geometry.m != 0) {
-    ix = -1;
-    i = 0;
-    while( ++i <= geometry.m ) {
-    ix++;
-    xs= geometry.px[ix];
-    ys= geometry.py[ix];
-    zs= geometry.pz[ix];
-
-    for( iseg = 0; iseg < geometry.n; iseg++ ) {
-      xi1= geometry.x1[iseg];
-      yi1= geometry.y1[iseg];
-      zi1= geometry.z1[iseg];
-      xi2= geometry.x2[iseg];
-      yi2= geometry.y2[iseg];
-      zi2= geometry.z2[iseg];
-
-      /* for first end of segment */
-      slen=( fabs(xi2- xi1)+ fabs(yi2- yi1)+ fabs(zi2- zi1))* SMIN;
-      sep= fabs(xi1- xs)+ fabs(yi1- ys)+ fabs(zi1- zs);
-
-      /* connection - divide patch into 4 patches at present array loc. */
-      if( sep <= slen) {
-      geometry.icon1[iseg]=PCHCON+ i;
-      ic=0;
-      subph( i, ic );
-      break;
-      }
-
-      sep= fabs(xi2- xs)+ fabs(yi2- ys)+ fabs(zi2- zs);
-      if( sep <= slen) {
-      geometry.icon2[iseg]=PCHCON+ i;
-      ic=0;
-      subph( i, ic );
-      break;
-      }
-
-    } /* for( iseg = 0; iseg < data.n; iseg++ ) */
-    } /* while( ++i <= data.m ) */
-  } /* if( data.m != 0) */
+    
+    /* find wire-surface connections for new patches */
+    if(geometry.m != 0) {
+      ix = -1;
+      i = 0;
+      while(++i <= geometry.m) {
+        ix++;
+        xs = geometry.px[ix];
+        ys = geometry.py[ix];
+        zs = geometry.pz[ix];
+        
+        for(iseg = 0; iseg < geometry.n; iseg++) {
+          xi1 = geometry.x1[iseg];
+          yi1 = geometry.y1[iseg];
+          zi1 = geometry.z1[iseg];
+          xi2 = geometry.x2[iseg];
+          yi2 = geometry.y2[iseg];
+          zi2 = geometry.z2[iseg];
+          
+          /* for first end of segment */
+          slen = (fabs(xi2 - xi1) + fabs(yi2 - yi1) + fabs(zi2 - zi1))* SMIN;
+          sep = fabs(xi1 - xs) + fabs(yi1 - ys) + fabs(zi1 - zs);
+          
+          /* connection - divide patch into 4 patches at present array loc. */
+          if(sep <= slen) {
+            geometry.icon1[iseg] = PCHCON + i;
+            ic=0;
+            calculate_patch(i, ic);
+            break;
+          }
+          
+          sep = fabs(xi2- xs)+ fabs(yi2- ys)+ fabs(zi2- zs);
+          if(sep <= slen) {
+            geometry.icon2[iseg] = PCHCON + i;
+            ic = 0;
+            calculate_patch(i, ic);
+            break;
+          }
+          
+        } /* for( iseg = 0; iseg < data.n; iseg++ ) */
+      } /* while( ++i <= data.m ) */
+    } /* if( data.m != 0) */
   } /* if( data.n != 0) */
-
-  fprintf( output_fp, "\n\n"
-    "     TOTAL SEGMENTS USED: %d   SEGMENTS IN A"
-    " SYMMETRIC CELL: %d   SYMMETRY FLAG: %d",
-    geometry.n, geometry.np, geometry.ipsym );
-
-  if( geometry.m > 0)
-  fprintf( output_fp,  "\n"
-    "       TOTAL PATCHES USED: %d   PATCHES"
-    " IN A SYMMETRIC CELL: %d",  geometry.m, geometry.mp );
-
-  iseg=( geometry.n+ geometry.m)/( geometry.np+ geometry.mp);
-  if( iseg != 1)  {
-  /*** may be error condition?? ***/
-  if( geometry.ipsym == 0 ) {
-    fprintf( output_fp,
-      "\n  ERROR: IPSYM=0 IN CONECT()" );
-    stop(-1);
-  }
-
-  if( geometry.ipsym < 0 )
-    fprintf( output_fp,
-      "\n  STRUCTURE HAS %d FOLD ROTATIONAL SYMMETRY\n", iseg );
-  else {
-    ic= iseg/2;
-    if( iseg == 8)
-    ic=3;
-    fprintf( output_fp,
-      "\n  STRUCTURE HAS %d PLANES OF SYMMETRY\n", ic );
-  } /* if( data.ipsym < 0 ) */
-  } /* if( iseg == 1) */
-
-  if( geometry.n == 0)
-  return;
-
-  /* Allocate to connection buffers */
+  
+  // if we have no geometry, we're done
+  if(geometry.n == 0)
+    return;
+  
+  // allocate to connection buffers
   mreq = (size_t)segj.maxcon;
   mreq *= sizeof(int);
   mem_realloc((void *)&segj.jco, mreq);
-
+  
   /* adjust connected segment ends to exactly coincide.  print junctions */
   /* of 3 or more seg.  also find old seg. connecting to new seg. */
   iseg = 0;
   ipf = FALSE;
-  for( j = 0; j < geometry.n; j++ ) {
-  jx = j+1;
-  iend=-1;
-  jend=-1;
-  ix= geometry.icon1[j];
-  ic=1;
-  segj.jco[0]= -jx;
-  xa= geometry.x1[j];
-  ya= geometry.y1[j];
-  za= geometry.z1[j];
-
-  /* if( ix == 0 ) Not needed??
-  {
-    fprintf( output_fp,
-      "\n  CONNECT - SEGMENT CONNECTION ERROR FOR SEGMENT: %d", ix );
-    stop(-1);
-  } */
-
-  while( TRUE ) {
-    if( (ix != 0) && (ix != (j+1)) && (ix <= PCHCON) ) {
-    do {
-      if( ix < 0 )
-      ix= -ix;
-      else
-      jend= -jend;
-
-      jump = FALSE;
-
-      if( ix == jx )
-      break;
-
-      if( ix < jx ) {
-      jump = TRUE;
-      break;
-      }
-
-      /* Record max. no. of connections */
-      ic++;
-      if( ic >= segj.maxcon ) {
-      segj.maxcon = ic+1;
-      mreq = (size_t)segj.maxcon;
-      mreq *= sizeof(int);
-      mem_realloc((void *)&segj.jco, mreq);
-      }
-      segj.jco[ic-1]= ix* jend;
-
-      ixx = ix-1;
-      if( jend != 1) {
-      xa= xa+ geometry.x1[ixx];
-      ya= ya+ geometry.y1[ixx];
-      za= za+ geometry.z1[ixx];
-      ix= geometry.icon1[ixx];
-      continue;
-      }
-
-      xa= xa+ geometry.x2[ixx];
-      ya= ya+ geometry.y2[ixx];
-      za= za+ geometry.z2[ixx];
-      ix= geometry.icon2[ixx];
-
-    } /* do */
-    while( ix != 0 );
-
-    if( jump && (iend == 1) )
-      break;
-    else
-      if( jump ) {
-      iend=1;
-      jend=1;
-      ix= geometry.icon2[j];
-      ic=1;
-      segj.jco[0]= jx;
-      xa= geometry.x2[j];
-      ya= geometry.y2[j];
-      za= geometry.z2[j];
-      continue;
-      }
-
-    sep= (double)ic;
-    xa= xa/ sep;
-    ya= ya/ sep;
-    za= za/ sep;
-
-    for( i = 0; i < ic; i++ ) {
-      ix= segj.jco[i];
-      if( ix <= 0) {
-      ix= -ix;
-      ixx = ix-1;
-      geometry.x1[ixx]= xa;
-      geometry.y1[ixx]= ya;
-      geometry.z1[ixx]= za;
-      continue;
-      }
-
-      ixx = ix-1;
-      geometry.x2[ixx]= xa;
-      geometry.y2[ixx]= ya;
-      geometry.z2[ixx]= za;
-    } /* for( i = 0; i < ic; i++ ) */
-
-    if( ic >= 3) {
-      if( ! ipf ) {
-      fprintf( output_fp, "\n\n"
-        "    ---------- MULTIPLE WIRE JUNCTIONS ----------\n"
-        "    JUNCTION  SEGMENTS (- FOR END 1, + FOR END 2)" );
-      ipf = TRUE;
-      }
-
-      iseg++;
-      fprintf( output_fp, "\n   %5d      ", iseg );
-
-      for( i = 1; i <= ic; i++ )  {
-      fprintf( output_fp, "%5d", segj.jco[i-1] );
-      if( !(i % 20) )
-        fprintf( output_fp, "\n              " );
-      }
-
-    } /* if( ic >= 3) */
-    } /*if( (ix != 0) && (ix != j) && (ix <= PCHCON) ) */
-
-    if( iend == 1)
-    break;
-
-    iend=1;
-    jend=1;
-    ix= geometry.icon2[j];
-    ic=1;
-    segj.jco[0]= jx;
-    xa= geometry.x2[j];
-    ya= geometry.y2[j];
-    za= geometry.z2[j];
-
-  } /* while( TRUE ) */
+  for(j = 0; j < geometry.n; j++) {
+    jx = j + 1;
+    iend = -1;
+    jend = -1;
+    ix = geometry.icon1[j];
+    ic = 1;
+    segj.jco[0] = -jx;
+    xa = geometry.x1[j];
+    ya = geometry.y1[j];
+    za = geometry.z1[j];
+    
+    /* if( ix == 0 ) Not needed??
+     {
+     fprintf( output_fp,
+     "\n  CONNECT - SEGMENT CONNECTION ERROR FOR SEGMENT: %d", ix );
+     stop(-1);
+     } */
+    
+    while( TRUE ) {
+      if((ix != 0) && (ix != (j+1)) && (ix <= PCHCON)) {
+        do {
+          if(ix < 0)
+            ix = -ix;
+          else
+            jend = -jend;
+          
+          jump = FALSE;
+          
+          if(ix == jx)
+            break;
+          
+          if(ix < jx) {
+            jump = TRUE;
+            break;
+          }
+          
+          /* Record max. no. of connections */
+          ic++;
+          if(ic >= segj.maxcon) {
+            segj.maxcon = ic + 1;
+            mreq = (size_t)segj.maxcon;
+            mreq *= sizeof(int);
+            mem_realloc((void *)&segj.jco, mreq);
+          }
+          segj.jco[ic-1]= ix* jend;
+          
+          ixx = ix-1;
+          if(jend != 1) {
+            xa = xa + geometry.x1[ixx];
+            ya = ya + geometry.y1[ixx];
+            za = za + geometry.z1[ixx];
+            ix = geometry.icon1[ixx];
+            continue;
+          }
+          
+          xa = xa + geometry.x2[ixx];
+          ya = ya + geometry.y2[ixx];
+          za = za + geometry.z2[ixx];
+          ix = geometry.icon2[ixx];
+          
+        } /* do */
+        while( ix != 0 );
+        
+        if(jump && (iend == 1))
+          break;
+        else
+          if(jump) {
+            iend = 1;
+            jend = 1;
+            ix = geometry.icon2[j];
+            ic = 1;
+            segj.jco[0] = jx;
+            xa = geometry.x2[j];
+            ya = geometry.y2[j];
+            za = geometry.z2[j];
+            continue;
+          }
+        
+        sep= (double)ic;
+        xa= xa / sep;
+        ya= ya / sep;
+        za= za / sep;
+        
+        for(i = 0; i < ic; i++) {
+          ix = segj.jco[i];
+          if(ix <= 0) {
+            ix = -ix;
+            ixx = ix - 1;
+            geometry.x1[ixx] = xa;
+            geometry.y1[ixx] = ya;
+            geometry.z1[ixx] = za;
+            continue;
+          }
+          
+          ixx = ix - 1;
+          geometry.x2[ixx] = xa;
+          geometry.y2[ixx] = ya;
+          geometry.z2[ixx] = za;
+        } /* for( i = 0; i < ic; i++ ) */
+        
+        if(ic >= 3) {
+          if(!ipf) {
+            fprintf( output_fp, "\n\n"
+                    "    ---------- MULTIPLE WIRE JUNCTIONS ----------\n"
+                    "    JUNCTION  SEGMENTS (- FOR END 1, + FOR END 2)" );
+            ipf = TRUE;
+          }
+          
+          iseg++;
+          fprintf( output_fp, "\n   %5d      ", iseg );
+          
+          for(i = 1; i <= ic; i++)  {
+            fprintf( output_fp, "%5d", segj.jco[i-1] );
+            if(!(i % 20)) // why 20?
+              fprintf( output_fp, "\n              " );
+          }
+          
+        } /* if( ic >= 3) */
+      } /*if( (ix != 0) && (ix != j) && (ix <= PCHCON) ) */
+      
+      if(iend == 1)
+        break;
+      
+      iend = 1;
+      jend = 1;
+      ix = geometry.icon2[j];
+      ic = 1;
+      segj.jco[0] = jx;
+      xa = geometry.x2[j];
+      ya = geometry.y2[j];
+      za = geometry.z2[j];
+      
+    } /* while( TRUE ) */
   } /* for( j = 0; j < data.n; j++ ) */
-
+  
   mreq = (size_t)segj.maxcon;
   mreq *= sizeof(double);
   mem_realloc((void *)&segj.ax, mreq);
@@ -861,8 +832,10 @@ void connect_segments(int ignd)
  * @param rrad Taper parameter radius
  *
  *****************************************************************************/
-void wire(int card_num, int tag_num, int segs, double xw1, double yw1, double zw1,
-  double xw2, double yw2, double zw2, double wire_radius, double rdel, double rrad)
+void wire(int card_num, int tag_num, int segs,
+          double xw1, double yw1, double zw1,
+          double xw2, double yw2, double zw2,
+          double wire_radius, double rdel, double rrad)
 {
   int first_segment_num;
   size_t mreq;
@@ -1364,28 +1337,28 @@ void duplicate( double rox, double roy, double roz, double xs,
 
 /* reflect() reflects partial structure along x,y, or z axes or rotates */
 /* structure to complete a symmetric structure. */
-void reflect( int ix, int iy, int iz, int itx, int nop )
+void reflect(int ix, int iy, int iz, int itx, int nop)
 {
   int iti, i, nx, itagi, k;
   size_t mreq;
   double e1, e2, fnop, sam, cs, ss, xk, yk;
   
-  geometry.np= geometry.n;
-  geometry.mp= geometry.m;
-  geometry.ipsym=0;
-  iti= itx;
+  geometry.np = geometry.n;
+  geometry.mp = geometry.m;
+  geometry.ipsym = 0;
+  iti = itx;
   
   if(ix >= 0) {
     if(nop == 0)
       return;
     
-    geometry.ipsym=1;
+    geometry.ipsym = 1;
     
     /* reflect along z axis */
     if( iz != 0 ) {
-      geometry.ipsym=2;
+      geometry.ipsym = 2;
       
-      if( geometry.n > 0 ) {
+      if(geometry.n > 0) {
         /* Reallocate tags buffer */
         mreq = (size_t)(2 * geometry.n + geometry.m);
         mreq *= sizeof(int);
@@ -1973,7 +1946,7 @@ void patch( int nx, int ny,
 /*-----------------------------------------------------------------------*/
 
 /*** this function was an 'entry point' (part of) 'patch()' ***/
-void subph( int nx, int ny )
+void calculate_patch( int nx, int ny )
 {
   int mia, ix, iy, mi;
   size_t mreq;
