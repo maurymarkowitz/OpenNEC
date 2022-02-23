@@ -1,39 +1,37 @@
-/*******************************************************************
+/******************************************************************************
  * tests.c
  *
- * tests.c contains code for a number of santity-checking routines
- * that look for problems in the structure of the deck as a whole,
- * or commonly found issues in the design.
+ * tests.c contains code for a number of santity-checking routines that look
+ * for problems in the structure of the deck as a whole, or commonly found
+ * issues in the design.
  *
- * An example of the former is a series of CM cards but no CE,
- * SM cards not following an SC, or a taper wire that's missing
- * its GC card. This set of tests is deliberately picky, it will
- * report issues that won't actually cause problems in most
- * systems. These can simply be ignored if not wanted, but they
- * are things that are easy to fix in the deck and should be.
+ * An example of the former is a series of CM cards but no CE, SM cards not
+ * followed by an SC, or a tapered wire that's missing its GC card. The tests
+ * are deliberately picky, it will report issues that won't actually cause
+ * problems in most systems. These can simply be ignored if not wanted, but
+ * they are things that are generally easy to fix in the deck, and should be.
  *
- * Examples of problems in the actual data include more complex
- * issues like crossed wires or wires that cross the ground line,
- * both of which will cause the calculations to fail.
+ * Examples of problems in the actual data include more complex issues like
+ * crossed wires or wires that cross the ground line, both of which will cause
+ * the calculations to fail.
  *
- * Non-critical errors like a missing CE card will have a value
- * of 0. Ones that will cause evaluation to fail, like a missing GE,
- * have a value of 1, and critical errors like a missing file are 2.
- * Users can add their own errors using these values or any value
- * less than 0.
+ * Non-critical errors like a missing CE card will have a value of 0. Ones
+ * that will cause evaluation to fail, like a missing GE, have a value of 1,
+ * and critical errors like a missing file are 2. Users can add their own
+ * errors using these values or any value less than 0.
  *
- *******************************************************************/
+ *****************************************************************************/
 
 #include "opennec.h"
 #include "shared.h"
 
-/*******************************************************************
+/******************************************************************************
  * test_deck_structure
  *
- * test_deck_structure runs various tests on the deck and returns
- * a list of errors and warnings. This looks only for structure
- * problems, like missing or duplicated cards, it does not look
- * for logical problems, that's handled in other tests.
+ * test_deck_structure runs various tests on the deck and returns a list of
+ * errors and warnings. This looks only for structure problems, like missing
+ * or duplicated cards, it does not look for logical problems or missing data
+ * that's handled in other functions.
  *
  * @param deck the Deck to be tested
  * @param errors the Errors list to add new messages to
@@ -65,7 +63,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
   //
   // TODO: do you need an EX? what about transmission?
   //
-  // there are also a number of additional tests performed
+  // There are also a number of additional tests performed
   // below for other issues like duplicates of cards that should
   // only exist once, cards in the wrong section of the deck, and
   // similiar issues.
@@ -83,7 +81,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
   // start with some obvious ones
   if(deck->num_cards == 0) {
     sprintf(msg, "A deck has to have at least one card.");
-    add_error(errors, msg, 2);  // this is a major error, this deck will not process
+    add_error(errors, msg, 2);  // this is a critical error, this deck will not process
     return;
   }
   if(deck->num_cards < 5) {
@@ -172,7 +170,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
         sawGD = i;
       }
     }
-    // you can have multiple SCs, but they have to follow a SP
+    // you can have multiple SCs, but they have to follow a SP or SM
     if(strcmp(code, "SC") == 0) {
       if(sawSC == FALSE) sawSC = i;
     }
@@ -214,39 +212,43 @@ void test_deck_structure(Deck *deck, Errors *errors)
     
     // GC cards have to follow GW cards
     if(strcmp(code, "GC") == 0 && strcmp(last_code, "GW") != 0) {
-      sprintf(msg, "The card on line %d is a GC, but the line above it is not a GW.", i + 1);
+      sprintf(msg, "The card on line %d is a GC, but the card above it is not a GW.", i + 1);
       add_error(errors, msg, 1);
     }
     
     // GW cards with zero radius have to have a GC after it
     if(strcmp(code, "GW") == 0 && deck->cards[i].f[7] == 0.0 && strcmp(deck->cards[i+1].card_code, "GC") != 0) {
-      sprintf(msg, "The card on line %d is a GW with a zero radius, but the line after it is not a GC.", i + 1);
+      sprintf(msg, "The card on line %d is a GW with a zero radius, but the card after it is not a GC.", i + 1);
       add_error(errors, msg, 1);
     }
     
     // GD cards have to follow GN cards
-    if(strcmp(code, "GD") == 0 && !strcmp(last_code, "GN")) {
-      sprintf(msg, "The card on line %d is a GD, but the line above it is not a GN.", i + 1);
+    if(strcmp(code, "GD") == 0 && strcmp(last_code, "GN") != 0) {
+      sprintf(msg, "The card on line %d is a GD, but the card above it is not a GN.", i + 1);
       add_error(errors, msg, 1);
     }
-    
+    if(strcmp(code, "GN") == 0 && strcmp(deck->cards[i+1].card_code, "GD") != 0) {
+      sprintf(msg, "The card on line %d is a GN, but the card after it is not a GN.", i + 1);
+      add_error(errors, msg, 1);
+    }
+
     // GF cards have to be the first item in the geometry section, which
     // means they must follow CE cards, or in an onec deck, an SY
     // FIXME: it could also follow onec comment cards, so this is somewhat complex
     if(strcmp(code, "GF") == 0 && !(strcmp(last_code, "CE") == 0 || strcmp(last_code, "SY") == 0)) {
-      sprintf(msg, "The card on line %d is a GF, but the line above it is not a CE or SY.", i + 1);
+      sprintf(msg, "The card on line %d is a GF, but the card above it is not a CE or SY.", i + 1);
       add_error(errors, msg, 1);
     }
 
     // SC cards have to follow an SP or SM, or another SC. this is not an exhaustive
     // test, it should really roll backward until it finds an SP or SM, but...
     if(strcmp(code, "SC") == 0 && !(strcmp(last_code, "SP") || strcmp(last_code, "SM") || strcmp(last_code, "SC"))) {
-      sprintf(msg, "The card on line %d is an SC, but the line above it is not an SP, SM or another SC.", i + 1);
+      sprintf(msg, "The card on line %d is an SC, but the card above it is not an SP, SM or another SC.", i + 1);
       add_error(errors, msg, 1);
     }
     // SM cards *must* be followed by a SC
     if(strcmp(last_code, "SM") && !strcmp(code, "SC")) {
-      sprintf(msg, "The card on line %d is an SM, but the line after it is not an SC.", i);
+      sprintf(msg, "The card on line %d is an SM, but the card after it is not an SC.", i);
       add_error(errors, msg, 1);
     }
     
@@ -254,7 +256,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
     
     // FR cards have to have either one input or three
     if(strcmp(code, "SC") == 0) {
-      sprintf(msg, "The card on line %d is an SM, but the line after it is not an SC.", i);
+      sprintf(msg, "The card on line %d is an SM, but the card after it is not an SC.", i);
       add_error(errors, msg, 1);
     }
 
@@ -318,27 +320,25 @@ void test_deck_structure(Deck *deck, Errors *errors)
 void test_duplicate_tags(Deck *deck, Errors *errors)
 {
   // we will also check to see if there are duplicate tags
-  int tags[deck->num_cards];
   char *msg = calloc(1, MAX_ERROR_LEN);
  
   // now check if there are any duplicate tags in the geometry
   // NOTE: this doesn't test for new tags generated by GM or similar
+  // FIXME: we could do that by calculating geometry and then comparing
+  //        card and tag numbers
   for(int i = 0; i < deck->num_cards; i++) {
     if(isGeometry(&deck->cards[i]) && deck->cards[i].i[1] > 0) {
-      for(int j = 0; j < deck->num_cards; j++) {
-        if(tags[j] == deck->cards[i].i[1]) {
-          sprintf(msg, "The tag %d is found on card %d and card %d.", deck->cards[i].i[1], i, tags[i]);
+      for(int j = i + 1; j < deck->num_cards; j++) {
+        if(deck->cards[j].i[1] == deck->cards[i].i[1]) {
+          sprintf(msg, "The tag number %d is found on card %d and card %d.", i, j, deck->cards[i].i[1]);
           add_error(errors, msg, 1);
         }
       }
-    } else {
-      tags[i] = deck->cards[i].i[1];
     }
   }
   
   free(msg);
 }
-
 
 // TODO: MISSING TESTS
 // test FR so that i1=1 means i2<>0 and f2<>0
@@ -365,5 +365,4 @@ void test_duplicate_tags(Deck *deck, Errors *errors)
 //    rad < len/2 with default thin wire kernel
 //    rad < 2*len with extended thin wire kernel
 //    rad < len/10 default usage
-
 // GE card - from nec dox, If the height of a horizontal wire is less than 10^-3 times the segment length, I1 equal to 1 will connect the end of every segment in the wire to ground. I1 should be -1 to avoid this disaster.
