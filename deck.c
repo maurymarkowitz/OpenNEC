@@ -499,12 +499,78 @@ bool isGeometryEdited(Deck *deck)
 }
 
 /******************************************************************************
+ * convert_awg_to_meters
+ *
+ * convert_awg_to_meters returns a value in meters for a given AWG value.
+ *
+ */
+double convert_awg_to_meters(double awg_value)
+{
+  // TODO: how are we going to handle "4/0" and/or "0000"?
+  int awg_code = floor(awg_value);
+
+  // any decimal part is bad!
+  if(awg_value != awg_code) {
+    return -1.0;
+  }
+
+  switch(awg_code) {
+//      0000 (4/0)  0.11684
+ //     000 (3/0)  0.104049
+//      00 (2/0)  0.092658
+    case 0: return 0.082515;
+    case 1: return 0.073481;
+    case 2: return 0.065437;
+    case 3: return 0.058273;
+    case 4: return 0.051894;
+    case 5: return 0.046213;
+    case 6: return 0.041154;
+    case 7: return 0.036649;
+    case 8: return 0.032636;
+    case 9: return 0.029064;
+    case 10: return 0.025882;
+    case 11: return 0.023048;
+    case 12: return 0.020525;
+    case 13: return 0.018278;
+    case 14: return 0.016277;
+    case 15: return 0.014495;
+    case 16: return 0.012908;
+    case 17: return 0.011495;
+    case 18: return 0.010237;
+    case 19: return 0.009116;
+    case 20: return 0.008118;
+    case 21: return 0.007229;
+    case 22: return 0.006438;
+    case 23: return 0.005733;
+    case 24: return 0.005106;
+    case 25: return 0.004547;
+    case 26: return 0.004049;
+    case 27: return 0.003606;
+    case 28: return 0.003211;
+    case 29: return 0.002859;
+    case 30: return 0.002546;
+    case 31: return 0.002268;
+    case 32: return 0.002019;
+    case 33: return 0.001798;
+    case 34: return 0.001601;
+    case 35: return 0.001426;
+    case 36: return 0.00127;
+    case 37: return 0.001131;
+    case 38: return 0.001007;
+    case 39: return 0.000897;
+    case 40: return 0.000799;
+    default: return -1.0;
+  }
+}
+
+
+/******************************************************************************
  * update_deck_values
  *
  * update_deck_values loops through the entire deck and calls
- * update_card_values on any card that has a formula. Normally called
- * after making a change to any of the SY cards, or just before any
- * deck-wide actions like saving it out or running a calculation
+ * update_card_values on any card that has a formula or unit. Normally called
+ * after making a change to any of the SY cards, or just before any deck-wide
+ * actions like saving it out or running a calculation.
  */
 void update_deck_values(Deck *deck)
 {
@@ -516,11 +582,51 @@ void update_deck_values(Deck *deck)
 /******************************************************************************
  * update_card_values
  *
- * update_card_values looks for any formulas in the card and updates
- * their values. Generally called after any changes to the card or as
- * part of update_deck_values
+ * update_card_values looks for any formulas or units in the card and updates
+ * their values. Generally called after any changes to the card or as part
+ * of update_deck_values
+ *
  */
 void update_card_values(Card *card)
 {
+  double ft, in;
+  
+  // first, copy any original input values into the value fields
+  for(int i = 1; i <= MAX_INT_FIELDS; i++) {
+    card->iv[i] = card->i[i];
+  }
+  for(int i = 1; i <= MAX_FLT_FIELDS; i++) {
+    card->fv[i] = card->f[i];
+  }
+
+  // now run any calculations on the fields and copy those in instead
   // TODO: do this!
-}
+  
+  // and finally, apply any unit conversions - which are only on the flts
+  for(int i = 1; i <= MAX_FLT_FIELDS; i++) {
+    if(card->units[i] == 0) continue;  // 0 means "no units"
+    
+      if(unit_mult[card->units[i]] != 0) {
+        card->fv[i] = card->fv[i] * unit_mult[card->units[i]];
+      } else {
+        // units 6 through 8 are zeros and have to be converted case-by-case
+        switch(card->units[i]) {
+          case 6:  //ftin
+            // the fraction part is inches, not decimal feet
+            ft = floor(card->fv[i]);
+            in = card->fv[i] - ft;
+            card->fv[i] = ft + (in / 12.0);
+            
+            // now convert feet to meters
+            card->fv[i] = card->fv[i] * unit_mult[card->units[4]];
+            break;
+            
+          case 7:
+          case 8:
+            card->fv[i] = convert_awg_to_meters(card->fv[i]);
+            break;
+        } // switch
+      } // if can be directly converted
+  } // for
+} /* update_card_values() */
+
