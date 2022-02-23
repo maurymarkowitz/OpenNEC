@@ -17,6 +17,11 @@ void parse_onec_card(Card *card, Errors *errors);
 void parse_key_values(Card *card, Errors *errors);
 /* output.c */
 void write_deck_onec(Deck *deck, FILE *pfile);
+void write_nec_output(Deck *deck, FILE *pfile);
+void write_header(Deck *deck, FILE *pfile);
+void write_structure(Deck *deck, FILE *pfile);
+void write_segments(Deck *deck, FILE *pfile);
+void write_patches(Deck * deck, FILE *pfile);
 /* deck.c */
 void update_deck_values(Deck *deck);
 void update_card_values(Card *card);
@@ -83,8 +88,8 @@ void connect_segments(int ignd);
 void wire(int card_num, int tag_num, int segs, double xw1, double yw1, double zw1, double xw2, double yw2, double zsw2, double rad, double rdel, double rrad);
 void arc(int card_num, int tag_num, int segs, double rada, double ang1, double ang2, double rad);
 void helix(int card_num, int tag_num, int segs, double s, double hl, double a1, double b1, double a2, double b2, double rad);
-void patch(int nx, int ny, double ax1, double ay1, double az1, double ax2, double ay2, double az2, double ax3, double ay3, double az3, double ax4, double ay4, double az4);
-void subph(int nx, int ny);
+void patch(int card_num, int nx, int ny, double ax1, double ay1, double az1, double ax2, double ay2, double az2, double ax3, double ay3, double az3, double ax4, double ay4, double az4);
+void calculate_patch(int nx, int ny);
 void duplicate(double rox, double roy, double roz, double xs, double ys, double zs, int its, int nrpt, int itgi);
 void reflect(int ix, int iy, int iz, int itx, int nop);
 void scale(double xw1);
