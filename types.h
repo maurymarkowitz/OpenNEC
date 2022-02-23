@@ -18,6 +18,18 @@
 #include <stdio.h>
 #include <stdbool.h>  // we will use the bool type!
 
+// NEC has 4 int fields
+#ifndef MAX_INT_FIELDS_DEF
+#define MAX_INT_FIELDS_DEF
+#define MAX_INT_FIELDS 4
+#endif
+
+// NEC has 7 float fields
+#ifndef MAX_FLT_FIELDS_DEF
+#define MAX_FLT_FIELDS_DEF
+#define MAX_FLT_FIELDS 7
+#endif
+
 // OpenNEC generally allows commas or any whitespace between fields
 #ifndef ONEC_WHITESPACE_DEF
 #define ONEC_WHITESPACE_DEF
@@ -128,16 +140,26 @@ typedef struct
   
   // NEC uses i1 through i1 and f1 through f7. We'll put these in an
   // array to ease access when we're looping: f[i]. This could lead
-  // to confusion because normally C would be zero-indexed in f[0].
+  // to confusion because normally C would be zero-indexed, like f[0].
   // To avoid this we'll make the array one larger than it has to be
-  // and just leave the zeroth entry empty
-  int ints_used;      // the number if int parameters actually used
-  int flts_used;      // and floats
+  // and just leave the zeroth entry empty.
   int i[5];           // i1 is normally the tag, etc.
   double f[8];        // geometery and so forth
   
+  // the values above are the raw inputs, they may include units and/or
+  // formulas that need to be calculated. these arrays hold the final
+  // values that will be fed into the calculation engines. v for "value"
+  int iv[5];
+  double fv[8];
+
+  // different cards have different numbers of inputs, so these are
+  // used to track how many we actually read in
+  int ints_used;      // the number of int parameters
+  int flts_used;      // ...and floats
+  
   // tags and segments are normally printed as they are calculated,
-  // but onec only does that once, so we'll store them here
+  // but onec only does that once, so we'll store them here so we
+  // can print them out later
   int tag;
   int num_segments;
   int start_segment;
@@ -154,9 +176,9 @@ typedef struct
   char *comment;      // if a comment was found, it's placed here, this is *not* the same
                       //    as extn_str, it might be found in a 'comment:' key/value pair
   KeyValue *extensns; // pairs of name:value key/value entries, this will **not** include a comment if there was one
-  KeyValue *formulas; // pairs of name:value key/value entries for any formulas
+  KeyValue *formulas; // pairs of name:value key/value entries for any formulas, inline or in the extension area
 
-  // onec flags - only this one needs to be known here in onec
+  // onec flags - only this one needs to be known during processing
   bool ignore;        // cards can be marked to be deliberately ignored
 } Card;
 
@@ -201,6 +223,14 @@ typedef struct
  * can be used in external programs to build 3D models and similar
  * tasks. It only has to be recalculated if the geometry changes,
  * although that might occur as part of an optimization loop.
+ *
+ * This is similar to the original NEC version, but has added another
+ * array to store the card numbers. This allows a particular segment
+ * to be tracked back to the card that created it, even if it does
+ * not have a tag number. This was added so that GUIs can determine
+ * how to display a particular segment by looking for onec extensions
+ * on the card.
+ *
  */
 typedef struct geometry_t
 {
