@@ -231,14 +231,19 @@ int main(int argc, char **argv)
   // run it if we've been asked to
   if(run_simulation) {
     calculate_geometry(&deck, &geometry_errors);
+    connect_segments(0);
     // now actually perform the run
   }
   for(int i = 0; i < geometry_errors.num_errors; i++) {
     printf("%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
   }
+  
+  // TESTING: try writing the deck structure
+  write_nec_output(&deck, output_fp);
 
   // TESTING: write it back out
-  write_deck_onec(&deck, output_fp);
+  // TURNED OFF, SEEMS TO BE WORKING WELL
+  //write_deck_onec(&deck, output_fp);
   
   return 0;
 } /* main */
