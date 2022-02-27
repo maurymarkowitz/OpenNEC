@@ -375,23 +375,23 @@ void calculate_geometry(Deck *deck, Errors *errors)
         patch(i, tag, num_segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
         continue;
 
-      case 8: /* "ga" card, generate segment data for wire arc */
+      case 8: // GA, generate segment data for wire arc
         i1 = geometry.n + 1;
         i2 = geometry.n + num_segs;
   
         arc(i, tag, num_segs, xw1, yw1, zw1, xw2);
         continue;
         
-      case 9: // SC card, skip it but it should never happen because SP/SM should have read it
+      case 9: // SC card, skip it - but it should never happen because SP/SM should have read it
 
-      case 10: // "gh" card, generate helix
+      case 10: // GH, generate helix
         i1 = geometry.n + 1;
         i2 = geometry.n + num_segs;
     
         helix(i, tag, num_segs, xw1, yw1, zw1, xw2, yw2, zw2, rad);
         continue;
   
-      case 11: // "gf" card, not supported
+      case 11: // GF, not supported
         // TODO: support this!
         abort_on_error(-5);
 
@@ -421,15 +421,17 @@ void calculate_geometry(Deck *deck, Errors *errors)
 int segment_number(int tag, int m)
 {
 	int icnt, iseg;
+  char *msg ;
 
 	if (m <= 0) {
-		fprintf(output_fp,
-			"\n  CHECK DATA, PARAMETER SPECIFYING SEGMENT"
-			" POSITION IN A GROUP OF EQUAL TAGS MUST NOT BE ZERO");
-		stop(-1);
+    msg = calloc(MAX_ERROR_LEN, sizeof(char));
+    sprintf(msg,
+            "\n  CHECK DATA, PARAMETER SPECIFYING SEGMENT"
+            " POSITION IN A GROUP OF EQUAL TAGS MUST NOT BE ZERO");
+    add_error(&geometry.errors, msg, 1);
 	}
 
-	// if the tag number is zero, then simply return that as the segment
+	// if the tag number is zero, then simply return the mth segment as the answer
 	// FIXME: is there any point assigning iseg here?
 	if (tag == 0) {
 		iseg = m;
@@ -448,12 +450,16 @@ int segment_number(int tag, int m)
 				iseg = i + 1;
 				return(iseg);
 			}
-		} /* for( i = 0; i < data.n; i++ ) */
-	} /* if( data.n > 0) */
+		} /* for( i = 0; i < geometry.n; i++ ) */
+	} /* if( geometry.n > 0) */
 
-	fprintf(output_fp, "\n\n"
-		"  NO SEGMENT HAS AN TAG OF %d", tag);
-	stop(-1);
+  {
+    msg = calloc(MAX_ERROR_LEN, sizeof(char));
+    sprintf(msg,
+            "\n\n   NO SEGMENT HAS AN TAG OF %d",
+            tag);
+    add_error(&geometry.errors, msg, 1);
+  }
 
 	return(0);
 } /* end of segment_number */
@@ -1172,9 +1178,9 @@ void scale(double scale_factor)
 } /* end of scale */
 
 /******************************************************************************
- * duplicate
+ * reproduce
  *
- * duplicate moves the structure with respect to its coordinate system or
+ * reproduce moves the structure with respect to its coordinate system or
  * reproduces/duplicates the structure in new positions. The structure is
  * rotated about x,y,z axes by rox,roy,roz respectively, and then shifted by
  * xs,ys,zs. Any new elements are given new tag numbers offset from their
@@ -1184,7 +1190,7 @@ void scale(double scale_factor)
  * formerly known as move(), but that conflicts with stdio
  *
  */
-void duplicate(double rox, double roy, double roz, double xs,
+void reproduce(double rox, double roy, double roz, double xs,
 	double ys, double zs, int its, int nrpt, int tag_increment)
 {
   int nrp, ix, i1, k, i;
@@ -1341,16 +1347,17 @@ void duplicate(double rox, double roy, double roz, double xs,
 /******************************************************************************
  * reflect
  *
- * reflect formerly performs two separate functions depending on whether it is called
- * from a GR or a GX card. A GX card is used to reflect the existing geometry
- * around the X, Y and/or Z axes, while a GR code makes multiple copies of
- * the existing geometry in order to make a cylinder around the chosen
- * axis.
+ * reflect (formerly reflc) creates new geometry entries for all existing
+ * entries to create reflections across the selected axes. reflect can
+ * duplicate across the x, y and/or z axes in a single operation. If the
+ * original entries had a tag number, it will be updated by the tag_increment,
+ * while those with a zero tag will remain zero.
  *
- * To indicate which of the two functions to perform, the ix value is set
- * to -1 when performing a rotation, in which case num_copies is the number
- * of new copies to product. When performing reflection, ix will be >= 0 and
- * num_copies is no longer used directly.
+ * reflect formerly performed two separate functions, reflecting for GX cards
+ * or rotating for GR cards. The code was entirely separate for these two
+ * functions, controlled by a long if statement. It made no sense to leave
+ * them combined, so the handler for the GR case has been split out into its
+ * own function, rotate.
  *
  * @param card_num Card number that contains this instruction
  * @param tag_increment the number to increment the tag by, see notes below
@@ -1380,7 +1387,6 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
   // so we copy down how much geometry is in the symmetry "cell"
   geometry.np = geometry.n;
   geometry.mp = geometry.m;
-  geometry.ipsym = 0;
   iti = tag_increment;
   
   // both GR and GX cards use only the I1 and I2 inputs in the card. I1 is
@@ -1392,6 +1398,7 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
   // so to indicate if we are performing
   
   // we are now symmetric
+  // FIXME: the original code for this is confusing, this shoudl be reviewed
   geometry.ipsym = 1;
   
   // reflect along z axis
@@ -1448,16 +1455,15 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
         if(itagi != 0)
           geometry.tag_nums[nx]= itagi + iti;
         
-        // and set the cards
-        
         geometry.bi[nx]= geometry.bi[i];
-        
       } /* for( i = 0; i < data.n; i++ ) */
       
       // and that means the amount of geometry has doubled
       geometry.n = geometry.n * 2;
-      iti = iti * 2;
       
+      // and that if we make more entries they need to be
+      // offset by a greater number
+      iti = iti * 2;
     } /* if( geomtry.n > 0) */
     
     // and now the patches, if there are any
@@ -1699,21 +1705,34 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
   
 } /* end of reflect */
 
+/******************************************************************************
+ * rotate
+ *
+ * rotate creates new geometry entries for all existing entries to create
+ * a rotation around the Z axis. If the original entries had a tag number,
+ * it will be updated by the tag_increment, while those with a zero tag will
+ * remain zero.
+ *
+ * rotate was formerly part of reflect, although the code was entirely
+ * separate, so it has been moved it its own function for clarity.
+ *
+ * @param card_num Card number that contains this instruction
+ * @param tag_increment the number to increment the tag by, see notes below
+ * @param num_copies number of new copies to produce
+ *
+ */
 void rotate(int card_num, int tag_increment, int num_copies)
 {
-  int iti, i, nx, itagi, k;
+  int nx, itagi, k;
   size_t mreq;
   double fnop, sam, cs, ss, xk, yk;
   
-  // we are going to create symmetry one way or the other,
-  // so we copy down how much geometry is in the symmetry "cell"
+  // we are going to create symmetry around the Z axis
   geometry.np = geometry.n;
   geometry.mp = geometry.m;
-  geometry.ipsym = 0;
-  iti = tag_increment;
+  geometry.ipsym = -1;      // rotational symmetry
   
   // reproduce structure with rotation to form cylindrical structure
-  geometry.ipsym = -1;
   fnop = (double)num_copies;
   sam = TP / fnop;
   cs = cos(sam);
@@ -1740,7 +1759,7 @@ void rotate(int card_num, int tag_increment, int num_copies)
     mem_realloc((void *)&geometry.z2, mreq);
     mem_realloc((void *)&geometry.bi, mreq);
     
-    for(i = nx; i < geometry.n; i++ ) {
+    for(int i = nx; i < geometry.n; i++ ) {
       k= i - geometry.np;
       xk = geometry.x1[k];
       yk = geometry.y1[k];
@@ -1758,7 +1777,7 @@ void rotate(int card_num, int tag_increment, int num_copies)
       if(itagi == 0)
         geometry.tag_nums[i] = 0;
       if( itagi != 0)
-        geometry.tag_nums[i] = itagi + iti;
+        geometry.tag_nums[i] = itagi + tag_increment;
       
       geometry.card_nums[i] = card_num;
     }
@@ -1787,7 +1806,7 @@ void rotate(int card_num, int tag_increment, int num_copies)
   mem_realloc((void *)&geometry.pbi, mreq);
   mem_realloc((void *)&geometry.psalp, mreq);
   
-  for(i = nx; i < geometry.m; i++) {
+  for(int i = nx; i < geometry.m; i++) {
     k = i-geometry.mp;
     xk= geometry.px[k];
     yk= geometry.py[k];

@@ -92,7 +92,7 @@ void arc(int card_num, int tag_num, int segs, double rada, double ang1, double a
 void helix(int card_num, int tag_num, int segs, double s, double hl, double a1, double b1, double a2, double b2, double rad);
 void patch(int card_num, int nx, int ny, double ax1, double ay1, double az1, double ax2, double ay2, double az2, double ax3, double ay3, double az3, double ax4, double ay4, double az4);
 void calculate_patch(int nx, int ny);
-void duplicate(double rox, double roy, double roz, double xs, double ys, double zs, int its, int nrpt, int itgi);
+void reproduce(double rox, double roy, double roz, double xs, double ys, double zs, int its, int nrpt, int itgi);
 void reflect(int card_num, int tag_increment, int ix, int iy, int iz);
 void rotate(int card_num, int tag_increment, int num_copies);
 void scale(double xw1);
