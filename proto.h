@@ -26,7 +26,6 @@ void write_patches(Deck * deck, FILE *pfile);
 void update_deck_values(Deck *deck);
 void update_card_values(Card *card);
 void add_key_value(Card *card, KeyValue *list, char *key, char *value, char separator);
-void test_deck_structure(Deck *deck, Errors *errors);
 int isComment(Card *card);
 int isGeometry(Card *card);
 int isControl(Card *card);
@@ -35,13 +34,16 @@ int min_int_fields(Card *card);
 int max_int_fields(Card *card);
 int min_flt_fields(Card *card);
 int max_flt_fields(Card *card);
+/* test.c */
+void test_deck_structure(Deck *deck, Errors *errors);
+void test_duplicate_tags(Deck *deck, Errors *errors);
 /* misc.c */
 void add_error(Errors *errors, char *message, int severity);
+int strendswith(const char *str, const char *suffix);
 int fpeek(FILE *stream);
 char* substr(char* dest, char *src, int start, int len);
 char* trim_start(char* dest);
 char* trim_end(char* dest);
-void usage(void);
 void abort_on_error(int why);
 void secnds(double *x);
 int stop(int flag);
@@ -91,7 +93,8 @@ void helix(int card_num, int tag_num, int segs, double s, double hl, double a1, 
 void patch(int card_num, int nx, int ny, double ax1, double ay1, double az1, double ax2, double ay2, double az2, double ax3, double ay3, double az3, double ax4, double ay4, double az4);
 void calculate_patch(int nx, int ny);
 void duplicate(double rox, double roy, double roz, double xs, double ys, double zs, int its, int nrpt, int itgi);
-void reflect(int ix, int iy, int iz, int itx, int nop);
+void reflect(int card_num, int tag_increment, int ix, int iy, int iz);
+void rotate(int card_num, int tag_increment, int num_copies);
 void scale(double xw1);
 void qdsrc(int is, complex double v, complex double *e);
 /* ground.c */
