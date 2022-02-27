@@ -6,7 +6,6 @@
 
 /***  ONEC utils ***/
 
-
 void add_error(Errors *errors, char *message, int severity)
 {
   // make a new error object and fill it out
@@ -24,19 +23,22 @@ void add_error(Errors *errors, char *message, int severity)
   errors->num_errors++;
 }
 
-/***  File utils ***/
-
-int fpeek(FILE *stream)
-{
-  int c;
-  
-  c = fgetc(stream);
-  ungetc(c, stream);
-  
-  return c;
-}
-
 /***  String utils ***/
+
+/*-------------------------------------------------------------------*/
+int strendswith(const char *str, const char *suffix)
+{
+    if (!str || !suffix)
+        return 1;
+  
+    size_t lenstr = strlen(str);
+    size_t lensuffix = strlen(suffix);
+  
+    if (lensuffix > lenstr)
+        return 1;
+  
+    return strcasecmp(str + lenstr - lensuffix, suffix);
+}
 
 /*-------------------------------------------------------------------*/
 char* substr(char* dest, char *src, int start, int len)
@@ -74,21 +76,6 @@ char* trim_end(char* str)
 /***  Various system/app utils ***/
 
 /*------------------------------------------------------------------------*/
-/*  usage()
- *
- *  prints usage information
- */
-
-void usage(void)
-{
-  fprintf( stderr,
-	  "usage: nec2c [-i<input-file-name>] [-o<output-file-name>]"
-	  "\n       -h: print this usage information and exit."
-	  "\n       -v: print nec2c version number and exit.\n");
-
-} /* end of usage() */
-
-/*------------------------------------------------------------------------*/
 /*  abort_on_error()
  *
  *  prints an error message and exits
@@ -100,37 +87,37 @@ void abort_on_error( int why )
   {
 	case -1 : /* abort if input file name too long */
 	  fprintf( stderr, "%s\n",
-		  "nec2c: Input file name too long - aborting" );
+		  "onec: Input file name too long - aborting" );
 	  break;
 
 	case -2 : /* abort if output file name too long */
 	  fprintf( stderr, "%s\n",
-		  "nec2c: Output file name too long - aborting" );
+		  "onec: Output file name too long - aborting" );
 	  break;
 
 	case -3 : /* abort on input file read error */
 	  fprintf( stderr, "%s\n",
-		  "nec2c: Error reading input file - aborting" );
+		  "onec: Error reading input file - aborting" );
 	  break;
 
 	case -4 : /* Abort on malloc failure */
 	  fprintf( stderr, "%s\n",
-		  "nec2c: A memory allocation request has failed - aborting" );
+		  "onec: A memory allocation request has failed - aborting" );
 	  break;
 
 	case -5 : /* Abort if a GF card is read */
 	  fprintf( stderr, "%s\n",
-		  "nec2c: NGF solution option not supported - aborting" );
+		  "onec: NGF solution option not supported - aborting" );
 	  break;
 
 	case -6: /* No convergence in gshank() */
 	  fprintf( stderr, "%s\n",
-		  "nec2c: No convergence in gshank() - aborting" );
+		  "onec: No convergence in gshank() - aborting" );
 	  break;
 
 	case -7: /* Error in hankel() */
 	  fprintf( stderr, "%s\n",
-		  "nec2c: Hankel not valid for z=0. - aborting" );
+		  "onec: Hankel not valid for z=0. - aborting" );
 
   }  /* switch( why ) */
 
@@ -184,10 +171,10 @@ void mem_alloc( void **ptr, size_t req )
 
 /*------------------------------------------------------------------------*/
 
-void mem_realloc( void **ptr, size_t req )
+void mem_realloc(void **ptr, size_t req)
 {
-  *ptr = realloc( *ptr, req );
-  if( *ptr == NULL )
+  *ptr = realloc(*ptr, req);
+  if(*ptr == NULL)
 	abort_on_error( -4 );
 
 } /* End of void mem_realloc() */

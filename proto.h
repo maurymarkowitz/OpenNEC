@@ -40,7 +40,6 @@ void test_duplicate_tags(Deck *deck, Errors *errors);
 /* misc.c */
 void add_error(Errors *errors, char *message, int severity);
 int strendswith(const char *str, const char *suffix);
-int fpeek(FILE *stream);
 char* substr(char* dest, char *src, int start, int len);
 char* trim_start(char* dest);
 char* trim_end(char* dest);
