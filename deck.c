@@ -455,7 +455,7 @@ int max_flt_fields(Card* card)
   if(strcmp(card->card_code, "GC") == 0) return 0; // tapers have three inputs
   if(strcmp(card->card_code, "GX") == 0) return 0; // uses only the ints
   if(strcmp(card->card_code, "SP") == 0) return 6; // last field unused
-  if(strcmp(card->card_code, "SC") == 0) return 6; // even in the three-used case, zeros are used
+  if(strcmp(card->card_code, "SC") == 0) return 6; // even in the three-input case, zeros are used
 
   // EX format depends on the value in I1
   if(strcmp(card->card_code, "EX") == 0) {
@@ -483,7 +483,8 @@ int max_flt_fields(Card* card)
  * isGeometryEdited loops through the geometry section of the deck and looks
  * for any new or edited card, which means we need to re-run the geometry
  * creation code. It's the only section that needs this, there's nothing
- * to recalculate for the comments, and the command section
+ * to recalculate for the comments, and the command section regenerates its
+ * output every time.
  *
  */
 bool isGeometryEdited(Deck *deck)
@@ -589,7 +590,7 @@ void update_deck_values(Deck *deck)
  */
 void update_card_values(Card *card)
 {
-  double ft, in;
+  double ft, in, det;
   
   // first, copy any original input values into the value fields
   for(int i = 1; i <= MAX_INT_FIELDS; i++) {
@@ -604,7 +605,7 @@ void update_card_values(Card *card)
   
   // and finally, apply any unit conversions - which are only on the flts
   for(int i = 1; i <= MAX_FLT_FIELDS; i++) {
-    if(card->units[i] == 0) continue;  // 0 means "no units"
+    if(card->units[i] == 0) continue;  // 0 means "no units", so skip it
     
       if(unit_mult[card->units[i]] != 0) {
         card->fv[i] = card->fv[i] * unit_mult[card->units[i]];
@@ -617,13 +618,17 @@ void update_card_values(Card *card)
             in = card->fv[i] - ft;
             card->fv[i] = ft + (in / 12.0);
             
-            // now convert feet to meters
+            // now convert resulting feet to meters
             card->fv[i] = card->fv[i] * unit_mult[card->units[4]];
             break;
             
           case 7:
-          case 8:
-            card->fv[i] = convert_awg_to_meters(card->fv[i]);
+          case 8: // AWG
+            // the formula for AWG is weird...
+            det = (36 - card->fv[i]) / 39;
+            card->fv[i] = 0.127 * pow(92, det);
+            // AWG is in mm *diameter*, convert to m radius
+            card->fv[i] = card->fv[i] / 200;
             break;
         } // switch
       } // if can be directly converted
