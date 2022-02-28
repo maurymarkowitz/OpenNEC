@@ -35,7 +35,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
   char *msg = calloc(1, MAX_ERROR_LEN);
 
   int code_num;   // geometry card code as a number
-	int num_segs, isct, iphd, i1, i2, tag;
+	int tag, segs, isct, iphd;
 	size_t mreq;
 	double rad, xs1, ys1, zs1, x4 = 0.0, y4 = 0.0, z4 = 0.0;
 	double x3 = 0, y3 = 0, z3 = 0, xw1, xw2, yw1, yw2, zw1, zw2;
@@ -76,7 +76,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
     // now read in the values that are the same for all the cards
     // NOTE: remember to read the VALUES, not the original inputs!
     tag = card->iv[1];
-    num_segs = card->iv[2];
+    segs = card->iv[2];
     xw1 = card->fv[1];
     yw1 = card->fv[2];
     zw1 = card->fv[3];
@@ -87,7 +87,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
 
     // set the card's tag number and number of segments
     card->tag = tag;
-    card->num_segments = num_segs;
+    card->num_segments = segs;
 
     // and now the switch. basically all this does is call the appropriate
     // function to insert the segments for that card type, or complete
@@ -117,29 +117,25 @@ void calculate_geometry(Deck *deck, Errors *errors)
           ys1 = deck->cards[i + 1].fv[2];
           zs1 = deck->cards[i + 1].fv[3];
           rad = ys1;
-          ys1 = pow((zs1 / ys1), (1. / (num_segs - 1.)));
+          ys1 = pow((zs1 / ys1), (1.0 / (segs - 1.0)));
           
           // move up a card so we don't process the GC
           i++;
         }
         
         // update the number of wires and the segment counts
-        i1 = geometry.n + 1;
-        i2 = geometry.n + num_segs;
-        
-        // set the card's segments
         card->start_segment = geometry.n;
-        card->end_segment = geometry.n + num_segs - 1;
-
         // now we have all the data, so turn it into segments
-        wire(i, tag, num_segs, xw1, yw1, zw1, xw2, yw2, zw2, rad, xs1, ys1);
+        wire(i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, rad, xs1, ys1);
+        // and cache the final number
+        card->end_segment = geometry.n;
         continue;
         
       case 1: // GX, reflect structure along x, y, or z axes, or rotate to form cylinder
         // the gx puts a three-digit integer value in the I2 slot, and then uses its digits
         // as bit flags for the x, y and z axes. here were pull them out...
-        iy = num_segs / 10;
-        iz = num_segs - iy * 10;
+        iy = segs / 10;
+        iz = segs - iy * 10;
         ix = iy / 10;
         iy = iy - ix * 10;
         
@@ -147,14 +143,16 @@ void calculate_geometry(Deck *deck, Errors *errors)
         if(iy != 0) iy = 1;
         if(iz != 0) iz = 1;
         
+        card->start_segment = geometry.n;
         reflect(i, tag, ix, iy, iz);
+        card->end_segment = geometry.n;
         continue;
         
       case 2: // GR, rotate the structure
         // I2 is the number of times to duplicate the structure as it rotates
 
         // ix is set to -1 to incidate this is a rotation, not reflection
-        rotate(i, tag, num_segs);
+        rotate(i, tag, segs);
         continue;
 
       case 3: // GS, scale structure dimensions by factor xw1
@@ -165,7 +163,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
         // FIXME: it's not clear what this is testing, on a GE card there shouldn't be an ns input
         //  perhaps it is  clearing out the ns from the previous line? but why bother when it's
         //  about to return anyway?
-        if(num_segs != 0) {
+        if(segs != 0) {
           plot.iplp1 = 1;
           plot.iplp2 = 1;
         }
@@ -249,46 +247,40 @@ void calculate_geometry(Deck *deck, Errors *errors)
         // convert the original float value in F7 to int
         int tag_increment = (int)(card->fv[7] + .5);
         
-        duplicate(xw1, yw1, zw1, xw2, yw2, zw2, tag_increment, num_segs, tag);
+        reproduce(xw1, yw1, zw1, xw2, yw2, zw2, tag_increment, segs, tag);
         continue;
         
-      case 6: /* "sp" card, generate single new patch or a series of patches with SC */
-        i1 = geometry.m + 1;
-        
-        // ns in this case is used as an indicator of the patch type
-        // the original code bumps it from 0..3 to 1..4, although
-        // the reason for this is not clear
+      case 6: // SP, generate single new patch or a series of patches with SC
         //ns++;
         
         // SP cards have to have a blank in I1, but is this really an error?
-        // and if it is, why doesn't it report a problem if rad <> 0?
-//        if (itg != 0) {
-//          sprintf(msg, "Card %d is a SP, but it has data in I1.", i);
-//          add_error(errors, msg, 1);
-//        }
+        if (tag != 0) {
+          sprintf(msg, "Card %d is a SP, but it has data in I1.", i);
+          add_error(errors, msg, 1);
+        }
         
         // start with the simple case of a simple, single patch, no set shape
-        if(num_segs == 0) {
+        if(segs == 0) {
           xw2 = xw2 * TA;
           yw2 = yw2 * TA;
-          patch(i, tag, num_segs, xw1, yw1, zw1, xw2, yw2, zw2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+          patch(i, tag, segs + 1, xw1, yw1, zw1, xw2, yw2, zw2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         }
-        // other shapes require more inputs and there will be additional SC cards
+        // other shapes, segs=1,2,3, require more inputs and there will be additional SC cards
         else {
           // make sure the next card is an SC
           // TODO: we should test the sanity of the inputs based on the ns
           if(strcmp(deck->cards[i + 1].card_code, "SC") != 0) {
-            sprintf(msg, "The card on line %d is a SP with type %d, but the next card is not an SC, which it needs.", i + 1, num_segs);
+            sprintf(msg, "The card on line %d is a SP with type %d, but the next card is not an SC, which it needs.", i + 1, segs);
             add_error(errors, msg, 1);
             continue;
           }
           // if it's a triangle we just read one more point from the new card and go...
-          if(num_segs == 2) {
+          if(segs == 2) {
             x3 = deck->cards[i + 1].fv[1];
             y3 = deck->cards[i + 1].fv[2];
             z3 = deck->cards[i + 1].fv[3];
             i++; // skip the SC card next time through the main loop
-            patch(i, tag, num_segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, 0.0, 0.0, 0.0);
+            patch(i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, 0.0, 0.0, 0.0);
           } /* ns == 2 */
           // if it's not a triangle, we have to loop over the following cards
           else {
@@ -300,7 +292,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
             y3 = deck->cards[i + 1].fv[5];
             z3 = deck->cards[i + 1].fv[6];
             i++;
-            patch(i, tag, num_segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
+            patch(i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
             
             // ...and then loop until we run out of following SC's
             while(strcmp(deck->cards[i + 1].card_code, "SC") == 0) {
@@ -319,7 +311,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
               y3 = deck->cards[i + 1].fv[5];
               z3 = deck->cards[i + 1].fv[6];
               i++; // skip the card in the main loop
-              patch(i, tag, num_segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
+              patch(i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
             } /* while cards are SC's */
           }/* ns > 2 */
         } /* ns > 1 */
@@ -346,9 +338,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
         continue;
 
       case 7: // SM, generate multiple-patch rectangular surface
-        i1 = geometry.m + 1;
-  
-        if(tag < 1 || num_segs < 1) {
+        if(tag < 1 || segs < 1) {
           sprintf(msg, "The card on line %d is a SM, but the number of patches in I1 or I2 is too small.", i + 1);
           add_error(errors, msg, 1);
           continue;
@@ -366,29 +356,23 @@ void calculate_geometry(Deck *deck, Errors *errors)
         i++;
         
         // calculate corner 4
-        if(num_segs == 2 || tag > 0) {
+        if(segs == 2 || tag > 0) {
           x4 = xw1 + x3 - xw2;
           y4 = yw1 + y3 - yw2;
           z4 = zw1 + z3 - zw2;
         }
   
-        patch(i, tag, num_segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
+        patch(i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
         continue;
 
       case 8: // GA, generate segment data for wire arc
-        i1 = geometry.n + 1;
-        i2 = geometry.n + num_segs;
-  
-        arc(i, tag, num_segs, xw1, yw1, zw1, xw2);
+        arc(i, tag, segs, xw1, yw1, zw1, xw2);
         continue;
         
       case 9: // SC card, skip it - but it should never happen because SP/SM should have read it
 
       case 10: // GH, generate helix
-        i1 = geometry.n + 1;
-        i2 = geometry.n + num_segs;
-    
-        helix(i, tag, num_segs, xw1, yw1, zw1, xw2, yw2, zw2, rad);
+        helix(i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, rad);
         continue;
   
       case 11: // GF, not supported
@@ -841,25 +825,31 @@ void wire(int card_num, int tag_num, int segs,
   double xd, yd, zd, delz, rd, fns, radz;
   double xs1, ys1, zs1, xs2, ys2, zs2;
   
+  // only add this wire if it actually has segments
+  // NOTE: in the original code  this was done below setting the n and np
+  //       below, which would mean adding a wire with zero segments would
+  //       reset geometry, which seems to make no sense
+  if(segs < 1) return;
+  
+  // FIXME: should this also check if the length is zero?
+  
   // copy down the starting segment number, and then move up all the segment counters
   first_segment_num = geometry.n;
   geometry.n += segs;
+  
+  // reset the symmetry
   geometry.np = geometry.n;
-  geometry.mp = geometry.m;  // do we need this? it shouldn't have changed
-  geometry.ipsym = 0;  // this says that symmetry is not true?
+  geometry.mp = geometry.m;
+  geometry.ipsym = 0;
   
-  // only add this wire if it actually has segments
-  // FIXME: why don't we do this above?
-  if(segs < 1) return;
-  
-  /* Reallocate tags buffer */
+  // reallocate the cards and tags buffers
   mreq = (size_t)(geometry.n + geometry.m);
   mreq *= sizeof(int);
   mem_realloc((void *)&geometry.card_nums, mreq);
   mem_realloc((void *)&geometry.tag_nums, mreq);
 
-  /* Reallocate wire buffers */
-  mreq = (size_t)geometry.n;  // this is the current number of wire segments
+  // reallocate wire buffers
+  mreq = (size_t)geometry.n;  // this is the current number of wire segments, after adding the new segments
   mreq *= sizeof(double);
   mem_realloc((void *)&geometry.x1, mreq);
   mem_realloc((void *)&geometry.y1, mreq);
@@ -871,9 +861,9 @@ void wire(int card_num, int tag_num, int segs,
   
   // calculate a segment length based either on the rdels parameter from a GC,
   // or the number of segments in a normal GW
-  xd = xw2- xw1;
-  yd = yw2- yw1;
-  zd = zw2- zw1;
+  xd = xw2 - xw1;
+  yd = yw2 - yw1;
+  zd = zw2 - zw1;
   
   if(fabs(rdel - 1) >= 1.0e-6) {
     delz = sqrt(xd * xd + yd * yd + zd * zd);
@@ -950,15 +940,17 @@ void arc(int card_num, int tag_num, int segs, double arc_radius, double ang1, do
 {
   int first_segment_num = geometry.n;
   
+  // no point continuing
+  if(segs < 1) return;
+
   // update the geometry counters
   geometry.n += segs;
+  
+  // reset symmetry
   geometry.np = geometry.n;
   geometry.mp = geometry.m;
   geometry.ipsym = 0;
-  
-  // no point continuing
-  if(segs < 1) return;
-  
+    
   if(fabs(ang2- ang1) < 360.00001) {
     double ang, dang, xs1, xs2, zs1, zs2;
     
@@ -1028,18 +1020,20 @@ void arc(int card_num, int tag_num, int segs, double arc_radius, double ang1, do
 void helix(int card_num, int tag_num, int segs, double s, double hl,
            double a1, double b1, double a2, double b2, double rad)
 {
-  int first_segment_num;
+  int first_seg_num;
   size_t mreq;
   double zinc, copy, sangle, hdia, turn, pitch, hmaj, hmin;
 
-  first_segment_num = geometry.n;
+  // no point continuing...
+  if(segs < 1) return;
+
+  first_seg_num = geometry.n;
   geometry.n += segs;
+  
+  // reset symmetry
   geometry.np = geometry.n;
   geometry.mp = geometry.m;
   geometry.ipsym = 0;
-  
-  // no point continuing...
-  if(segs < 1) return;
 
   zinc = fabs(hl / segs);
 
@@ -1060,14 +1054,14 @@ void helix(int card_num, int tag_num, int segs, double s, double hl,
   mem_realloc((void *)&geometry.z2, mreq);
   mem_realloc((void *)&geometry.bi, mreq);
 
-  geometry.z1[first_segment_num] = 0.0;
-  for(int i = first_segment_num; i < geometry.n; i++ ) {
+  geometry.z1[first_seg_num] = 0.0;
+  for(int i = first_seg_num; i < geometry.n; i++ ) {
     // save these out
     geometry.card_nums[i] = card_num;
     geometry.tag_nums[i] = tag_num;
     geometry.bi[i] = rad;
 
-    if(i != first_segment_num)
+    if(i != first_seg_num)
       geometry.z1[i] = geometry.z1[i-1] + zinc;
     
     geometry.z2[i] = geometry.z1[i] + zinc;
@@ -1092,7 +1086,7 @@ void helix(int card_num, int tag_num, int segs, double s, double hl,
       geometry.y2[i]=( b1+( b2- b1)* geometry.z2[i]/ fabs( hl))* sin(2.* PI* geometry.z2[i]/ s);
     } /* if( a2 == a1) */
     
-    if( hl > 0.)
+    if(hl > 0.0)
       continue;
     
     copy= geometry.x1[i];
@@ -1198,8 +1192,9 @@ void reproduce(double rox, double roy, double roz, double xs,
   double sps, cps, sth, cth, sph, cph, xx, xy;
   double xz, yx, yy, yz, zx, zy, zz, xi, yi, zi;
 
-  if( fabs( rox)+ fabs( roy) > 1.0e-10)
-	geometry.ipsym= geometry.ipsym*3;
+  // if we are rotating around X or Y the update the symmetry
+  if(fabs(rox) + fabs(roy) > 1.0e-10)
+    geometry.ipsym = geometry.ipsym * 3;
 
   sps = sin(rox);
   cps = cos(rox);
@@ -1218,7 +1213,7 @@ void reproduce(double rox, double roy, double roz, double xs,
   zz = cth * cps;
   
   if(nrpt == 0)
-    nrp=1;
+    nrp = 1;
   else
     nrp = nrpt;
   
@@ -1336,20 +1331,22 @@ void reproduce(double rox, double roy, double roz, double xs,
 
   } /* if( data.m >= m2) */
 
+  // test whether we did a complete rotation/copy
   if((nrpt == 0) && (ix == 1))
     return;
 
+  // otherwise, reset the symmetry flags to "none"
   geometry.np = geometry.n;
   geometry.mp = geometry.m;
   geometry.ipsym = 0;
-} /* end of duplicate */
+} /* end of reproduce */
 
 /******************************************************************************
  * reflect
  *
  * reflect (formerly reflc) creates new geometry entries for all existing
  * entries to create reflections across the selected axes. reflect can
- * duplicate across the x, y and/or z axes in a single operation. If the
+ * duplicate across the X, Y and/or Z axes in a single operation. If the
  * original entries had a tag number, it will be updated by the tag_increment,
  * while those with a zero tag will remain zero.
  *
@@ -1375,9 +1372,7 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
   // sanity check, formerly used nop>0
   if(ix == 0 && iy == 0 && iz == 0) {
     char *msg = calloc(1, MAX_ERROR_LEN);
-    sprintf(msg,
-            "\n  GEOMETRY DATA ERROR--SEGMENT %d"
-            " LIES IN PLANE OF SYMMETRY", card_num + 1);
+    sprintf(msg, "GX on card %d has no reflection axes.", card_num + 1);
     add_error(&geometry.errors, msg, 1);
     free(msg);
     return;
@@ -1398,7 +1393,7 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
   // so to indicate if we are performing
   
   // we are now symmetric
-  // FIXME: the original code for this is confusing, this shoudl be reviewed
+  // FIXME: the original code for this is confusing, this should be reviewed
   geometry.ipsym = 1;
   
   // reflect along z axis
@@ -1540,13 +1535,13 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
           stop(-1);
         }
         
-        geometry.x1[nx]= geometry.x1[i];
-        geometry.y1[nx]= -e1;
-        geometry.z1[nx]= geometry.z1[i];
-        geometry.x2[nx]= geometry.x2[i];
-        geometry.y2[nx]= -e2;
-        geometry.z2[nx]= geometry.z2[i];
-        itagi= geometry.tag_nums[i];
+        geometry.x1[nx] = geometry.x1[i];
+        geometry.y1[nx] = -e1;
+        geometry.z1[nx] = geometry.z1[i];
+        geometry.x2[nx] = geometry.x2[i];
+        geometry.y2[nx] = -e2;
+        geometry.z2[nx] = geometry.z2[i];
+        itagi = geometry.tag_nums[i];
         
         if( itagi == 0)
           geometry.tag_nums[nx]=0;
@@ -1843,8 +1838,8 @@ void patch(int card_num, int nx, int ny,
   double znv, xnv, ynv, xa, xn2, yn2, zn2;
 
   /* new patches.  for nx=0, ny=1,2,3,4 patch is (respectively) */
-  /* arbitrary, rectagular, triangular, or quadrilateral. */
-  /* for nx and ny  > 0 a rectangular surface is produced with */
+  /* arbitrary, rectangular, triangular, or quadrilateral. */
+  /* for nx and ny > 0 a rectangular surface is produced with */
   /* nx by ny rectangular patches. */
 
   geometry.m++;
@@ -2024,6 +2019,7 @@ void patch(int card_num, int nx, int ny,
 	} /* for( iy = 0; iy < ny; iy++ ) */
   } /* if( nx != 0) */
 
+  // reset symmetry
   geometry.ipsym = 0;
   geometry.np = geometry.n;
   geometry.mp = geometry.m;
