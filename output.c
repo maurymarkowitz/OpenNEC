@@ -374,6 +374,9 @@ void write_structure(Deck *deck, FILE *file)
   for(int i = deck->geometry_start; i <= deck->geometry_end; i++) {
     card = deck->cards[i];
     
+    // for onec...
+    if(card.ignore) continue;
+    
     // convert the card code to a number
     for(geo_card_num = 0; geo_card_num < NUM_GEOMETRY_CODES; geo_card_num++) {
       if(strncmp(deck->cards[i].card_code, geometry_codes[geo_card_num], 2) == 0)
