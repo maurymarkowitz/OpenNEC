@@ -8,8 +8,8 @@ int main(int argc, char **argv);
 void Null_Pointers(void);
 void prnt(int in1, int in2, int in3, double fl1, double fl2, double fl3, double fl4, double fl5, double fl6, char *ia, int ichar);
 /* input.c */
-int read_line(char *buff, FILE *pfile);
 void read_deck(Deck *deck, FILE *pfile);
+int read_line(char *buff, FILE *pfile);
 void parse_deck(Deck *deck, Errors *errors);
 void parse_comment_card(Card *card, Errors *errors);
 void parse_geometry_or_command_card(Card *card, Errors *errors);
@@ -25,7 +25,6 @@ void write_patches(Deck * deck, FILE *pfile);
 /* deck.c */
 void update_deck_values(Deck *deck);
 void update_card_values(Card *card);
-void add_key_value(Card *card, KeyValue *list, char *key, char *value, char separator);
 int isComment(Card *card);
 int isGeometry(Card *card);
 int isControl(Card *card);
@@ -34,6 +33,7 @@ int min_int_fields(Card *card);
 int max_int_fields(Card *card);
 int min_flt_fields(Card *card);
 int max_flt_fields(Card *card);
+void add_key_value(Card *card, KeyValue *list, char *key, char *value, char separator);
 /* test.c */
 void test_deck_structure(Deck *deck, Errors *errors);
 void test_duplicate_tags(Deck *deck, Errors *errors);
