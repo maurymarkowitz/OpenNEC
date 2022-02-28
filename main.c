@@ -172,8 +172,8 @@ int main(int argc, char **argv)
 
   // if there are no command line arguments, print usage and exit
   if(argc == 1) {
-    usage();
-    exit(-1);
+    print_usage(argv);
+    exit(EXIT_FAILURE);
   }
   
   // process the command line options, if we did not get an
@@ -185,7 +185,7 @@ int main(int argc, char **argv)
     char mesg[88] = "opennec: ";
     strcat(mesg, input_file);
     perror(mesg);
-    exit(-1);
+    exit(EXIT_FAILURE);
   }
   
   // make an output file name if not specified by user
@@ -201,15 +201,7 @@ int main(int argc, char **argv)
     // add the extension
     strcat(output_file, ".out");
   }
-  
-  // open output file
-  if((output_fp = fopen(output_file, "w")) == NULL) {
-    char mesg[88] = "opennec: ";
-    strcat(mesg, output_file );
-    perror(mesg);
-    exit(-1);
-  }
-  
+
   // read input file into a deck
   read_deck(&deck, input_fp);
   
@@ -217,35 +209,43 @@ int main(int argc, char **argv)
   parse_deck(&deck, &import_errors);
   // TESTING: print any file errors
   for(int i = 0; i < import_errors.num_errors; i++) {
-    printf("%s\n", import_errors.errors[i].message);
+    fprintf(stderr, "%s\n", import_errors.errors[i].message);
   }
   
   // run basic sanity checks on the structure
-  if(run_tests)
+  if(run_tests) {
     test_deck_structure(&deck, &test_errors);
+    test_duplicate_tags(&deck, &test_errors);
+  }
   // TESTING: print any structure errors
   for(int i = 0; i < test_errors.num_errors; i++) {
-    printf("%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
+    fprintf(stderr, "%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
   }
   
   // run it if we've been asked to
   if(run_simulation) {
     calculate_geometry(&deck, &geometry_errors);
     connect_segments(0);
-    // now actually perform the run
   }
   for(int i = 0; i < geometry_errors.num_errors; i++) {
-    printf("%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
+    fprintf(stderr, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
   }
   
-  // TESTING: try writing the deck structure
+  // open output file
+  if((output_fp = fopen(output_file, "w")) == NULL) {
+    char mesg[88] = "opennec: ";
+    strcat(mesg, output_file);
+    perror(mesg);
+    exit(-1);
+  }
+  // and write it
   write_nec_output(&deck, output_fp);
 
   // TESTING: write it back out
   // TURNED OFF, SEEMS TO BE WORKING WELL
   //write_deck_onec(&deck, output_fp);
   
-  return 0;
+  return EXIT_SUCCESS;
 } /* main */
 
 //
@@ -2088,7 +2088,8 @@ Null_Pointers( void )
   geometry.x2 = geometry.y2 = geometry.z2 = NULL;
   geometry.si = geometry.bi = geometry.sab = NULL;
   geometry.cab = geometry.salp = NULL;
-  geometry.tag_nums = geometry.icon1 = geometry.icon2 = NULL;
+  geometry.card_nums = geometry.tag_nums = NULL;
+  geometry.icon1 = geometry.icon2 = NULL;
   geometry.px = geometry.py = geometry.pz = NULL;
   geometry.t1x = geometry.t1y = geometry.t1z = NULL;
   geometry.t2x = geometry.t2y = geometry.t2z = NULL;
