@@ -1,44 +1,43 @@
 /******************************************************************************
  * input.c
  *
- * input.c contains the routines needed to read and parse a card
- * deck file, normally ".nec" or ".deck". The process starts with
- * read_deck(), which uses read_line() to get the data from one
- * line in the file and then turn it into a Card. When all the
- * lines are read into Cards, read_deck() then calls a series of
- * functions to parse the deck into parts, using the logic
- * found in parse_command_card(), parse_geometry_card(), etc.
+ * input.c contains the routines needed to read and parse a card deck file,
+ * normally ".nec" or ".deck". The process starts with read_deck(), which uses
+ * read_line() to get the data from one line in the file and then turns it
+ * it into a Card. When all the lines are read into Cards, read_deck()
+ * then calls a series of functions to parse the deck into parts, usiing
+ * the logic found in parse_command_card(), parse_geometry_card(), etc.
  *
- * The original nec2c, like the NEC2 code it was based on, is very
- * "modal". It reads a card, processes it, and then forgets it.
- * Any card that cannot be processed, like comments, are skipped
- * entirely. In contrast, OpenNEC reads the entire deck into memory
- * first. This allows it to perform whole-deck checks, like looking
- * for a missing EN, or a GW that's missing its GC. To do this,
- * OpenNEC also keeps every card it finds, even blank lines and
- * inline comments.
+ * The original nec2c, like the NEC2 code it was based on, is very "modal".
+ * It reads a card, processes it, and then forgets it. Any card that cannot
+ * be processed, like comments, is skipped entirely.  In contrast, OpenNEC
+ * reads the entire deck into memory first. This allows it to perform
+ * whole-deck checks, like looking for a missing EN, or a GW that's missing
+ * its GC. To do this, OpenNEC also keeps every card it finds, even blank
+ * lines and all-comment lines.
  *
- * You will note that the code for reading lines is more complex
- * than you might see in most C programs - it reads char by char
- * instead of using fgets or similar. This is because NEC decks are
- * sometimes edited by hand in editors that insert hard breaks
- * when saved, and this are relatively common on the 'net. So this
- * code is somewhat more complex and tries to merge broken lines
- * of this sort. This is an area that might be improved by using
- * fgets and somewhat smarter code, but performance on modern machines
- * makes this a non-issue in all the examples I fed it.
+ * You will note that the code for reading lines is more complex than you
+ * might see in most C programs - it reads char by char instead of using fgets
+ * or similar. This is because NEC decks are sometimes edited by hand in
+ * editors that insert hard breaks when saved, and this are relatively common
+ * on the 'net. So this code is somewhat more complex and tries to merge
+ * broken lines of this sort. This is an area that might be improved by using
+ * fgets and somewhat smarter code, but performance on modern machines makes
+ * this a non-issue in all the examples fed to it.
  *
- * One lingering problem is when such a break has been inserted
- * precisely where an inline comment occurs. This causes the parser
- * to consider the second line to be a comment card, instead of
- * a comment on the previous card. This is a TODO.
+ * One lingering problem is when such a break has been inserted precisely
+ * where an inline comment occurs. This causes the parser to consider the
+ * second line to be a separate comment card, instead of a comment on the
+ * previous card. This is a TODO, which might be resolved by looking for
+ * onec key/value pairs - if such are found it can be assumed to be a
+ * comment on the previous line, if none are found then it is *likely* to
+ * be a comment line.
  *
- * Other changes to this code include a wider set of comment
- * markers, including CM, !, # and ', whereas nec2c only accepted
- * # outside the comment header. Additionally, this code looks for
- * comment markers *in* a line, and splits that data out to a
- * separate buffer for processing out the (potential) OpenNEC
- * extensions. It keeps track of what the original comment marker
+ * Other changes to this code include a wider set of comment markers, including
+ * CM, !, # and ', whereas nec2c only accepted # outside the comment header.
+ * Additionally, this code looks for comment markers *in* a line, and splits
+ * that data out to a separate buffer for processing out the (potential)
+ * OpenNEC extensions. It keeps track of what the original comment marker
  * was so it can save it back out in the same format.
  *
  *******************************************************************/
@@ -444,71 +443,6 @@ void parse_comment_card(Card *card, Errors *errors)
   card->comment = (char *)calloc(strlen(card->orig_str) - code_end, sizeof(char));
   strcpy(card->comment, &card->card_str[code_end]);
 }
-//
-///******************************************************************************
-// * parse_command_card()
-// *
-// * parses the contents of one command card. formerly readem()
-// *
-// * The original nec2C code was invoked with a big list of byref variables,
-// * read the card, parsed it, and passed everything back through the byrefs
-// * to the main loop for processing. This version takes the card, parses
-// * the card_str part, and then stores everything in the card's internal
-// * variables.
-// *
-// */
-//void parse_command_card(Card *card, Errors *errors)
-//{
-//  char *token;
-//  char* end_ptr;
-//  int ints_processed = 0;
-//  int floats_processed = 0;
-//
-//  int MAX_INT = max_int_fields(card);
-//  int MAX_FLT = max_flt_fields(card);
-//
-//	// get line length of the card part of the line
-//	size_t line_len = strlen(card->card_str);
-//
-//  // calloc has zeroed everything, so if this card doesn't have any parameters,
-//  // like a CE or GM, just return now
-//  if(line_len <= 2) return;
-//
-//  // make a copy so we can munge it
-//  char str[MAX_LINE_LEN];
-//  strcpy(str, trim_start(card->card_str + 2)); // skip the card code and any whitespace
-//
-//  // process up to four ints at the start of the line
-//  token = strtok(str, ONEC_WHITESPACE);
-//  while(token != NULL) {
-//    if(ints_processed < MAX_INT) {
-//      // try to process this as an int
-//      size_t value = strtol(token, &end_ptr, 10);
-//
-//      // if that returned nothing and we've reached the end of the line, exit
-//      if(value == 0L && end_ptr == token) break;
-//
-//      // and put the value in the right place
-//      ints_processed++;
-//      card->i[ints_processed] = (int)value;
-//    } else if (floats_processed < MAX_FLT) {
-//      // try to read a double on the line, and exit otherwise
-//      double value = strtod(token, &end_ptr);
-//      if(value == 0L && end_ptr == str) break;
-//
-//      // if we got a value, put it into the right slot
-//      floats_processed++;
-//      card->f[floats_processed] = value;
-//    }
-//
-//  NEXT_TOKEN:
-//    token = strtok(NULL, ONEC_WHITESPACE);
-//  }
-//
-//  // now we copy down the number of ints and floats we actually saw
-//  card->ints_used = ints_processed;
-//  card->flts_used = floats_processed;
-//} /* end of parse_command_card() */
 
 /******************************************************************************
  * parse_geometry_or_command_card()
@@ -528,8 +462,8 @@ void parse_geometry_or_command_card(Card *card, Errors *errors)
   char *end_ptr;      // end point of a a number as we parse them
   size_t int_value;   // used to parse ints...
   double dbl_value;   // ... and doubles
-  char unit_code[MAX_UNIT_LEN]; // the unit code string (if any) found on this line
   int unit;                     // ...and our internal code for that unit if we found it, or 0 for default
+  bool isUnit;                  // did the field have units?
   bool isFormula;               // was the double actually a formula?
   
   int MAX_INTS = max_int_fields(card);
@@ -551,74 +485,121 @@ void parse_geometry_or_command_card(Card *card, Errors *errors)
   // tokenize the rest of the line on the remaining whitespace
   token = strtok(str, ONEC_WHITESPACE);
   while(token != NULL) {
+    isFormula = FALSE;  // assume it's a number until proven otherwise
+    isUnit = FALSE;     // assume no units
+    unit = 0;           // if we don't find a unit code, this will ensure it is set to "default"
+
     // we have a non-zero length token, which might be an int
     // or float depending on what we've seen before
     if(ints_processed < MAX_INTS) {
       ints_processed++;
-      
+
       // parse a number if we can find it
-      int_value = strtol(token, &end_ptr , 10);
+      int_value = strtol(token, &end_ptr, 10);
       
       // if there was a number in there, end_ptr will no longer be at the
       // start and that means we found one and can store it in the right slot
       if(end_ptr != token) {
         card->i[ints_processed] = (int)int_value;
+        
+        // we got a number at the front, but is that all we got?
+        // no units in these fields, so it would have to be a formula
+        char *leftover = end_ptr;
+        if(strlen(leftover) > 0) {
+          isFormula = TRUE;
+        }
       }
-    }
+      // if end_ptr = token, then we didn't find any number at the start
+      else {
+        isFormula = TRUE;
+      }
+      
+      // if there was a formula, save it
+      if(isFormula) {
+        card->int_form_inline[ints_processed] = TRUE;  // indicate that we did have a formula inline
+        char fld_name[2];
+        fld_name[0] = 'I';
+        fld_name[1] = ints_processed + '0';
+        add_key_value(card, card->formulas, fld_name, token, '=');
+      }
+    } // end integer part
     
     // doubles are more complicated because the fields may contain other
     // bits like measurement indicators like "mm" or have formulas in them
     // the code assumes that it's a number until proven wrong. if it is, we
-    // set isFormula
+    // set isFormula and/or isUnit
     //
     else if(flts_processed < MAX_FLTS) {
       flts_processed++;
       
-      isFormula = FALSE;  // assume it's a number until proven otherwise
-      unit = 0;           // if we don't find a unit code, this will ensure it is set to "default"
-
+      // AWG needs to be handled a little differently, because:
+      // 1. the unit code can be in the front or back
+      // 2. the value might look like a formula, eg. 2/0
       // look for a leading # indicating an awg measurement from 4nec2
-      // FIXME: this doesn't currently work because we trim off everything after the # above
       if(token[0] == '#') {
-        // see if we can find that code (NOTE: case insensitive)
-        for(int i = 0; i < NUM_ONEC_UNIT_CODES; i++) {
-          if(strcasecmp(unit_code, unit_codes[i]) == 0) {
-            unit = i;
-            break;
-          }
-        }
-        // and then move forward to skip it
-        token += 1;
+        isUnit = TRUE;
+        unit = 8;
+        token += 1; // move forward to skip the symbol
       }
-      
+      // or the onec indicator at the end
+      if(strendswith(token, "awg") == 0) {
+        isUnit = TRUE;
+        unit = 7;
+        token[strlen(token) - 3] = '\0'; // cut the awg off the end
+      }
+      // here we test for the "large wire" case and convert it to a -ve value.
+      // 4/0 = -3 in the weird AWG system
+      if(unit == 7 || unit == 8) {
+        if(strcasecmp(token, "0000") == 0 || strcasecmp(token, "4/0") == 0) {
+          dbl_value = -2;
+        } else if(strcasecmp(token, "000") == 0 || strcasecmp(token, "3/0") == 0) {
+          dbl_value = -3;
+        } else if(strcasecmp(token, "00") == 0 || strcasecmp(token, "2/0") == 0) {
+          dbl_value = -1;
+        } else if(strcasecmp(token, "0") == 0 || strcasecmp(token, "1/0") == 0) {
+          dbl_value = 0;
+        }
+        // otherwise it should be just a value
+        else {
+          dbl_value = strtod(token, &end_ptr);
+        }
+        
+        // set the values
+        card->f[flts_processed] = dbl_value;
+        card->units[flts_processed] = unit;
+
+        // and them skip the rest
+        // FIXME: we are not handling the case where there is a formula in AWG
+        goto NEXT_TOKEN;
+      }
+
       // try to read a double in the token, which has to be at the start or
       // strtod fails - this is what we want, in case someone does 'freq/2'
-      dbl_value = strtod(token , &end_ptr);
+      dbl_value = strtod(token, &end_ptr);
       if(end_ptr != token) {
         // we got a number at the front, but is that all we got?
         char *leftover = end_ptr;
         
         if(strlen(leftover) > 0) {
           // check to see if the leftover is one of our known units (NOTE: case insensitive here!)
-          bool isUnit = false;
           for(int i = 0; i < NUM_ONEC_UNIT_CODES; i++) {
             if(strcasecmp(leftover, unit_codes[i]) == 0) {
               unit = i;
-              isUnit = true;
+              isUnit = TRUE;
               break;
             }
           }
           // if it was not a unit, and it wasn't zero length, we have to
           // assume the entire thing was a formula with a leading number
           if(!isUnit) {
-            isFormula = true;
+            isFormula = TRUE;
           }
         }
       } else {
         // we did not get a number at the front, so it must be a formula one way or the other
-        isFormula = true;
+        isFormula = TRUE;
       }
-      
+            
       // now we decide where to put it all...
       if(!isFormula) {
         // if it's not a formula, set the values and any unit we found
@@ -626,7 +607,6 @@ void parse_geometry_or_command_card(Card *card, Errors *errors)
         card->units[flts_processed] = unit;
       } else {
         // it is a formula, copy the entire token into the right formula field
-        card->f[flts_processed] = 0;
         card->flt_form_inline[flts_processed] = TRUE;  // indicate that we did have a formula inline
         char fld_name[2];
         fld_name[0] = 'F';
