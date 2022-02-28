@@ -216,11 +216,12 @@ void test_deck_structure(Deck *deck, Errors *errors)
       add_error(errors, msg, 1);
     }
     
-    // GW cards with zero radius have to have a GC after it
-    if(strcmp(code, "GW") == 0 && deck->cards[i].f[7] == 0.0 && strcmp(deck->cards[i+1].card_code, "GC") != 0) {
-      sprintf(msg, "The card on line %d is a GW with a zero radius, but the card after it is not a GC.", i + 1);
-      add_error(errors, msg, 1);
-    }
+    // FIXME: we should do this, but it has to be calculated first because it might be a formula or units
+//    // GW cards with zero radius have to have a GC after it
+//    if(strcmp(code, "GW") == 0 && deck->cards[i].f[7] == 0.0 && strcmp(deck->cards[i+1].card_code, "GC") != 0) {
+//      sprintf(msg, "The card on line %d is a GW with a zero radius, but the card after it is not a GC.", i + 1);
+//      add_error(errors, msg, 1);
+//    }
     
     // GD cards have to follow GN cards
     if(strcmp(code, "GD") == 0 && strcmp(last_code, "GN") != 0) {
