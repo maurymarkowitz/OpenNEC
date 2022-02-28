@@ -39,7 +39,7 @@
 // these are the markers for inline comments
 #ifndef ONEC_COMMENTS_DEF
 #define ONEC_COMMENTS_DEF
-#define ONEC_COMMENTS "!'#"
+#define ONEC_COMMENTS "!'" // turning off #, until we find an example that uses it
 #endif
 
 // these are the separators within an OpenNEC extension list
@@ -244,8 +244,8 @@ typedef struct geometry_t
 		np2m,	      // = n+2m
 		np3m,	      // = n+3m
 		ipsym,	    // Symmetry flag
-		*icon1,     // Segments end 1 connection
-		*icon2,	    // Segments end 2 connection
+		*icon1,     // Segments connections on end 1
+		*icon2,	    // Segments connections on end 2
 		*tag_nums,	// Segment's tag number, which may be zero
     *card_nums; // which card number generated this bit, never zero
   
@@ -268,6 +268,9 @@ typedef struct geometry_t
   
     /* Wavelength in meters */
     wlam;
+  
+  // list of errors added while processing this geometry
+  Errors errors;
 } geometry_t;
 
 /* common  /dataj/ */
