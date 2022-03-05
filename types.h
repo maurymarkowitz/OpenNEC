@@ -36,10 +36,13 @@
 #define ONEC_WHITESPACE ", \t\n\r\v\f\0"
 #endif
 
-// these are the markers for inline comments
+// these are the markers for *inline* comments
+// does not include #, which is used by nec2c, but that can only
+// appear at the start of the line and we do not allow it in OpenNEC
+// because we use that for AWG measurements
 #ifndef ONEC_COMMENTS_DEF
 #define ONEC_COMMENTS_DEF
-#define ONEC_COMMENTS "!'" // turning off #, until we find an example that uses it
+#define ONEC_COMMENTS "!'"
 #endif
 
 // these are the separators within an OpenNEC extension list
@@ -48,7 +51,7 @@
 #define ONEC_SEPARATORS ";,"
 #endif
 
-// these are the delimeters between the key and value pairs
+// these are the delimeters between the keys and values
 #ifndef ONEC_DELIMETERS_DEF
 #define ONEC_DELIMETERS_DEF
 #define ONEC_DELIMETERS "=:"
@@ -65,7 +68,7 @@ extern char *field_names[NUM_FIELD_NAMES];
 /* "XT" stands for "exit", added for testing, not included in these lists */
 #ifndef COMMENT_CODES_DEF
 #define COMMENT_CODES_DEF
-#define NUM_COMMENT_CODES  4
+#define NUM_COMMENT_CODES  5
 extern char *comment_codes[NUM_COMMENT_CODES];
 #endif
 

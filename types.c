@@ -17,7 +17,7 @@ char *field_names[NUM_FIELD_NAMES] = {
 
 // MSM 2022-02-12 "#" turning off hash for now until we actually find it somehere
 char *comment_codes[NUM_COMMENT_CODES] = {
-  "CM", "CE", "!", "'"
+  "CM", "CE", "!", "'", "#"
 };
 
 char *control_codes[NUM_CONTROL_CODES] = {

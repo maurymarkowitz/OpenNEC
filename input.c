@@ -81,7 +81,7 @@ void read_deck(Deck *deck, FILE *input_fp)
     // make a new card and copy in the line
     // we save every line to a card, even blank lines
     card = calloc(1, sizeof(Card));
-    card->orig_str = calloc(line_len +1, sizeof(char));
+    card->orig_str = calloc(line_len + 1, sizeof(char));
     card->edited = FALSE;
     card->ignore = FALSE; // should apply to geometery and commands?
     strcpy(card->orig_str, line_buf);
@@ -96,9 +96,14 @@ void read_deck(Deck *deck, FILE *input_fp)
       deck->cards = realloc(deck->cards, deck->num_cards * sizeof(Card));
     }
     deck->cards[deck->num_cards - 1] = *card;
+    
+    // if this is an XT card, stop processing further lines
+    // note that we don't have the card_code at this point
+    if((line_len >= 2) && ((line_buf[0] == 'X') && (line_buf[1] == 'T')))
+      break;
   }
 
-    // card is temp, free it
+  // card is temp, free it
   free(card);
 }
 
@@ -172,7 +177,7 @@ int read_line(char *buff, FILE *file)
   
   // read the line until you pick up any trailing cr's or lfs.
   while(num_chr < MAX_LINE_LEN) {
-    /* if lf/cr reached before filling buffer, return */
+    // if lf/cr reached before filling buffer, exit
     if((chr == CR) || (chr == LF))
       break;
     
@@ -224,7 +229,7 @@ void parse_deck(Deck *deck, Errors *errors)
     // get the card and the original string length
     line_len = strlen(card->orig_str);
     
-    /* copy out the card code */
+    // copy out the card code for easy future reference
     // onec comment markers can be one char, so we have a special case here
     if(line_len == 1) {
       strncpy(type_buff, card->orig_str, 1);
@@ -250,20 +255,19 @@ void parse_deck(Deck *deck, Errors *errors)
     isCtl = isControl(card);
     isExt = isExtension(card);
 
-    /* while we loop, we want to keep track of key points in the deck
-     * which will make it easier to work with in other parts of the code.
-     * for instance, we need to know where the EN card is, if we find
-     * one, because anything after that is automatically a comment. it's
-     * also handy to know where the geometry and comments sections
-     * start and end.
-     *
-     * note that we can't simply update the pointers every time we see
-     * one of the cards in a certain set, because you might have a CM
-     * card outside the comment section, for instance. This is not the
-     * case in a "real" NEC2 file, but widely allowed by practically
-     * every system.
-     */
-    
+    // while we loop, we want to keep track of key points in the deck
+    // which will make it easier to work with in other parts of the code.
+    // for instance, we need to know where the EN card is, if we find
+    // one, because anything after that is automatically a comment. it's
+    // also handy to know where the geometry and comments sections
+    // start and end.
+    //
+    // note that we can't simply update the pointers every time we see
+    // one of the cards in a certain set, because you might have a CM
+    // card outside the comment section, for instance. This is not the
+    // case in a "real" NEC2 file, but widely allowed by practically
+    // every system.
+    //
     // so, for instance, if this is the first CM card we've seen, and we
     // have NOT seen a CE or any Gx card, then this appears to be the
     // start of the comment section. but it's not if we've seen anything
@@ -293,13 +297,12 @@ void parse_deck(Deck *deck, Errors *errors)
       sawEN = TRUE;
     }
     
-    /* another special case: if this is a comment card but the next two characters
-     * are one of the extensions, this is really a "hidden extension" that is being
-     * used to make the deck compatible with older NEC programs. In that case, we
-     * want to change the card to an extension type, make it not a comment, and save
-     * the comment marker in the extn. note that this could only be the case if the
-     * card has at least three characters, which would assume something like !SY
-     */
+    // another special case: if this is a comment card but the next two characters
+    // are one of the extensions, this is really a "hidden extension" that is being
+    // used to make the deck compatible with older NEC programs. In that case, we
+    // want to change the card to an extension type, make it not a comment, and save
+    // the comment marker in the extn. note that this could only be the case if the
+    // card has at least three characters, which would assume something like !SY
     if(isCmt && line_len > 3) {
       // skip forward to find anything after the comment marker
       int pos = 0;
@@ -317,8 +320,6 @@ void parse_deck(Deck *deck, Errors *errors)
           pos++;
         }
       }
-      
-      // get the rest of the string after the comment marker
       
       // get the two characters *after* the comment marker
       if((strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0) && line_len > 4) {
@@ -344,10 +345,9 @@ void parse_deck(Deck *deck, Errors *errors)
       }
     } // checking for hidden info
     
-    /* if we're past the end of the deck, everything that appears is a comment,
-     * and we'll just copy it into the comment. but if we are not past the end,
-     * and we didn't recognize the type then we want to report an error
-     */
+    // if we're past the end of the deck, everything that appears is a comment,
+    // and we'll just copy it into the comment. but if we are not past the end,
+    // and we didn't recognize the type then we want to report an error
     if (!sawEN && !isCmt && !isCtl && !isGeo && !isExt) {
       // make a string for the message
       char *msg = calloc(1, MAX_ERROR_LEN);
@@ -356,10 +356,9 @@ void parse_deck(Deck *deck, Errors *errors)
       free(msg);
     }
     
-    /* if we did figure out the card type, then we want to put something in the card_str,
-     * but first we want to see if there is a comment inside the line ( > 0, < len ) and
-     * clip that part out separately into extn_str
-     */
+    // if we did figure out the card type, then we want to put something in the card_str,
+    // but first we want to see if there is a comment inside the line ( > 0, < len ) and
+    // clip that part out separately into extn_str
     if(isCmt || isCtl || isGeo || isExt) {
       size_t len; // this is the length of the main card text
       // look for a comment marker, adjust length of card text based on that
@@ -400,7 +399,7 @@ void parse_deck(Deck *deck, Errors *errors)
       parse_comment_card(card, errors);
     }
     if(isGeo || isCtl) {
-      parse_geometry_or_command_card(card, errors);
+      parse_geometry_or_control_card(card, errors);
     }
     if(isExt) {
       parse_onec_card(card, errors);
@@ -454,7 +453,7 @@ void parse_comment_card(Card *card, Errors *errors)
  * the addition of parsers for measurement units and formulas.
  *
  */
-void parse_geometry_or_command_card(Card *card, Errors *errors)
+void parse_geometry_or_control_card(Card *card, Errors *errors)
 {
   int ints_processed = 0;
   int flts_processed = 0;
