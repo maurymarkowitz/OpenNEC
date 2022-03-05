@@ -21,7 +21,7 @@
 /** signal handler */
 //static void sig_handler(int signal);
 
-/* various switches for the command line arguments */
+// various switches for the command line arguments
 static int run_simulation = TRUE;
 static int run_tests = FALSE;
 static int run_greens = FALSE;
@@ -47,7 +47,7 @@ static void print_version()
  * prints the usage notes
  *
  */
-static void print_usage(char *argv[])
+void print_usage(char *argv[])
 {
   printf("Usage: %s [-hvntg] [-i input_file] [-o output_file] [-e error_file] source_file\n", argv[0]);
   puts("Options:");
@@ -188,6 +188,19 @@ int main(int argc, char **argv)
     exit(EXIT_FAILURE);
   }
   
+  // open the error file if it was provided, otherwise stderr
+  if(strlen(error_file) > 0) {
+    if((error_fp = fopen(error_file, "r")) == NULL) {
+      char mesg[88] = "opennec: ";
+      strcat(mesg, input_file);
+      perror(mesg);
+      exit(EXIT_FAILURE);
+    }
+  }
+  else {
+    error_fp = stderr;
+  }
+  
   // make an output file name if not specified by user
   if(strlen(output_file) == 0) {
     // give it some room, with a little at the end for a potential extension
@@ -201,7 +214,7 @@ int main(int argc, char **argv)
     // add the extension
     strcat(output_file, ".out");
   }
-
+  
   // read input file into a deck
   read_deck(&deck, input_fp);
   
@@ -209,7 +222,7 @@ int main(int argc, char **argv)
   parse_deck(&deck, &import_errors);
   // TESTING: print any file errors
   for(int i = 0; i < import_errors.num_errors; i++) {
-    fprintf(stderr, "%s\n", import_errors.errors[i].message);
+    fprintf(error_fp, "%s\n", import_errors.errors[i].message);
   }
   
   // run basic sanity checks on the structure
@@ -219,16 +232,15 @@ int main(int argc, char **argv)
   }
   // TESTING: print any structure errors
   for(int i = 0; i < test_errors.num_errors; i++) {
-    fprintf(stderr, "%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
+    fprintf(error_fp, "%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
   }
   
   // run it if we've been asked to
   if(run_simulation) {
     calculate_geometry(&deck, &geometry_errors);
-    connect_segments(0);
   }
   for(int i = 0; i < geometry_errors.num_errors; i++) {
-    fprintf(stderr, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
+    fprintf(error_fp, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
   }
   
   // open output file
@@ -2071,24 +2083,24 @@ int main(int argc, char **argv)
 
 /*-----------------------------------------------------------------------*/
 
-/*  Null_Pointers()
+/*  null_pointers()
  *
  *  Nulls pointers used in mem_realloc
  */
-  void
-Null_Pointers( void )
+void null_pointers( void )
 {
   crnt.air = crnt.aii = NULL;
   crnt.bir = crnt.bii = NULL;
   crnt.cir = crnt.cii = NULL;
   crnt.cur = NULL;
+  
+  geometry.card_nums = geometry.tag_nums = NULL;
 
   geometry.x = geometry.y = geometry.z = NULL;
   geometry.x1 = geometry.y1 = geometry.z1 = NULL;
   geometry.x2 = geometry.y2 = geometry.z2 = NULL;
   geometry.si = geometry.bi = geometry.sab = NULL;
   geometry.cab = geometry.salp = NULL;
-  geometry.card_nums = geometry.tag_nums = NULL;
   geometry.icon1 = geometry.icon2 = NULL;
   geometry.px = geometry.py = geometry.pz = NULL;
   geometry.t1x = geometry.t1y = geometry.t1z = NULL;
@@ -2183,27 +2195,27 @@ void prnt( int in1, int in2, int in3, double fl1, double fl2,
 #if __WIN32__
 static void sig_handler( int signal )
 {
-  fprintf( stderr, "\n" );
+  fprintf( error_fp, "\n" );
   switch( signal )
   {
 	case SIGINT :
-	  fprintf( stderr, "%s\n", "opennec: exiting via user interrupt" );
+	  fprintf( error_fp, "%s\n", "opennec: exiting via user interrupt" );
 	  exit( signal );
 
 	case SIGSEGV :
-	  fprintf( stderr, "%s\n", "opennec: segmentation fault" );
+	  fprintf( error_fp, "%s\n", "opennec: segmentation fault" );
 	  exit( signal );
 
 	case SIGFPE :
-	  fprintf( stderr, "%s\n", "opennec: floating point exception" );
+	  fprintf( error_fp, "%s\n", "opennec: floating point exception" );
 	  exit( signal );
 
 	case SIGABRT :
-	  fprintf( stderr, "%s\n", "opennec: abort signal received" );
+	  fprintf( error_fp, "%s\n", "opennec: abort signal received" );
 	  exit( signal );
 
 	case SIGTERM :
-	  fprintf( stderr, "%s\n", "opennec: termination request received" );
+	  fprintf( error_fp, "%s\n", "opennec: termination request received" );
 
 	  stop( signal );
   }

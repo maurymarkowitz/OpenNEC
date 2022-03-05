@@ -46,7 +46,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
   // One CE (comment end) card
   // One or more GW (wire geometry) cards
   // One GE (geometry end) card
-  // One FR (design frequency) card
+  // One or more FR (design frequency) cards
   // One or more EX (excitation point) cards
   // Zero or one GN (Ground condition) card
   // Zero or more LD (loading) cards

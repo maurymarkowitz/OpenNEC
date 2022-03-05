@@ -16,7 +16,7 @@ dataj_t dataj;
 geometry_t geometry;
 
 /* pointers to input/output files */
-FILE *input_fp=NULL, *output_fp=NULL, *plot_fp=NULL;
+FILE *input_fp=NULL, *output_fp=NULL, *error_fp=NULL, *green_fp=NULL, *plot_fp=NULL;
 
 /* common  /fpat/ */
 fpat_t fpat;

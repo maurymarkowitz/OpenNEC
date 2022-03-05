@@ -86,37 +86,37 @@ void abort_on_error( int why )
   switch( why )
   {
 	case -1 : /* abort if input file name too long */
-	  fprintf( stderr, "%s\n",
+	  fprintf( error_fp, "%s\n",
 		  "onec: Input file name too long - aborting" );
 	  break;
 
 	case -2 : /* abort if output file name too long */
-	  fprintf( stderr, "%s\n",
+	  fprintf( error_fp, "%s\n",
 		  "onec: Output file name too long - aborting" );
 	  break;
 
 	case -3 : /* abort on input file read error */
-	  fprintf( stderr, "%s\n",
+	  fprintf( error_fp, "%s\n",
 		  "onec: Error reading input file - aborting" );
 	  break;
 
 	case -4 : /* Abort on malloc failure */
-	  fprintf( stderr, "%s\n",
+	  fprintf( error_fp, "%s\n",
 		  "onec: A memory allocation request has failed - aborting" );
 	  break;
 
 	case -5 : /* Abort if a GF card is read */
-	  fprintf( stderr, "%s\n",
+	  fprintf( error_fp, "%s\n",
 		  "onec: NGF solution option not supported - aborting" );
 	  break;
 
 	case -6: /* No convergence in gshank() */
-	  fprintf( stderr, "%s\n",
+	  fprintf( error_fp, "%s\n",
 		  "onec: No convergence in gshank() - aborting" );
 	  break;
 
 	case -7: /* Error in hankel() */
-	  fprintf( stderr, "%s\n",
+	  fprintf( error_fp, "%s\n",
 		  "onec: Hankel not valid for z=0. - aborting" );
 
   }  /* switch( why ) */

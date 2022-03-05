@@ -25,7 +25,7 @@ extern dataj_t dataj;
 extern geometry_t geometry;
 
 /* pointers to input/output files */
-extern FILE *input_fp, *output_fp, *plot_fp;
+extern FILE *input_fp, *output_fp, *error_fp, *green_fp, *plot_fp;
 
 /* common  /fpat/ */
 extern fpat_t fpat;

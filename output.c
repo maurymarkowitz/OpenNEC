@@ -377,9 +377,15 @@ void write_structure(Deck *deck, FILE *file)
     // for onec...
     if(card.ignore) continue;
     
+    // if this card is an XT, print it and stop everything
+    if(strcmp(card.card_code, "XT") == 0) {
+      fprintf(output_fp, "\nOpenNEC: Exiting after an XT command.\n" );
+      break;
+    }
+
     // convert the card code to a number
     for(geo_card_num = 0; geo_card_num < NUM_GEOMETRY_CODES; geo_card_num++) {
-      if(strncmp(deck->cards[i].card_code, geometry_codes[geo_card_num], 2) == 0)
+      if(strncmp(card.card_code, geometry_codes[geo_card_num], 2) == 0)
         break;
     }
     
@@ -447,7 +453,7 @@ void write_structure(Deck *deck, FILE *file)
         
         break;
         
-      case 8: // GA card, wire arc
+      case 8: // GA card, arc
         num_wires++;
         fprintf( output_fp, "\n"
                 " %5d ARC RADIUS: %9.5f  FROM: %8.3f TO: %8.3f DEGREES"
@@ -457,10 +463,10 @@ void write_structure(Deck *deck, FILE *file)
         //FIXME: this looks wrong, last input
         break;
         
-      case 9: // SC card
+      case 9: // SC card, does nothing
         break;
         
-      case 10: // GH card, generate helix */
+      case 10: // GH card, generate helix
         num_wires++;
         fprintf( output_fp, "\n"
                 " %5d HELIX STRUCTURE - SPACING OF TURNS: %8.3f AXIAL"
@@ -503,10 +509,8 @@ void write_structure(Deck *deck, FILE *file)
       ic = 3;
     fprintf(output_fp,
             "\n  STRUCTURE HAS %d PLANES OF SYMMETRY\n", ic );
-  } /* if( data.ipsym < 0 ) */
-
-
-}
+  } /* if(geometry.ipsym < 0 ) */
+} /* write_structure() */
 
 /******************************************************************************
  * write_segments()
