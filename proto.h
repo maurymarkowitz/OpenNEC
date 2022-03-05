@@ -5,14 +5,14 @@
 /*------------------------------------------------------------------------*/
 /* main.c */
 int main(int argc, char **argv);
-void Null_Pointers(void);
+void null_pointers(void);
 void prnt(int in1, int in2, int in3, double fl1, double fl2, double fl3, double fl4, double fl5, double fl6, char *ia, int ichar);
 /* input.c */
 void read_deck(Deck *deck, FILE *pfile);
 int read_line(char *buff, FILE *pfile);
 void parse_deck(Deck *deck, Errors *errors);
 void parse_comment_card(Card *card, Errors *errors);
-void parse_geometry_or_command_card(Card *card, Errors *errors);
+void parse_geometry_or_control_card(Card *card, Errors *errors);
 void parse_onec_card(Card *card, Errors *errors);
 void parse_key_values(Card *card, Errors *errors);
 /* output.c */
@@ -85,6 +85,7 @@ void unere(double xob, double yob, double zob);
 /* geometry.c */
 int segment_number(int tag, int m);
 void calculate_geometry(Deck *deck, Errors *errors);
+void finish_geometry(void);
 void connect_segments(int ignd);
 void wire(int card_num, int tag_num, int segs, double xw1, double yw1, double zw1, double xw2, double yw2, double zsw2, double rad, double rdel, double rrad);
 void arc(int card_num, int tag_num, int segs, double rada, double ang1, double ang2, double rad);
