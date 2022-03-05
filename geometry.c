@@ -35,23 +35,23 @@ void calculate_geometry(Deck *deck, Errors *errors)
   char *msg = calloc(1, MAX_ERROR_LEN);
 
   int code_num;   // geometry card code as a number
-	int tag, segs, isct, iphd;
-	size_t mreq;
+  int tag, segs;  // tag number (or zero) and number of segments to be added
+  //int isct, iphd; // no longer used
 	double rad, xs1, ys1, zs1, x4 = 0.0, y4 = 0.0, z4 = 0.0;
 	double x3 = 0, y3 = 0, z3 = 0, xw1, xw2, yw1, yw2, zw1, zw2;
   int ix, iy, iz; // only used for reflection
 
-  // set up the counters
+  // set up the counters and flags
 	geometry.ipsym = 0;
 	geometry.n = 0;
 	geometry.np = 0;
 	geometry.m = 0;
 	geometry.mp = 0;
-	isct = 0;     // this is "I am looking for an SC card"
-	iphd = FALSE;	// this is "I printed the header"
+	//isct = 0;     // this is "I am looking for an SC card", which we no longer need
+	//iphd = FALSE;	// this is "I printed the header", also not used
   
   // make sure there's cards to process
-  // TODO: should this be an error/warning?
+  // TODO: should this be an error/warning? or just in test?
   if(deck->num_cards == 0) return;
   if(deck->geometry_start == 0 || deck->geometry_end == 0) return;
   
@@ -59,7 +59,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
   // TODO: should this be done by the caller?
   update_deck_values(deck);
   
-  // loop over the geometry section of the deck
+  // loop over the geometry section of the deck, which should be correct by this point
   for(int i = deck->geometry_start; i <= deck->geometry_end; i++) {
     card = &deck->cards[i];
     
@@ -170,76 +170,15 @@ void calculate_geometry(Deck *deck, Errors *errors)
         
         // if we're at the end of the geometry section, we have all the segments
         // so now is an opportune time to connect them together
-        // TODO: it seems we could clarify the code by putting the itg in a new function, calculate_ground?
         connect_segments(tag);
         
-        // TODO: put the following code into update_segments and update_patches
+        // ... and calculate the midpoints and other bits
+        finish_geometry();
         
-        // and now we calculate various geometry-related data for wires,
-        // like the centerpoints and orientation
-        if(geometry.n != 0) {
-          /* reallocate the buffers */
-          mreq = (size_t)geometry.n * sizeof(double);
-          mem_realloc((void *)&geometry.si, mreq);
-          mem_realloc((void *)&geometry.sab, mreq);
-          mem_realloc((void *)&geometry.cab, mreq);
-          mem_realloc((void *)&geometry.salp, mreq);
-          mem_realloc((void *)&geometry.x, mreq);
-          mem_realloc((void *)&geometry.y, mreq);
-          mem_realloc((void *)&geometry.z, mreq);
-          
-          // and run the calcs
-          // NOTE: since it's going to exit at this point it simply re-uses i, but this seems bad form
-          for(i = 0; i < geometry.n; i++) {
-            xw1 = geometry.x2[i] - geometry.x1[i];
-            yw1 = geometry.y2[i] - geometry.y1[i];
-            zw1 = geometry.z2[i] - geometry.z1[i];
-            geometry.x[i] = (geometry.x1[i] + geometry.x2[i]) / 2.;
-            geometry.y[i] = (geometry.y1[i] + geometry.y2[i]) / 2.;
-            geometry.z[i] = (geometry.z1[i] + geometry.z2[i]) / 2.;
-            xw2 = xw1 * xw1 + yw1 * yw1 + zw1 * zw1;
-            yw2 = sqrt(xw2);
-            yw2 = (xw2 / yw2 + yw2) * 0.5;
-            geometry.si[i] = yw2;
-            geometry.cab[i] = xw1 / yw2;
-            geometry.sab[i] = yw1 / yw2;
-            xw2 = zw1 / yw2;
-            
-            if(xw2 > 1.0) xw2 = 1.0;
-            if(xw2 < -1.0) xw2 = -1.0;
-            
-            geometry.salp[i] = xw2;
-            xw2 = asin(xw2) * TD;
-            yw2 = atan2(yw1, xw1) * TD;
-            
-            if(geometry.si[i] <= 1.e-20) {
-                sprintf(msg, "The length of segment %d is too small to process.", i + 1);
-                add_error(errors, msg, 1);
-            }
-            if(geometry.bi[i] <= 0.0) {
-              sprintf(msg, "The radius of segment %d is too small to process.", i + 1);
-              add_error(errors, msg, 1);
-            }
-          } /* for( i = 0; i < data.n; i++ ) */
-        } /* if( data.n != 0) */
-        
-        // and finally, do the same basic calculations for the patches
-        if (geometry.m != 0) {
-          for(i = 0; i < geometry.m; i++) {
-            xw1 = (geometry.t1y[i] * geometry.t2z[i] - geometry.t1z[i] * geometry.t2y[i]) * geometry.psalp[i];
-            yw1 = (geometry.t1z[i] * geometry.t2x[i] - geometry.t1x[i] * geometry.t2z[i]) * geometry.psalp[i];
-            zw1 = (geometry.t1x[i] * geometry.t2y[i] - geometry.t1y[i] * geometry.t2x[i]) * geometry.psalp[i];
-          } /* for( i = 0; i < data.m; i++ ) */
-        } /* if( data.m == 0) */
-        
-        // update the counters that track the total number of segments and patches
-        geometry.npm = geometry.n + geometry.m;
-        geometry.np2m = geometry.n + 2 * geometry.m;
-        geometry.np3m = geometry.n + 3 * geometry.m;
         // and in this case, we're done
         return;
         
-      case 5: // "gm" card, move structure or reproduce/duplicate original structure in new positions
+      case 5: // GM, move structure or reproduce/duplicate original structure in new positions
         xw1 = xw1 * TA;
         yw1 = yw1 * TA;
         zw1 = zw1 * TA;
@@ -284,7 +223,7 @@ void calculate_geometry(Deck *deck, Errors *errors)
           } /* ns == 2 */
           // if it's not a triangle, we have to loop over the following cards
           else {
-            // so work the one we just read...
+            // there has to be at least one following...
             x3 = deck->cards[i + 1].fv[1];
             y3 = deck->cards[i + 1].fv[2];
             z3 = deck->cards[i + 1].fv[3];
@@ -293,8 +232,9 @@ void calculate_geometry(Deck *deck, Errors *errors)
             z3 = deck->cards[i + 1].fv[6];
             i++;
             patch(i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
-            
-            // ...and then loop until we run out of following SC's
+
+            // if it was segs=1 we are done at this point, for segs=3 there's more,
+            // so loop until we run out of following SC's
             while(strcmp(deck->cards[i + 1].card_code, "SC") == 0) {
               // copy the last set of end coords into this set's start coords
               xw1 = x3;
@@ -310,30 +250,11 @@ void calculate_geometry(Deck *deck, Errors *errors)
               x3 = deck->cards[i + 1].fv[4];
               y3 = deck->cards[i + 1].fv[5];
               z3 = deck->cards[i + 1].fv[6];
-              i++; // skip the card in the main loop
+              i++;
               patch(i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
             } /* while cards are SC's */
-          }/* ns > 2 */
-        } /* ns > 1 */
-
-        
-//  according to the NEC dox, ns=2 = triangle and ns3=continual patch, so why is it testing for 4?
-//        if (ns == 2 || ns == 4) isct = 1; // this means "i am expecting SC's following"
-//
-//        if (ns > 1) {
-//
-//          //read_geometry_card(gm, &ix, &iy, &x3, &y3, &z3, &x4, &y4, &z4, &dummy);
-//
-//          if ((ns == 2) || (itg > 0)) {
-//            x4 = xw1 + x3 - xw2;
-//            y4 = yw1 + y3 - yw2;
-//            z4 = zw1 + z3 - zw2;
-//          }
-//
-//          fprintf(output_fp, "\n"
-//                  "      %11.5f %11.5f %11.5f %11.5f %11.5f %11.5f",
-//                  x3, y3, z3, x4, y4, z4);
-//
+          }/* ns = 2 */
+        } /* ns > 0 */
 
         continue;
 
@@ -672,7 +593,7 @@ void connect_segments(int ignd)
      stop(-1);
      } */
     
-    while( TRUE ) {
+    while(TRUE) {
       if((ix != 0) && (ix != (j+1)) && (ix <= PCHCON)) {
         do {
           if(ix < 0)
@@ -795,6 +716,84 @@ void connect_segments(int ignd)
   mem_realloc((void *)&segj.bx, mreq);
   mem_realloc((void *)&segj.cx, mreq);
 } /* end of connect_segments */
+
+/******************************************************************************
+ * finish_geometry
+ *
+ * finish_geometry (formerly part of calculate_geometry) calculates midpoints
+ * of wires and patches and similar values that run when the GE is seen.
+ *
+ * Some of the calculations it performed were used only for display in the
+ * output files, including the angles of segments and the midpoints of patches.
+ * These have been moved to output.c. As a result, this code no longer does
+ * anything with the patches and it's possible that more of the values being
+ * cached here may be removed entirely.
+ *
+ */
+void finish_geometry()
+{
+  size_t mreq;
+  double xw1, yw1, zw1;
+  double xw2, yw2;
+  char *msg = calloc(1, MAX_ERROR_LEN);
+
+  // and now we calculate various geometry-related data for wires,
+  // like the centerpoints and orientation
+  if(geometry.n != 0) {
+    // reallocate the buffers
+    mreq = (size_t)geometry.n * sizeof(double);
+    mem_realloc((void *)&geometry.si, mreq);
+    mem_realloc((void *)&geometry.sab, mreq);
+    mem_realloc((void *)&geometry.cab, mreq);
+    mem_realloc((void *)&geometry.salp, mreq);
+    mem_realloc((void *)&geometry.x, mreq);
+    mem_realloc((void *)&geometry.y, mreq);
+    mem_realloc((void *)&geometry.z, mreq);
+    
+    for(int i = 0; i < geometry.n; i++) {
+      // calculate the segment midpoints
+      xw1 = geometry.x2[i] - geometry.x1[i];
+      yw1 = geometry.y2[i] - geometry.y1[i];
+      zw1 = geometry.z2[i] - geometry.z1[i];
+      geometry.x[i] = (geometry.x1[i] + geometry.x2[i]) / 2.0;
+      geometry.y[i] = (geometry.y1[i] + geometry.y2[i]) / 2.0;
+      geometry.z[i] = (geometry.z1[i] + geometry.z2[i]) / 2.0;
+      
+      // and lengths
+      xw2 = xw1 * xw1 + yw1 * yw1 + zw1 * zw1;
+      yw2 = sqrt(xw2);
+      yw2 = (xw2 / yw2 + yw2) * 0.5;
+      geometry.si[i] = yw2;
+      
+      // and angles
+      geometry.cab[i] = xw1 / yw2;
+      geometry.sab[i] = yw1 / yw2;
+      xw2 = zw1 / yw2;
+      
+      if(xw2 > 1.0)
+        xw2 = 1.0;
+      if(xw2 < -1.0)
+        xw2 = -1.0;
+      geometry.salp[i] = xw2;
+      
+      if(geometry.si[i] <= 1.e-20) {
+          sprintf(msg, "The length of segment %d is too small to process.", i + 1);
+          add_error(&geometry.errors, msg, 1);
+      }
+      if(geometry.bi[i] <= 0.0) {
+        sprintf(msg, "The radius of segment %d is too small to process.", i + 1);
+        add_error(&geometry.errors, msg, 1);
+      }
+    } /* for( i = 0; i < geometry.n; i++ ) */
+  } /* if( geometry.n != 0) */
+  
+  // update the counters that track the total number of segments and patches
+  geometry.npm = geometry.n + geometry.m;
+  geometry.np2m = geometry.n + 2 * geometry.m;
+  geometry.np3m = geometry.n + 3 * geometry.m;
+
+  free(msg);
+}
 
 /******************************************************************************
  * wire
@@ -938,73 +937,76 @@ void wire(int card_num, int tag_num, int segs,
  *****************************************************************************/
 void arc(int card_num, int tag_num, int segs, double arc_radius, double ang1, double ang2, double wire_radius)
 {
+  double ang, dang, xs1, xs2, zs1, zs2;
   int first_segment_num = geometry.n;
   
-  // no point continuing
+  // no point continuing if there are no segments
   if(segs < 1) return;
-
-  // update the geometry counters
+  
+  // this test was previously performed at the end, which meant that
+  // symmetry was removed even if it didn't actually build the arc.
+  // as is the case in wire and helix, we will do the test now
+  if(fabs(ang2- ang1) > 360.0000) {
+    char *msg = calloc(1, MAX_ERROR_LEN);
+    sprintf(msg, "The card on line %d is a GA with an angle >360 degrees.", card_num + 1);
+    add_error(&geometry.errors, msg, 1);
+    free(msg);
+    return;
+  }
+  
+  // update the segment count
   geometry.n += segs;
   
   // reset symmetry
   geometry.np = geometry.n;
   geometry.mp = geometry.m;
   geometry.ipsym = 0;
+  
+  // Reallocate card nums and tags buffer
+  size_t mreq = (size_t)geometry.n;
+  mreq *= sizeof(int);
+  mem_realloc((void *)&geometry.card_nums, mreq);
+  mem_realloc((void *)&geometry.tag_nums, mreq);
+  
+  // Reallocate wire buffers
+  mreq = (size_t)geometry.n;
+  mreq *= sizeof(double);
+  mem_realloc((void *)&geometry.x1, mreq);
+  mem_realloc((void *)&geometry.y1, mreq);
+  mem_realloc((void *)&geometry.z1, mreq);
+  mem_realloc((void *)&geometry.x2, mreq);
+  mem_realloc((void *)&geometry.y2, mreq);
+  mem_realloc((void *)&geometry.z2, mreq);
+  mem_realloc((void *)&geometry.bi, mreq);
+  
+  ang = ang1 * TA;
+  dang = (ang2- ang1) * TA/ segs;
+  xs1 = arc_radius * cos(ang);
+  zs1 = arc_radius * sin(ang);
+  
+  for(int i = first_segment_num; i < geometry.n; i++) {
+    // save these bits out
+    geometry.card_nums[i] = card_num;
+    geometry.tag_nums[i] = tag_num;
+    geometry.bi[i] = wire_radius;
     
-  if(fabs(ang2- ang1) < 360.00001) {
-    double ang, dang, xs1, xs2, zs1, zs2;
+    // move around the arc by the delta angle
+    ang += dang;
+    xs2 = arc_radius * cos(ang);
+    zs2 = arc_radius * sin(ang);
     
-    // Reallocate card nums and tags buffer
-    size_t mreq = (size_t)geometry.n;
-    mreq *= sizeof(int);
-    mem_realloc((void *)&geometry.card_nums, mreq);
-    mem_realloc((void *)&geometry.tag_nums, mreq);
-
-    // Reallocate wire buffers
-    mreq = (size_t)geometry.n;
-    mreq *= sizeof(double);
-    mem_realloc((void *)&geometry.x1, mreq);
-    mem_realloc((void *)&geometry.y1, mreq);
-    mem_realloc((void *)&geometry.z1, mreq);
-    mem_realloc((void *)&geometry.x2, mreq);
-    mem_realloc((void *)&geometry.y2, mreq);
-    mem_realloc((void *)&geometry.z2, mreq);
-    mem_realloc((void *)&geometry.bi, mreq);
+    // save that out
+    geometry.x1[i] = xs1;
+    geometry.y1[i] = 0.0;
+    geometry.z1[i] = zs1;
+    geometry.x2[i] = xs2;
+    geometry.y2[i] = 0.0;
+    geometry.z2[i] = zs2;
     
-    ang = ang1 * TA;
-    dang = (ang2- ang1) * TA/ segs;
-    xs1 = arc_radius * cos(ang);
-    zs1 = arc_radius * sin(ang);
-    
-    for(int i = first_segment_num; i < geometry.n; i++) {
-      // save these bits out
-      geometry.card_nums[i] = card_num;
-      geometry.tag_nums[i] = tag_num;
-      geometry.bi[i] = wire_radius;
-
-      // move around the arc by the delta angle
-      ang += dang;
-      xs2 = arc_radius * cos(ang);
-      zs2 = arc_radius * sin(ang);
-      
-      // save that out
-      geometry.x1[i] = xs1;
-      geometry.y1[i] = 0.0;
-      geometry.z1[i] = zs1;
-      geometry.x2[i] = xs2;
-      geometry.y2[i] = 0.0;
-      geometry.z2[i] = zs2;
-      
-      // move up one stop
-      xs1 = xs2;
-      zs1 = zs2;
-    } /* for( i = ist; i < data.n; i++ ) */
-  } /* if( fabs( ang2- ang1) < 360.00001) */
-  else
-  {
-    fprintf( output_fp, "\n  ERROR -- ARC ANGLE EXCEEDS 360 DEGREES");
-    stop(-1);
-  }
+    // move up one stop
+    xs1 = xs2;
+    zs1 = zs2;
+  } /* for( i = ist; i < data.n; i++ ) */
 } /* end of arc */
 
 /******************************************************************************
@@ -1024,9 +1026,10 @@ void helix(int card_num, int tag_num, int segs, double s, double hl,
   size_t mreq;
   double zinc, copy, sangle, hdia, turn, pitch, hmaj, hmin;
 
-  // no point continuing...
+  // no point continuing if the number of segments is zero
   if(segs < 1) return;
 
+  // update the counters
   first_seg_num = geometry.n;
   geometry.n += segs;
   
@@ -1037,13 +1040,13 @@ void helix(int card_num, int tag_num, int segs, double s, double hl,
 
   zinc = fabs(hl / segs);
 
-  // Reallocate card num and tags buffer
+  // reallocate card num and tags buffer
   mreq = (size_t)(geometry.n + geometry.m);
   mreq *= sizeof(int);
   mem_realloc((void *)&geometry.card_nums, mreq);
   mem_realloc((void *)&geometry.tag_nums, mreq);
 
-  // Reallocate wire buffers
+  // reallocate wire buffers
   mreq = (size_t)geometry.n;
   mreq *= sizeof(double);
   mem_realloc((void *)&geometry.x1, mreq);
@@ -1144,8 +1147,6 @@ void helix(int card_num, int tag_num, int segs, double s, double hl,
  */
 void scale(double scale_factor)
 {
-  int area_factor;
-  
   // scale the wires
   if(geometry.n > 0) {
     for(int i = 0; i < geometry.n; i++) {
@@ -1161,7 +1162,7 @@ void scale(double scale_factor)
   
   // and then the patches
   if(geometry.m > 0) {
-    area_factor = scale_factor * scale_factor;
+    double area_factor = scale_factor * scale_factor;
     for (int i = 0; i < geometry.m; i++) {
       geometry.px[i] = geometry.px[i] * scale_factor;
       geometry.py[i] = geometry.py[i] * scale_factor;
@@ -1369,7 +1370,7 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
   size_t mreq;
   double e1, e2;
   
-  // sanity check, formerly used nop>0
+  // sanity check, formerly used nop>0 but we no longer pass that in
   if(ix == 0 && iy == 0 && iz == 0) {
     char *msg = calloc(1, MAX_ERROR_LEN);
     sprintf(msg, "GX on card %d has no reflection axes.", card_num + 1);
@@ -1428,10 +1429,14 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
         e2 = geometry.z2[i];
         
         if((fabs(e1) + fabs(e2) <= 1.0e-5) || (e1 * e2 < -1.0e-6)) {
-          fprintf( output_fp,
+          char *msg = calloc(1, MAX_ERROR_LEN);
+          sprintf(msg,
                   "\n  GEOMETRY DATA ERROR--SEGMENT %d"
-                  " LIES IN PLANE OF SYMMETRY", i+1 );
-          stop(-1);
+                  " LIES IN PLANE OF SYMMETRY",
+                  i + 1);
+          add_error(&geometry.errors, msg, 1);
+          free(msg);
+          return;
         }
         
         geometry.x1[nx] = geometry.x1[i];
@@ -1481,10 +1486,14 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
       for(i = 0; i < geometry.m; i++) {
         nx = i+geometry.m;
         if(fabs(geometry.pz[i]) <= 1.0e-10) {
-          fprintf( output_fp,
+          char *msg = calloc(1, MAX_ERROR_LEN);
+          sprintf(msg,
                   "\n  GEOMETRY DATA ERROR--PATCH %d"
-                  " LIES IN PLANE OF SYMMETRY", i+1 );
-          stop(-1);
+                  " LIES IN PLANE OF SYMMETRY",
+                  i + 1);
+          add_error(&geometry.errors, msg, 1);
+          free(msg);
+          return;
         }
         
         geometry.px[nx]= geometry.px[i];
@@ -1523,16 +1532,20 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
       mem_realloc((void *)&geometry.z2, mreq);
       mem_realloc((void *)&geometry.bi, mreq);
       
-      for( i = 0; i < geometry.n; i++ ) {
+      for(i = 0; i < geometry.n; i++) {
         nx= i+ geometry.n;
         e1= geometry.y1[i];
         e2= geometry.y2[i];
         
-        if( (fabs(e1)+fabs(e2) <= 1.0e-5) || (e1*e2 < -1.0e-6) ) {
-          fprintf( output_fp,
+        if((fabs(e1)+fabs(e2) <= 1.0e-5) || (e1*e2 < -1.0e-6)) {
+          char *msg = calloc(1, MAX_ERROR_LEN);
+          sprintf(msg,
                   "\n  GEOMETRY DATA ERROR--SEGMENT %d"
-                  " LIES IN PLANE OF SYMMETRY", i+1 );
-          stop(-1);
+                  " LIES IN PLANE OF SYMMETRY",
+                  i + 1);
+          add_error(&geometry.errors, msg, 1);
+          free(msg);
+          return;
         }
         
         geometry.x1[nx] = geometry.x1[i];
@@ -1578,10 +1591,14 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
       for( i = 0; i < geometry.m; i++ ) {
         nx= i+geometry.m;
         if( fabs( geometry.py[i]) <= 1.0e-10) {
-          fprintf( output_fp,
+          char *msg = calloc(1, MAX_ERROR_LEN);
+          sprintf(msg,
                   "\n  GEOMETRY DATA ERROR--PATCH %d"
-                  " LIES IN PLANE OF SYMMETRY", i+1 );
-          stop(-1);
+                  " LIES IN PLANE OF SYMMETRY",
+                  i + 1);
+          add_error(&geometry.errors, msg, 1);
+          free(msg);
+          return;
         }
         
         geometry.px[nx]= geometry.px[i];
@@ -1623,16 +1640,20 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
     mem_realloc((void *)&geometry.z2, mreq);
     mem_realloc((void *)&geometry.bi, mreq);
     
-    for( i = 0; i < geometry.n; i++ ) {
+    for(i = 0; i < geometry.n; i++) {
       nx= i+ geometry.n;
       e1= geometry.x1[i];
       e2= geometry.x2[i];
       
       if( (fabs(e1)+fabs(e2) <= 1.0e-5) || (e1*e2 < -1.0e-6) ) {
-        fprintf( output_fp,
+        char *msg = calloc(1, MAX_ERROR_LEN);
+        sprintf(msg,
                 "\n  GEOMETRY DATA ERROR--SEGMENT %d"
-                " LIES IN PLANE OF SYMMETRY", i+1 );
-        stop(-1);
+                " LIES IN PLANE OF SYMMETRY",
+                i + 1);
+        add_error(&geometry.errors, msg, 1);
+        free(msg);
+        return;
       }
       
       geometry.x1[nx]= -e1;
@@ -1655,7 +1676,7 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
     
   } /* if( data.n > 0) */
   
-  if( geometry.m == 0 )
+  if(geometry.m == 0)
     return;
   
   /* Reallocate patch buffers */
@@ -1676,10 +1697,14 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
   for( i = 0; i < geometry.m; i++ ) {
     nx = i+geometry.m;
     if(fabs(geometry.px[i]) <= 1.0e-10) {
-      fprintf(output_fp,
+      char *msg = calloc(1, MAX_ERROR_LEN);
+      sprintf(msg,
               "\n  GEOMETRY DATA ERROR--PATCH %d"
-              " LIES IN PLANE OF SYMMETRY", i+1 );
-      stop(-1);
+              " LIES IN PLANE OF SYMMETRY",
+              i + 1);
+      add_error(&geometry.errors, msg, 1);
+      free(msg);
+      return;
     }
     
     geometry.px[nx]= -geometry.px[i];
@@ -1696,8 +1721,6 @@ void reflect(int card_num, int tag_increment, int ix, int iy, int iz)
   }
   
   geometry.m= geometry.m*2;
-  return;
-  
 } /* end of reflect */
 
 /******************************************************************************
@@ -1823,9 +1846,19 @@ void rotate(int card_num, int tag_increment, int num_copies)
   } /* for( i = nx; i < data.m; i++ ) */
 } /* end of rotate */
 
-/*-----------------------------------------------------------------------*/
-
-/* patch generates and modifies patch geometry data */
+/******************************************************************************
+ * patch
+ *
+ * patch creates a surface patch of one of three types, including a free-form
+ * surface that is defined on multiple cards.
+ *
+ * FIXME: this should be broken into two methods, single_patch and multi_
+ *
+ * @param card_num Card number that contains this instruction
+ * @param nx the number of patches to generate in x...
+ * @param ny ... and y.
+ *
+ */
 void patch(int card_num, int nx, int ny,
 	double ax1, double ay1, double az1,
 	double ax2, double ay2, double az2,
@@ -1834,18 +1867,18 @@ void patch(int card_num, int nx, int ny,
 {
   int mi, ntp;
   size_t mreq;
-  double s1x=0.0, s1y=0.0, s1z=0.0, s2x=0.0, s2y=0.0, s2z=0.0, xst=0.;
+  double s1x=0.0, s1y=0.0, s1z=0.0, s2x=0.0, s2y=0.0, s2z=0.0, xst=0.0;
   double znv, xnv, ynv, xa, xn2, yn2, zn2;
-
-  /* new patches.  for nx=0, ny=1,2,3,4 patch is (respectively) */
-  /* arbitrary, rectangular, triangular, or quadrilateral. */
-  /* for nx and ny > 0 a rectangular surface is produced with */
-  /* nx by ny rectangular patches. */
-
+  
+  // new patches. for nx=0, ny=1,2,3,4 patch is (respectively)
+  // arbitrary, rectangular, triangular, or quadrilateral.
+  // for nx and ny > 0 a rectangular surface is produced with
+  // nx by ny rectangular patches.
+  
   geometry.m++;
   mi = geometry.m - 1;
-
-  /* Reallocate patch buffers */
+  
+  // reallocate patch buffers
   mreq = (size_t)geometry.m;
   mreq *= sizeof(double);
   mem_realloc((void *)&geometry.px, mreq);
@@ -1864,7 +1897,7 @@ void patch(int card_num, int nx, int ny,
     ntp = 2;
   else
     ntp = ny;
-
+  
   if(ntp <= 1) {
     geometry.px[mi] = ax1;
     geometry.py[mi] = ay1;
@@ -1875,7 +1908,7 @@ void patch(int card_num, int nx, int ny,
     ynv = znv * sin(ay2);
     znv = sin(ax2);
     xa = sqrt(xnv * xnv+ ynv * ynv);
-
+    
     if(xa >= 1.0e-6) {
       geometry.t1x[mi] = -ynv/ xa;
       geometry.t1y[mi] = xnv/ xa;
@@ -1885,7 +1918,7 @@ void patch(int card_num, int nx, int ny,
       geometry.t1y[mi]=0.;
       geometry.t1z[mi]=0.;
     }
-
+    
   } /* if( ntp <= 1) */
   else {
     s1x = ax2 - ax1;
@@ -1894,7 +1927,7 @@ void patch(int card_num, int nx, int ny,
     s2x = ax3 - ax2;
     s2y = ay3 - ay2;
     s2z = az3 - az2;
-
+    
     if(nx != 0) {
       s1x = s1x / nx;
       s1y = s1y / nx;
@@ -1903,31 +1936,31 @@ void patch(int card_num, int nx, int ny,
       s2y = s2y / ny;
       s2z = s2z / ny;
     }
-
-    xnv= s1y* s2z- s1z* s2y;
-    ynv= s1z* s2x- s1x* s2z;
-    znv= s1x* s2y- s1y* s2x;
-    xa= sqrt( xnv* xnv+ ynv* ynv+ znv* znv);
-    xnv= xnv/ xa;
-    ynv= ynv/ xa;
-    znv= znv/ xa;
-    xst= sqrt( s1x* s1x+ s1y* s1y+ s1z* s1z);
-    geometry.t1x[mi]= s1x/ xst;
-    geometry.t1y[mi]= s1y/ xst;
-    geometry.t1z[mi]= s1z/ xst;
-
-    if( ntp <= 2) {
-      geometry.px[mi]= ax1+.5*( s1x+ s2x);
-      geometry.py[mi]= ay1+.5*( s1y+ s2y);
-      geometry.pz[mi]= az1+.5*( s1z+ s2z);
-      geometry.pbi[mi]= xa;
+    
+    xnv = s1y * s2z - s1z * s2y;
+    ynv = s1z * s2x - s1x * s2z;
+    znv = s1x * s2y - s1y * s2x;
+    xa = sqrt(xnv * xnv + ynv * ynv + znv * znv);
+    xnv = xnv/ xa;
+    ynv = ynv/ xa;
+    znv = znv/ xa;
+    xst = sqrt( s1x* s1x+ s1y* s1y+ s1z* s1z);
+    geometry.t1x[mi] = s1x / xst;
+    geometry.t1y[mi] = s1y / xst;
+    geometry.t1z[mi] = s1z / xst;
+    
+    if(ntp <= 2) {
+      geometry.px[mi] = ax1 + 0.5 * (s1x + s2x);
+      geometry.py[mi] = ay1 + 0.5 * (s1y + s2y);
+      geometry.pz[mi] = az1 + 0.5 * (s1z + s2z);
+      geometry.pbi[mi] = xa;
     }
     else {
       if( ntp != 4) {
-      geometry.px[mi]=( ax1+ ax2+ ax3)/3.;
-      geometry.py[mi]=( ay1+ ay2+ ay3)/3.;
-      geometry.pz[mi]=( az1+ az2+ az3)/3.;
-      geometry.pbi[mi]=.5* xa;
+        geometry.px[mi] = (ax1 + ax2 + ax3) / 3.0;
+        geometry.py[mi] = (ay1 + ay2 + ay3) / 3.0;
+        geometry.pz[mi] = (az1 + az2 + az3) / 3.0;
+        geometry.pbi[mi] = 0.5 * xa;
       }
       else  {
         double salpn;
@@ -1947,100 +1980,101 @@ void patch(int card_num, int nx, int ny,
         geometry.pz[mi]=( xa*( az1+ az2+ az3)+ xst*( az1+ az3+ az4))* salpn;
         geometry.pbi[mi]=.5*( xa+ xst);
         s1x=( xnv* xn2+ ynv* yn2+ znv* zn2)/ xst;
-
-        if( s1x <= 0.9998) {
-          fprintf( output_fp,
-            "\n  ERROR -- CORNERS OF QUADRILATERAL"
-            " PATCH DO NOT LIE IN A PLANE" );
-          stop(-1);
+        
+        if(s1x <= 0.9998) {
+          char *msg = calloc(1, MAX_ERROR_LEN);
+          sprintf(msg,
+                  "\n  ERROR -- CORNERS OF QUADRILATERAL"
+                  " PATCH DO NOT LIE IN A PLANE" );
+          add_error(&geometry.errors, msg, 1);
+          free(msg);
+          return;
         }
-
       } /* if( ntp != 4) */
-
     } /* if( ntp <= 2) */
-
   } /* if( ntp <= 1) */
-
-  geometry.t2x[mi]= ynv* geometry.t1z[mi]- znv* geometry.t1y[mi];
-  geometry.t2y[mi]= znv* geometry.t1x[mi]- xnv* geometry.t1z[mi];
-  geometry.t2z[mi]= xnv* geometry.t1y[mi]- ynv* geometry.t1x[mi];
-  geometry.psalp[mi]=1.;
-
-  if( nx != 0) {
-	int iy, ix;
-	double xs, ys, zs, xt, yt, zt;
-
-	geometry.m += nx*ny-1;
-	/* Reallocate patch buffers */
-	mreq = (size_t)geometry.m;
-	mreq *= sizeof(double);
-	mem_realloc((void *)&geometry.px, mreq);
-	mem_realloc((void *)&geometry.py, mreq);
-	mem_realloc((void *)&geometry.pz, mreq);
-	mem_realloc((void *)&geometry.t1x, mreq);
-	mem_realloc((void *)&geometry.t1y, mreq);
-	mem_realloc((void *)&geometry.t1z, mreq);
-	mem_realloc((void *)&geometry.t2x, mreq);
-	mem_realloc((void *)&geometry.t2y, mreq);
-	mem_realloc((void *)&geometry.t2z, mreq);
-	mem_realloc((void *)&geometry.pbi, mreq);
-	mem_realloc((void *)&geometry.psalp, mreq);
-
-	xn2= geometry.px[mi]- s1x- s2x;
-	yn2= geometry.py[mi]- s1y- s2y;
-	zn2= geometry.pz[mi]- s1z- s2z;
-	xs= geometry.t1x[mi];
-	ys= geometry.t1y[mi];
-	zs= geometry.t1z[mi];
-	xt= geometry.t2x[mi];
-	yt= geometry.t2y[mi];
-	zt= geometry.t2z[mi];
-
-	for(iy = 0; iy < ny; iy++) {
-	  xn2 += s2x;
-	  yn2 += s2y;
-	  zn2 += s2z;
-
-	  for(ix = 1; ix <= nx; ix++) {
-      xst= (double)ix;
-      geometry.px[mi]= xn2+ xst* s1x;
-      geometry.py[mi]= yn2+ xst* s1y;
-      geometry.pz[mi]= zn2+ xst* s1z;
-      geometry.pbi[mi]= xa;
-      geometry.psalp[mi]=1.;
-      geometry.t1x[mi]= xs;
-      geometry.t1y[mi]= ys;
-      geometry.t1z[mi]= zs;
-      geometry.t2x[mi]= xt;
-      geometry.t2y[mi]= yt;
-      geometry.t2z[mi]= zt;
-      mi++;
-	  } /* for( ix = 0; ix < nx; ix++ ) */
-	} /* for( iy = 0; iy < ny; iy++ ) */
+  
+  geometry.t2x[mi] = ynv * geometry.t1z[mi] - znv * geometry.t1y[mi];
+  geometry.t2y[mi] = znv * geometry.t1x[mi] - xnv * geometry.t1z[mi];
+  geometry.t2z[mi] = xnv * geometry.t1y[mi] - ynv * geometry.t1x[mi];
+  geometry.psalp[mi] = 1.0;
+  
+  if(nx != 0) {
+    int iy, ix;
+    double xs, ys, zs, xt, yt, zt;
+    
+    geometry.m += nx * ny - 1;
+    // reallocate patch buffers
+    mreq = (size_t)geometry.m;
+    mreq *= sizeof(double);
+    mem_realloc((void *)&geometry.px, mreq);
+    mem_realloc((void *)&geometry.py, mreq);
+    mem_realloc((void *)&geometry.pz, mreq);
+    mem_realloc((void *)&geometry.t1x, mreq);
+    mem_realloc((void *)&geometry.t1y, mreq);
+    mem_realloc((void *)&geometry.t1z, mreq);
+    mem_realloc((void *)&geometry.t2x, mreq);
+    mem_realloc((void *)&geometry.t2y, mreq);
+    mem_realloc((void *)&geometry.t2z, mreq);
+    mem_realloc((void *)&geometry.pbi, mreq);
+    mem_realloc((void *)&geometry.psalp, mreq);
+    
+    xn2 = geometry.px[mi] - s1x - s2x;
+    yn2 = geometry.py[mi] - s1y - s2y;
+    zn2 = geometry.pz[mi] - s1z - s2z;
+    xs = geometry.t1x[mi];
+    ys = geometry.t1y[mi];
+    zs = geometry.t1z[mi];
+    xt = geometry.t2x[mi];
+    yt = geometry.t2y[mi];
+    zt = geometry.t2z[mi];
+    
+    for(iy = 0; iy < ny; iy++) {
+      xn2 += s2x;
+      yn2 += s2y;
+      zn2 += s2z;
+      
+      for(ix = 1; ix <= nx; ix++) {
+        xst= (double)ix;
+        geometry.px[mi] = xn2+ xst* s1x;
+        geometry.py[mi] = yn2+ xst* s1y;
+        geometry.pz[mi] = zn2+ xst* s1z;
+        geometry.pbi[mi] = xa;
+        geometry.psalp[mi] =1.;
+        geometry.t1x[mi] = xs;
+        geometry.t1y[mi] = ys;
+        geometry.t1z[mi] = zs;
+        geometry.t2x[mi] = xt;
+        geometry.t2y[mi] = yt;
+        geometry.t2z[mi] = zt;
+        mi++;
+      } /* for( ix = 0; ix < nx; ix++ ) */
+    } /* for( iy = 0; iy < ny; iy++ ) */
   } /* if( nx != 0) */
-
+  
   // reset symmetry
+  // TODO: why is this at the end? other methods have it at the top
   geometry.ipsym = 0;
   geometry.np = geometry.n;
   geometry.mp = geometry.m;
 } /* end of patch */
 
 /*-----------------------------------------------------------------------*/
-
-/*** this function was an 'entry point' (part of) 'patch()' ***/
+/** calculate_patch (formerly subph) was an 'entry point' (part of)
+ 'patch()' ***/
 void calculate_patch( int nx, int ny )
 {
   int mia, ix, iy, mi;
   size_t mreq;
   double xs, ys, zs, xa, xst, s1x, s1y, s1z, s2x, s2y, s2z, saln, xt, yt;
-
-  /* Reallocate patch buffers */
-  if( ny == 0 ) {
+  
+  // reallocate patch buffers
+  if(ny == 0) {
     geometry.m += 3;
   } else {
     geometry.m += 4;
   }
-
+  
   mreq = (size_t)geometry.m;
   mreq *= sizeof(double);
   mem_realloc((void *)&geometry.px, mreq);
@@ -2058,10 +2092,10 @@ void calculate_patch( int nx, int ny )
   mreq *= sizeof(int);
   mem_realloc((void *)&geometry.icon1, mreq);
   mem_realloc((void *)&geometry.icon2, mreq);
-
-  /* Shift patches to make room for new ones */
+  
+  // shift patches to make room for new ones
   if((ny == 0) && (nx != geometry.m))  {
-    for(iy = geometry.m-1; iy > nx+2; iy--) {
+    for(iy = geometry.m - 1; iy > nx+2; iy--) {
       ix = iy-3;
       geometry.px[iy]= geometry.px[ix];
       geometry.py[iy]= geometry.py[ix];
@@ -2076,31 +2110,31 @@ void calculate_patch( int nx, int ny )
       geometry.t2z[iy]= geometry.t2z[ix];
     }
   } /* if( (ny == 0) || (nx != m) ) */
-
+  
   /* divide patch for connection */
-  mi= nx-1;
-  xs= geometry.px[mi];
-  ys= geometry.py[mi];
-  zs= geometry.pz[mi];
-  xa= geometry.pbi[mi]/4.;
-  xst= sqrt( xa)/2.;
-  s1x= geometry.t1x[mi];
-  s1y= geometry.t1y[mi];
-  s1z= geometry.t1z[mi];
-  s2x= geometry.t2x[mi];
-  s2y= geometry.t2y[mi];
-  s2z= geometry.t2z[mi];
-  saln= geometry.psalp[mi];
-  xt= xst;
-  yt= xst;
-
+  mi = nx-1;
+  xs = geometry.px[mi];
+  ys = geometry.py[mi];
+  zs = geometry.pz[mi];
+  xa = geometry.pbi[mi] / 4.0;
+  xst = sqrt(xa) / 2.0;
+  s1x = geometry.t1x[mi];
+  s1y = geometry.t1y[mi];
+  s1z = geometry.t1z[mi];
+  s2x = geometry.t2x[mi];
+  s2y = geometry.t2y[mi];
+  s2z = geometry.t2z[mi];
+  saln = geometry.psalp[mi];
+  xt = xst;
+  yt = xst;
+  
   if(ny == 0)
     mia= mi;
   else {
     geometry.mp++;
-    mia= geometry.m-1;
+    mia = geometry.m - 1;
   }
-
+  
   for(ix = 1; ix <= 4; ix++) {
     geometry.px[mia]= xs+ xt* s1x+ yt* s2x;
     geometry.py[mia]= ys+ xt* s1y+ yt* s2y;
@@ -2113,19 +2147,19 @@ void calculate_patch( int nx, int ny )
     geometry.t2y[mia]= s2y;
     geometry.t2z[mia]= s2z;
     geometry.psalp[mia]= saln;
-
-    if( ix == 2)
+    
+    if(ix == 2)
       yt= -yt;
-
-    if( (ix == 1) || (ix == 3) )
+    
+    if((ix == 1) || (ix == 3))
       xt= -xt;
-
+    
     mia++;
   }
-
+  
   if(nx <= geometry.mp)
     geometry.mp += 3;
-
+  
   if(ny > 0)
-    geometry.pz[mi]=10000.0;
-} /* end of subph */
+    geometry.pz[mi] = 10000.0;
+} /* end of calculate_patch */
