@@ -33,12 +33,12 @@
  * comment on the previous line, if none are found then it is *likely* to
  * be a comment line.
  *
- * Other changes to this code include a wider set of comment markers, including
- * CM, !, # and ', whereas nec2c only accepted # outside the comment header.
- * Additionally, this code looks for comment markers *in* a line, and splits
- * that data out to a separate buffer for processing out the (potential)
- * OpenNEC extensions. It keeps track of what the original comment marker
- * was so it can save it back out in the same format.
+ * Other changes to this code include a wider set of comment markers
+ * including CM, !, # and ', whereas nec2c only accepted # outside the
+ * comment header. Additionally, this code looks for comment markers *in*
+ * a line, and splitsthat data out to a separate buffer for processing out
+ * the (potential) OpenNEC extensions. It keeps track of what the original
+ * comment marker was so it can save it back out in the same format.
  *
  *******************************************************************/
 
