@@ -52,8 +52,10 @@ void calculate_geometry(Deck *deck, Errors *errors)
   
   // make sure there's cards to process
   // TODO: should this be an error/warning? or just in test?
-  if(deck->num_cards == 0) return;
-  if(deck->geometry_start == 0 || deck->geometry_end == 0) return;
+  if(deck->num_cards == 0 || deck->geometry_start == 0 || deck->geometry_end == 0) {
+    free(msg);
+    return;
+  }
   
   // make sure all the formula-based values are up to date
   // TODO: should this be done by the caller?
@@ -227,9 +229,9 @@ void calculate_geometry(Deck *deck, Errors *errors)
             x3 = deck->cards[i + 1].fv[1];
             y3 = deck->cards[i + 1].fv[2];
             z3 = deck->cards[i + 1].fv[3];
-            x3 = deck->cards[i + 1].fv[4];
-            y3 = deck->cards[i + 1].fv[5];
-            z3 = deck->cards[i + 1].fv[6];
+            x4 = deck->cards[i + 1].fv[4];
+            y4 = deck->cards[i + 1].fv[5];
+            z4 = deck->cards[i + 1].fv[6];
             i++;
             patch(i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
 
@@ -247,9 +249,9 @@ void calculate_geometry(Deck *deck, Errors *errors)
               x3 = deck->cards[i + 1].fv[1];
               y3 = deck->cards[i + 1].fv[2];
               z3 = deck->cards[i + 1].fv[3];
-              x3 = deck->cards[i + 1].fv[4];
-              y3 = deck->cards[i + 1].fv[5];
-              z3 = deck->cards[i + 1].fv[6];
+              x4 = deck->cards[i + 1].fv[4];
+              y4 = deck->cards[i + 1].fv[5];
+              z4 = deck->cards[i + 1].fv[6];
               i++;
               patch(i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
             } /* while cards are SC's */
