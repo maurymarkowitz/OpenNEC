@@ -1,0 +1,15 @@
+Items still to be implemented:
+
+* add a -w(rite) flag to the CLI version to specify an output format so it can write NEC, 4nec2, etc.
+
+* check that every required field got a number or formula during read
+
+* add handlers for IT(eration) and OP(timization) cards, which produce multiple output runs from a single deck. in onec these should be processed out into some sort of "run" or "simulate" object with any differences from the original definitions.
+
+* warn if the same global SYmbol is defined multiple times, and/or overrides one of the built-in variables
+
+* it appears 4nec2 will save awg measurements with a leading #, so we should look for this in spite of that being a valid comment marker
+
+* add SYmbols to a deck-wide list, not just the cards they're on
+
+* look for comment rows that contain key/value pairs and see if they should be merged onto the previous row. this can occur if an external editor added a line feed at precisely the point where an inline comment started

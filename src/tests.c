@@ -54,7 +54,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
   //
   // There are minor issues with this list:
   //
-  // 1) some decks lack all comments, although we consider that fatal
+  // 1) some decks lack any comments, although we consider that fatal
   // 2) you don't need a GW card specifically, any geometery will do
   // 3) the EN is not really required, many decks lack it
   //
@@ -80,7 +80,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
   
   // start with some obvious ones
   if(deck->num_cards == 0) {
-    sprintf(msg, "A deck has to have at least one card.");
+    sprintf(msg, "The deck has no cards.");
     add_error(errors, msg, 2);  // this is a critical error, this deck will not process
     return;
   }
@@ -104,7 +104,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
         sawGS = i;
       } else {
         sprintf(msg, "The card on line %d is a GS, but we already saw one on card %d. No single measurement type can be defined.", i, sawGS + 1);
-        add_error(errors, msg, 0);  // this will calculate fine, so this is mearly a warning
+        add_error(errors, msg, 0);  // this will calculate fine, so this is merely a warning
       }
     }
     // NOTE: nec4 does not require a CE or CM, but we'll demand them here for compatibility
@@ -341,13 +341,98 @@ void test_duplicate_tags(Deck *deck, Errors *errors)
   free(msg);
 }
 
+/******************************************************************************
+ * test_card_inputs
+ *
+ * test_card_inputs looks at each card to ensure it has the right number
+ * and type of inputs. For instance, an FR card has two forms; if I1 is 0
+ * then it has to have no other values, if I1 is non-zero, it has to have
+ * F1 and F2.
+ *
+ * @param deck the Deck to be tested
+ * @param errors the Errors list to add new messages to
+ *
+ */
+void test_card_inputs(Deck *deck, Errors *errors)
+{
+  char *code;
+  char *msg = calloc(1, MAX_ERROR_LEN);
+
+  for(int i = 0; i < deck->num_cards; i++) {
+    code = deck->cards[i].card_code;
+
+    // FRs come in two forms, I2=1 and I2>1
+    if(strcmp(code, "FR") == 0) {
+      // there must be a value in F1
+      if(deck->cards[i].f[1] == 0) {
+        sprintf(msg, "The card on line %d is a FR but has no base frequency in F1.", i);
+        add_error(errors, msg, 0);
+      }
+      // I2 has to be >= 1
+      if(deck->cards[i].i[2] < 1) {
+        sprintf(msg, "The card on line %d is a FR with I2 < 1, which is illegal.", i);
+        add_error(errors, msg, 0);
+      }
+      // if I2=1, then F2 should be 0
+      else if(deck->cards[i].i[2] == 1 && deck->cards[i].f[2] != 0) {
+        sprintf(msg, "The card on line %d is a FR with I2 = 1 (no steps), but has a step value in F2.", i);
+        add_error(errors, msg, 0);
+      }
+      // but if I2 > 1 then F2 has to be > 0
+      else if(deck->cards[i].i[2] > 1 && deck->cards[i].f[2] == 0) {
+          sprintf(msg, "The card on line %d is a FR with I2 > 1 (steps), but has no step value in F2.", i);
+          add_error(errors, msg, 0);
+      }
+    }
+  }
+    
+  free(msg);
+}
+
+/******************************************************************************
+ * test_bad_symbols
+ *
+ * looks at all the SYmbol cards, if any, and warns if they override one of
+ * the system-wide symbols like "mm" or "awg".
+ *
+ * also warns about duplicate definitions, as only the last value will be used
+ * NOTE: is this correct? can you define HEIGHT=7 and then 14 lower in the deck?
+ *
+ * @param deck the Deck to be tested
+ * @param errors the Errors list to add new messages to
+ *
+ */
+void test_bad_symbols(Deck *deck, Errors *errors)
+{
+  KeyValue *outer, *inner;
+  char *msg = calloc(1, MAX_ERROR_LEN);
+  
+  // first we'll check that they aren't overriding a measurement
+  outer = deck->symbols;
+  while(outer != NULL) {
+    for(int i = 0; i < NUM_ONEC_UNIT_CODES; i++) {
+      if(strcasecmp(outer->key, unit_codes[i]) == 0) {
+        sprintf(msg, "The symbol '%s' has been defined and overrides a system-wide symbol of the same name.", unit_codes[i]);
+        add_error(errors, msg, 0);
+      }
+    }
+    // and now see if any other symbol has the same name
+    // TODO: need to see if this is actually used, should SY's only be at the top or can they be redefined in the body?
+    inner = outer->next;
+    while(inner != NULL) {
+      if(strcasecmp(outer->key, inner->key)  == 0) {
+        sprintf(msg, "The symbol '%s' has been defined more than once.", outer->key);
+        add_error(errors, msg, 0);
+      }
+    }
+    outer = outer->next;
+  } /* while loop over cards */
+    
+  free(msg);
+}
+
 // TODO: MISSING TESTS
-// test FR so that i1=1 means i2<>0 and f2<>0
 // LDs and/or EXs should not be at open ends of wires
-// look for SY formulas that override system-wide items like mm or awg
-//   but overriding user-entered system variables is ok but should warn
-// also look for SY's that define the same formula more than once
-//  but this is OK, simply use the last definition, but still warn
 // look for EX or LD cards and check that they are connected to wires with more than one segment
 //   wires that are connected must contact at segment ends (connection separation < len/1000)
 // look for wires that have the same endpoints

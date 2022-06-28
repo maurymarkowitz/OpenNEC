@@ -5,38 +5,21 @@
  * normally ".nec" or ".deck". The process starts with read_deck(), which uses
  * read_line() to get the data from one line in the file and then turns it
  * it into a Card. When all the lines are read into Cards, read_deck()
- * then calls a series of functions to parse the deck into parts, usiing
+ * then calls a series of functions to parse the deck into parts, using
  * the logic found in parse_command_card(), parse_geometry_card(), etc.
  *
  * The original nec2c, like the NEC2 code it was based on, is very "modal".
- * It reads a card, processes it, and then forgets it. Any card that cannot
- * be processed, like comments, is skipped entirely.  In contrast, OpenNEC
- * reads the entire deck into memory first. This allows it to perform
+ * It reads a card, processes it, and then forgets it. Any cards that cannot
+ * be processed, like comments, are skipped entirely. In contrast, OpenNEC
+ * reads the entire deck into memory first. This allows it to easily perform
  * whole-deck checks, like looking for a missing EN, or a GW that's missing
  * its GC. To do this, OpenNEC also keeps every card it finds, even blank
  * lines and all-comment lines.
  *
- * You will note that the code for reading lines is more complex than you
- * might see in most C programs - it reads char by char instead of using fgets
- * or similar. This is because NEC decks are sometimes edited by hand in
- * editors that insert hard breaks when saved, and this are relatively common
- * on the 'net. So this code is somewhat more complex and tries to merge
- * broken lines of this sort. This is an area that might be improved by using
- * fgets and somewhat smarter code, but performance on modern machines makes
- * this a non-issue in all the examples fed to it.
- *
- * One lingering problem is when such a break has been inserted precisely
- * where an inline comment occurs. This causes the parser to consider the
- * second line to be a separate comment card, instead of a comment on the
- * previous card. This is a TODO, which might be resolved by looking for
- * onec key/value pairs - if such are found it can be assumed to be a
- * comment on the previous line, if none are found then it is *likely* to
- * be a comment line.
- *
  * Other changes to this code include a wider set of comment markers
  * including CM, !, # and ', whereas nec2c only accepted # outside the
  * comment header. Additionally, this code looks for comment markers *in*
- * a line, and splitsthat data out to a separate buffer for processing out
+ * a line, and splits that data out to a separate buffer for processing out
  * the (potential) OpenNEC extensions. It keeps track of what the original
  * comment marker was so it can save it back out in the same format.
  *
@@ -87,7 +70,6 @@ void read_deck(Deck *deck, FILE *input_fp)
     strcpy(card->orig_str, line_buf);
     
     // calloc/realloc the deck and add this card to it
-    // there may be performance improvements possible by allocing blocks of 10 or 20 cards at a time
     if(deck->num_cards == 0) {
       deck->num_cards++;
       deck->cards = calloc(1, sizeof(Card));
@@ -98,7 +80,7 @@ void read_deck(Deck *deck, FILE *input_fp)
     deck->cards[deck->num_cards - 1] = *card;
     
     // if this is an XT card, stop processing further lines
-    // note that we don't have the card_code at this point
+    // note that we don't have the card_code at this point, so we do the the hard way
     if((line_len >= 2) && ((line_buf[0] == 'X') && (line_buf[1] == 'T')))
       break;
   }
@@ -118,15 +100,22 @@ void read_deck(Deck *deck, FILE *input_fp)
  * and similar tests.
  *
  * You might expect this to use c's built-in fgets or getline or similar.
- * It doesn't because of the infrequent but seen-in-the-wild problem
- * of hard returns being inserted in the middle of lines when users
- * edit their decks using some text editors. This code reads until
- * is has seen the required number of fields even if they cross
- * multiple lines, thereby fixing such damage by merging the lines
- * back together.
+ * It doesn't because of the infrequent but seen-in-the-wild problem of
+ * hard returns being inserted in the middle of lines when users edit
+ * their decks using some text editors. This code reads until it has
+ * seen the required number of fields even if they cross multiple lines
+ * thereby fixing such damage by merging the lines back together.
  *
  * This means that if one simply loads and then saves the deck, the
- * split lines will be removed.
+ * split lines will be removed and thus "fixed".
+ *
+ * One lingering problem is when such a break has been inserted precisely
+ * where an inline comment occurs. This causes the parser to consider the
+ * second line to be a separate comment card, instead of a comment on the
+ * previous card. This is a TODO, which might be resolved by looking for
+ * onec key/value pairs - if such are found it can be assumed to be a
+ * comment on the previous line, if none are found then it is *likely* to
+ * be a separate comment line.
  *
  * This can likely be improved by using scanf to read in one line,
  * process as much of it as possible, and the  deciding whether or
@@ -185,7 +174,7 @@ int read_line(char *buff, FILE *file)
     buff[num_chr++] = (char)chr;
     
     // if we get the EOF, end the string at that point by replacing it
-    // with a null
+    // with a null and then setting the flag that we're done
     if((chr = getc(file)) == EOF) {
       buff[num_chr] = '\0';
       eof = EOF;
@@ -270,8 +259,8 @@ void parse_deck(Deck *deck, Errors *errors)
     //
     // so, for instance, if this is the first CM card we've seen, and we
     // have NOT seen a CE or any Gx card, then this appears to be the
-    // start of the comment section. but it's not if we've seen anything
-    // else, like geometry.
+    // start of the comment section. But if we saw a GW or something,
+    // then it's just a comment in the deck and not part of the header.
     if(strcmp(type_buff, "CM") == 0 && !sawCM && !sawCE && !sawGx && !sawGE && !sawEN) {
       deck->comment_start = i;
       sawCM = TRUE;
@@ -346,10 +335,10 @@ void parse_deck(Deck *deck, Errors *errors)
     } // checking for hidden info
     
     // if we're past the end of the deck, everything that appears is a comment,
-    // and we'll just copy it into the comment. but if we are not past the end,
-    // and we didn't recognize the type then we want to report an error
+    // and we'll just copy it into the comment string. but if we are not past
+    // the end, and we didn't recognize the code then we want to report
+    // an error
     if (!sawEN && !isCmt && !isCtl && !isGeo && !isExt) {
-      // make a string for the message
       char *msg = calloc(1, MAX_ERROR_LEN);
       sprintf(msg, "Unknown card type '%s' encountered on card %d. Card will not be processed.", type_buff, i);
       add_error(errors, msg, 0);
@@ -384,12 +373,11 @@ void parse_deck(Deck *deck, Errors *errors)
       }
     }
     
-    /* if we did find a comment marker in this line, and the deck doesn't have a
-     * default marker set, assume this is the one used in the entire file and make
-     * it the default. You can still use other markers on other lines, but if you
-     * add a new card programmatically and set a comment, it should default to using
-     * this marker
-     */
+    // if we did find a comment marker in this line, and the deck doesn't have a
+    // a default marker set, assume this is the one used in the entire file and
+    // make it the default. You can still use other markers on other lines, but
+    // if you add a new card programmatically and set a comment, it should
+    // default to using this marker
     if(card->extn_code[0] != 0 && deck->cmt_code == 0) {
       deck->cmt_code = card->extn_code[0];
     }

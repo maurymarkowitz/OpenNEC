@@ -15,14 +15,14 @@
 
 /*------------------------------------------------------------------------*/
 
+/* common  /geometry/ */
+extern geometry_t geometry;
+
 /* common  /crnt/ */
 extern crnt_t crnt;
 
 /* common  /dataj/ */
 extern dataj_t dataj;
-
-/* common  /data/ */
-extern geometry_t geometry;
 
 /* pointers to input/output files */
 extern FILE *input_fp, *output_fp, *error_fp, *green_fp, *plot_fp;
