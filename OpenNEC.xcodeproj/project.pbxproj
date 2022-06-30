@@ -67,6 +67,7 @@
 		55B274E9205ADE9D0064F9BF /* types.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = types.c; sourceTree = "<group>"; };
 		55B274EA205ADE9D0064F9BF /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		55B274EB205ADE9D0064F9BF /* opennec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = opennec.h; sourceTree = "<group>"; };
+		55CF749B286D268F00802021 /* test_script.sc */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = test_script.sc; sourceTree = "<group>"; };
 		55FA0D3F278B3AF000257B8E /* tests.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tests.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -121,12 +122,21 @@
 			path = src;
 			sourceTree = "<group>";
 		};
+		55CF749A286D265C00802021 /* test */ = {
+			isa = PBXGroup;
+			children = (
+				55CF749B286D268F00802021 /* test_script.sc */,
+			);
+			path = test;
+			sourceTree = "<group>";
+		};
 		55FD6759205AD36200D0DA85 = {
 			isa = PBXGroup;
 			children = (
 				554937C327873E6400FC8102 /* README.MD */,
 				558A2F21286B35D60034B962 /* doc */,
 				558A2F24286B375F0034B962 /* src */,
+				55CF749A286D265C00802021 /* test */,
 				553FEA85205B2A40000B2056 /* OpenNEC */,
 			);
 			sourceTree = "<group>";
