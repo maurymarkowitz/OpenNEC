@@ -37,17 +37,16 @@ void somnec( double epr, double sig, double fmhz )
   double tim, wlam, tst, dr, dth=0.0, r, rk, thet, tfac1, tfac2;
   complex double erv, ezv, erh, eph, cl1, cl2, con;
 
-  if(sig >= 0.)
-  {
-	wlam=CVEL/fmhz;
-	ggrid.epscf=cmplx(epr,-sig*wlam*59.96);
+  if(sig >= 0.) {
+    wlam=CVEL/fmhz;
+    ggrid.epscf=cmplx(epr,-sig*wlam*59.96);
   }
   else
-	ggrid.epscf=cmplx(epr,sig);
+    ggrid.epscf=cmplx(epr,sig);
 
   secnds(&tst);
-  ck2=TP;
-  ck2sq=ck2*ck2;
+  ck2 = TP;
+  ck2sq = ck2 * ck2;
 
   /* sommerfeld integral evaluation uses exp(-jwt), nec uses exp(+jwt), */
   /* hence need conjg(ggrid.epscf).  conjugate of fields occurs in subroutine */
@@ -68,70 +67,62 @@ void somnec( double epr, double sig, double fmhz )
   ct3=.0625*(erv-ezv);
 
   /* loop over 3 grid regions */
-  for( k = 0; k < 3; k++ )
-  {
-	nr=ggrid.nxa[k];
-	nth=ggrid.nya[k];
-	dr=ggrid.dxa[k];
-	dth=ggrid.dya[k];
-	r=ggrid.xsa[k]-dr;
-	irs=1;
-	if(k == 0)
-	{
-	  r=ggrid.xsa[k];
-	  irs=2;
-	}
-
-	/*  loop over r.  (r=sqrt(rho**2 + (z+h)**2)) */
-	for( ir = irs-1; ir < nr; ir++ )
-	{
-	  r += dr;
-	  thet = ggrid.ysa[k]-dth;
-
-	  /* loop over theta.  (theta=atan((z+h)/rho)) */
-	  for( ith = 0; ith < nth; ith++ )
-	  {
-		thet += dth;
-		rho=r*cos(thet);
-		zph=r*sin(thet);
-		if(rho < 1.e-7)
-		  rho=1.e-8;
-		if(zph < 1.e-7)
-		  zph=0.;
-
-		evlua( &erv, &ezv, &erh, &eph );
-
-		rk=ck2*r;
-		con=-CONST1*r/cmplx(cos(rk),-sin(rk));
-
-		switch( k )
-		{
-		  case 0:
-			ggrid.ar1[ir+ith*11+  0]=erv*con;
-			ggrid.ar1[ir+ith*11+110]=ezv*con;
-			ggrid.ar1[ir+ith*11+220]=erh*con;
-			ggrid.ar1[ir+ith*11+330]=eph*con;
-			break;
-
-		  case 1:
-			ggrid.ar2[ir+ith*17+  0]=erv*con;
-			ggrid.ar2[ir+ith*17+ 85]=ezv*con;
-			ggrid.ar2[ir+ith*17+170]=erh*con;
-			ggrid.ar2[ir+ith*17+255]=eph*con;
-			break;
-
-		  case 2:
-			ggrid.ar3[ir+ith*9+  0]=erv*con;
-			ggrid.ar3[ir+ith*9+ 72]=ezv*con;
-			ggrid.ar3[ir+ith*9+144]=erh*con;
-			ggrid.ar3[ir+ith*9+216]=eph*con;
-
-		} /* switch( k ) */
-
-	  } /* for( ith = 0; ith < nth; ith++ ) */
-
-	} /* for( ir = irs-1; ir < nr; ir++; ) */
-
+  for(k = 0; k < 3; k++) {
+    nr=ggrid.nxa[k];
+    nth=ggrid.nya[k];
+    dr=ggrid.dxa[k];
+    dth=ggrid.dya[k];
+    r=ggrid.xsa[k]-dr;
+    irs=1;
+    if(k == 0) {
+      r=ggrid.xsa[k];
+      irs=2;
+    }
+    
+    /*  loop over r.  (r=sqrt(rho**2 + (z+h)**2)) */
+    for(ir = irs-1; ir < nr; ir++) {
+      r += dr;
+      thet = ggrid.ysa[k]-dth;
+      
+      /* loop over theta.  (theta=atan((z+h)/rho)) */
+      for(ith = 0; ith < nth; ith++) {
+        thet += dth;
+        rho=r*cos(thet);
+        zph=r*sin(thet);
+        if(rho < 1.e-7)
+          rho=1.e-8;
+        if(zph < 1.e-7)
+          zph=0.;
+        
+        evlua( &erv, &ezv, &erh, &eph );
+        
+        rk=ck2*r;
+        con=-CONST1*r/cmplx(cos(rk),-sin(rk));
+        
+        switch( k ) {
+          case 0:
+            ggrid.ar1[ir+ith*11+  0]=erv*con;
+            ggrid.ar1[ir+ith*11+110]=ezv*con;
+            ggrid.ar1[ir+ith*11+220]=erh*con;
+            ggrid.ar1[ir+ith*11+330]=eph*con;
+            break;
+            
+          case 1:
+            ggrid.ar2[ir+ith*17+  0]=erv*con;
+            ggrid.ar2[ir+ith*17+ 85]=ezv*con;
+            ggrid.ar2[ir+ith*17+170]=erh*con;
+            ggrid.ar2[ir+ith*17+255]=eph*con;
+            break;
+            
+          case 2:
+            ggrid.ar3[ir+ith*9+  0]=erv*con;
+            ggrid.ar3[ir+ith*9+ 72]=ezv*con;
+            ggrid.ar3[ir+ith*9+144]=erh*con;
+            ggrid.ar3[ir+ith*9+216]=eph*con;
+            
+        } /* switch( k ) */
+      } /* for( ith = 0; ith < nth; ith++ ) */
+    } /* for( ir = irs-1; ir < nr; ir++; ) */
   } /* for( k = 0; k < 3; k++; ) */
 
   /* fill grid 1 for r equal to zero. */
@@ -143,27 +134,27 @@ void somnec( double epr, double sig, double fmhz )
 
   for( ith = 0; ith < nth; ith++ )
   {
-	thet += dth;
-	if( (ith+1) != nth )
-	{
-	  tfac2=cos(thet);
-	  tfac1=(1.-sin(thet))/tfac2;
-	  tfac2=tfac1/tfac2;
-	  erv=ggrid.epscf*cl1*tfac1;
-	  erh=cl1*(tfac2-1.)+cl2;
-	  eph=cl1*tfac2-cl2;
-	}
-	else
-	{
-	  erv=0.;
-	  erh=cl2-.5*cl1;
-	  eph=-erh;
-	}
+  thet += dth;
+  if( (ith+1) != nth )
+  {
+    tfac2=cos(thet);
+    tfac1=(1.-sin(thet))/tfac2;
+    tfac2=tfac1/tfac2;
+    erv=ggrid.epscf*cl1*tfac1;
+    erh=cl1*(tfac2-1.)+cl2;
+    eph=cl1*tfac2-cl2;
+  }
+  else
+  {
+    erv=0.;
+    erh=cl2-.5*cl1;
+    eph=-erh;
+  }
 
-	ggrid.ar1[0+ith*11+  0]=erv;
-	ggrid.ar1[0+ith*11+110]=ezv;
-	ggrid.ar1[0+ith*11+220]=erh;
-	ggrid.ar1[0+ith*11+330]=eph;
+  ggrid.ar1[0+ith*11+  0]=erv;
+  ggrid.ar1[0+ith*11+110]=ezv;
+  ggrid.ar1[0+ith*11+220]=erh;
+  ggrid.ar1[0+ith*11+330]=eph;
   }
 
   secnds(&tim);
