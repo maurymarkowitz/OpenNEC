@@ -2,7 +2,7 @@
 
 # default paths
 PROGPATH="./"
-INPUTPATH="./tests/"
+INPUTPATH="./test/"
 COMPAREPATH="./originals/"
 OUTPUTPATH=""
 DIFFPATH=""
@@ -19,7 +19,7 @@ if [$# == 0] then
      exit 1
 fi
 
-# parse the arguments, 
+# parse the arguments
 FIRST_ARG = $1 # save the original value of the first arg in case we don't find -p
 while ["$1" != ""]; do
     case $1 in
@@ -46,7 +46,7 @@ done
 
 #if there was no -p, PROGNAME will still be empty, so try the first argument
 if [PROGNAME == ""] then
-	PROGNAME = FIRST_ARG
+	PROGNAME = $FIRST_ARG
 fi
 # and check again
 if [PROGNAME == ""] then
@@ -68,13 +68,8 @@ if [OUTPUTPATH == ""] then
     OUTPUTPATH = 
 
 
-#build the final paths based on invocation parameters, if any
-
-
 #if the outputpath is empty, make it with the same name as the input and a timestamp
 
 
 #copy the input directory structure to the output
-#find INPUTPATH -type d -exec mkdir -p "OUTPUTPATH/{}" \;
-
-#rsync -r -n -v --max-size=0 INPUTPATH/ OUTPUTPATH
+#rsync -rnv --max-size=0 INPUTPATH/ OUTPUTPATH
