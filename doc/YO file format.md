@@ -4,7 +4,7 @@ YO file format
 Introduction
 ------------
 
-The YO file format is an antenna design file format introduced in the 1994 Yagi Optimizer application by Brian Beezley.
+The YO file format is an antenna design file format introduced in the 1994 Yagi Optimizer application by Brian Beezley. Files in YO format have no consistant extension, but sometimes ".ANT" or ".YO" may be found.
 
 The application is solely for use with Yagi antennas, and uses the MININEC code to run its calculations. A key feature of MININEC is its ability to directly define tapering dimensions, in contrast to NEC which uses a formula to calculate them based on two inputs. YO makes extensive use of this MININEC feature and its files are structured to include this data in a way that requires conversion to use with NEC.
 
@@ -171,19 +171,19 @@ A YO file can be easily converted to NEC format, although some information will 
 
 The conversion of the initial data at the top of the file generally follows this pattern:
 
-# the first line is a comment, and can be copied directly to a GC line with a following GE, or a single GE with the comment on that line
-# a Height line, if present, sets the Z value for the following geometry lines
-# a material, if defined, can be converted to values on an LD card in NEC for calculation, and may be defined as an OpenNEC extension on a deck-wide basis to display proper coloration in a GUI display
-# a stacked antenna can be implemented in NEC with a GM card at the bottom of the geometry section of the NEC file with a NRPT of 1 and the separation value in the Z input. The ITS should be zero, and a value should be provided by the ITGI although it will not be required.
-# the frequency inputs can be put into one or more FR cards with RP/EX following
-# the "elements" number can be ignored, but the dimension units, if supplied, should be used in a GS card so that the original measurement numbers are retained in the GW elements
+1. the first line is a comment, and can be copied directly to a GC line with a following GE, or a single GE with the comment on that line
+2. a Height line, if present, sets the Z value for the following geometry lines
+3. a material, if defined, can be converted to values on an LD card in NEC for calculation, and may be defined as an OpenNEC extension on a deck-wide basis to display proper coloration in a GUI display
+4. a stacked antenna can be implemented in NEC with a GM card at the bottom of the geometry section of the NEC file with a NRPT of 1 and the separation value in the Z input. The ITS should be zero, and a value should be provided by the ITGI although it will not be required.
+5. the frequency inputs can be put into one or more FR cards with RP/EX following
+6. the "elements" number can be ignored, but the dimension units, if supplied, should be used in a GS card so that the original measurement numbers are retained in the GW elements
 
 Conversion of the geometry may be simple or complex due to the modal nature of the values. Generally there are going to be several steps applied for every line:
 
-# determine if the line is a taper or length line based on the formula above
-# if it is a taper line, copy down the "spacing" flag and taper values so they can be applied to following lines
-# if it is a length line, use the other formula above to determine if it is whole-length or half-length
-# if it is a length line, and there are any unit abbreviations, and they are not the same as the base units, convert that number to the base units
+1. determine if the line is a taper or length line based on the formula above
+2. if it is a taper line, copy down the "spacing" flag and taper values so they can be applied to following lines
+3. if it is a length line, use the other formula above to determine if it is whole-length or half-length
+4. if it is a length line, and there are any unit abbreviations, and they are not the same as the base units, convert that number to the base units
 
 NEC attempts to preserve symmetry as a way of improving performance - if the antenna is symmetrical across the X axis it only has to calculate values for one side of the antenna and then mirror those values for the other side and thereby perform far fewer complex calculations. Yagis are normally symmetrical, so this makes YO files a perfect fit for this system. The key is to ensure that NEC realizes there is symmetry by defining it using a GM card. As the YO format *normally* defines the antenna as lengths measured out from the boom, these will work perfectly with the GM system.
 
