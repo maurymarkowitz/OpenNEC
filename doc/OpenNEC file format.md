@@ -6,126 +6,13 @@ Version 1.0, January 2022
 Introduction
 ------------
 
-OpenNEC, or onec for short, is an implementation of the Numerical Electromagnetics Code ("NEC") system for simulating antennas. It is based on a port of the original NEC-2 code converted from Fortran to C, nec2c. OpenNEC extends nec2c in a number of ways.
+OpenNEC, or onec for short, is an implementation of the Numerical Electromagnetics Code ("NEC") system for simulating antennas. It is based on a port of the original NEC-2 code converted from Fortran to C, nec2c, writen by Neoklis Kyriazis. OpenNEC extends nec2c in a number of ways.
 
-NEC systems use text files to exchange design information between antenna simulator programs using the NEC-2 and NEC-4 programs, or compatible systems like nec2c, 4nec2, MININEC, and many others. The OpenNEC file format is an extended version of the *de facto* NEC file format, adding a few new features and more clearly specifying some formerly ill-defined entries.
+NEC systems use text files known as "decks" to exchange design information between antenna simulator programs using the NEC-2 and NEC-4 programs, or compatible systems like nec2c, 4nec2, MININEC, and many others. The OpenNEC file format is an extended version of the *de facto* NEC file format, adding a small number of new features and more clearly specifying some formerly ill-defined entries.
 
 The onec file format adds a feature that allows the format to be arbitrarily extended without effecting the underlying NEC data. It also defines simple rules for converting an onec file into a pure NEC file. A program implementing onec can read any NEC file, and any NEC-compatible program can read a converted onec file with no loss of information.
 
-In short, the onec file format is a well-defined, human-readable, highly-compatible and easily extensible version of the original NEC format.
-
-Format definition
------------------
-
-### deck
-
-<deck> = 
-  (* comment area *)
-  { <nec comment card> } | { <onec comment card> }, <nec comment end card>,
-  (* variable area *)
-  { <onec variable card> } | { <onec comment card> },
-  (* geometry area *)
-  <geometry card> | { <onec comment card> }, { <geometry card> } | { <onec comment card> }, <geometry end card>,
-  (* control area *)
-  <control card> | { <onec comment card> }, { <control card> } | { <onec comment card> },
-  (* end of deck area *)
-  { <onec comment card> }, <deck end card>,
-  { <freeform text card> } 
-  ?EOF? ;
-
-A deck is the ultimate product of the onec file format. A deck must have at least a comment end card, at least one geometry card and a geometry end card, one or more command cards, a deck end card, and may be followed by one or more lines of freeform text. onec comment cards can be inserted at any point in the deck.
-
-### comments area
-
-<nec comment card> = "CM", [ <freeform text> ], ?EOL? ;
-<nec comment end card> = "CE", [ <freeform text> ], ?EOL? ;
-
-Comment cards do not require comment text, and are often found with no test as a way to insert vertical whitespace.
-
-<onec comment card> = <onec comment marker>, [ <freeform text> ], ?EOL? ;
-<onec comment marker> = "CM" | "!" | "'" | "#" ;
-
-onec comment cards can be placed anywhere in the deck. They can be marked with the NEC-style "CM" or any of the newer comment markers - "!", "'" and "#". All text after the marker should be preserved, including any whitespace between the marker and the comment, if present. *Generally*, onec comments are not placed in the normal NEC comment area at the top of the file, but may be found immediately following it or anywhere else in the deck.
-
-### variable area
-
-<onec variable card> = { <onec comment marker> }, "SY", 
-                       <variable name>, "=", <formula>,
-                       { ",", <variable name>, "=", <formula> },
-                       ?EOL? ;
- 
-<variable name> = <letter>, { <letter> | <digit> | "_" } ;
-
-<formula> = <factor>, { <operator> <factor> } ;
-
-<factor> = <float value> | <variable name> | <function> "(" <factor> ")" ;
-
-<operator> = "+" | "-" | "*" | "/" | "^" ;
-
-<function> = "sin" | "cos" | "tan" | "atn" | "sqr"
-           | "exp"| "log" | "log10" | "abs" | "sgn"
-           | "fix" | "int" | "mod" ;
-
-An onec variable card contains one or more variable definitions consisting of name=formula pairs. Variable names and formulas may not contain spaces or other whitespace characters. Variable names must start with a leading letter character followed by zero or more characters including digits and underscores. Formulas consist of one or more visible characters including numbers and mathematical symbols.
-
-If more than one definition is supplied on a single line, they are comma separated. onec variables may be "hidden" by adding an onec comment marker to the front. Hiding of this sort, if present, should be preserved when the file is written.
-
-onec variable cards can be placed anywhere in the file as long as they appear before the cards that reference them. *Generally* they will be placed between the comment and geometry cards, but this is not a requirement. 
-
-### geometry area
-
-<geometry card> = <GA card> | <GF card> | <GH card> | <GM card> | <GR card>
-                | <GS card> | <GW card> | <GX card> | <SP card> | <SM card> ;
-                
-<geometry end card> = "GE" | "GE", <integer value>, <EOL> ;
-
-At least one geometry card is required as well as a single geometry end card. All geometry cards must appear between the comment end card and the first control card.
-
-### control area
-
-<control card> = <group 1 control card> | <group 2 control card> | <group 3 control card> ;
-
-<group 1 control card> = <EK card> | <FR card> | <GN card> | <KH card> | <LD card> ;
-<group 2 control card> = <EX card> | <NT card> | <TL card> ;
-<group 3 control card> = <CP card> | <GD card> | <NE card> | <NH card>
-                       | <NX card> | <PQ card> | <PT card> | <RP card> | <WG card> | <XQ card>;
-
-<EK card>
-
-### end of deck area
-
-<deck end card> = "EN", ?EOL? ;
-
-<freeform text card> = { <freeform text> }, ?EOL? ;
-
-Any text after the end of the deck is considered to be a free-form comment and does not require a comment marker.
-
-### onec extensions
-
-<onec extension> = <name>, "=" | ":", <formula>, { <onec separator>, <name>, "=" | ":", <formula> } ;
-
-<inline comment marker> = "!" | "'" | "#" ;
-
-<onec separator> = "," | " " ;
-
-onec extensions consist of one or more key/value pairs following one of the accepted inline comment markers. Keys and values are separated by equals signs or colons. *Generally* formulas will use equals and other tags will use colons.
-
-### basic types
-
-<freeform text> = ? any ASCII character ?, { ? any ASCII character ? }, ?EOL? ;
-
-<integer value> = [ "-" ], <digit>, { <digit> } ;
-
-<float value> = [ "-" ] { <digit> }, [ ".", { <digit> } ] [ "E" | "e" , [ "-" ] <digit>, { <digit> } ] ;
-
-<boolean value> = <true value> | <false value> ;
-
-<true value> = "yes" | "YES" | "true" | "TRUE" | "1" ;
-<false value> = "no" | "NO" | "false" | "FALSE" | "0" ;
-
-<letter> = "A" .. "Z" | "a" .. "z" ;
-
-<digit> = "0" .. "9" ;
+In short, the onec file format is a clearly defined, human readable, highly compatible, and easily extensible version of the original NEC format.
 
 Background
 ----------
@@ -167,7 +54,7 @@ As this mechanism uses the inline comment system, and users will likely mix comm
 Converting from onec to NEC
 ---------------------------
 
-The overriding design goal for the onec format is to have a simple way to convert the stack into a format that is fully compatible with NEC-2. This can be accomplished entirely by removing certain bits of text from the deck, although individual programs may wish to apply additional logic to improve this process. There are three basic steps:
+The overriding design goal for the onec format is to have a simple way to convert the stack into a format that is fully compatible with NEC-2. This can be accomplished by removing certain bits of text from the deck, although individual programs may wish to apply additional logic to improve this process. There are three basic steps:
 
 ### parse and replace SY assignments
 SY's are a simple "replacement" system in which any entry of an SY name in a data card is replaced with the string defined on the SY card. This is a two-step process:
@@ -195,4 +82,120 @@ The resulting deck is now compatible with any known NEC parser.
 Other notes
 -----------
 
-There are other file formats used in the antenna design world that may be of interest as they can easily be converted to onec format. Most of these are historical and no longer used, but examples are still found on the 'net. Most notable among these was Brian Beezley's Yagi Optimizer application, which generated files which are still widely found on the 'net. These files do not have a consistent extension, although ".ANT" is sometimes seen. These files look like modified NEC-2 decks lacking card codes, but are quite different in format.
+There are other file formats used in the antenna design world that may be of interest as they can easily be converted to onec format. Most of these are historical and no longer used, but examples are still found on the 'net. Most notable among these was Brian Beezley's Yagi Optimizer application. These files do not have a consistent extension, although ".ANT" and ".YO" is sometimes seen. These files look like modified NEC-2 decks lacking card codes, but are quite different in format.
+
+onec format definition
+----------------------
+
+### deck
+
+<deck> = 
+  (* comment area *)
+  { <nec comment card> } | { <onec comment card> }, <nec comment end card>,
+  (* variable area *)
+  { <onec variable card> } | { <onec comment card> },
+  (* geometry area *)
+  <geometry card> | { <onec comment card> }, { <geometry card> } | { <onec comment card> }, <geometry end card>,
+  (* control area *)
+  <control card> | { <onec comment card> }, { <control card> } | { <onec comment card> },
+  (* end of deck area *)
+  { <onec comment card> }, <deck end card>,
+  { <freeform text card> } ;
+
+A deck is the ultimate product of the onec file format. A deck must have at least a comment end card, at least one geometry card and a geometry end card, one or more command cards, a deck end card, and may be followed by one or more lines of freeform text. onec comment cards can be inserted at any point in the deck.
+
+### comments area
+
+<nec comment card> = "CM", [ <freeform text> ], <EOL> ;
+<nec comment end card> = "CE", [ <freeform text> ], <EOL> ;
+
+Comment cards do not require comment text, and are often found with no test as a way to insert vertical whitespace.
+
+<onec comment card> = <onec comment marker>, [ <freeform text> ], <EOL> ;
+<onec comment marker> = "CM" | "!" | "'" | "#" ;
+
+onec comment cards can be placed anywhere in the deck. They can be marked with the NEC-style "CM" or any of the newer comment markers - "!", "'" and "#". All text after the marker should be preserved, including any whitespace between the marker and the comment, if present. *Generally*, onec comments are not placed in the normal NEC comment area at the top of the file, but may be found immediately following it or anywhere else in the deck.
+
+### variable area
+
+<onec variable card> = { <onec comment marker> }, "SY", 
+                       <variable name>, "=", <formula>,
+                       { ",", <variable name>, "=", <formula> },
+                       <EOL> ;
+ 
+<variable name> = <letter>, { <letter> | <digit> | "_" } ;
+
+<formula> = <factor>, { <operator> <factor> } ;
+
+<factor> = <float value> | <variable name> | <function> "(" <factor> ")" ;
+
+<operator> = "+" | "-" | "*" | "/" | "^" ;
+
+<function> = "sin" | "cos" | "tan" | "atn" | "sqr"
+           | "exp"| "log" | "log10" | "abs" | "sgn"
+           | "fix" | "int" | "mod" ;
+
+An onec variable card contains one or more variable definitions consisting of name=formula pairs. Variable names and formulas may not contain spaces or other whitespace characters. Variable names must start with a leading letter character followed by zero or more characters including digits and underscores. Formulas consist of one or more visible characters including numbers and mathematical symbols.
+
+If more than one definition is supplied on a single line, they are comma separated. onec variables may be "hidden" by adding an onec comment marker to the front. Hiding of this sort, if present, should be preserved when the file is written.
+
+onec variable cards can be placed anywhere in the file as long as they appear before the cards that reference them. *Generally* they will be placed between the comment and geometry cards, but this is not a requirement. 
+
+### geometry area
+
+<geometry card> = <GA card> | <GF card> | <GH card> | <GM card> | <GR card>
+                | <GS card> | <GW card> | <GX card> | <SP card> | <SM card> ;
+                
+<geometry end card> = "GE" | "GE", <integer value>, <EOL> ;
+
+At least one geometry card is required as well as a single geometry end card. All geometry cards must appear between the comment end card and the first control card.
+
+The format of the geometry card inputs can be found in the NEC2 documentation. 
+
+### control area
+
+<control card> = <group 1 control card> | <group 2 control card> | <group 3 control card> ;
+
+<group 1 control card> = <EK card> | <FR card> | <GN card> | <KH card> | <LD card> ;
+<group 2 control card> = <EX card> | <NT card> | <TL card> ;
+<group 3 control card> = <CP card> | <GD card> | <NE card> | <NH card>
+                       | <NX card> | <PQ card> | <PT card> | <RP card> | <WG card> | <XQ card>;
+
+The format of the control card inputs can be found in the NEC2 documentation. 
+
+### end of deck area
+
+<deck end card> = "EN", <EOL> ;
+
+<freeform text card> = { <freeform text> }, <EOL> ;
+
+Any text after the end of the deck is considered to be a free-form comment and does not require a comment marker.
+
+### onec extensions
+
+<onec extension> = <name>, "=" | ":", <formula>, { <onec separator>, <name>, "=" | ":", <formula> } ;
+
+<inline comment marker> = "!" | "'" | "#" ;
+
+<onec separator> = "," | " " ;
+
+onec extensions consist of one or more key/value pairs following one of the accepted inline comment markers. Keys and values are separated by equals signs or colons. *Generally* formulas will use equals, while other onec tags will use colons. This is simply to make them more easily distinguised in the deck text.
+
+### basic types
+
+<freeform text> = ? any ASCII character ?, { ? any ASCII character ? }, <EOL> ;
+
+<integer value> = [ "-" ], <digit>, { <digit> } ;
+
+<float value> = [ "-" ] { <digit> }, [ ".", { <digit> } ] [ "E" | "e" , [ "-" ] <digit>, { <digit> } ] ;
+
+<boolean value> = <true value> | <false value> ;
+
+<true value> = "yes" | "YES" | "true" | "TRUE" | "1" ;
+<false value> = "no" | "NO" | "false" | "FALSE" | "0" ;
+
+<letter> = "A" .. "Z" | "a" .. "z" ;
+
+<digit> = "0" .. "9" ;
+
+<EOL> = "LF" | "CR" | "CRLF" ;
