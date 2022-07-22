@@ -215,11 +215,11 @@ Consider the following YO file:
 
 There are a number of items to consider:
 
-# the Height is in feet, and has to be converted to inches
-# an LD card is needed to convert the material to copper
-# a second antenna is stacked 50 feet above the first
-# measurements are given in "spacing" format
-# tapering is complex
+1. the Height is in feet, and has to be converted to inches
+2. an LD card is needed to convert the material to copper
+3. a second antenna is stacked 50 feet above the first
+4. measurements are given in "spacing" format
+5. tapering is complex
 
 The resulting NEC file would be:
 
@@ -245,9 +245,9 @@ GW 5 1 28.248 840 0 33.305 840 0 0.75
 !
 GW 6 5 -28.248 840 124.000 28.248 840 124.000 0.875
 !
-! and remaining two are one element shorter than the reflector
-! so they have four entries each. They are located using "spacing"
-! so we have to calculate the Z values
+! and remaining two passive elements are one segment shorter than 
+! the reflector so they have four entries each. They are located 
+! using "spacing" so we have to calculate the Z values
 !
 GW 7 1 0 840 248 2.938 840 248 1.617
 GW 8 1 2.938 840 248 15.062 840 248 1.250
