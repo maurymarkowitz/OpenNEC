@@ -45,11 +45,31 @@ Another decision was whether or not to directly support the `SY` card type. This
 
 NEC was designed to measure everything in meters, but this is not convenient for many antenna designs, like those in a cell phone that are only a few cm long. Most GUI-based NEC programs allow values to be input using other units, and then convert them on entry to meters. Some add the ability to choose a default measurement type, and convert that to meters using NEC's scaling factor card (SC). All of these have the disadvantage that the original measurement type is lost on input. For instance, if the user selects "#14" for the wire radius in a GUI program, this would be converted to 0.000814 meters in the NEC deck. While this is technically sufficient, it loses the original intent and reduces the readability of the deck. The inclusion of measurement markers, like `cm`, is one of the few extensions to oNEC that is not already widely supported by most NEC software.
 
-NOTE: The symbols for feet, ', and AWG, #, are both used for comment markers in common NEC software like nec2c. For this reason, oNEC format stores these as `ft`, `in` and `awg` in the file. User-facing software should convert this *only in the display*, as desired by the user, and should *never save these symbols to the file*.
+NOTE: The symbols for feet, ', and AWG, #, are both used for comment markers in common NEC software like nec2c. For this reason, oNEC stores these as `ft`, `in` and `awg` in the file. User-facing software should convert this *only in the display*, as desired by the user, and should *never save these symbols to the file*.
 
 Finally, oNEC was being built with the assumption it would not normally be used as a stand-alone program, but as part of a GUI application. These often add additional data to aid with the graphical display of the antenna design. oNEC includes a new feature that allows key/value pairs to be inserted on any line as a trailing comment. These will be parsed out separately and presented to the client software without being visible to the underlying NEC implementation. Examples include `!material=copper` which an application might use to appropriately color a particular element on the display.
 
-As this mechanism uses the inline comment system, and users will likely mix comments and key/value pairs on a single card, the system allows multiple entries to be separated by commas or semicolons. Inline comments are first separated by these delimiters, and then each result is examined for an `=` or `:`. Those entires containing such a value are assumed to be key/values, everything else is concatenated into a single comment. There are four "known" tags, "name" allows the user to type in a name for this card, "group" allows cards to be grouped, which is useful in GUI applications, "visible:no" which hides it from display but leaves it in the calculations, "ignore:yes" which causes the card to be ignored during processing, and "comment" marks everything after that point to be a comment.
+As this mechanism uses the inline comment system, and users will likely mix comments and key/value pairs on a single card, the system allows multiple entries to be separated by commas or semicolons. Inline comments are first separated by these delimiters, and then each result is examined for an `=` or `:`. Those entires containing such a value are assumed to be key/values, everything else is concatenated into a single comment.
+
+Defined extensions
+------------------
+The oNEC extension system is intended to be largely free-form, used by the user or applications calling the onec library. There are a small number of defined extensions all 3rd party software should support.
+
+- `name` allows an element to be given a name. This is typically used in the geometry section and might have values like "reflector" or "boom".
+
+- `group` is used to collect multiple elements together. In a GUI application, this might be used with a disclosure widget to allow sections to be collapsed down to the group name, like "upper reflector".
+
+- `ignore` indicates whether the card should take part in the calculations. Setting this to `false` causes that card to be ignored during processing. This is useful during the development or testing a deck, as a card can be removed from the calculations without having to remove it or mark it as a comment card. 4nec2 has a similar feature that ignores all cards with tag values >=9700.
+
+ - `comment` marks everything after that point (and the following separator) to be a comment. This allows key/value pairs and comments to be placed on the same card.
+ 
+ Additionally, a number of additional extensions are expected to be supported by programs that provide a graphical display.
+ 
+ - `visible` indicates whether the card should be visible onscreen. The default is `true`. Changing this to `false` indicates it should not be drawn on-screen. This does not remove it from the calculations.
+
+- `shape` is used to change the shape of the geometery for GUI programs. The calculation engine does not care about the shape of the various geometry elements, but the user of a GUI program may. By adding something like `ignore=true, shape=square`, a boom on a Yagi antenna can be added to the file to make the display of the antenna more accurate without effecting the output. At a minimum, `circle` and `square` should be supported, along with any other shapes the GUI software might wish to add.
+
+- the `material`  is a similar display-only extension  and may be any value, but the following values should be expected; `silver`, `copper`, `aluminum`, `6061-T6`, `6063-T832`, `brass`, `phosphor bronze` and `steel`. This list was based on the materials from Yagi Optimizer.
 
 Converting from onec to NEC
 ---------------------------
@@ -70,12 +90,12 @@ onec adds the ability to define units on a field-by-field basis, so you can have
 ### remove inline comments and unused cards
 NEC does not allow empty cards in the deck, but other formats allow this or some variation on the theme. These should all be removed during the conversion to NEC-compatible format. There are several cases:
 
-1) remove all leading whitespace on lines, before the card type market
+1) remove all leading whitespace on lines, before the card type marker
 2) remove any card that is empty (consisting solely of a CR, LF or CR/LF)
 3) remove any card that starts with a non-NEC comment marker like ', ! or #
 4) scan the deck for leading comments, any card at the top of the deck marked with "CM" or "CE". this section ends with the first card that starts with a "Gx", or the "CE" card if present.
 5) remove any cards that start with "CM" *after* that point. The original NEC format only supports comments at the top.
-6) scan the geometry section and remove any cards containing upper or lower case versions of strings "ignore=true", "ignore=t" or "ignore=yes" (see below for details)
+6) scan the geometry section and remove any cards containing upper or lower case versions of strings "ignore=true", "ignore=yes", etc. (see below for details)
 
 The resulting deck is now compatible with any known NEC parser.
 
@@ -191,8 +211,8 @@ onec extensions consist of one or more key/value pairs following one of the acce
 
 <boolean value> = <true value> | <false value> ;
 
-<true value> = "yes" | "YES" | "true" | "TRUE" | "1" ;
-<false value> = "no" | "NO" | "false" | "FALSE" | "0" ;
+<true value> = "yes" | "y" | "YES" | "Y" | "true" | "t" | "TRUE" | "T" | "1" ;
+<false value> = "no" | "n" | "NO" | "N" | "false" | "f" | "FALSE" | "F" | "0" ;
 
 <letter> = "A" .. "Z" | "a" .. "z" ;
 

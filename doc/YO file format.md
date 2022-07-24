@@ -4,7 +4,7 @@ YO file format
 Introduction
 ------------
 
-The YO file format is an antenna design file format introduced in the 1994 Yagi Optimizer application by Brian Beezley. Files in YO format have no consistant extension, but sometimes ".ANT" or ".YO" may be found.
+YO is an antenna design file format introduced in the 1994 Yagi Optimizer application by Brian Beezley. Files in YO format have no consistant extension, but sometimes ".ANT" or ".YO" may be found.
 
 The application is solely for use with Yagi antennas, and uses the MININEC code to run its calculations. A key feature of MININEC is its ability to directly define tapering dimensions, in contrast to NEC which uses a formula to calculate them based on two inputs. YO makes extensive use of this MININEC feature and its files are structured to include this data in a way that requires conversion to use with NEC.
 
