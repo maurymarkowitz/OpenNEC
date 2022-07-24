@@ -6,13 +6,13 @@ Version 1.0, January 2022
 Introduction
 ------------
 
-OpenNEC, or onec for short, is an implementation of the Numerical Electromagnetics Code ("NEC") system for simulating antennas. It is based on a port of the original NEC-2 code converted from Fortran to C, nec2c, writen by Neoklis Kyriazis. OpenNEC extends nec2c in a number of ways.
+OpenNEC, or oNEC for short, is an implementation of the Numerical Electromagnetics Code ("NEC") system for simulating antennas. It is based on a port of the original NEC-2 code converted from Fortran to C, nec2c, writen by Neoklis Kyriazis. OpenNEC extends nec2c in a number of ways.
 
 NEC systems use text files known as "decks" to exchange design information between antenna simulator programs using the NEC-2 and NEC-4 programs, or compatible systems like nec2c, 4nec2, MININEC, and many others. The OpenNEC file format is an extended version of the *de facto* NEC file format, adding a small number of new features and more clearly specifying some formerly ill-defined entries.
 
-The onec file format adds a feature that allows the format to be arbitrarily extended without effecting the underlying NEC data. It also defines simple rules for converting an onec file into a pure NEC file. A program implementing onec can read any NEC file, and any NEC-compatible program can read a converted onec file with no loss of information.
+The oNEC file format adds a feature that allows the format to be arbitrarily extended without effecting the underlying NEC data. It also defines simple rules for converting an oNEC file into a pure NEC file. A program implementing oNEC can read any NEC file, and any NEC-compatible program can read a converted oNEC file with no loss of information.
 
-In short, the onec file format is a clearly defined, human readable, highly compatible, and easily extensible version of the original NEC format.
+In short, the oNEC file format is a clearly defined, human readable, highly compatible, and easily extensible version of the original NEC format.
 
 Background
 ----------
@@ -26,14 +26,14 @@ For example, almost all deck formats allow comments to be placed at the end of a
 Impetus
 -------
 
-onec is an attempt to solve (some of) these problems. It does so by defining a single canonical format for the files. It also includes an extension mechanism that allows the addition of arbitrary data to any card, in a way that will simply ignored by (most) NEC implementations. oNEC also supports the SY card type, as this feature is both common and very useful in practice.
+oNEC is an attempt to solve (some of) these problems. It does so by defining a single canonical format for the files. It also includes an extension mechanism that allows the addition of arbitrary data to any card, in a way that will simply ignored by (most) NEC implementations. oNEC also supports the SY card type, as this feature is both common and very useful in practice.
 
 The inclusion of these new features means the oNEC format is not fully compatible with the original NEC format. However, oNEC defines a simple mechanism to convert any oNEC deck into a fully compatible form with no loss of information. This makes oNEC files easy to use in the traditional role where the NEC code is in an external library or executable that communicates only through files.
 
 Design decisions
 ----------------
 
-The design of the onec format started as part of an effort to canvas the internet looking for the most popular NEC editing tools. This revealed that there were a number of common extensions to the NEC format. Some of these were identical across various applications, so a single format would be able to support many of them. The key would be to include these in a new format in such a way that older software would still be able to open and use the decks, and potentially edit them.
+The design of the oNEC format started as part of an effort to canvas the internet looking for the most popular NEC editing tools. This revealed that there were a number of common extensions to the NEC format. Some of these were identical across various applications, so a single format would be able to support many of them. The key would be to include these in a new format in such a way that older software would still be able to open and use the decks, and potentially edit them.
 
 The simplest solution to this problem would be to use the existing NEC comment card, `CM`, as a prefix on all extensions. Any data on a `CM` card is simply ignored by NEC. This has been used by some programs to include various additional parameters, which only they notice. One could extend this mechanism to add features; for instance, one might have a comment that states the 3rd measurement on a particular card is in millimetres, not the deck's default of inches set on an `SC` card later in the deck.
 
@@ -41,7 +41,7 @@ The basic idea is sound, but "real" NEC-2 allows comment cards to be placed only
 
 None of these inline comment systems are compatible with software supporting the original NEC format, which would see them either as extraneous data, or bad data in the last field on the card. Such a deck can be easily converted to NEC compatible format by simply deleting any characters on a given line from the position of the comment character on. Using this format allows things like measurements to be defined on the same card, but stripping them off would require the system to convert the numeric values in the NEC fields with the appropriate factor.
 
-Another decision was whether or not to directly support the `SY` card type. This card was introduced in the 4nec2 program, allowing the user to define a SYmbol, a variable. The name of the symbol can then be used in places where numbers would normally appear, the height of the antenna over the ground for instance. It would be possible to include the `SY` cards using the commented-out format, starting the line with `!SY` for example, but this alone would not make the resulting deck compatible with NEC because the *references* to the symbols in the card fields would still cause errors. One could place those references in a trailing comment, but they would still have to be calculated and copied into the appropriate field before sending it to NEC. For that reason, the decision was made to promote `SY` to a formally supported card type in onec. 
+Another decision was whether or not to directly support the `SY` card type. This card was introduced in the 4nec2 program, allowing the user to define a SYmbol, a variable. The name of the symbol can then be used in places where numbers would normally appear, the height of the antenna over the ground for instance. It would be possible to include the `SY` cards using the commented-out format, starting the line with `!SY` for example, but this alone would not make the resulting deck compatible with NEC because the *references* to the symbols in the card fields would still cause errors. One could place those references in a trailing comment, but they would still have to be calculated and copied into the appropriate field before sending it to NEC. For that reason, the decision was made to promote `SY` to a formally supported card type in oNEC. 
 
 NEC was designed to measure everything in meters, but this is not convenient for many antenna designs, like those in a cell phone that are only a few cm long. Most GUI-based NEC programs allow values to be input using other units, and then convert them on entry to meters. Some add the ability to choose a default measurement type, and convert that to meters using NEC's scaling factor card (SC). All of these have the disadvantage that the original measurement type is lost on input. For instance, if the user selects "#14" for the wire radius in a GUI program, this would be converted to 0.000814 meters in the NEC deck. While this is technically sufficient, it loses the original intent and reduces the readability of the deck. The inclusion of measurement markers, like `cm`, is one of the few extensions to oNEC that is not already widely supported by most NEC software.
 
@@ -71,7 +71,7 @@ The oNEC extension system is intended to be largely free-form, edited by the use
 
 - the `material`  is a similar display-only extension  and may be any value, but the following values should be expected; `silver`, `copper`, `aluminum`, `6061-T6`, `6063-T832`, `brass`, `phosphor bronze` and `steel`. This list was based on the materials from Yagi Optimizer.
 
-Converting from onec to NEC
+Converting from oNEC to NEC
 ---------------------------
 
 The overriding design goal for the oNEC format is to have a simple way to convert the stack into a format that is fully compatible with NEC-2. This can be accomplished by removing certain bits of text from the deck, although individual programs may wish to apply additional logic to improve this process. There are three basic steps:
@@ -83,7 +83,7 @@ SY's are a simple "replacement" system in which any entry of an SY name in a dat
 2) find any use of those SY variable names, and replace them with the calculated value from (1)
 
 ### parse and replace measurement units
-onec adds the ability to define units on a field-by-field basis, so you can have elements that are 10ft long and 1cm in radius. These need to be converted to a common unit, and the unit markers removed:
+oNEC adds the ability to define units on a field-by-field basis, so you can have elements that are 10ft long and 1cm in radius. These need to be converted to a common unit, and the unit markers removed:
 
 1) scan the geometry cards for any unit indicators, like "cm" or "in", replace those values with ones converted to meters
 
@@ -103,9 +103,9 @@ The resulting deck is now compatible with any known NEC parser.
 Other notes
 -----------
 
-There are other file formats used in the antenna design world that may be of interest as they can easily be converted to onec format. Most of these are historical and no longer used, but examples are still found on the 'net. Most notable among these was Brian Beezley's Yagi Optimizer application. These files do not have a consistent extension, although ".ANT" and ".YO" is sometimes seen. These files look like modified NEC-2 decks lacking card codes, but are quite different in format.
+There are other file formats used in the antenna design world that may be of interest as they can easily be converted to oNEC format. Most of these are historical and no longer used, but examples are still found on the 'net. Most notable among these was Brian Beezley's Yagi Optimizer application. These files do not have a consistent extension, although ".ANT" and ".YO" is sometimes seen. These files look like modified NEC-2 decks lacking card codes, but are quite different in format.
 
-onec format definition
+oNEC format definition
 ----------------------
 
 ### deck
@@ -123,7 +123,7 @@ onec format definition
   { <onec comment card> }, <deck end card>,
   { <freeform text card> } ;
 
-A deck is the ultimate product of the onec file format. A deck must have at least a comment end card, at least one geometry card and a geometry end card, one or more command cards, a deck end card, and may be followed by one or more lines of freeform text. onec comment cards can be inserted at any point in the deck.
+A deck is the ultimate product of the oNEC file format. A deck must have at least a comment end card, at least one geometry card and a geometry end card, one or more command cards, a deck end card, and may be followed by one or more lines of freeform text. oNEC comment cards can be inserted at any point in the deck.
 
 ### comments area
 
@@ -135,7 +135,7 @@ Comment cards do not require comment text, and are often found with no test as a
 <onec comment card> = <onec comment marker>, [ <freeform text> ], <EOL> ;
 <onec comment marker> = "CM" | "!" | "'" | "#" ;
 
-onec comment cards can be placed anywhere in the deck. They can be marked with the NEC-style "CM" or any of the newer comment markers - "!", "'" and "#". All text after the marker should be preserved, including any whitespace between the marker and the comment, if present. *Generally*, onec comments are not placed in the normal NEC comment area at the top of the file, but may be found immediately following it or anywhere else in the deck.
+oNEC comment cards can be placed anywhere in the deck. They can be marked with the NEC-style "CM" or any of the newer comment markers - "!", "'" and "#". All text after the marker should be preserved, including any whitespace between the marker and the comment, if present. *Generally*, oNEC comments are not placed in the normal NEC comment area at the top of the file, but may be found immediately following it or anywhere else in the deck.
 
 ### variable area
 
@@ -156,11 +156,11 @@ onec comment cards can be placed anywhere in the deck. They can be marked with t
            | "exp"| "log" | "log10" | "abs" | "sgn"
            | "fix" | "int" | "mod" ;
 
-An onec variable card contains one or more variable definitions consisting of name=formula pairs. Variable names and formulas may not contain spaces or other whitespace characters. Variable names must start with a leading letter character followed by zero or more characters including digits and underscores. Formulas consist of one or more visible characters including numbers and mathematical symbols.
+An oNEC variable card contains one or more variable definitions consisting of name=formula pairs. Variable names and formulas may not contain spaces or other whitespace characters. Variable names must start with a leading letter character followed by zero or more characters including digits and underscores. Formulas consist of one or more visible characters including numbers and mathematical symbols.
 
-If more than one definition is supplied on a single line, they are comma separated. onec variables may be "hidden" by adding an onec comment marker to the front. Hiding of this sort, if present, should be preserved when the file is written.
+If more than one definition is supplied on a single line, they are comma separated. oNEC variables may be "hidden" by adding an oNEC comment marker to the front. Hiding of this sort, if present, should be preserved when the file is written.
 
-onec variable cards can be placed anywhere in the file as long as they appear before the cards that reference them. *Generally* they will be placed between the comment and geometry cards, but this is not a requirement. 
+oNEC variable cards can be placed anywhere in the file as long as they appear before the cards that reference them. *Generally* they will be placed between the comment and geometry cards, but this is not a requirement. 
 
 ### geometry area
 
@@ -192,7 +192,7 @@ The format of the control card inputs can be found in the NEC2 documentation.
 
 Any text after the end of the deck is considered to be a free-form comment and does not require a comment marker.
 
-### onec extensions
+### oNEC extensions
 
 <onec extension> = <name>, "=" | ":", <formula>, { <onec separator>, <name>, "=" | ":", <formula> } ;
 
@@ -200,7 +200,7 @@ Any text after the end of the deck is considered to be a free-form comment and d
 
 <onec separator> = "," | " " ;
 
-onec extensions consist of one or more key/value pairs following one of the accepted inline comment markers. Keys and values are separated by equals signs or colons. *Generally* formulas will use equals, while other onec tags will use colons. This is simply to make them more easily distinguised in the deck text.
+oNEC extensions consist of one or more key/value pairs following one of the accepted inline comment markers. Keys and values are separated by equals signs or colons. *Generally* formulas will use equals, while other oNEC tags will use colons. This is simply to make them more easily distinguised in the deck text.
 
 ### basic types
 
