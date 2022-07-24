@@ -53,19 +53,19 @@ As this mechanism uses the inline comment system, and users will likely mix comm
 
 Defined extensions
 ------------------
-The oNEC extension system is intended to be largely free-form, used by the user or applications calling the onec library. There are a small number of defined extensions all 3rd party software should support.
+The oNEC extension system is intended to be largely free-form, edited by the user or applications calling the oNEC library. There are a small number of defined extensions all 3rd party software should support:
 
 - `name` allows an element to be given a name. This is typically used in the geometry section and might have values like "reflector" or "boom".
 
 - `group` is used to collect multiple elements together. In a GUI application, this might be used with a disclosure widget to allow sections to be collapsed down to the group name, like "upper reflector".
 
-- `ignore` indicates whether the card should take part in the calculations. Setting this to `false` causes that card to be ignored during processing. This is useful during the development or testing a deck, as a card can be removed from the calculations without having to remove it or mark it as a comment card. 4nec2 has a similar feature that ignores all cards with tag values >=9700.
+- `ignore` indicates whether the card should take part in the calculations. Setting this to `false` causes that card to be ignored during processing. This is useful during the development or testing of a deck, as a card can be ignored in the calculations without having to physically remove it or mark it as a comment card. 4nec2 has a similar feature that ignores all cards with tag values >=9700.
 
  - `comment` marks everything after that point (and the following separator) to be a comment. This allows key/value pairs and comments to be placed on the same card.
  
  Additionally, a number of additional extensions are expected to be supported by programs that provide a graphical display.
  
- - `visible` indicates whether the card should be visible onscreen. The default is `true`. Changing this to `false` indicates it should not be drawn on-screen. This does not remove it from the calculations.
+ - `visible` indicates whether the card should be visible onscreen. The default is `true`. Changing this to `false` indicates it should not be drawn on-screen. This does not remove it from the calculations, it is a visual effect only.
 
 - `shape` is used to change the shape of the geometery for GUI programs. The calculation engine does not care about the shape of the various geometry elements, but the user of a GUI program may. By adding something like `ignore=true, shape=square`, a boom on a Yagi antenna can be added to the file to make the display of the antenna more accurate without effecting the output. At a minimum, `circle` and `square` should be supported, along with any other shapes the GUI software might wish to add.
 
