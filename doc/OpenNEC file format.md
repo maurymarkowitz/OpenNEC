@@ -74,7 +74,7 @@ The oNEC extension system is intended to be largely free-form, edited by the use
 Converting from onec to NEC
 ---------------------------
 
-The overriding design goal for the onec format is to have a simple way to convert the stack into a format that is fully compatible with NEC-2. This can be accomplished by removing certain bits of text from the deck, although individual programs may wish to apply additional logic to improve this process. There are three basic steps:
+The overriding design goal for the oNEC format is to have a simple way to convert the stack into a format that is fully compatible with NEC-2. This can be accomplished by removing certain bits of text from the deck, although individual programs may wish to apply additional logic to improve this process. There are three basic steps:
 
 ### parse and replace SY assignments
 SY's are a simple "replacement" system in which any entry of an SY name in a data card is replaced with the string defined on the SY card. This is a two-step process:
@@ -96,6 +96,7 @@ NEC does not allow empty cards in the deck, but other formats allow this or some
 4) scan the deck for leading comments, any card at the top of the deck marked with "CM" or "CE". this section ends with the first card that starts with a "Gx", or the "CE" card if present.
 5) remove any cards that start with "CM" *after* that point. The original NEC format only supports comments at the top.
 6) scan the geometry section and remove any cards containing upper or lower case versions of strings "ignore=true", "ignore=yes", etc. (see below for details)
+7) remove any remaining cards that are not part of the NEC standard. This would include any 3rd party cards like `IT`.
 
 The resulting deck is now compatible with any known NEC parser.
 
