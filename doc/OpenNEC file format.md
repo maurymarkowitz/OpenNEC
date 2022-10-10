@@ -59,7 +59,7 @@ The oNEC extension system is intended to be largely free-form, edited by the use
 
 - `group` is used to collect multiple elements together. In a GUI application, this might be used with a disclosure widget to allow sections to be collapsed down to the group name, like "upper reflector".
 
-- `ignore` indicates whether the card should take part in the calculations. Setting this to `false` causes that card to be ignored during processing. This is useful during the development or testing of a deck, as a card can be ignored in the calculations without having to physically remove it or mark it as a comment card. 4nec2 has a similar feature that ignores all cards with tag values >=9700.
+- `ignore` indicates whether the card should take part in the calculations. Setting this to `true` causes that card to be ignored during processing. This is useful during the development or testing of a deck, as a card can be ignored in the calculations without having to physically remove it or mark it as a comment card. 4nec2 has a similar feature that ignores all cards with tag values >=9700.
 
  - `comment` marks everything after that point (and the following separator) to be a comment. This allows key/value pairs and comments to be placed on the same card.
  
