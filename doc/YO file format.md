@@ -4,15 +4,15 @@ Yagi Optimizer YO file format
 Introduction
 ------------
 
-YO is an antenna design file format introduced in the 1994 Yagi Optimizer application by Brian Beezley. Files in YO format have no consistant extension, but sometimes ".ANT" or ".YO" may be seen. They were common during the 1990s and 2000s, and examples are still found around the 'net today.
+YO is an antenna design file format introduced in the 1994 Yagi Optimizer application by Brian Beezley. Files in YO format have no consistant extension, but sometimes ".ANT" or ".YO" may be found. They were common during the 1990s and 2000s, and examples are still found around the 'net today.
 
-The application is solely for use with Yagi antennas, and uses the MININEC code to run its calculations. A key feature of MININEC is its ability to define tapering dimensions, in contrast to NEC which uses a formula to calculate a series of steps. YO makes extensive use of this MININEC feature and its files are structured to include this data in a way that requires conversion to use with NEC.
+The application is solely for use with Yagi antennas, and uses the MININEC code to run its calculations. A key feature of MININEC is its ability to define explicit tapering dimensions, in contrast to NEC which uses a formula to calculate a series of taper steps. YO makes extensive use of this MININEC feature and its files are structured to include this data in a way that requires conversion to use with NEC.
 
 This document outlines the features of the YO format and describes how to convert the file to a canonical NEC or OpenNEC file.
 
 Format definition
 -----------------
-
+```
   <YO file> = 
   <title line>,
   \{ <option line> \},
@@ -25,9 +25,9 @@ Format definition
   ?EOF? ;
 
   <title line> = [ <freeform text> ], ?EOL? ;
-
+```
 (* The Yagi Optimizer application truncates any text beyond the 52nd character, but this is not a limitation of the file format itself and does not need to be adhered to. *)
-
+```
  <option line> = <material line> | <height line> | <stacking line> | <dual line>, ?EOL? ;
 
  <height line> = "Height ", <float value>, \{ <unit abbr> \}, ?EOL? ;
@@ -39,7 +39,7 @@ Format definition
  <resistivity def> = "Resistivity ", <float value>, \{ <float value> \}
 
  <conductivity def> = "Conductivity ", <float value>, \{ <float value> \}
-
+```
 (* Yagi Optimizer has several built-in values for conductor losses and assumes 6061-T6 aluminum with a value of 4.01E-08 ohm-m if no other material is defined. The documentation does not indicate if "6061-T6" is a valid input on its own.
 
 Alternately, the material can be defined directly using Resistivity and supplying the value in ohm-m or Conductivity using IACS (International Annealed Copper Standard) units. Both Resistivity and Conductivity have an optional relative permeability, which defaults to 1 if it is not supplied. *)
@@ -47,29 +47,29 @@ Alternately, the material can be defined directly using Resistivity and supplyin
 <dual line> = "Dual" | "KLM", \{ <float value> \}, \{ <float value> \}
 
 (* Adding Dual or KLM assumes a 230 ohm phasing line impedance and a 200 ohm feedline impedance. The first of the two optional inputs changes the phasing line impedance, the second changes the feedline impedance. *)
-
+```
 <frequency line> = <float value> 
                  | <float value> <float value> <float value>, \{ <float value> \}
                  , \{ "KHz" | "MHz" | "GHz" \}
                  , ?EOL? ;
-                 
+```
 (* Frequencies can be given as a single number or three. If the three-number format is used, an optional transformer matching frequency can be supplied as a fourth number. The frequencies can be followed with the optional measurement units. If no unit type is supplied, "MHz" is assumed. *)
-
+```
 <geometry description line> = <integer value>, " elements", \{ "," ), " ", <unit name> | <unit abbr>, ?EOL? ;
 
 <unit name> = "feet" | "inches" | "meters" | "centimeters" | "millimeters" | "wavelengths"
 <unit abbr> =  "'" | '"' | "ft" | "in" | "m" | "cm" | "mm" | "w"
-
+```
 (* Only the first two letters of the unit specifiers are read, so "feet" and "fe" are equivalent. *)
-
+```
 <taper line> = \{ "Spacing" \} <float value>{ <unit abbr> \}, \{ <float value>{ <unit abbr> \} \}, ?EOL? ;
-
+```
 (* Every YO file has to have at least one taper definition with at least one value. If a single value is supplied it describes the diameter of the antenna elements, if more than one value is supplied is describes the tapering of the diameter sampled at N points starting at the boom. Each entry in a taper line defines a "taper section". Some form of whitespace is normally inserted before the first value so that values on the following length lines will line up with the taper values. Up to 20 taper values are allowed.
 
 The optional "Spacing" keyword is described below. *)
-
+```
 <length line> = <float value>{ <unit abbr> \}, <float value>{ <unit abbr> \}, \{ <float value>{ <unit abbr> \} \} ?EOL? ;
-
+```
 (* Length lines (normally) describe one-half of an element, measured out from the boom. The first length line in the file is always the reflector.
 
 At least two values are required on every length line. The first value is the location of the element along the boom, normally the Y-axis in NEC terms. The first entry, for the reflector, is normally at position 0, but it can be moved if desired. The location entry is followed by one entry for each taper section defined in the preceding taper line, which describes the distance from the boom, normally the X-axis in NEC, where it reaches that taper dimension. This is why whitespace is often added to the front of taper lines, so that the taper definitions line up with the distances and skip over the location along the boom at the front of the line.
@@ -83,7 +83,7 @@ If the line is part of a taper definition with a single entry, that is, no taper
 YO files may have more than one taper line, and the geometry following each one must follow the last one's format.
 
 As there is nothing in the taper or length lines that clearly define whether it is a taper or length line, Yagi Optimizer uses a formula to determine the type: if the sum of all the numbers on a given line are greater than .15 wavelengths, the line is a taper line, otherwise it is a length line. *)
-
+```
   <freeform text> = ?any printable ASCII character?, \{ ?any printable ASCII character? \}, ?EOL? ;
 
   <integer value> = [ "-" ], <digit>, \{ <digit> \} ;
@@ -93,7 +93,7 @@ As there is nothing in the taper or length lines that clearly define whether it 
   <letter> = "A" .. "Z" | "a" .. "z" ;
 
   <digit> = "0" .. "9" ;
-
+```
 (* All keywords are case insensitive, "Copper", "copper" and "CoPPer" are equivalent. Whitespace between fields can consist of spaces or tabs.
 
 Any text after the end of the deck is considered to be a free-form comment and does not require a comment marker. This is similar to NEC. *)
@@ -221,7 +221,7 @@ There are a number of items to consider:
 5. tapering is complex
 
 The resulting NEC file would be:
-
+```
   CM Stacked yagis 50 feet apart
   CE
   !
@@ -274,4 +274,4 @@ The resulting NEC file would be:
   !
   ! and we're done with the geometry
   GE
-
+```
