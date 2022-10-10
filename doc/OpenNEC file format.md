@@ -130,7 +130,7 @@ A deck is the ultimate product of the oNEC file format. A deck must have at leas
 <nec comment card> = "CM", [ <freeform text> ], <EOL> ;
 <nec comment end card> = "CE", [ <freeform text> ], <EOL> ;
 ```
-Comment cards do not require comment text, and are often found with no test as a way to insert vertical whitespace.
+Comment cards do not require comment text, and are often found with no text as a way to insert vertical whitespace.
 ```
 <onec comment card> = <onec comment marker>, [ <freeform text> ], <EOL> ;
 <onec comment marker> = "CM" | "!" | "'" | "#" ;
