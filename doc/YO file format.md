@@ -15,19 +15,19 @@ Format definition
 ```
   <YO file> = 
   <title line>,
-  \{ <option line> \},
+  { <option line> },
   <frequency line>,
   <geometry line>,
   <taper line>,
   <length line>,
-  \{ <taper line> \}, \{ <length line> \}, 
-  \{ <freeform text line> \} 
+  { <taper line> }, { <length line> }, 
+  { <freeform text line> } 
   ?EOF? ;
-
-  <title line> = [ <freeform text> ], ?EOL? ;
 ```
 (* The Yagi Optimizer application truncates any text beyond the 52nd character, but this is not a limitation of the file format itself and does not need to be adhered to. *)
 ```
+ <title line> = [ <freeform text> ], ?EOL? ;
+
  <option line> = <material line> | <height line> | <stacking line> | <dual line>, ?EOL? ;
 
  <height line> = "Height ", <float value>, \{ <unit abbr> \}, ?EOL? ;
@@ -43,9 +43,9 @@ Format definition
 (* Yagi Optimizer has several built-in values for conductor losses and assumes 6061-T6 aluminum with a value of 4.01E-08 ohm-m if no other material is defined. The documentation does not indicate if "6061-T6" is a valid input on its own.
 
 Alternately, the material can be defined directly using Resistivity and supplying the value in ohm-m or Conductivity using IACS (International Annealed Copper Standard) units. Both Resistivity and Conductivity have an optional relative permeability, which defaults to 1 if it is not supplied. *)
-
+```
 <dual line> = "Dual" | "KLM", \{ <float value> \}, \{ <float value> \}
-
+```
 (* Adding Dual or KLM assumes a 230 ohm phasing line impedance and a 200 ohm feedline impedance. The first of the two optional inputs changes the phasing line impedance, the second changes the feedline impedance. *)
 ```
 <frequency line> = <float value> 
