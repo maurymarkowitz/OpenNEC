@@ -109,7 +109,7 @@ oNEC format definition
 ----------------------
 
 ### deck
-
+```
 <deck> = 
   (* comment area *)
   { <nec comment card> } | { <onec comment card> }, <nec comment end card>,
@@ -122,23 +122,23 @@ oNEC format definition
   (* end of deck area *)
   { <onec comment card> }, <deck end card>,
   { <freeform text card> } ;
-
+```
 A deck is the ultimate product of the oNEC file format. A deck must have at least a comment end card, at least one geometry card and a geometry end card, one or more command cards, a deck end card, and may be followed by one or more lines of freeform text. oNEC comment cards can be inserted at any point in the deck.
 
 ### comments area
-
+```
 <nec comment card> = "CM", [ <freeform text> ], <EOL> ;
 <nec comment end card> = "CE", [ <freeform text> ], <EOL> ;
-
+```
 Comment cards do not require comment text, and are often found with no test as a way to insert vertical whitespace.
-
+```
 <onec comment card> = <onec comment marker>, [ <freeform text> ], <EOL> ;
 <onec comment marker> = "CM" | "!" | "'" | "#" ;
-
+```
 oNEC comment cards can be placed anywhere in the deck. They can be marked with the NEC-style "CM" or any of the newer comment markers - "!", "'" and "#". All text after the marker should be preserved, including any whitespace between the marker and the comment, if present. *Generally*, oNEC comments are not placed in the normal NEC comment area at the top of the file, but may be found immediately following it or anywhere else in the deck.
 
 ### variable area
-
+```
 <onec variable card> = { <onec comment marker> }, "SY", 
                        <variable name>, "=", <formula>,
                        { ",", <variable name>, "=", <formula> },
@@ -155,7 +155,7 @@ oNEC comment cards can be placed anywhere in the deck. They can be marked with t
 <function> = "sin" | "cos" | "tan" | "atn" | "sqr"
            | "exp"| "log" | "log10" | "abs" | "sgn"
            | "fix" | "int" | "mod" ;
-
+```
 An oNEC variable card contains one or more variable definitions consisting of name=formula pairs. Variable names and formulas may not contain spaces or other whitespace characters. Variable names must start with a leading letter character followed by zero or more characters including digits and underscores. Formulas consist of one or more visible characters including numbers and mathematical symbols.
 
 If more than one definition is supplied on a single line, they are comma separated. oNEC variables may be "hidden" by adding an oNEC comment marker to the front. Hiding of this sort, if present, should be preserved when the file is written.
@@ -174,36 +174,36 @@ At least one geometry card is required as well as a single geometry end card. Al
 The format of the geometry card inputs can be found in the NEC2 documentation. 
 
 ### control area
-
+```
 <control card> = <group 1 control card> | <group 2 control card> | <group 3 control card> ;
 
 <group 1 control card> = <EK card> | <FR card> | <GN card> | <KH card> | <LD card> ;
 <group 2 control card> = <EX card> | <NT card> | <TL card> ;
 <group 3 control card> = <CP card> | <GD card> | <NE card> | <NH card>
                        | <NX card> | <PQ card> | <PT card> | <RP card> | <WG card> | <XQ card>;
-
+```
 The format of the control card inputs can be found in the NEC2 documentation. 
 
 ### end of deck area
-
+```
 <deck end card> = "EN", <EOL> ;
 
 <freeform text card> = { <freeform text> }, <EOL> ;
-
+```
 Any text after the end of the deck is considered to be a free-form comment and does not require a comment marker.
 
 ### oNEC extensions
-
+```
 <onec extension> = <name>, "=" | ":", <formula>, { <onec separator>, <name>, "=" | ":", <formula> } ;
 
 <inline comment marker> = "!" | "'" | "#" ;
 
 <onec separator> = "," | " " ;
-
+```
 oNEC extensions consist of one or more key/value pairs following one of the accepted inline comment markers. Keys and values are separated by equals signs or colons. *Generally* formulas will use equals, while other oNEC tags will use colons. This is simply to make them more easily distinguised in the deck text.
 
 ### basic types
-
+```
 <freeform text> = ? any ASCII character ?, { ? any ASCII character ? }, <EOL> ;
 
 <integer value> = [ "-" ], <digit>, { <digit> } ;
@@ -220,3 +220,4 @@ oNEC extensions consist of one or more key/value pairs following one of the acce
 <digit> = "0" .. "9" ;
 
 <EOL> = "LF" | "CR" | "CRLF" ;
+```
