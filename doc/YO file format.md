@@ -30,45 +30,45 @@ Format definition
 
  <option line> = <material line> | <height line> | <stacking line> | <dual line>, ?EOL? ;
 
- <height line> = "Height ", <float value>, \{ <unit abbr> \}, ?EOL? ;
+ <height line> = "Height ", <float value>, { <unit abbr> }, ?EOL? ;
 
  <material line> = <material def> | <resistivity def> | <conductivity def>, ?EOL? ;
                 
  <material def> = "Silver" | "Copper" | "Aluminum" | "6063-T832" | "Brass" | "Phosphor Bronze" | "Steel"
                       
- <resistivity def> = "Resistivity ", <float value>, \{ <float value> \}
+ <resistivity def> = "Resistivity ", <float value>, { <float value> }
 
- <conductivity def> = "Conductivity ", <float value>, \{ <float value> \}
+ <conductivity def> = "Conductivity ", <float value>, { <float value> }
 ```
 (* Yagi Optimizer has several built-in values for conductor losses and assumes 6061-T6 aluminum with a value of 4.01E-08 ohm-m if no other material is defined. The documentation does not indicate if "6061-T6" is a valid input on its own.
 
 Alternately, the material can be defined directly using Resistivity and supplying the value in ohm-m or Conductivity using IACS (International Annealed Copper Standard) units. Both Resistivity and Conductivity have an optional relative permeability, which defaults to 1 if it is not supplied. *)
 ```
-<dual line> = "Dual" | "KLM", \{ <float value> \}, \{ <float value> \}
+<dual line> = "Dual" | "KLM", { <float value> }, { <float value> }
 ```
 (* Adding Dual or KLM assumes a 230 ohm phasing line impedance and a 200 ohm feedline impedance. The first of the two optional inputs changes the phasing line impedance, the second changes the feedline impedance. *)
 ```
 <frequency line> = <float value> 
-                 | <float value> <float value> <float value>, \{ <float value> \}
-                 , \{ "KHz" | "MHz" | "GHz" \}
+                 | <float value> <float value> <float value>, { <float value> }
+                 , { "KHz" | "MHz" | "GHz" }
                  , ?EOL? ;
 ```
 (* Frequencies can be given as a single number or three. If the three-number format is used, an optional transformer matching frequency can be supplied as a fourth number. The frequencies can be followed with the optional measurement units. If no unit type is supplied, "MHz" is assumed. *)
 ```
-<geometry description line> = <integer value>, " elements", \{ "," ), " ", <unit name> | <unit abbr>, ?EOL? ;
+<geometry description line> = <integer value>, " elements", { "," ), " ", <unit name> | <unit abbr>, ?EOL? ;
 
 <unit name> = "feet" | "inches" | "meters" | "centimeters" | "millimeters" | "wavelengths"
 <unit abbr> =  "'" | '"' | "ft" | "in" | "m" | "cm" | "mm" | "w"
 ```
 (* Only the first two letters of the unit specifiers are read, so "feet" and "fe" are equivalent. *)
 ```
-<taper line> = \{ "Spacing" \} <float value>{ <unit abbr> \}, \{ <float value>{ <unit abbr> \} \}, ?EOL? ;
+<taper line> = { "Spacing" } <float value>{ <unit abbr> }, { <float value>{ <unit abbr> } }, ?EOL? ;
 ```
 (* Every YO file has to have at least one taper definition with at least one value. If a single value is supplied it describes the diameter of the antenna elements, if more than one value is supplied is describes the tapering of the diameter sampled at N points starting at the boom. Each entry in a taper line defines a "taper section". Some form of whitespace is normally inserted before the first value so that values on the following length lines will line up with the taper values. Up to 20 taper values are allowed.
 
 The optional "Spacing" keyword is described below. *)
 ```
-<length line> = <float value>{ <unit abbr> \}, <float value>{ <unit abbr> \}, \{ <float value>{ <unit abbr> \} \} ?EOL? ;
+<length line> = <float value>{ <unit abbr> }, <float value>{ <unit abbr> }, { <float value>{ <unit abbr> } } ?EOL? ;
 ```
 (* Length lines (normally) describe one-half of an element, measured out from the boom. The first length line in the file is always the reflector.
 
@@ -84,11 +84,11 @@ YO files may have more than one taper line, and the geometry following each one 
 
 As there is nothing in the taper or length lines that clearly define whether it is a taper or length line, Yagi Optimizer uses a formula to determine the type: if the sum of all the numbers on a given line are greater than .15 wavelengths, the line is a taper line, otherwise it is a length line. *)
 ```
-  <freeform text> = ?any printable ASCII character?, \{ ?any printable ASCII character? \}, ?EOL? ;
+  <freeform text> = ?any printable ASCII character?, { ?any printable ASCII character? }, ?EOL? ;
 
-  <integer value> = [ "-" ], <digit>, \{ <digit> \} ;
+  <integer value> = [ "-" ], <digit>, { <digit> } ;
 
-  <float value> = [ "-" ] \{ <digit> \}, [ ".", \{ <digit> \} ] [ "E" | "e" , [ "-" ] <digit>, \{ <digit> \} ] ;
+  <float value> = [ "-" ] { <digit> }, [ ".", { <digit> } ] [ "E" | "e" , [ "-" ] <digit>, { <digit> } ] ;
 
   <letter> = "A" .. "Z" | "a" .. "z" ;
 
