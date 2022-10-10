@@ -196,7 +196,8 @@ It is also possible to exactly recreate the YO geometry in NEC by creating a GW 
 
 Note that any particular length line in a YO file may have fewer items than the taper line for that section, so it is possible that some of the entries can be reduced back to a single GW. In any case where a single GW is used, the number of segments should not be one, but a value chosen according to the NEC rules to create a reasonable calculation. For Yagis in amateur radio, a value between 5 and 7 is likely useful, and doubling the number of items in the associated taper section is likely to work well if it falls in those limits.
 
-###Example conversion
+Example conversion
+------------------
 
 Consider the following YO file:
 
