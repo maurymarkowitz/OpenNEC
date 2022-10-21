@@ -12,7 +12,7 @@ NEC systems use text files known as "decks" to exchange design information betwe
 
 The oNEC file format adds a feature that allows the format to be arbitrarily extended without effecting the underlying NEC data. It also defines simple rules for converting an oNEC file into a pure NEC file. A program implementing oNEC can read any NEC file, and any NEC-compatible program can read a converted oNEC file with no loss of information.
 
-In short, the oNEC file format is a clearly defined, human readable, highly compatible, and easily extensible version of the original NEC format.
+In short, the oNEC file format is a clearly defined, human readable, compatible, and easily extensible version of the original NEC format.
 
 Background
 ----------
