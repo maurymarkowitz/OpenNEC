@@ -1,10 +1,10 @@
-Yagi Optimizer YO file format
-=============================
+Yagi Optimizer file format
+==========================
 
 Introduction
 ------------
 
-YO is an antenna design file format introduced in the 1994 Yagi Optimizer application by Brian Beezley. Files in YO format have no consistant extension, but sometimes ".ANT" or ".YO" may be found. They were common during the 1990s and 2000s, and examples are still found around the 'net today.
+Yagi Optimizer is an antenna design program introduced in 1994 by Brian Beezley. Files in YO have no consistant extension, but sometimes ".ant" or ".yo" may be found, as well as the semi-offical ".yag". These files were common during the 1990s and 2000s, and examples are still found around the 'net today.
 
 The application is solely for use with Yagi antennas, and uses the MININEC code to run its calculations. A key feature of MININEC is its ability to define explicit tapering dimensions, in contrast to NEC which uses a formula to calculate a series of taper steps. YO makes extensive use of this MININEC feature and its files are structured to include this data in a way that requires conversion to use with NEC.
 
@@ -13,16 +13,16 @@ This document outlines the features of the YO format and describes how to conver
 Format definition
 -----------------
 ```
-  <YO file> = 
-  <title line>,
-  { <option line> },
-  <frequency line>,
-  <geometry line>,
-  <taper line>,
-  <length line>,
-  { <taper line> }, { <length line> }, 
-  { <freeform text line> } 
-  ?EOF? ;
+<YO file> = 
+<title line>,
+{ <option line> },
+<frequency line>,
+<geometry line>,
+<taper line>,
+<length line>,
+{ <taper line> }, { <length line> }, 
+{ <freeform text line> } 
+?EOF? ;
 ```
 (* The Yagi Optimizer application truncates any text beyond the 52nd character, but this is not a limitation of the file format itself and does not need to be adhered to. *)
 ```
@@ -33,9 +33,9 @@ Format definition
  <height line> = "Height ", <float value>, { <unit abbr> }, ?EOL? ;
 
  <material line> = <material def> | <resistivity def> | <conductivity def>, ?EOL? ;
-                
+
  <material def> = "Silver" | "Copper" | "Aluminum" | "6063-T832" | "Brass" | "Phosphor Bronze" | "Steel"
-                      
+    
  <resistivity def> = "Resistivity ", <float value>, { <float value> }
 
  <conductivity def> = "Conductivity ", <float value>, { <float value> }
@@ -58,7 +58,7 @@ Alternately, the material can be defined directly using Resistivity and supplyin
 <geometry description line> = <integer value>, " elements", { "," ), " ", <unit name> | <unit abbr>, ?EOL? ;
 
 <unit name> = "feet" | "inches" | "meters" | "centimeters" | "millimeters" | "wavelengths"
-<unit abbr> =  "'" | '"' | "ft" | "in" | "m" | "cm" | "mm" | "w"
+<unit abbr> = "'" | '"' | "ft" | "in" | "m" | "cm" | "mm" | "w"
 ```
 (* Only the first two letters of the unit specifiers are read, so "feet" and "fe" are equivalent. *)
 ```
@@ -84,15 +84,15 @@ YO files may have more than one taper line, and the geometry following each one 
 
 As there is nothing in the taper or length lines that clearly define whether it is a taper or length line, Yagi Optimizer uses a formula to determine the type: if the sum of all the numbers on a given line are greater than .15 wavelengths, the line is a taper line, otherwise it is a length line. *)
 ```
-  <freeform text> = ?any printable ASCII character?, { ?any printable ASCII character? }, ?EOL? ;
+<freeform text> = ?any printable ASCII character?, { ?any printable ASCII character? }, ?EOL? ;
 
-  <integer value> = [ "-" ], <digit>, { <digit> } ;
+<integer value> = [ "-" ], <digit>, { <digit> } ;
 
-  <float value> = [ "-" ] { <digit> }, [ ".", { <digit> } ] [ "E" | "e" , [ "-" ] <digit>, { <digit> } ] ;
+<float value> = [ "-" ] { <digit> }, [ ".", { <digit> } ] [ "E" | "e" , [ "-" ] <digit>, { <digit> } ] ;
 
-  <letter> = "A" .. "Z" | "a" .. "z" ;
+<letter> = "A" .. "Z" | "a" .. "z" ;
 
-  <digit> = "0" .. "9" ;
+<digit> = "0" .. "9" ;
 ```
 (* All keywords are case insensitive, "Copper", "copper" and "CoPPer" are equivalent. Whitespace between fields can consist of spaces or tabs.
 
@@ -102,65 +102,65 @@ Examples
 --------
 
 Here is an example of a simple YO file from the original Yagi Optimizer documentation:
-
-	K7HYR's Max Gain Yagi
-	24.890  24.940  24.990  24.960  MHz
-	4 elements, inches
-	            1.617     1.250     1.125     0.875
-	  0.000     2.938    15.062    66.000    33.305
-	124.000     2.938    15.062    66.000    28.248
-	248.000     2.938    15.062    66.000    26.815
-	372.000     2.938    15.062    66.000    28.313
-
+```
+K7HYR's Max Gain Yagi
+24.890  24.940  24.990  24.960  MHz
+4 elements, inches
+            1.617     1.250     1.125     0.875
+  0.000     2.938    15.062    66.000    33.305
+124.000     2.938    15.062    66.000    28.248
+248.000     2.938    15.062    66.000    26.815
+372.000     2.938    15.062    66.000    28.313
+```
 This file is optimizing a multi-frequency system with a transformer matching frequency of 24.960  MHz. There are four elements and the basic measurement unit is inches. There is a single taper line describing elements that taper from 1.617 inches near the boom to 0.875 at the tip. The three elements are spaced at 10' 4", 20' 8", and 31' from the reflector, and taper more strongly in the tip area.
 
 Here is a version of the same design using spacing instead of absolute measurements:
-
-	K7HYR's Max Gain Yagi
-	24.890  24.940  24.990  24.960  MHz
-	4 elements, inches
-	spacing     1.617     1.250     1.125     0.875
-	  0.000     2.938    15.062    66.000    33.305
-	124.000     2.938    15.062    66.000    28.248
-	124.000     2.938    15.062    66.000    26.815
-	124.000     2.938    15.062    66.000    28.313
-	
+```
+K7HYR's Max Gain Yagi
+24.890  24.940  24.990  24.960  MHz
+4 elements, inches
+spacing     1.617     1.250     1.125     0.875
+  0.000     2.938    15.062    66.000    33.305
+124.000     2.938    15.062    66.000    28.248
+124.000     2.938    15.062    66.000    26.815
+124.000     2.938    15.062    66.000    28.313
+```
 This modification describes an antenna where the reflector is slightly longer than the elements:
-
-	K7HYR's Max Gain Yagi
-	24.890  24.940  24.990  24.960  MHz
-	4 elements, inches
-	spacing     1.617     1.250     1.125     0.875     0.75
-	  0.000     2.938    15.062    66.000    28.248    33.305
-	124.000     2.938    15.062    66.000    28.248
-	124.000     2.938    15.062    66.000    26.815
-	124.000     2.938    15.062    66.000    28.313
-
+```
+K7HYR's Max Gain Yagi
+24.890  24.940  24.990  24.960  MHz
+4 elements, inches
+spacing     1.617     1.250     1.125     0.875     0.75
+  0.000     2.938    15.062    66.000    28.248    33.305
+124.000     2.938    15.062    66.000    28.248
+124.000     2.938    15.062    66.000    26.815
+124.000     2.938    15.062    66.000    28.313
+```
 And this one where the first element is not tapered but a constant 1.125 inches diameter:
-
-	K7HYR's Max Gain Yagi
-	24.890  24.940  24.990  24.960  MHz
-	4 elements, inches
-	spacing     1.617     1.250     1.125     0.875     0.75
-	  0.000     2.938    15.062    66.000    28.248    33.305
-	124.000     0    	0    	0	28.248
-	124.000     2.938    15.062    66.000    26.815
-	124.000     2.938    15.062    66.000    28.313
-
+```
+K7HYR's Max Gain Yagi
+24.890  24.940  24.990  24.960  MHz
+4 elements, inches
+spacing     1.617     1.250     1.125     0.875     0.75
+  0.000     2.938    15.062    66.000    28.248    33.305
+124.000     0    	0    	0	28.248
+124.000     2.938    15.062    66.000    26.815
+124.000     2.938    15.062    66.000    28.313
+```
 Note that using 0 or leaving an entry blank may result in the columns not lining up properly, as in this case. One may correct this by entering additional decimals on the zeros. Finally, we will describe the material, antenna height and pair of two antennas:
-
-	Stacked yagis 50 feet apart
-	Height 70'
-	Copper
-	Stacked 600
-	24.890  24.940  24.990  24.960  MHz
-	4 elements, inches
-	spacing     1.617     1.250     1.125     0.875     0.75
-	  0.000     2.938    15.062    66.000    28.248    33.305
-	124.000     0.000     0.000     0.000	 28.248
-	124.000     2.938    15.062    66.000    26.815
-	124.000     2.938    15.062    66.000    28.313
-
+```
+Stacked yagis 50 feet apart
+Height 70'
+Copper
+Stacked 600
+24.890  24.940  24.990  24.960  MHz
+4 elements, inches
+spacing     1.617     1.250     1.125     0.875     0.75
+  0.000     2.938    15.062    66.000    28.248    33.305
+124.000     0.000     0.000     0.000	 28.248
+124.000     2.938    15.062    66.000    26.815
+124.000     2.938    15.062    66.000    28.313
+```
 The stacking is 50 feet, or 600 inches, the default measurement type for this file. The original documentation does not state whether a measurement type can be defined here, authors should assume it can.
 
 Converting to NEC format
@@ -200,19 +200,19 @@ Example conversion
 ------------------
 
 Consider the following YO file:
-
-	Stacked yagis 50 feet apart
-	Height 70'
-	Copper
-	Stacked 600
-	24.890  24.940  24.990  24.960  MHz
-	4 elements, inches
-	spacing     1.617     1.250     1.125     0.875     0.75
-	  0.000     2.938    15.062    66.000    28.248    33.305
-	124.000     0    	0    	28.248
-	124.000     2.938    15.062    66.000    26.815
-	124.000     2.938    15.062    66.000    28.313
-
+```
+Stacked yagis 50 feet apart
+Height 70'
+Copper
+Stacked 600
+24.890  24.940  24.990  24.960  MHz
+4 elements, inches
+spacing     1.617     1.250     1.125     0.875     0.75
+  0.000     2.938    15.062    66.000    28.248    33.305
+124.000     0    	0    	28.248
+124.000     2.938    15.062    66.000    26.815
+124.000     2.938    15.062    66.000    28.313
+```
 There are a number of items to consider:
 
 1. the Height is in feet, and has to be converted to inches
@@ -223,56 +223,56 @@ There are a number of items to consider:
 
 The resulting NEC file would be:
 ```
-  CM Stacked yagis 50 feet apart
-  CE
-  !
-  ! the Z value is 840, the Height of 70' converted to inches
-  ! the Y value is 0, meaning "the reflector end of the antenna"
-  ! there are five entries in the taper line, so the reflector
-  ! has five GW's, one for each taper
-  !
-  GW 1 1 0.000 840 0 2.938 840 0 1.617
-  GW 2 1 2.938 840 0 15.062 840 0 1.250
-  GW 3 1 15.062 840 0 66.000 840 0 1.250
-  GW 4 1 66.000 840 0 66.000 840 0 0.875
-  GW 5 1 28.248 840 0 33.305 840 0 0.75
-  !
-  ! the next element has only a single GW because the
-  ! other taper values are zero. note the segment count
-  ! matching the number above as parallel conductors should
-  ! (generally) have the same count in NEC. also note the Z
-  ! measure as an offset because this is located along the boom
-  !
-  GW 6 5 -28.248 840 124.000 28.248 840 124.000 0.875
-  !
-  ! and remaining two passive elements are one segment shorter than 
-  ! the reflector so they have four entries each. They are located 
-  ! using "spacing" so we have to calculate the Z values
-  !
-  GW 7 1 0 840 248 2.938 840 248 1.617
-  GW 8 1 2.938 840 248 15.062 840 248 1.250
-  GW 9 1 15.062 840 124 66.000 840 124 1.250
-  GW 10 1 66.000 840 124 28.313 840 124 0.875
-  !
-  GW 11 1 0 840 248 2.938 840 248 1.617
-  GW 12 1 2.938 840 248 15.062 840 248 1.250
-  GW 13 1 15.062 840 124 66.000 840 124 1.250
-  GW 14 1 66.000 840 124 28.313 840 124 0.875
-  !
-  ! now we use a GM card to reflect that through the X axis
-  ! by rotating it around the Z axis
-  !
-  GM 20 1 0 0 180 0 0 0
-  !
-  ! now another GM to create the second antenna above the
-  ! first by translating it on the Y axis
-  !
-  GM 30 1 0 0 0 0 600 0
-  !
-  ! and then a GS to convert everything to inches
-  !
-  GS 0 0 39.3701
-  !
-  ! and we're done with the geometry
-  GE
+CM Stacked yagis 50 feet apart
+CE
+!
+! the Z value is 840, the Height of 70' converted to inches
+! the Y value is 0, meaning "the reflector end of the antenna"
+! there are five entries in the taper line, so the reflector
+! has five GW's, one for each taper
+!
+GW 1 1 0.000 840 0 2.938 840 0 1.617
+GW 2 1 2.938 840 0 15.062 840 0 1.250
+GW 3 1 15.062 840 0 66.000 840 0 1.250
+GW 4 1 66.000 840 0 66.000 840 0 0.875
+GW 5 1 28.248 840 0 33.305 840 0 0.75
+!
+! the next element has only a single GW because the
+! other taper values are zero. note the segment count
+! matching the number above as parallel conductors should
+! (generally) have the same count in NEC. also note the Z
+! measure as an offset because this is located along the boom
+!
+GW 6 5 -28.248 840 124.000 28.248 840 124.000 0.875
+!
+! and remaining two passive elements are one segment shorter than 
+! the reflector so they have four entries each. They are located 
+! using "spacing" so we have to calculate the Z values
+!
+GW 7 1 0 840 248 2.938 840 248 1.617
+GW 8 1 2.938 840 248 15.062 840 248 1.250
+GW 9 1 15.062 840 124 66.000 840 124 1.250
+GW 10 1 66.000 840 124 28.313 840 124 0.875
+!
+GW 11 1 0 840 248 2.938 840 248 1.617
+GW 12 1 2.938 840 248 15.062 840 248 1.250
+GW 13 1 15.062 840 124 66.000 840 124 1.250
+GW 14 1 66.000 840 124 28.313 840 124 0.875
+!
+! now we use a GM card to reflect that through the X axis
+! by rotating it around the Z axis
+!
+GM 20 1 0 0 180 0 0 0
+!
+! now another GM to create the second antenna above the
+! first by translating it on the Y axis
+!
+GM 30 1 0 0 0 0 600 0
+!
+! and then a GS to convert everything to inches
+!
+GS 0 0 39.3701
+!
+! and we're done with the geometry
+GE
 ```
