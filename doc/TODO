@@ -11,3 +11,5 @@ Items still to be implemented:
 * add SYmbols to a deck-wide list, not just the cards they're on
 
 * look for comment rows that contain key/value pairs and see if they should be merged onto the previous row. this can occur if an external editor added a line feed at precisely the point where an inline comment started
+
+* add TIA-804-B (.adf) pattern output, which is simply a standard way of writing the NEC pattern
