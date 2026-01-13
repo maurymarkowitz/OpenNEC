@@ -31,7 +31,7 @@
 Card* new_card(void) {
   Card *card = calloc(1, sizeof(Card));
   card->edited = FALSE;     // new cards are not edited, by default. this only applies to USER edits!
-  card->ignore = FALSE;     // cards should not be ignored by default. should apply to geometery and commands?
+  card->ignore = FALSE;     // cards should not be ignored by default. should apply to geometry and commands?
   card->extn_code[0] = 0;   // this will be applied if there is a code found on the line or the user adds one
   return card;
 }
@@ -45,6 +45,8 @@ Card* new_card(void) {
  *
  */
 void free_card(Card *card) {
+  if(card == NULL) return;
+  
   // start with the various strings
   if(card->orig_str != NULL) free(card->orig_str);
   if(card->card_str != NULL) free(card->card_str);
@@ -159,7 +161,7 @@ void free_deck(Deck *deck) {
 /******************************************************************************
  * append_card
  *
- * append_card adds the Card to the end of the Deck
+ * append_card adds a Card to the end of the Deck
  *
  * @param deck the Deck to add a new card to
  * @param card the Card to add
@@ -196,6 +198,7 @@ int append_card(Deck *deck, Card *card) {
  * @param deck the Deck to add a new card to
  * @param card the Card to add
  * @param location the index to add it at
+ * @return 0 for success, 1 for any problem (currently only bad index)
  *
  */
 int insert_card(Deck *deck, Card *card, int location) {
@@ -237,6 +240,7 @@ int insert_card(Deck *deck, Card *card, int location) {
  *
  * @param deck the Deck to delete the card from
  * @param location the index of the item to delete
+ * @return 0 for success, 1 for any problem (currently only bad index)
  *
  */
 int remove_card(Deck *deck, int location) {
@@ -272,6 +276,7 @@ int remove_card(Deck *deck, int location) {
  * @param list which list we're adding it to
  * @param key a string for the key
  * @param value a string for the value
+ * @param separator the char to use as a separator when writing the deck
  *
  */
 void add_key_value(Card *card, KeyValue *list, char *key, char *value, char separator)
@@ -481,7 +486,7 @@ int max_flt_fields(Card* card)
  * isGeometryEdited
  *
  * isGeometryEdited loops through the geometry section of the deck and looks
- * for any new or edited card, which means we need to re-run the geometry
+ * for any edited (or new) card, which means we need to re-run the geometry
  * creation code. It's the only section that needs this, there's nothing
  * to recalculate for the comments, and the command section regenerates its
  * output every time.
@@ -564,7 +569,6 @@ double convert_awg_to_meters(double awg_value)
   }
 }
 
-
 /******************************************************************************
  * update_deck_values
  *
@@ -572,6 +576,7 @@ double convert_awg_to_meters(double awg_value)
  * update_card_values on any card that has a formula or unit. Normally called
  * after making a change to any of the SY cards, or just before any deck-wide
  * actions like saving it out or running a calculation.
+ * 
  */
 void update_deck_values(Deck *deck)
 {
@@ -635,3 +640,4 @@ void update_card_values(Card *card)
   } // for
 } /* update_card_values() */
 
+/* end of deck.c */

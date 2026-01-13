@@ -47,28 +47,28 @@
 		558A2F22286B36060034B962 /* OpenNEC file format.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "OpenNEC file format.md"; sourceTree = "<group>"; };
 		558A2F23286B37530034B962 /* YO file format.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "YO file format.md"; sourceTree = "<group>"; };
 		55B274D7205ADE9C0064F9BF /* network.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = network.c; sourceTree = "<group>"; };
-		55B274D8205ADE9C0064F9BF /* shared.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = shared.h; sourceTree = "<group>"; };
-		55B274D9205ADE9C0064F9BF /* deck.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = deck.c; sourceTree = "<group>"; };
-		55B274DA205ADE9C0064F9BF /* tinyexpr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tinyexpr.h; sourceTree = "<group>"; };
-		55B274DB205ADE9C0064F9BF /* shared.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = shared.c; sourceTree = "<group>"; };
-		55B274DC205ADE9C0064F9BF /* types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = types.h; sourceTree = "<group>"; };
-		55B274DD205ADE9C0064F9BF /* calculations.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = calculations.c; sourceTree = "<group>"; };
-		55B274DE205ADE9C0064F9BF /* output.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = output.c; sourceTree = "<group>"; };
-		55B274DF205ADE9C0064F9BF /* geometry.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = geometry.c; sourceTree = "<group>"; };
-		55B274E0205ADE9C0064F9BF /* input.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = input.c; sourceTree = "<group>"; };
+		55B274D8205ADE9C0064F9BF /* shared.h */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.h; path = shared.h; sourceTree = "<group>"; tabWidth = 2; };
+		55B274D9205ADE9C0064F9BF /* deck.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = deck.c; sourceTree = "<group>"; tabWidth = 2; };
+		55B274DA205ADE9C0064F9BF /* tinyexpr.h */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.h; path = tinyexpr.h; sourceTree = "<group>"; tabWidth = 2; };
+		55B274DB205ADE9C0064F9BF /* shared.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = shared.c; sourceTree = "<group>"; tabWidth = 2; };
+		55B274DC205ADE9C0064F9BF /* types.h */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.h; path = types.h; sourceTree = "<group>"; tabWidth = 2; };
+		55B274DD205ADE9C0064F9BF /* calculations.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = calculations.c; sourceTree = "<group>"; tabWidth = 2; };
+		55B274DE205ADE9C0064F9BF /* output.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = output.c; sourceTree = "<group>"; tabWidth = 2; };
+		55B274DF205ADE9C0064F9BF /* geometry.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = geometry.c; sourceTree = "<group>"; tabWidth = 2; };
+		55B274E0205ADE9C0064F9BF /* input.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = input.c; sourceTree = "<group>"; tabWidth = 2; };
 		55B274E1205ADE9C0064F9BF /* misc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = misc.c; sourceTree = "<group>"; };
-		55B274E2205ADE9C0064F9BF /* ground.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ground.c; sourceTree = "<group>"; };
-		55B274E3205ADE9C0064F9BF /* proto.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = proto.h; sourceTree = "<group>"; };
-		55B274E4205ADE9C0064F9BF /* tinyexpr.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = tinyexpr.c; sourceTree = "<group>"; };
-		55B274E5205ADE9C0064F9BF /* fields.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fields.c; sourceTree = "<group>"; };
+		55B274E2205ADE9C0064F9BF /* ground.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = ground.c; sourceTree = "<group>"; tabWidth = 2; };
+		55B274E3205ADE9C0064F9BF /* proto.h */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.h; path = proto.h; sourceTree = "<group>"; tabWidth = 2; };
+		55B274E4205ADE9C0064F9BF /* tinyexpr.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = tinyexpr.c; sourceTree = "<group>"; tabWidth = 2; };
+		55B274E5205ADE9C0064F9BF /* fields.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = fields.c; sourceTree = "<group>"; tabWidth = 2; };
 		55B274E6205ADE9D0064F9BF /* matrix.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = matrix.c; sourceTree = "<group>"; };
 		55B274E7205ADE9D0064F9BF /* radiation.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = radiation.c; sourceTree = "<group>"; };
 		55B274E8205ADE9D0064F9BF /* somnec.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = somnec.c; sourceTree = "<group>"; };
-		55B274E9205ADE9D0064F9BF /* types.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = types.c; sourceTree = "<group>"; };
-		55B274EA205ADE9D0064F9BF /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
-		55B274EB205ADE9D0064F9BF /* opennec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = opennec.h; sourceTree = "<group>"; };
+		55B274E9205ADE9D0064F9BF /* types.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = types.c; sourceTree = "<group>"; tabWidth = 2; };
+		55B274EA205ADE9D0064F9BF /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; tabWidth = 2; };
+		55B274EB205ADE9D0064F9BF /* opennec.h */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.h; path = opennec.h; sourceTree = "<group>"; tabWidth = 2; };
 		55CF749B286D268F00802021 /* test_script.sc */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = test_script.sc; sourceTree = "<group>"; };
-		55FA0D3F278B3AF000257B8E /* tests.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tests.c; sourceTree = "<group>"; };
+		55FA0D3F278B3AF000257B8E /* tests.c */ = {isa = PBXFileReference; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = tests.c; sourceTree = "<group>"; tabWidth = 2; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -101,9 +101,9 @@
 				55B274E9205ADE9D0064F9BF /* types.c */,
 				55B274D8205ADE9C0064F9BF /* shared.h */,
 				55B274DB205ADE9C0064F9BF /* shared.c */,
+				55B274D9205ADE9C0064F9BF /* deck.c */,
 				55B274E0205ADE9C0064F9BF /* input.c */,
 				55B274DE205ADE9C0064F9BF /* output.c */,
-				55B274D9205ADE9C0064F9BF /* deck.c */,
 				55FA0D3F278B3AF000257B8E /* tests.c */,
 				55B274DF205ADE9C0064F9BF /* geometry.c */,
 				55B274DD205ADE9C0064F9BF /* calculations.c */,

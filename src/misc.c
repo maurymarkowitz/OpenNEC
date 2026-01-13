@@ -11,16 +11,31 @@ void add_error(Errors *errors, char *message, int severity)
   // make a new error object and fill it out
   Error newErr;
   newErr.severity = severity;
-  newErr.message = calloc(strlen(message), sizeof(char));
+  newErr.message = calloc(strlen(message) + 1, sizeof(char));
   strcpy(newErr.message, message);
   // now put it into the error list
   if(errors->num_errors == 0) {
     errors->errors = calloc(1, sizeof(Error));
   } else {
-    errors->errors = realloc(errors->errors, errors->num_errors * sizeof(Error));
+    errors->errors = realloc(errors->errors, (errors->num_errors + 1) * sizeof(Error));
   }
   errors->errors[errors->num_errors] = newErr;
   errors->num_errors++;
+}
+
+void add_message(Outputs *outputs, char *message)
+{
+  // make a new message string
+  char *newMsg = calloc(strlen(message) + 1, sizeof(char));
+  strcpy(newMsg, message);
+  // now put it into the message list
+  if(outputs->num_messages == 0) {
+    outputs->messages = calloc(1, sizeof(char *));
+  } else {
+    outputs->messages = realloc(outputs->messages, (outputs->num_messages + 1) * sizeof(char *));
+  }
+  outputs->messages[outputs->num_messages] = newMsg;
+  outputs->num_messages++;
 }
 
 /***  String utils ***/
@@ -81,9 +96,9 @@ char* trim_end(char* str)
  *  prints an error message and exits
  */
 
-void abort_on_error( int why )
+void abort_on_error(int why)
 {
-  switch( why )
+  switch(why)
   {
 	case -1 : /* abort if input file name too long */
 	  fprintf( error_fp, "%s\n",
@@ -122,7 +137,7 @@ void abort_on_error( int why )
   }  /* switch( why ) */
 
   /* clean up and quit */
-  stop( why );
+  stop(why);
 
 } /* end of abort_on_error() */
 

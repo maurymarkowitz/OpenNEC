@@ -1,0 +1,18 @@
+# build grunge
+onec
+opennec
+nec2c
+*.o
+*.a
+
+# Xcode
+DerivedData/
+build/
+*.xcuserdata/
+*.xcuserstate
+*.xcworkspace
+xcshareddata/
+
+# macOS
+.DS_Store
+.deps

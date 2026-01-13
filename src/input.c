@@ -14,7 +14,9 @@
  * reads the entire deck into memory first. This allows it to easily perform
  * whole-deck checks, like looking for a missing EN, or a GW that's missing
  * its GC. To do this, OpenNEC also keeps every card it finds, even blank
- * lines and all-comment lines.
+ * lines and lines that contain only a comment. Keeping all of these also
+ * makes it much easier to use as an editor, whereas NEC2 was designed solely
+ * to read the deck and run it.
  *
  * Other changes to this code include a wider set of comment markers
  * including CM, !, # and ', whereas nec2c only accepted # outside the
@@ -23,7 +25,7 @@
  * the (potential) OpenNEC extensions. It keeps track of what the original
  * comment marker was so it can save it back out in the same format.
  *
- *******************************************************************/
+ *****************************************************************************/
 
 #include "opennec.h"
 #include "shared.h"
@@ -42,9 +44,11 @@
  */
 void read_deck(Deck *deck, FILE *input_fp)
 {
-  Card *card = NULL;  // the card we're working on, have to null it or the Free() below may fail when this contains garbage
+  // the card we're working on, have to null it or the Free()
+  // below may fail when this contains garbage
+  Card *card = NULL;
 
-  char line_buf[MAX_LINE_LEN];  // make it large enough to hold any possible line
+  char line_buf[MAX_LINE_LEN];  // make it large enough to hold any line
   size_t line_len;              // actual length of the current card being read
     
   // set the card count to 0, it might have !=0 default
@@ -80,7 +84,8 @@ void read_deck(Deck *deck, FILE *input_fp)
     deck->cards[deck->num_cards - 1] = *card;
     
     // if this is an XT card, stop processing further lines
-    // note that we don't have the card_code at this point, so we do the the hard way
+    // note that we don't have the card_code at this point,
+    // so we do the the hard way
     if((line_len >= 2) && ((line_buf[0] == 'X') && (line_buf[1] == 'T')))
       break;
   }
@@ -99,11 +104,11 @@ void read_deck(Deck *deck, FILE *input_fp)
  * to separate cards so that it can perform whole-stack syntax checking
  * and similar tests.
  *
- * You might expect this to use c's built-in fgets or getline or similar.
+ * You might expect this to use C's built-in fgets or getline or similar.
  * It doesn't because of the infrequent but seen-in-the-wild problem of
  * hard returns being inserted in the middle of lines when users edit
  * their decks using some text editors. This code reads until it has
- * seen the required number of fields even if they cross multiple lines
+ * seen the required number of fields even if they cross multiple lines,
  * thereby fixing such damage by merging the lines back together.
  *
  * This means that if one simply loads and then saves the deck, the
@@ -117,17 +122,13 @@ void read_deck(Deck *deck, FILE *input_fp)
  * comment on the previous line, if none are found then it is *likely* to
  * be a separate comment line.
  *
- * This can likely be improved by using scanf to read in one line,
- * process as much of it as possible, and the  deciding whether or
- * not the line is complete. But it seems unlikely this would have a
- * real-world impact given the size of typical decks.
- *
  * This code also automatically capitalizes the first two characters
- * on the line.
+ * on the line, regardless of how they were entered originally.
  *
  * @param buff String containing the contents of one line
  * @param file file pointer to the file to be read, assumed
  *  to have been opened previous to this call
+ * 
 */
 int read_line(char *buff, FILE *file)
 {
@@ -136,7 +137,7 @@ int read_line(char *buff, FILE *file)
     eof = 0,      // EOF flag
     chr;          // character read by getc
   
-  /* clear buffer at start */
+  // clear buffer
   buff[0] = '\0';
   
   // if we're at the end of the file, return that, we're done
@@ -145,7 +146,7 @@ int read_line(char *buff, FILE *file)
   }
   
   // the line parser below stops and returns as soon as it sees a single
-  // cr or lf that means that when we re-enter the routine, the file might
+  // cr or lf. That means that when we re-enter the routine, the file might
   // have leading cr's or lf's left over. this code eats them. note that this
   // also eats totally empty lines, and it's not clear that's what we want,
   // we might want to save those in order to report a warning. if that's the
@@ -176,7 +177,7 @@ int read_line(char *buff, FILE *file)
     // if we get the EOF, end the string at that point by replacing it
     // with a null and then setting the flag that we're done
     if((chr = getc(file)) == EOF) {
-      buff[num_chr] = '\0';
+      buff[num_chr] = '\0'; // FIXME: do we need this? it happens below
       eof = EOF;
     }
   } /* end of while( num_chr < MAX_LINE_LEN ) */
@@ -190,7 +191,7 @@ int read_line(char *buff, FILE *file)
 /******************************************************************************
  * parse_deck()
  *
- * parses the original data from the file once it's all read in
+ * parses the original data from the file once it's all read in by read_deck
  *
  * this starts by extracting the code from the front of the orig_str and
  * then looking for and clipping off any comment or extensions at the end
@@ -231,7 +232,8 @@ void parse_deck(Deck *deck, Errors *errors)
     // null the end
     type_buff[2] = '\0';
 	
-    // the code might only be one char, but if there's a comment following it then strlen>1, so...
+    // the code might only be one char, but if there's a comment
+    // following it then strlen>1, so...
     if(isspace(type_buff[1])) {
       type_buff[1] = '\0';
     }
@@ -258,9 +260,9 @@ void parse_deck(Deck *deck, Errors *errors)
     // every system.
     //
     // so, for instance, if this is the first CM card we've seen, and we
-    // have NOT seen a CE or any Gx card, then this appears to be the
-    // start of the comment section. But if we saw a GW or something,
-    // then it's just a comment in the deck and not part of the header.
+    // have NOT seen a CE or any Gx card, then this would be the start
+    // of the comment section. But if we saw a GW or something, then it's
+    // just a comment in the deck and not part of the header.
     if(strcmp(type_buff, "CM") == 0 && !sawCM && !sawCE && !sawGx && !sawGE && !sawEN) {
       deck->comment_start = i;
       sawCM = TRUE;
@@ -275,7 +277,7 @@ void parse_deck(Deck *deck, Errors *errors)
       deck->geometry_start = i;
       sawGx = TRUE;
     }
-    // the GE just has to be above the end of the deck
+    // the GE only has to be above the end of the deck
     if(strcmp(type_buff, "GE") == 0 && !sawGE && !sawEN) {
       deck->geometry_end = i;
       sawGE = TRUE;
@@ -406,7 +408,9 @@ void parse_deck(Deck *deck, Errors *errors)
  *
  * copies the comment from the card_str into the comment string so that
  * it can be updated there. This is not used to process inline comments,
- * that happened in the extension parser before we got here
+ * that happened in the extension parser before we got here. This function
+ * only applies to whole-line comments.
+ *
  */
 void parse_comment_card(Card *card, Errors *errors)
 {
@@ -435,6 +439,7 @@ void parse_comment_card(Card *card, Errors *errors)
  * parse_geometry_or_command_card()
  *
  * parses the contents of one geometry card. formerly ???()
+ * *or*
  * parses the contents of one command card. formerly readem()
  *
  * The main difference between this code and the original nec2c code is
@@ -449,9 +454,9 @@ void parse_geometry_or_control_card(Card *card, Errors *errors)
   char *end_ptr;      // end point of a a number as we parse them
   size_t int_value;   // used to parse ints...
   double dbl_value;   // ... and doubles
-  int unit;                     // ...and our internal code for that unit if we found it, or 0 for default
-  bool isUnit;                  // did the field have units?
-  bool isFormula;               // was the double actually a formula?
+  int unit;           // ...and our internal code for that unit if we found it, or 0 for default
+  bool isUnit;        // did the field have units?
+  bool isFormula;     // was the double actually a formula?
   
   int MAX_INTS = max_int_fields(card);
   int MAX_FLTS = max_flt_fields(card);
@@ -467,7 +472,7 @@ void parse_geometry_or_control_card(Card *card, Errors *errors)
   // can't be a single-char comment market, which was handled above
   // we'll use this as the pointer to the current start location
   char str[MAX_LINE_LEN];
-  strcpy(str, trim_start(card->card_str + 2)); // skip the card code and any whitespace
+  strcpy(str, trim_start(card->card_str + 2)); // skip the card code and remove whitespace
   
   // tokenize the rest of the line on the remaining whitespace
   token = strtok(str, ONEC_WHITESPACE);
@@ -522,6 +527,7 @@ void parse_geometry_or_control_card(Card *card, Errors *errors)
       // AWG needs to be handled a little differently, because:
       // 1. the unit code can be in the front or back
       // 2. the value might look like a formula, eg. 2/0
+      
       // look for a leading # indicating an awg measurement from 4nec2
       if(token[0] == '#') {
         isUnit = TRUE;
@@ -820,3 +826,5 @@ void parse_key_values(Card *card, Errors *errors)
     card->comment = card->extn_str;
   }
 } /* end of parse_key_values() */
+
+/* end of input.c */

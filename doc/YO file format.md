@@ -4,9 +4,9 @@ Yagi Optimizer file format
 Introduction
 ------------
 
-Yagi Optimizer is an antenna design program introduced in 1994 by Brian Beezley. Files in YO have no consistant extension, but sometimes ".ant" or ".yo" may be found, as well as the semi-offical ".yag". These files were common during the 1990s and 2000s, and examples are still found around the 'net today.
+Yagi Optimizer is an antenna design program introduced in 1994 by Brian Beezley. Files in YO have no consistent extension, but sometimes ".ant" or ".yo" may be found, as well as the semi-official ".yag". These files were common during the 1990s and 2000s, and examples are still found around the 'net today.
 
-The application is solely for use with Yagi antennas, and uses the MININEC code to run its calculations. A key feature of MININEC is its ability to define explicit tapering dimensions, in contrast to NEC which uses a formula to calculate a series of taper steps. YO makes extensive use of this MININEC feature and its files are structured to include this data in a way that requires conversion to use with NEC.
+The application is solely for use with Yagi antennas, and uses the MININEC code to run its calculations. A key feature of MININEC is its ability to define explicit tapering dimensions, in contrast to NEC, which uses a formula to calculate a series of taper steps. YO makes extensive use of this MININEC feature and its files are structured to include this data in a way that requires conversion to use with NEC.
 
 This document outlines the features of the YO format and describes how to convert the file to a canonical NEC or OpenNEC file.
 
@@ -161,7 +161,7 @@ spacing     1.617     1.250     1.125     0.875     0.75
 124.000     2.938    15.062    66.000    26.815
 124.000     2.938    15.062    66.000    28.313
 ```
-The stacking is 50 feet, or 600 inches, the default measurement type for this file. The original documentation does not state whether a measurement type can be defined here, authors should assume it can.
+The stacking is 50 feet, or 600 inches, the default measurement type for this file. The original documentation does not state whether a measurement type can be defined on the stacking line, *authors should assume it can*.
 
 Converting to NEC format
 ------------------------
@@ -170,7 +170,7 @@ A YO file can be easily converted to NEC format, although some information will 
 
 The conversion of the initial data at the top of the file generally follows this pattern:
 
-1. the first line is a comment, and can be copied directly to a GC line with a following GE, or a single GE with the comment on that line
+1. the first line is a comment, and can be copied directly to a GC line with a following GE, or a single GE with the comment on that line. For clarity, the former format is desired as the GE adds whitespace that visibly separates the sections.
 2. a Height line, if present, sets the Z value for the following geometry lines
 3. a material, if defined, can be converted to values on an LD card in NEC for calculation, and may be defined as an OpenNEC extension on a deck-wide basis to display proper coloration in a GUI display
 4. a stacked antenna can be implemented in NEC with a GM card at the bottom of the geometry section of the NEC file with a NRPT of 1 and the separation value in the Z input. The ITS should be zero, and a value should be provided by the ITGI although it will not be required.

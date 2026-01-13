@@ -28,16 +28,18 @@ char *control_codes[NUM_CONTROL_CODES] = {
 };
 
 // this list is from the original nec2c but has been expanded with
-// some that nec2c left off. The original code didn't need something
-// like GC because it only follow a GW, so instead of decoding the
-// code into a number and handling it, it triggered the decode right
-// in the GW section. In this code the reading and decoding is separate
-// so we need every code in here somewhere.
+// some that nec2c left out. The original code didn't need something
+// like GC in this list because it only follow a GW, so instead of
+// decoding the GC code into a number and handling it, it triggered the
+// decode of the GC right in the GW handler. In this code, reading
+// and decoding are separate sections of the system, so we need every
+// code in here somewhere.
 char *geometry_codes[NUM_GEOMETRY_CODES] = {
   "GW", "GX", "GR", "GS", "GE", "GM", \
   "SP", "SM", "GA", "SC", "GH", "GF", "GC"
 };
 
+// this is the list of extensions that onec directly supports
 // XT = "eXiT"     - from nec2c
 // SY = "SY"mbol   - from 4nec2
 // IT = "ITerate"  - new code, runs the output several times after changing SYs by a step
@@ -54,6 +56,9 @@ char *unit_codes[NUM_ONEC_UNIT_CODES] = {
   "", "m", "cm", "mm", "ft", "in", "ftin", "awg", "#"
 };
 // the last three units, ftin and awg, require special conversions
+// and are indicated by the zeros
 double unit_mult[NUM_ONEC_UNIT_CODES] = {
   0, 1.0, 0.01, 0.001, 0.30480, 0.0254, 0, 0, 0
 };
+
+/* end of types.c */

@@ -7,8 +7,8 @@
  * possible.
  *
  * OpenNEC adds functions for writing the decks themselves, in .onec format.
- * in addition to allowing a deck to be created in code in code and then
- * written, these can also be used as a way to fix problems in existing files,
+ * in addition to allowing a deck to be created in code and then written.
+ * These functions can also be used as a way to fix problems in existing files,
  * like split lines or non-standard comment markers and such, simply load up
  * the deck and then save it again.
  *
@@ -90,7 +90,7 @@ void write_deck_nec(Deck *deck, FILE *file, int remove_inline_comments)
  * Writes a deck in the onec format, which is basically everything in the
  * deck. This will cause the deck to be written in cannoical onec format,
  * so reading in a deck and then writing it back out may result in
- * differences in ordering of options, spacing and separators being stripped,
+ * differences in ordering of options, spacing, separators being stripped,
  * etc. This is by design.
  *
  */
@@ -300,7 +300,7 @@ void write_header(Deck *deck, FILE *file)
           "                              "
           "|                                          |\n"
           "                              "
-          "|  NUMERICAL ELECTROMAGNETICS CODE (nec2c) |\n"
+          "|  NUMERICAL ELECTROMAGNETICS CODE (onec) |\n"
           "                              "
           "|   Translated to 'C' in Double Precision  |\n"
           "                              "
@@ -312,9 +312,7 @@ void write_header(Deck *deck, FILE *file)
   
   // write comments to output file
   for(int i = deck->comment_start; i <= deck->comment_end; i++) {
-    fprintf( output_fp,
-            "               %s\n",
-            deck->cards[i].comment);
+    fprintf(output_fp, "                              %s\n", deck->cards[i].comment);
   }
 }
 
@@ -398,7 +396,7 @@ void write_structure(Deck *deck, FILE *file)
           " %5d  %10.5f %10.5f %10.5f %10.5f"
           " %10.5f %10.5f %10.5f %5d %5d %5d %4d",
                 num_wires, card.fv[1], card.fv[2], card.fv[3], card.fv[4], card.fv[5], card.fv[6], card.fv[7],
-                card.num_segments, card.start_segment + 1, card.end_segment + 1, card.tag);
+                card.num_segments, card.start_segment, card.end_segment, card.tag);
         break;
         
       case 1: // GX card, reflection or rotation
@@ -618,3 +616,5 @@ void write_patches(Deck *deck, FILE *file)
             geometry.t1x[i], geometry.t1y[i], geometry.t1z[i], geometry.t2x[i], geometry.t2y[i], geometry.t2z[i]);
   } /* for( i = 0; i < data.m; i++ ) */
 }
+
+/* end of output.c */

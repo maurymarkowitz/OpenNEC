@@ -17,164 +17,164 @@ void rom2( double a, double b, complex double *sum, double dmin )
   double rx = 1.0e-4;
   complex double g1[9], g2[9], g3[9], g4[9], g5[9];
   complex double t00, t01[9], t10[9], t02, t11, t20[9];
-
+  
   z= a;
   ze= b;
   s= b- a;
-
+  
   if( s < 0.)
   {
-	fprintf( output_fp, "\n  ERROR - B LESS THAN A IN ROM2" );
-	stop(-1);
+    fprintf( output_fp, "\n  ERROR - B LESS THAN A IN ROM2" );
+    stop(-1);
   }
-
+  
   ep= s/(1.e4* geometry.npm);
   zend= ze- ep;
-
+  
   for( i = 0; i < n; i++ )
-	sum[i]=CPLX_00;
-
+    sum[i]=CPLX_00;
+  
   ns= nx;
   nt=0;
   sflds( z, g1);
-
+  
   while( TRUE )
   {
-	if( flag )
-	{
-	  dz= s/ ns;
-	  if( z+ dz > ze)
-	  {
-		dz= ze- z;
-		if( dz <= ep)
-		  return;
-	  }
-
-	  dzot= dz*.5;
-	  sflds( z+ dzot, g3);
-	  sflds( z+ dz, g5);
-
-	} /* if( flag ) */
-
-	tmag1=0.;
-	tmag2=0.;
-
-	/* evaluate 3 point romberg result and test convergence. */
-	for( i = 0; i < n; i++ )
-	{
-	  t00=( g1[i]+ g5[i])* dzot;
-	  t01[i]=( t00+ dz* g3[i])*.5;
-	  t10[i]=(4.* t01[i]- t00)/3.;
-	  if( i > 2)
-		continue;
-
-	  tr= creal( t01[i]);
-	  ti= cimag( t01[i]);
-	  tmag1= tmag1+ tr* tr+ ti* ti;
-	  tr= creal( t10[i]);
-	  ti= cimag( t10[i]);
-	  tmag2= tmag2+ tr* tr+ ti* ti;
-
-	} /* for( i = 0; i < n; i++ ) */
-
-	tmag1= sqrt( tmag1);
-	tmag2= sqrt( tmag2);
-	test( tmag1, tmag2, &tr, 0., 0., &ti, dmin);
-
-	if( tr <= rx)
-	{
-	  for( i = 0; i < n; i++ )
-		sum[i] += t10[i];
-	  nt += 2;
-
-	  z += dz;
-	  if( z > zend)
-		return;
-
-	  for( i = 0; i < n; i++ )
-		g1[i]= g5[i];
-
-	  if( (nt >= nts) && (ns > nx) )
-	  {
-		ns= ns/2;
-		nt=1;
-	  }
-	  flag = TRUE;
-	  continue;
-
-	} /* if( tr <= rx) */
-
-	sflds( z+ dz*.25, g2);
-	sflds( z+ dz*.75, g4);
-	tmag1=0.;
-	tmag2=0.;
-
-	/* evaluate 5 point romberg result and test convergence. */
-	for( i = 0; i < n; i++ )
-	{
-	  t02=( t01[i]+ dzot*( g2[i]+ g4[i]))*.5;
-	  t11=( 4.0 * t02- t01[i] )/3.;
-	  t20[i]=(16.* t11- t10[i])/15.;
-	  if( i > 2)
-		continue;
-
-	  tr= creal( t11);
-	  ti= cimag( t11);
-	  tmag1= tmag1+ tr* tr+ ti* ti;
-	  tr= creal( t20[i]);
-	  ti= cimag( t20[i]);
-	  tmag2= tmag2+ tr* tr+ ti* ti;
-
-	} /* for( i = 0; i < n; i++ ) */
-
-	tmag1= sqrt( tmag1);
-	tmag2= sqrt( tmag2);
-	test( tmag1, tmag2, &tr, 0.,0., &ti, dmin);
-
-	if( tr > rx)
-	{
-	  nt=0;
-	  if( ns < geometry.npm )
-	  {
-		ns= ns*2;
-		dz= s/ ns;
-		dzot= dz*.5;
-
-		for( i = 0; i < n; i++ )
-		{
-		  g5[i]= g3[i];
-		  g3[i]= g2[i];
-		}
-
-		flag=FALSE;
-		continue;
-
-	  } /* if( ns < npm) */
-
-	  fprintf( output_fp,
-		  "\n  ROM2 -- STEP SIZE LIMITED AT Z = %12.5E", z );
-
-	} /* if( tr > rx) */
-
-	for( i = 0; i < n; i++ )
-	  sum[i]= sum[i]+ t20[i];
-	nt= nt+1;
-
-	z= z+ dz;
-	if( z > zend)
-	  return;
-
-	for( i = 0; i < n; i++ )
-	  g1[i]= g5[i];
-
-	flag = TRUE;
-	if( (nt < nts) || (ns <= nx) )
-	  continue;
-
-	ns= ns/2;
-	nt=1;
+    if( flag )
+    {
+      dz= s/ ns;
+      if( z+ dz > ze)
+      {
+        dz= ze- z;
+        if( dz <= ep)
+          return;
+      }
+      
+      dzot= dz*.5;
+      sflds( z+ dzot, g3);
+      sflds( z+ dz, g5);
+      
+    } /* if( flag ) */
+    
+    tmag1=0.;
+    tmag2=0.;
+    
+    /* evaluate 3 point romberg result and test convergence. */
+    for( i = 0; i < n; i++ )
+    {
+      t00=( g1[i]+ g5[i])* dzot;
+      t01[i]=( t00+ dz* g3[i])*.5;
+      t10[i]=(4.* t01[i]- t00)/3.;
+      if( i > 2)
+        continue;
+      
+      tr= creal( t01[i]);
+      ti= cimag( t01[i]);
+      tmag1= tmag1+ tr* tr+ ti* ti;
+      tr= creal( t10[i]);
+      ti= cimag( t10[i]);
+      tmag2= tmag2+ tr* tr+ ti* ti;
+      
+    } /* for( i = 0; i < n; i++ ) */
+    
+    tmag1= sqrt( tmag1);
+    tmag2= sqrt( tmag2);
+    test( tmag1, tmag2, &tr, 0., 0., &ti, dmin);
+    
+    if( tr <= rx)
+    {
+      for( i = 0; i < n; i++ )
+        sum[i] += t10[i];
+      nt += 2;
+      
+      z += dz;
+      if( z > zend)
+        return;
+      
+      for( i = 0; i < n; i++ )
+        g1[i]= g5[i];
+      
+      if( (nt >= nts) && (ns > nx) )
+      {
+        ns= ns/2;
+        nt=1;
+      }
+      flag = TRUE;
+      continue;
+      
+    } /* if( tr <= rx) */
+    
+    sflds( z+ dz*.25, g2);
+    sflds( z+ dz*.75, g4);
+    tmag1=0.;
+    tmag2=0.;
+    
+    /* evaluate 5 point romberg result and test convergence. */
+    for( i = 0; i < n; i++ )
+    {
+      t02=( t01[i]+ dzot*( g2[i]+ g4[i]))*.5;
+      t11=( 4.0 * t02- t01[i] )/3.;
+      t20[i]=(16.* t11- t10[i])/15.;
+      if( i > 2)
+        continue;
+      
+      tr= creal( t11);
+      ti= cimag( t11);
+      tmag1= tmag1+ tr* tr+ ti* ti;
+      tr= creal( t20[i]);
+      ti= cimag( t20[i]);
+      tmag2= tmag2+ tr* tr+ ti* ti;
+      
+    } /* for( i = 0; i < n; i++ ) */
+    
+    tmag1= sqrt( tmag1);
+    tmag2= sqrt( tmag2);
+    test( tmag1, tmag2, &tr, 0.,0., &ti, dmin);
+    
+    if( tr > rx)
+    {
+      nt=0;
+      if( ns < geometry.npm )
+      {
+        ns= ns*2;
+        dz= s/ ns;
+        dzot= dz*.5;
+        
+        for( i = 0; i < n; i++ )
+        {
+          g5[i]= g3[i];
+          g3[i]= g2[i];
+        }
+        
+        flag=FALSE;
+        continue;
+        
+      } /* if( ns < npm) */
+      
+      fprintf( output_fp,
+              "\n  ROM2 -- STEP SIZE LIMITED AT Z = %12.5E", z );
+      
+    } /* if( tr > rx) */
+    
+    for( i = 0; i < n; i++ )
+      sum[i]= sum[i]+ t20[i];
+    nt= nt+1;
+    
+    z= z+ dz;
+    if( z > zend)
+      return;
+    
+    for( i = 0; i < n; i++ )
+      g1[i]= g5[i];
+    
+    flag = TRUE;
+    if( (nt < nts) || (ns <= nx) )
+      continue;
+    
+    ns= ns/2;
+    nt=1;
   } /* while( TRUE ) */
-
+  
 }
 
 /*-----------------------------------------------------------------------*/
@@ -186,7 +186,7 @@ void sflds( double t, complex double *e )
   double xt, yt, zt, rhx, rhy, rhs, rho, phx, phy;
   double cph, sph, zphs, r2s, rk, sfac, thet;
   complex double  erv, ezv, erh, ezh, eph, er, et, hrv, hzv, hrh;
-
+  
   xt= dataj.xj+ t* dataj.cabj;
   yt= dataj.yj+ t* dataj.sabj;
   zt= dataj.zj+ t* dataj.salpj;
@@ -194,85 +194,85 @@ void sflds( double t, complex double *e )
   rhy= incom.yo- yt;
   rhs= rhx* rhx+ rhy* rhy;
   rho= sqrt( rhs);
-
+  
   if( rho <= 0.)
   {
-	rhx=1.;
-	rhy=0.;
-	phx=0.;
-	phy=1.;
+    rhx=1.;
+    rhy=0.;
+    phx=0.;
+    phy=1.;
   }
   else
   {
-	rhx= rhx/ rho;
-	rhy= rhy/ rho;
-	phx= -rhy;
-	phy= rhx;
+    rhx= rhx/ rho;
+    rhy= rhy/ rho;
+    phx= -rhy;
+    phy= rhx;
   }
-
+  
   cph= rhx* incom.xsn+ rhy* incom.ysn;
   sph= rhy* incom.xsn- rhx* incom.ysn;
-
+  
   if( fabs( cph) < 1.0e-10)
-	cph=0.;
+    cph=0.;
   if( fabs( sph) < 1.0e-10)
-	sph=0.;
-
+    sph=0.;
+  
   gwav.zph= incom.zo+ zt;
   zphs= gwav.zph* gwav.zph;
   r2s= rhs+ zphs;
   gwav.r2= sqrt( r2s);
   rk= gwav.r2* TP;
   gwav.xx2= cmplx( cos( rk),- sin( rk));
-
+  
   /* use norton approximation for field due to ground.  current is */
   /* lumped at segment center with current moment for constant, sine, */
   /* or cosine distribution. */
   if( incom.isnor != 1)
   {
-	gwav.zmh=1.;
-	gwav.r1=1.;
-	gwav.xx1=0.;
-	gwave( &erv, &ezv, &erh, &ezh, &eph);
-
-	et=-CONST1* gnd.frati* gwav.xx2/( r2s* gwav.r2);
-	er=2.* et* cmplx(1.0, rk);
-	et= et* cmplx(1.0 - rk* rk, rk);
-	hrv=( er+ et)* rho* gwav.zph/ r2s;
-	hzv=( zphs* er- rhs* et)/ r2s;
-	hrh=( rhs* er- zphs* et)/ r2s;
-	erv= erv- hrv;
-	ezv= ezv- hzv;
-	erh= erh+ hrh;
-	ezh= ezh+ hrv;
-	eph= eph+ et;
-	erv= erv* dataj.salpj;
-	ezv= ezv* dataj.salpj;
-	erh= erh* incom.sn* cph;
-	ezh= ezh* incom.sn* cph;
-	eph= eph* incom.sn* sph;
-	erh= erv+ erh;
-	e[0]=( erh* rhx+ eph* phx)* dataj.s;
-	e[1]=( erh* rhy+ eph* phy)* dataj.s;
-	e[2]=( ezv+ ezh)* dataj.s;
-	e[3]=0.;
-	e[4]=0.;
-	e[5]=0.;
-	sfac= PI* dataj.s;
-	sfac= sin( sfac)/ sfac;
-	e[6]= e[0]* sfac;
-	e[7]= e[1]* sfac;
-	e[8]= e[2]* sfac;
-
-	return;
+    gwav.zmh=1.;
+    gwav.r1=1.;
+    gwav.xx1=0.;
+    gwave( &erv, &ezv, &erh, &ezh, &eph);
+    
+    et=-CONST1* gnd.frati* gwav.xx2/( r2s* gwav.r2);
+    er=2.* et* cmplx(1.0, rk);
+    et= et* cmplx(1.0 - rk* rk, rk);
+    hrv=( er+ et)* rho* gwav.zph/ r2s;
+    hzv=( zphs* er- rhs* et)/ r2s;
+    hrh=( rhs* er- zphs* et)/ r2s;
+    erv= erv- hrv;
+    ezv= ezv- hzv;
+    erh= erh+ hrh;
+    ezh= ezh+ hrv;
+    eph= eph+ et;
+    erv= erv* dataj.salpj;
+    ezv= ezv* dataj.salpj;
+    erh= erh* incom.sn* cph;
+    ezh= ezh* incom.sn* cph;
+    eph= eph* incom.sn* sph;
+    erh= erv+ erh;
+    e[0]=( erh* rhx+ eph* phx)* dataj.s;
+    e[1]=( erh* rhy+ eph* phy)* dataj.s;
+    e[2]=( ezv+ ezh)* dataj.s;
+    e[3]=0.;
+    e[4]=0.;
+    e[5]=0.;
+    sfac= PI* dataj.s;
+    sfac= sin( sfac)/ sfac;
+    e[6]= e[0]* sfac;
+    e[7]= e[1]* sfac;
+    e[8]= e[2]* sfac;
+    
+    return;
   } /* if( smat.isnor != 1) */
-
+  
   /* interpolate in sommerfeld field tables */
   if( rho >= 1.0e-12)
-	thet= atan( gwav.zph/ rho);
+    thet= atan( gwav.zph/ rho);
   else
-	thet= POT;
-
+    thet= POT;
+  
   /* combine vertical and horizontal components and convert */
   /* to x,y,z components. multiply by exp(-jkr)/r. */
   intrp( gwav.r2, thet, &erv, &ezv, &erh, &eph );
@@ -296,7 +296,7 @@ void sflds( double t, complex double *e )
   e[6]= e[0]* sfac;
   e[7]= e[1]* sfac;
   e[8]= e[2]* sfac;
-
+  
   return;
 }
 

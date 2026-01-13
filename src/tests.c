@@ -1,15 +1,15 @@
 /******************************************************************************
  * tests.c
  *
- * tests.c contains code for a number of santity-checking routines that look
+ * tests.c contains code for a number of sanity-checking routines that look
  * for problems in the structure of the deck as a whole, or commonly found
  * issues in the design.
  *
  * An example of the former is a series of CM cards but no CE, SM cards not
  * followed by an SC, or a tapered wire that's missing its GC card. The tests
  * are deliberately picky, it will report issues that won't actually cause
- * problems in most systems. These can simply be ignored if not wanted, but
- * they are things that are generally easy to fix in the deck, and should be.
+ * problems in most systems. These can simply be ignored, but they are issues
+ * that are generally easy to fix in the deck, and should be.
  *
  * Examples of problems in the actual data include more complex issues like
  * crossed wires or wires that cross the ground line, both of which will cause
@@ -42,31 +42,31 @@ void test_deck_structure(Deck *deck, Errors *errors)
   // A short list of the minimum structure is found in the 4nec2
   // documentation:
   //
-  // Zero or more CM (comment) cards
-  // One CE (comment end) card
-  // One or more GW (wire geometry) cards
-  // One GE (geometry end) card
-  // One or more FR (design frequency) cards
-  // One or more EX (excitation point) cards
-  // Zero or one GN (Ground condition) card
-  // Zero or more LD (loading) cards
-  // One EN (end of file) card
+  // zero or more CM (comment) cards
+  // one CE (comment end) card
+  // one or more GW (wire geometry) cards
+  // one GE (geometry end) card
+  // one or more FR (design frequency) cards
+  // one or more EX (excitation point) cards
+  // zero or one GN (ground condition) card
+  // zero or more LD (loading) cards
+  // one EN (end of file) card
   //
   // There are minor issues with this list:
   //
   // 1) some decks lack any comments, although we consider that fatal
-  // 2) you don't need a GW card specifically, any geometery will do
+  // 2) you don't need a GW card specifically, any geometry will do
   // 3) the EN is not really required, many decks lack it
   //
   // as a result, this code demands a minimum deck of five cards,
-  // one comment, two geometry cards, an FX, and a EX.
+  // one comment, two geometry cards, an FX, and an EX.
   //
   // TODO: do you need an EX? what about transmission?
   //
   // There are also a number of additional tests performed
   // below for other issues like duplicates of cards that should
   // only exist once, cards in the wrong section of the deck, and
-  // similiar issues.
+  // similar issues.
 
   // although these look like they should be bools, we use int
   // so we can report the card number where the duplicate was seen
@@ -312,7 +312,7 @@ void test_deck_structure(Deck *deck, Errors *errors)
  * test_duplicate_tags checks to see if there is more than one card
  * with the same tag on it. this will not notice problems if there
  * is a GM or similar card that creates new tags, that only happens
- * when the geometery is segmented
+ * when the geometry is segmented
  *
  * @param deck the Deck to be tested
  * @param errors the Errors list to add new messages to
@@ -340,6 +340,7 @@ void test_duplicate_tags(Deck *deck, Errors *errors)
   
   free(msg);
 }
+/* end test_duplicate_tags */
 
 /******************************************************************************
  * test_card_inputs
@@ -351,6 +352,8 @@ void test_duplicate_tags(Deck *deck, Errors *errors)
  *
  * @param deck the Deck to be tested
  * @param errors the Errors list to add new messages to
+ *
+ * TODO: this needs to be greatly expanded!
  *
  */
 void test_card_inputs(Deck *deck, Errors *errors)
@@ -385,9 +388,10 @@ void test_card_inputs(Deck *deck, Errors *errors)
       }
     }
   }
-    
+  
   free(msg);
 }
+/* end test_card_inputs */
 
 /******************************************************************************
  * test_bad_symbols
@@ -427,9 +431,12 @@ void test_bad_symbols(Deck *deck, Errors *errors)
     }
     outer = outer->next;
   } /* while loop over cards */
-    
+  
   free(msg);
-}
+} /* end of test_bad_symbols */
+
+/* end of tests.c */
+
 
 // TODO: MISSING TESTS
 // LDs and/or EXs should not be at open ends of wires

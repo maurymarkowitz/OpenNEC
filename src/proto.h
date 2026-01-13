@@ -39,6 +39,7 @@ void test_deck_structure(Deck *deck, Errors *errors);
 void test_duplicate_tags(Deck *deck, Errors *errors);
 /* misc.c */
 void add_error(Errors *errors, char *message, int severity);
+void add_message(Outputs *outputs, char *message);
 int strendswith(const char *str, const char *suffix);
 char* substr(char* dest, char *src, int start, int len);
 char* trim_start(char* dest);
@@ -84,9 +85,9 @@ void pcint(double xi, double yi, double zi, double cabi, double sabi, double sal
 void unere(double xob, double yob, double zob);
 /* geometry.c */
 int segment_number(int tag, int m);
-void calculate_geometry(Deck *deck, Errors *errors);
+void calculate_geometry(Deck *deck, Errors *errors, Outputs *outputs);
 void finish_geometry(void);
-void connect_segments(int ignd);
+void connect_segments(int ignd, Outputs *outputs);
 void wire(int card_num, int tag_num, int segs, double xw1, double yw1, double zw1, double xw2, double yw2, double zsw2, double rad, double rdel, double rrad);
 void arc(int card_num, int tag_num, int segs, double rada, double ang1, double ang2, double rad);
 void helix(int card_num, int tag_num, int segs, double s, double hl, double a1, double b1, double a2, double b2, double rad);

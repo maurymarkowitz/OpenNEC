@@ -1,0 +1,19 @@
+CM 2 element 12 meter beam optimized for gain
+CM
+CM free space
+CM 24.94 MHz
+CM 2 wires, inches
+CMPP  1, 0, 0, 0, 0
+CE
+GW 1 20  0  0  0     0  229.576  0   1
+GW 2 21  52 0  0     52  218.5     0   1
+GS  0  0  3.2808
+GE 0
+FR  0,0,0,0, 24.94,
+EX  0, 2, 10,0,1., 0.,
+PT -1
+RP  0, 1, 1,  1001, 90, 0, 0, 0
+RP  0, 1, 1,  1001, 90,180, 0, 0
+RP  0, 1, 361, 1001, 90, 0, 1, 1
+RP  0, 361, 1, 1001, 0, 0, 1, 1
+EN

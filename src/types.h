@@ -97,12 +97,12 @@ extern char *unit_codes[NUM_ONEC_UNIT_CODES];
 extern double unit_mult[NUM_ONEC_UNIT_CODES];
 #endif
 
-/*** Structs encapsulating global ("common") variables ***/
+/*** Structs encapsulating global ("common") variables */
 
 /*** Error levels are used internally, external software should use negatives ***/
 typedef enum { NONE, MINOR, PROBLEM, FATAL } error_level;    // 1 = warning, 2 = error, 3 = fatal, <0 informational
 
-/*** Error has information about a single error or warning ***/
+/*** Error has information about a single error or warning */
 typedef struct
 {
   int severity;
@@ -119,7 +119,16 @@ typedef struct
   Error *errors;  // pointer to a list of errors
 } Errors;
 
-/*** KeyValue is a key:value pair used to store an OpenNEC extension on a card ***/
+/*** Outputs is a list of informational messages generated during
+processing, to be output later by output.c instead of direct fprintf
+ ***/
+typedef struct
+{
+  int num_messages; // total number of messages in this list
+  char **messages;  // pointer to a list of message strings
+} Outputs;
+
+/*** KeyValue is a key:value pair used to store an OpenNEC extension on a card */
 typedef struct KeyValue
 {
   char *key;
@@ -136,7 +145,7 @@ typedef struct
   
   // raw data from the original card
   char *orig_str;     // the original line, as read from the file in raw format
-  char *card_str;     // the "card part" of the string, everything in front of the comment (if one exists)
+  char *card_str;     // the "card part" of the string, everything in front of the inline comment (if one exists)
   
   // processed NEC2 data
   char card_code[2];  // the two-letter code for this card, or one letter for some comment formats
@@ -168,7 +177,7 @@ typedef struct
   int start_segment;
   int end_segment;
 
-  // onec values
+  // onec measurements and formulas
   int units[8];           // measurement units on the fields, or 0 for "default"
   bool int_form_inline[4];// was this formula found inline, or in a comment?
   bool flt_form_inline[8];
@@ -186,7 +195,7 @@ typedef struct
 } Card;
 
 /*** Deck encapsulates a single deck of cards ***/
-typedef struct
+typedef struct Deck
 {
   // input data
   Card *cards;        // array of cards
@@ -198,7 +207,7 @@ typedef struct
   int deck_end;       // card number of the EN card or the last card in the deck otherwise. -1 if not found
   char cmt_code;      // the default marker to use for inline comments, !, $ or '
   int unit_val;       // if there is a single GS, this is the f1 value, otherwise 1
-  int unit_typ;       // if there is a single GS, and we recognize the value, put out index here
+  int unit_typ;       // if there is a single GS, and we recognize the value, put our index here
   KeyValue *symbols;  // any variables read in from SY cards, consisting of name/inital value pairs
   
   // calculated bits
@@ -225,7 +234,7 @@ typedef struct
  * This is populated by parsing the geometry section of the deck, and
  * can be used in external programs to build 3D models and similar
  * tasks. It only has to be recalculated if the geometry changes,
- * although that might occur as part of an optimization loop.
+ * although that might also occur as part of an optimization loop.
  *
  * This is similar to the original NEC version, but has added another
  * array to store the card numbers. This allows a particular segment
@@ -238,37 +247,37 @@ typedef struct
 typedef struct geometry_t
 {
 	int
-		n,		      // Number of wire segments in total
-		np,		      // Number of wire segments in symmetry cell
-		m,		      // Number of surface patches
-		mp,		      // Number of surface patches in symmetry cell
-		npm,	      // = n+m
+		n,		      	// Number of wire segments in total
+		np,		      	// Number of wire segments in symmetry cell
+		m,		      	// Number of surface patches
+		mp,		      	// Number of surface patches in symmetry cell
+		npm,	      	// = n+m
   // FIXME: these two are used only during mallocs and don't seem to be needed
-		np2m,	      // = n+2m
-		np3m,	      // = n+3m
-		ipsym,	    // Symmetry flag
-		*icon1,     // Segments connections on end 1
-		*icon2,	    // Segments connections on end 2
-		*tag_nums,	// Segment's tag number, which may be zero
-    *card_nums; // which card number generated this bit, never zero
+		np2m,	      	// = n+2m
+		np3m,	      	// = n+3m
+		ipsym,	    	// Symmetry flag
+		*icon1,     	// Segments connections on end 1
+		*icon2,	    	// Segments connections on end 2
+		*tag_nums,		// Segment's tag number, which may be zero
+    	*card_nums; 	// which card number generated this bit, never zero
   
 	double
-    // Wire segment data
-    *x1, *y1, *z1,	// End 1 coordinates of wire segments
+    	// Wire segment data
+    	*x1, *y1, *z1,	// End 1 coordinates of wire segments
 		*x2, *y2, *z2,	// End 2 coordinates of wire segments
-		*x, *y, *z,		  // Coordinates of segment centers
-		*si, *bi,		    // Length and radius of segments
-		*cab,			      // cos(a)*cos(b)
-		*sab,			      // cos(a)*sin(b)
-		*salp,			    // Z component - sin(a)
+		*x, *y, *z,		// Coordinates of segment centers
+		*si, *bi,		// Length and radius of segments
+		*cab,			// cos(a)*cos(b)
+		*sab,			// cos(a)*sin(b)
+		*salp,			// Z component - sin(a)
 
-    // Surface patch data
+    	// Surface patch data
 		*px, *py, *pz,		// Coordinates of patch center
 		*t1x, *t1y, *t1z,	// Coordinates of t1 vector
 		*t2x, *t2y, *t2z,	// Coordinates of t2 vector
-		*pbi,				      // Patch surface area
-		*psalp,				    // Z component - sin(a)
-  
+		*pbi,				// Patch surface area
+		*psalp,				// Z component - sin(a)
+
     /* Wavelength in meters */
     wlam;
   
@@ -583,4 +592,4 @@ typedef struct
 	complex double *zarray;	/* = Zi/(Di/lambda) */
 } zload_t;
 
-#endif /* types_h */
+#endif /* end of types_h */
