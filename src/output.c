@@ -34,9 +34,9 @@
  * TODO: move this to an export.c
  *
  */
-void write_deck_nec(Deck *deck, FILE *file, int remove_inline_comments)
+void write_deck_nec(nec_context_t *ctx, deck_t *deck, FILE *file, int remove_inline_comments)
 {
-  Card *card;
+  card_t *card;
   int MAX_INTS, MAX_FLTS;
   
   for(int i = 0; i < deck->num_cards; i++) {
@@ -50,7 +50,7 @@ void write_deck_nec(Deck *deck, FILE *file, int remove_inline_comments)
     }
     
     // skip extension cards in pure NEC files
-    if(isExtension(card)) continue;
+    if(is_extension(card)) continue;
 
     // for comment cards with the CM or CE *in the header*, simply export the card
     if(i <= deck->geometry_start && (strcmp(card->card_code, "CM") == 0 || strcmp(card->card_code, "CE") == 0)) {
@@ -58,7 +58,7 @@ void write_deck_nec(Deck *deck, FILE *file, int remove_inline_comments)
       fputc('\n', file);
     }
     // for comment cards with other headers, only export if the option is on
-    if(isComment(card)) {
+    if(is_comment(card)) {
       fprintf(file, "%s%s", deck->cards[i].card_code, deck->cards[i].comment);
       fputc('\n', file);
     }
@@ -71,7 +71,7 @@ void write_deck_nec(Deck *deck, FILE *file, int remove_inline_comments)
     MAX_FLTS = max_flt_fields(card);
 
     // int and float fields
-    if(isControl(card) || isGeometry(card)) {
+    if(is_control(card) || is_geometry(card)) {
       for(int j = 0; j <= card->ints_used && j <= MAX_INTS; j++) {
         fprintf(file, " %d", card->i[j]);
       }
@@ -94,9 +94,9 @@ void write_deck_nec(Deck *deck, FILE *file, int remove_inline_comments)
  * etc. This is by design.
  *
  */
-void write_deck_onec(Deck *deck, FILE *file)
+void write_deck_onec(nec_context_t *ctx, deck_t *deck, FILE *file)
 {
-  Card *card;
+  card_t *card;
   int MAX_FLTS, MAX_INTS;
   
   for(int i = 0; i < deck->num_cards; i++) {
@@ -110,7 +110,7 @@ void write_deck_onec(Deck *deck, FILE *file)
     }
 
     // comment cards care also easy
-    if(isComment(card)) {
+    if(is_comment(card)) {
       fputs(card->card_code, file);
       fputs(card->comment, file);
       fputc('\n', file);
@@ -118,13 +118,13 @@ void write_deck_onec(Deck *deck, FILE *file)
     }
     
     // the ONEC cards like SY are also generally simple
-    if(isExtension(card)) {
+    if(is_extension(card)) {
       if(strcmp(card->extn_code, "") != 0) {
         fputs(card->extn_code, file);
       }
       fputs(card->card_code, file);
       
-      KeyValue *head = card->formulas;
+      key_value_t *head = card->formulas;
       while(head != NULL) {
         // whitespace and the key
         fputs(" ", file);
@@ -161,7 +161,7 @@ void write_deck_onec(Deck *deck, FILE *file)
     MAX_FLTS = max_flt_fields(card);
 
     // int fields depending on the card type
-    if(isControl(card) || isGeometry(card)) {
+    if(is_control(card) || is_geometry(card)) {
       // there is one special case in the integers, if it is a GX card the second
       // integer has to writen as a three digit number
       if(strcmp(card->card_code, "GX") == 0) {
@@ -239,7 +239,7 @@ void write_deck_onec(Deck *deck, FILE *file)
         }
         // formulas next - only the ones that aren't inline
         if(card->formulas != NULL) {
-          KeyValue *form = card->formulas;
+          key_value_t *form = card->formulas;
           while(form != NULL) {
             fputc(' ', file);
             fputs(form->key, file);
@@ -250,7 +250,7 @@ void write_deck_onec(Deck *deck, FILE *file)
         }
         // any other key/value pairs
         if(card->extensns != NULL) {
-          KeyValue *pair = card->extensns;
+          key_value_t *pair = card->extensns;
           while(pair != NULL) {
             fputc(' ', file);
             fputs(pair->key, file);
@@ -277,12 +277,12 @@ void write_deck_onec(Deck *deck, FILE *file)
  * Writes a standard NEC-style output file, using various work functions.
  *
  */
-void write_nec_output(Deck *deck, FILE *file)
+void write_nec_output(nec_context_t *ctx, deck_t *deck, FILE *file)
 {
-  write_header(deck, file);
-  write_structure(deck, file);
-  write_segments(deck, file);
-  write_patches(deck, file);
+  write_header(ctx, deck, file);
+  write_structure(ctx, deck, file);
+  write_segments(ctx, deck, file);
+  write_patches(ctx, deck, file);
 }
 
 
@@ -292,9 +292,9 @@ void write_nec_output(Deck *deck, FILE *file)
  * Writes the header area and comments to the standard NEC output file.
  *
  */
-void write_header(Deck *deck, FILE *file)
+void write_header(nec_context_t *ctx, deck_t *deck, FILE *file)
 {
-  fprintf( output_fp,  "\n\n\n"
+  fprintf( ctx->output_fp,  "\n\n\n"
           "                              "
           " __________________________________________\n"
           "                              "
@@ -306,13 +306,13 @@ void write_header(Deck *deck, FILE *file)
           "                              "
           "|__________________________________________|\n" );
   
-  fprintf( output_fp, "\n\n\n"
+  fprintf( ctx->output_fp, "\n\n\n"
           "                               "
           "---------------- COMMENTS ----------------\n" );
   
   // write comments to output file
   for(int i = deck->comment_start; i <= deck->comment_end; i++) {
-    fprintf(output_fp, "                              %s\n", deck->cards[i].comment);
+    fprintf(ctx->output_fp, "                              %s\n", deck->cards[i].comment);
   }
 }
 
@@ -339,9 +339,9 @@ void write_header(Deck *deck, FILE *file)
  * without having to rely on tag numbers, which are optional.
  *
  */
-void write_structure(Deck *deck, FILE *file)
+void write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
 {
-  Card card;
+  card_t card;
   int geo_card_num;
   int num_wires = 0;
   int num_patches = 0;
@@ -363,7 +363,7 @@ void write_structure(Deck *deck, FILE *file)
           "                                     "
           "BEFORE STRUCTURE INPUT IS ENDED\n");
   
-  fprintf(output_fp, "\n"
+  fprintf(ctx->output_fp, "\n"
           "  WIRE                                           "
           "                                      SEG FIRST  LAST  TAG\n"
           "   NO.        X1         Y1         Z1         X2      "
@@ -377,7 +377,7 @@ void write_structure(Deck *deck, FILE *file)
     
     // if this card is an XT, print it and stop everything
     if(strcmp(card.card_code, "XT") == 0) {
-      fprintf(output_fp, "\nOpenNEC: Exiting after an XT command.\n" );
+      fprintf(ctx->output_fp, "\nOpenNEC: Exiting after an XT command.\n" );
       break;
     }
 
@@ -392,7 +392,7 @@ void write_structure(Deck *deck, FILE *file)
         
       case 0: // GW card, a wire
         num_wires++;
-        fprintf(output_fp, "\n"
+        fprintf(ctx->output_fp, "\n"
           " %5d  %10.5f %10.5f %10.5f %10.5f"
           " %10.5f %10.5f %10.5f %5d %5d %5d %4d",
                 num_wires, card.fv[1], card.fv[2], card.fv[3], card.fv[4], card.fv[5], card.fv[6], card.fv[7],
@@ -413,14 +413,14 @@ void write_structure(Deck *deck, FILE *file)
         if(iz != 0)
           iz = 1;
         
-        fprintf(output_fp,
+        fprintf(ctx->output_fp,
                 "\n      STRUCTURE REFLECTED ALONG THE AXES %c %c %c"
                 " - TAGS INCREMENTED BY %d",
                 ifx[ix], ify[iy], ifz[iz], card.i[1] );
         break;
         
       case 3: // GS card, scale structure dimensions
-        fprintf(output_fp,
+        fprintf(ctx->output_fp,
                 "\n     STRUCTURE SCALED BY FACTOR: %10.5f", card.fv[1] );
         break;
         
@@ -428,7 +428,7 @@ void write_structure(Deck *deck, FILE *file)
         break;
         
       case 5: // GM card, move/copy existing structure
-        fprintf(output_fp,
+        fprintf(ctx->output_fp,
                 "\n     THE STRUCTURE HAS BEEN MOVED, MOVE DATA CARD IS:\n"
                 "   %3d %5d %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f",
                 card.iv[1], card.iv[2], card.fv[1], card.fv[2], card.fv[3], card.fv[4], card.fv[5], card.fv[6], card.fv[7]);
@@ -436,14 +436,14 @@ void write_structure(Deck *deck, FILE *file)
         
       case 6: // SP card, generate single surface patch
         num_patches++;
-        fprintf( output_fp, "\n"
+        fprintf( ctx->output_fp, "\n"
                 " %5d%c %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f",
                 card.iv[1], card.iv[i-1], card.fv[1], card.fv[2], card.fv[3], card.fv[4], card.fv[5], card.fv[6]);
         break;
         
       case 7: // SM card, multiple-patch surface
 //        i1= data.m+1;
-//        fprintf( output_fp, "\n"
+//        fprintf( ctx->output_fp, "\n"
 //                " %5d%c %10.5f %11.5f %11.5f %11.5f %11.5f %11.5f"
 //                "     SURFACE - %d BY %d PATCHES",
 //                i1, ipt[1], xw1, yw1, zw1, xw2, yw2, zw2, itg, ns );
@@ -453,7 +453,7 @@ void write_structure(Deck *deck, FILE *file)
         
       case 8: // GA card, arc
         num_wires++;
-        fprintf( output_fp, "\n"
+        fprintf( ctx->output_fp, "\n"
                 " %5d ARC RADIUS: %9.5f  FROM: %8.3f TO: %8.3f DEGREES"
                 "       %11.5f %5d %5d %5d %4d",
                 num_wires, card.fv[1], card.fv[2], card.fv[3], card.fv[4], card.tag, card.start_segment, card.end_segment, card.iv[1]);
@@ -466,7 +466,7 @@ void write_structure(Deck *deck, FILE *file)
         
       case 10: // GH card, generate helix
         num_wires++;
-        fprintf( output_fp, "\n"
+        fprintf( ctx->output_fp, "\n"
                 " %5d HELIX STRUCTURE - SPACING OF TURNS: %8.3f AXIAL"
                 " LENGTH: %8.3f  %8.3f %5d %5d %5d %4d\n      "
                 " RADIUS X1:%8.3f Y1:%8.3f X2:%8.3f Y2:%8.3f ",
@@ -478,36 +478,36 @@ void write_structure(Deck *deck, FILE *file)
   } /* for loop over cards */
   
   // and now a final report on the cards
-  fprintf( output_fp, "\n\n"
+  fprintf( ctx->output_fp, "\n\n"
           "     TOTAL SEGMENTS USED: %d   SEGMENTS IN A"
           " SYMMETRIC CELL: %d   SYMMETRY FLAG: %d",
-          geometry.n, geometry.np, geometry.ipsym );
+          ctx->geometry.n, ctx->geometry.np, ctx->geometry.ipsym );
   
-  if(geometry.m > 0)
-    fprintf( output_fp,  "\n"
+  if(ctx->geometry.m > 0)
+    fprintf( ctx->output_fp,  "\n"
             "       TOTAL PATCHES USED: %d   PATCHES"
-            " IN A SYMMETRIC CELL: %d",  geometry.m, geometry.mp );
+            " IN A SYMMETRIC CELL: %d",  ctx->geometry.m, ctx->geometry.mp );
   
-  int iseg = (geometry.n + geometry.m) / (geometry.np + geometry.mp);
+  int iseg = (ctx->geometry.n + ctx->geometry.m) / (ctx->geometry.np + ctx->geometry.mp);
   if(iseg != 1)  {
     /*** may be error condition?? ***/
-    if(geometry.ipsym == 0) {
-      fprintf(output_fp,
+    if(ctx->geometry.ipsym == 0) {
+      fprintf(ctx->output_fp,
               "\n  ERROR: IPSYM=0 IN CONECT()" );
-      stop(-1);
+      stop(ctx, -1);
     }
   } /* if( iseg == 1) */
 
-  if(geometry.ipsym < 0)
-    fprintf(output_fp,
+  if(ctx->geometry.ipsym < 0)
+    fprintf(ctx->output_fp,
             "\n  STRUCTURE HAS %d FOLD ROTATIONAL SYMMETRY\n", iseg );
   else {
     int ic = iseg / 2;
     if(iseg == 8)
       ic = 3;
-    fprintf(output_fp,
+    fprintf(ctx->output_fp,
             "\n  STRUCTURE HAS %d PLANES OF SYMMETRY\n", ic );
-  } /* if(geometry.ipsym < 0 ) */
+  } /* if(ctx->geometry.ipsym < 0 ) */
 } /* write_structure() */
 
 /******************************************************************************
@@ -516,12 +516,12 @@ void write_structure(Deck *deck, FILE *file)
  * Writes the segment data section of the nec2 output.
  *
  */
-void write_segments(Deck * deck, FILE *file)
+void write_segments(nec_context_t *ctx, deck_t * deck, FILE *file)
 {
   // exit now if there's no segments
-  if(geometry.n == 0) return;
+  if(ctx->geometry.n == 0) return;
 
-      fprintf(output_fp, "\n\n\n"
+      fprintf(ctx->output_fp, "\n\n\n"
               "                              "
               " ---------- SEGMENTATION DATA ----------\n"
               "                                       "
@@ -529,7 +529,7 @@ void write_segments(Deck * deck, FILE *file)
               "                           "
               " I+ AND I- INDICATE THE SEGMENTS BEFORE AND AFTER I\n");
   
-      fprintf(output_fp, "\n"
+      fprintf(ctx->output_fp, "\n"
               "   SEG    COORDINATES OF SEGM CENTER     SEGM    ORIENTATION"
               " ANGLES    WIRE    CONNECTION DATA   TAG\n"
               "   NO.       X         Y         Z      LENGTH     ALPHA     "
@@ -538,19 +538,19 @@ void write_segments(Deck * deck, FILE *file)
   double xw1, yw1, zw1;
   double xw2, yw2;
   
-  for(int i = 0; i < geometry.n; i++) {
-    xw1 = geometry.x2[i] - geometry.x1[i];
-    yw1 = geometry.y2[i] - geometry.y1[i];
-    zw1 = geometry.z2[i] - geometry.z1[i];
-    geometry.x[i] = (geometry.x1[i] + geometry.x2[i]) / 2.0;
-    geometry.y[i] = (geometry.y1[i] + geometry.y2[i]) / 2.0;
-    geometry.z[i] = (geometry.z1[i] + geometry.z2[i]) / 2.0;
+  for(int i = 0; i < ctx->geometry.n; i++) {
+    xw1 = ctx->geometry.x2[i] - ctx->geometry.x1[i];
+    yw1 = ctx->geometry.y2[i] - ctx->geometry.y1[i];
+    zw1 = ctx->geometry.z2[i] - ctx->geometry.z1[i];
+    ctx->geometry.x[i] = (ctx->geometry.x1[i] + ctx->geometry.x2[i]) / 2.0;
+    ctx->geometry.y[i] = (ctx->geometry.y1[i] + ctx->geometry.y2[i]) / 2.0;
+    ctx->geometry.z[i] = (ctx->geometry.z1[i] + ctx->geometry.z2[i]) / 2.0;
     xw2 = xw1 * xw1 + yw1 * yw1 + zw1 * zw1;
     yw2 = sqrt(xw2);
     yw2 = (xw2 / yw2 + yw2)*.5;
-    geometry.si[i] = yw2;
-    geometry.cab[i] = xw1 / yw2;
-    geometry.sab[i] = yw1 / yw2;
+    ctx->geometry.si[i] = yw2;
+    ctx->geometry.cab[i] = xw1 / yw2;
+    ctx->geometry.sab[i] = yw1 / yw2;
     xw2 = zw1 / yw2;
     
     if(xw2 > 1.0)
@@ -558,25 +558,25 @@ void write_segments(Deck * deck, FILE *file)
     if(xw2 < -1.0)
       xw2 = -1.0;
     
-    geometry.salp[i] = xw2;
+    ctx->geometry.salp[i] = xw2;
     xw2 = asin(xw2) * TD;
     yw2 = atan2(yw1, xw1) * TD;
     
-    fprintf(output_fp, "\n"
+    fprintf(ctx->output_fp, "\n"
             " %5d %9.4f %9.4f %9.4f %9.4f"
             " %9.4f %9.4f %9.4f %5d %5d %5d %5d",
-            i + 1, geometry.x[i], geometry.y[i], geometry.z[i], geometry.si[i], xw2, yw2,
-            geometry.bi[i], geometry.icon1[i], i + 1, geometry.icon2[i], geometry.tag_nums[i]);
+            i + 1, ctx->geometry.x[i], ctx->geometry.y[i], ctx->geometry.z[i], ctx->geometry.si[i], xw2, yw2,
+            ctx->geometry.bi[i], ctx->geometry.icon1[i], i + 1, ctx->geometry.icon2[i], ctx->geometry.tag_nums[i]);
     
-    if(plot.iplp1 == 1)
-      fprintf(plot_fp, "%12.4E %12.4E %12.4E "
+    if(ctx->plot.iplp1 == 1)
+      fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E "
               "%12.4E %12.4E %12.4E %12.4E %5d %5d %5d\n",
-              geometry.x[i], geometry.y[i], geometry.z[i], geometry.si[i], xw2, yw2,
-              geometry.bi[i], geometry.icon1[i], i + 1, geometry.icon2[i]);
+              ctx->geometry.x[i], ctx->geometry.y[i], ctx->geometry.z[i], ctx->geometry.si[i], xw2, yw2,
+              ctx->geometry.bi[i], ctx->geometry.icon1[i], i + 1, ctx->geometry.icon2[i]);
     
-    if((geometry.si[i] <= 1.e-20) || (geometry.bi[i] <= 0.0)) {
-      fprintf(output_fp, "\n SEGMENT DATA ERROR");
-      stop(-1);
+    if((ctx->geometry.si[i] <= 1.e-20) || (ctx->geometry.bi[i] <= 0.0)) {
+      fprintf(ctx->output_fp, "\n SEGMENT DATA ERROR");
+      stop(ctx, -1);
     }
     
   } /* for( i = 0; i < data.n; i++ ) */
@@ -588,12 +588,12 @@ void write_segments(Deck * deck, FILE *file)
  * writes the patch data section of the nec2 output.
  *
  */
-void write_patches(Deck *deck, FILE *file)
+void write_patches(nec_context_t *ctx, deck_t *deck, FILE *file)
 {
   // exit now if there's no patches
-  if (geometry.m == 0) return;
+  if (ctx->geometry.m == 0) return;
   
-  fprintf(output_fp, "\n\n\n"
+  fprintf(ctx->output_fp, "\n\n\n"
           "                                   "
           " --------- SURFACE PATCH DATA ---------\n"
           "                                            "
@@ -604,16 +604,16 @@ void write_patches(Deck *deck, FILE *file)
           " AREA         X1       Y1       Z1        X2       Y2      Z2");
   
   double xw1, yw1, zw1;
-  for(int i = 0; i < geometry.m; i++) {
-    xw1 = (geometry.t1y[i] * geometry.t2z[i] - geometry.t1z[i] * geometry.t2y[i]) * geometry.psalp[i];
-    yw1 = (geometry.t1z[i] * geometry.t2x[i] - geometry.t1x[i] * geometry.t2z[i]) * geometry.psalp[i];
-    zw1 = (geometry.t1x[i] * geometry.t2y[i] - geometry.t1y[i] * geometry.t2x[i]) * geometry.psalp[i];
+  for(int i = 0; i < ctx->geometry.m; i++) {
+    xw1 = (ctx->geometry.t1y[i] * ctx->geometry.t2z[i] - ctx->geometry.t1z[i] * ctx->geometry.t2y[i]) * ctx->geometry.psalp[i];
+    yw1 = (ctx->geometry.t1z[i] * ctx->geometry.t2x[i] - ctx->geometry.t1x[i] * ctx->geometry.t2z[i]) * ctx->geometry.psalp[i];
+    zw1 = (ctx->geometry.t1x[i] * ctx->geometry.t2y[i] - ctx->geometry.t1y[i] * ctx->geometry.t2x[i]) * ctx->geometry.psalp[i];
     
-    fprintf(output_fp, "\n"
+    fprintf(ctx->output_fp, "\n"
             " %4d %10.5f %10.5f %10.5f  %8.4f %8.4f %8.4f"
             " %10.5f  %8.4f %8.4f %8.4f  %8.4f %8.4f %8.4f",
-            i + 1, geometry.px[i], geometry.py[i], geometry.pz[i], xw1, yw1, zw1, geometry.pbi[i],
-            geometry.t1x[i], geometry.t1y[i], geometry.t1z[i], geometry.t2x[i], geometry.t2y[i], geometry.t2z[i]);
+            i + 1, ctx->geometry.px[i], ctx->geometry.py[i], ctx->geometry.pz[i], xw1, yw1, zw1, ctx->geometry.pbi[i],
+            ctx->geometry.t1x[i], ctx->geometry.t1y[i], ctx->geometry.t1z[i], ctx->geometry.t2x[i], ctx->geometry.t2y[i], ctx->geometry.t2z[i]);
   } /* for( i = 0; i < data.m; i++ ) */
 }
 

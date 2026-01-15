@@ -17,8 +17,8 @@
  *
  * Non-critical errors like a missing CE card will have a value of 0. Ones
  * that will cause evaluation to fail, like a missing GE, have a value of 1,
- * and critical errors like a missing file are 2. Users can add their own
- * errors using these values or any value less than 0.
+ * and critical errors like a missing file are 2. Users and applications can
+ * add their own errors using these values, or any value less than 0.
  *
  *****************************************************************************/
 
@@ -33,11 +33,11 @@
  * or duplicated cards, it does not look for logical problems or missing data
  * that's handled in other functions.
  *
- * @param deck the Deck to be tested
- * @param errors the Errors list to add new messages to
+ * @param deck the deck_t to be tested
+ * @param errors the errors_list_t to add new messages to
  *
  */
-void test_deck_structure(Deck *deck, Errors *errors)
+void test_deck_structure(deck_t *deck, errors_list_t *errors)
 {
   // A short list of the minimum structure is found in the 4nec2
   // documentation:
@@ -314,11 +314,11 @@ void test_deck_structure(Deck *deck, Errors *errors)
  * is a GM or similar card that creates new tags, that only happens
  * when the geometry is segmented
  *
- * @param deck the Deck to be tested
- * @param errors the Errors list to add new messages to
+ * @param deck the deck_t to be tested
+ * @param errors the errors_list_t to add new messages to
  *
  */
-void test_duplicate_tags(Deck *deck, Errors *errors)
+void test_duplicate_tags(deck_t *deck, errors_list_t *errors)
 {
   // we will also check to see if there are duplicate tags
   char *msg = calloc(1, MAX_ERROR_LEN);
@@ -328,7 +328,7 @@ void test_duplicate_tags(Deck *deck, Errors *errors)
   // FIXME: we could do that by calculating geometry and then comparing
   //        card and tag numbers
   for(int i = 0; i < deck->num_cards; i++) {
-    if(isGeometry(&deck->cards[i]) && deck->cards[i].i[1] > 0) {
+    if(is_geometry(&deck->cards[i]) && deck->cards[i].i[1] > 0) {
       for(int j = i + 1; j < deck->num_cards; j++) {
         if(deck->cards[j].i[1] == deck->cards[i].i[1]) {
           sprintf(msg, "The tag number %d is found on card %d and card %d.", i, j, deck->cards[i].i[1]);
@@ -350,13 +350,13 @@ void test_duplicate_tags(Deck *deck, Errors *errors)
  * then it has to have no other values, if I1 is non-zero, it has to have
  * F1 and F2.
  *
- * @param deck the Deck to be tested
- * @param errors the Errors list to add new messages to
+ * @param deck the deck_t to be tested
+ * @param errors the errors_list_t to add new messages to
  *
  * TODO: this needs to be greatly expanded!
  *
  */
-void test_card_inputs(Deck *deck, Errors *errors)
+void test_card_inputs(deck_t *deck, errors_list_t *errors)
 {
   char *code;
   char *msg = calloc(1, MAX_ERROR_LEN);
@@ -402,13 +402,13 @@ void test_card_inputs(Deck *deck, Errors *errors)
  * also warns about duplicate definitions, as only the last value will be used
  * NOTE: is this correct? can you define HEIGHT=7 and then 14 lower in the deck?
  *
- * @param deck the Deck to be tested
- * @param errors the Errors list to add new messages to
+ * @param deck the deck_t to be tested
+ * @param errors the errors_list_t to add new messages to
  *
  */
-void test_bad_symbols(Deck *deck, Errors *errors)
+void test_bad_symbols(deck_t *deck, errors_list_t *errors)
 {
-  KeyValue *outer, *inner;
+  key_value_t *outer, *inner;
   char *msg = calloc(1, MAX_ERROR_LEN);
   
   // first we'll check that they aren't overriding a measurement

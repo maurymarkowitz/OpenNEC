@@ -6,24 +6,24 @@
 
 /***  ONEC utils ***/
 
-void add_error(Errors *errors, char *message, int severity)
+void add_error(nec_context_t *ctx, errors_list_t *errors, char *message, int severity)
 {
   // make a new error object and fill it out
-  Error newErr;
+  error_t newErr;
   newErr.severity = severity;
   newErr.message = calloc(strlen(message) + 1, sizeof(char));
   strcpy(newErr.message, message);
   // now put it into the error list
   if(errors->num_errors == 0) {
-    errors->errors = calloc(1, sizeof(Error));
+    errors->errors = calloc(1, sizeof(error_t));
   } else {
-    errors->errors = realloc(errors->errors, (errors->num_errors + 1) * sizeof(Error));
+    errors->errors = realloc(errors->errors, (errors->num_errors + 1) * sizeof(error_t));
   }
   errors->errors[errors->num_errors] = newErr;
   errors->num_errors++;
 }
 
-void add_message(Outputs *outputs, char *message)
+void add_message(nec_context_t *ctx, Outputs *outputs, char *message)
 {
   // make a new message string
   char *newMsg = calloc(strlen(message) + 1, sizeof(char));
@@ -41,7 +41,7 @@ void add_message(Outputs *outputs, char *message)
 /***  String utils ***/
 
 /*-------------------------------------------------------------------*/
-int strendswith(const char *str, const char *suffix)
+int strendswith(nec_context_t *ctx, const char *str, const char *suffix)
 {
     if (!str || !suffix)
         return 1;
@@ -56,7 +56,7 @@ int strendswith(const char *str, const char *suffix)
 }
 
 /*-------------------------------------------------------------------*/
-char* substr(char* dest, char *src, int start, int len)
+char* substr(nec_context_t *ctx, char* dest, char *src, int start, int len)
 {
   strncpy(dest, src+start, len);
   dest[len] = '\0';
@@ -64,28 +64,28 @@ char* substr(char* dest, char *src, int start, int len)
 }
 
 /*-------------------------------------------------------------------*/
-char* trim(char* str)
+char* trim(nec_context_t *ctx, char* str)
 {
-  trim_start(str);
-  trim_end(str);
+  trim_start(ctx, str);
+  trim_end(ctx, str);
   return str;
 }
 
 /*-------------------------------------------------------------------*/
-char* trim_start(char* str)
+char* trim_start(nec_context_t *ctx, char* dest)
 {
-  while(isspace((unsigned char)*str)) str++;
-  return str;
+  while(isspace((unsigned char)*dest)) dest++;
+  return dest;
 }
 
 /*-------------------------------------------------------------------*/
-char* trim_end(char* str)
+char* trim_end(nec_context_t *ctx, char* dest)
 {
   char *end;
-  end = str + strlen(str) - 1;
-  while(end > str && isspace((unsigned char)*end)) end--;
+  end = dest + strlen(dest) - 1;
+  while(end > dest && isspace((unsigned char)*end)) end--;
   *(end+1) = '\0'; // new trailing nul
-  return str;
+  return dest;
 }
 
 /***  Various system/app utils ***/
@@ -96,55 +96,55 @@ char* trim_end(char* str)
  *  prints an error message and exits
  */
 
-void abort_on_error(int why)
+void abort_on_error(nec_context_t *ctx, int why)
 {
   switch(why)
   {
 	case -1 : /* abort if input file name too long */
-	  fprintf( error_fp, "%s\n",
+	  fprintf( ctx->error_fp, "%s\n",
 		  "onec: Input file name too long - aborting" );
 	  break;
 
 	case -2 : /* abort if output file name too long */
-	  fprintf( error_fp, "%s\n",
+	  fprintf( ctx->error_fp, "%s\n",
 		  "onec: Output file name too long - aborting" );
 	  break;
 
 	case -3 : /* abort on input file read error */
-	  fprintf( error_fp, "%s\n",
+	  fprintf( ctx->error_fp, "%s\n",
 		  "onec: Error reading input file - aborting" );
 	  break;
 
 	case -4 : /* Abort on malloc failure */
-	  fprintf( error_fp, "%s\n",
+	  fprintf( ctx->error_fp, "%s\n",
 		  "onec: A memory allocation request has failed - aborting" );
 	  break;
 
 	case -5 : /* Abort if a GF card is read */
-	  fprintf( error_fp, "%s\n",
+	  fprintf( ctx->error_fp, "%s\n",
 		  "onec: NGF solution option not supported - aborting" );
 	  break;
 
 	case -6: /* No convergence in gshank() */
-	  fprintf( error_fp, "%s\n",
+	  fprintf( ctx->error_fp, "%s\n",
 		  "onec: No convergence in gshank() - aborting" );
 	  break;
 
 	case -7: /* Error in hankel() */
-	  fprintf( error_fp, "%s\n",
+	  fprintf( ctx->error_fp, "%s\n",
 		  "onec: Hankel not valid for z=0. - aborting" );
 
   }  /* switch( why ) */
 
   /* clean up and quit */
-  stop(why);
+  stop(ctx, why);
 
 } /* end of abort_on_error() */
 
 /*------------------------------------------------------------------------*/
 
 /* Returns process time (user+system) BUT in _msec_ */
-void secnds( double *x)
+void secnds(nec_context_t *ctx, double *x)
 {
   struct tms buffer;
   double clk_tck;
@@ -159,15 +159,15 @@ void secnds( double *x)
 /*------------------------------------------------------------------------*/
 
 /* Does the STOP function of fortran but with return value */
-int stop( int flag )
+int stop( nec_context_t *ctx, int flag )
 {
-  if( input_fp != NULL )
-    fclose( input_fp );
-  if( output_fp != NULL )
-    fclose( output_fp );
-  if( plot_fp != NULL )
-    fclose( plot_fp );
-  
+  if( ctx->input_fp != NULL )
+    fclose( ctx->input_fp );
+  if( ctx->output_fp != NULL )
+    fclose( ctx->output_fp );
+  if( ctx->plot_fp != NULL )
+    fclose( ctx->plot_fp );
+
   exit( flag );
 }
 
@@ -175,28 +175,28 @@ int stop( int flag )
 
 /*------------------------------------------------------------------------*/
 
-void mem_alloc( void **ptr, size_t req )
+void mem_alloc( nec_context_t *ctx, void **ptr, size_t req )
 {
-  mem_free( ptr );
+  mem_free(ctx, ptr );
   *ptr = malloc( req );
   if( *ptr == NULL )
-	abort_on_error( -4 );
+	abort_on_error(ctx, -4 );
 
 } /* End of void mem_alloc() */
 
 /*------------------------------------------------------------------------*/
 
-void mem_realloc(void **ptr, size_t req)
+void mem_realloc(nec_context_t *ctx, void **ptr, size_t req)
 {
   *ptr = realloc(*ptr, req);
   if(*ptr == NULL)
-	abort_on_error( -4 );
+	abort_on_error(ctx, -4 );
 
 } /* End of void mem_realloc() */
 
 /*------------------------------------------------------------------------*/
 
-void mem_free( void **ptr )
+void mem_free( nec_context_t *ctx, void **ptr )
 {
   if( *ptr != NULL )
 	free( *ptr );

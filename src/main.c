@@ -30,56 +30,6 @@ static char *output_file = "";
 static char *error_file = "";
 static char *greens_file = "";
 
-/*-----------------------------------------------------------------------*/
-
-/*  null_pointers()
- *
- *  Nulls pointers used in mem_realloc
- */
-// TODO: CURRENTLY UNUSED, TO BE REMOVED
-void null_pointers( void )
-{
-  crnt.air = crnt.aii = NULL;
-  crnt.bir = crnt.bii = NULL;
-  crnt.cir = crnt.cii = NULL;
-  crnt.cur = NULL;
-  
-  geometry.card_nums = geometry.tag_nums = NULL;
-  
-  geometry.x = geometry.y = geometry.z = NULL;
-  geometry.x1 = geometry.y1 = geometry.z1 = NULL;
-  geometry.x2 = geometry.y2 = geometry.z2 = NULL;
-  geometry.si = geometry.bi = geometry.sab = NULL;
-  geometry.cab = geometry.salp = NULL;
-  geometry.icon1 = geometry.icon2 = NULL;
-  geometry.px = geometry.py = geometry.pz = NULL;
-  geometry.t1x = geometry.t1y = geometry.t1z = NULL;
-  geometry.t2x = geometry.t2y = geometry.t2z = NULL;
-  geometry.pbi = geometry.psalp = NULL;
-  
-  netcx.ntyp = netcx.iseg1 = netcx.iseg2 = NULL;
-  netcx.x11r = netcx.x11i = NULL;
-  netcx.x12r = netcx.x12i = NULL;
-  netcx.x22r = netcx.x22i = NULL;
-  
-  save.ip = NULL;
-  
-  segj.jco = NULL;
-  segj.ax = segj.bx = segj.cx = NULL;
-  
-  smat.ssx = NULL;
-  
-  vsorc.isant = vsorc.ivqd = vsorc.iqds = NULL;
-  vsorc.vqd = vsorc.vqds = vsorc.vsant = NULL;
-  
-  yparm.y11a = yparm.y12a = NULL;
-  yparm.ncseg = yparm.nctag = NULL;
-  
-  zload.zarray = NULL;
-  
-} /* Null_Pointers() */
-
-
 /******************************************************************************
  * print_version()
  *
@@ -195,14 +145,19 @@ void parse_options(int argc, char *argv[])
 /*-------------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
-  // main variables
-  Deck deck;              // the deck we're processing, we'll make it local as it disappears on exit
-  Errors import_errors;   // a list of errors that occured during import
-  Errors test_errors;     // a list of errors and warnings about the deck's format
-  Errors geometry_errors; // a list of errors and warnings during the conversion to segments
-  Outputs geometry_outputs; // informational messages from geometry processing
+  nec_context_t ctx;
+  nec_context_init(&ctx);
 
-  output_fp = NULL; // initialize
+  // main variables
+  deck_t deck;              // the deck we're processing, we'll make it local as it disappears on exit
+  errors_list_t import_errors;   // a list of errors that occured during import
+  errors_list_t test_errors;     // a list of errors and warnings about the deck's format
+  errors_list_t geometry_errors; // a list of errors and warnings during the conversion to segments
+  outputs_list_t geometry_outputs; // informational messages from geometry processing
+
+  FILE *input_fp = NULL;
+  FILE *output_fp = NULL;
+  FILE *error_fp = NULL;
 
   // empty these out so we can test them easier
   import_errors.num_errors = 0;
@@ -225,6 +180,7 @@ int main(int argc, char **argv)
       perror(mesg);
       exit(EXIT_FAILURE);
     }
+    ctx.input_fp = input_fp;
   } else {
     input_fp = stdin;
   }
@@ -237,9 +193,11 @@ int main(int argc, char **argv)
       perror(mesg);
       exit(EXIT_FAILURE);
     }
+    ctx.error_fp = error_fp;
   }
   else {
     error_fp = stderr;
+    ctx.error_fp = stderr;
   }
   
   // make an output file name if not specified by user
@@ -264,13 +222,13 @@ int main(int argc, char **argv)
   }
 
   // read input file into a deck
-  read_deck(&deck, input_fp);
+  read_deck(&ctx, &deck, input_fp);
 
   // and then parse what we read into the card
-  parse_deck(&deck, &import_errors);
+  parse_deck(&ctx, &deck, &import_errors);
   // TESTING: print any file errors
   for(int i = 0; i < import_errors.num_errors; i++) {
-    fprintf(error_fp, "%s\n", import_errors.errors[i].message);
+    fprintf(ctx.error_fp, "%s\n", import_errors.errors[i].message);
   }
 
   // run basic sanity checks on the structure
@@ -280,15 +238,15 @@ int main(int argc, char **argv)
   }
   // TESTING: print any structure errors
   for(int i = 0; i < test_errors.num_errors; i++) {
-    fprintf(error_fp, "%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
+    fprintf(ctx.error_fp, "%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
   }
 
   // run it if we've been asked to
   if(run_simulation) {
-    calculate_geometry(&deck, &geometry_errors, &geometry_outputs);
+    calculate_geometry(&ctx, &deck, &geometry_errors, &geometry_outputs);
   }
   for(int i = 0; i < geometry_errors.num_errors; i++) {
-    fprintf(error_fp, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
+    fprintf(ctx.error_fp, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
   }
 
   // open output file if not already set to stdout
@@ -299,21 +257,24 @@ int main(int argc, char **argv)
       perror(mesg);
       exit(-1);
     }
+    ctx.output_fp = output_fp;
   }
   // and write out the results
-  write_nec_output(&deck, output_fp);
+  write_nec_output(&ctx, &deck, output_fp);
   
   // TESTING: write it back out
   // TURNED OFF, SEEMS TO BE WORKING WELL
   //write_deck_onec(&deck, output_fp);
-  
+
+  nec_context_cleanup(&ctx);
+
   return EXIT_SUCCESS;
 } /* main */
 
 /*-----------------------------------------------------------------------*/
 
 /* prnt sets up the print formats for impedance loading */
-void prnt( int in1, int in2, int in3, double fl1, double fl2,
+void prnt(nec_context_t *ctx, int in1, int in2, int in3, double fl1, double fl2,
           double fl3, double fl4, double fl5,
           double fl6, char *ia, int ichar )
 {
@@ -321,7 +282,7 @@ void prnt( int in1, int in2, int in3, double fl1, double fl2,
   char record[101+ichar*4], buff[16];
   int in[3], i1, i;
   double fl[6];
-  
+
   in[0]= in1;
   in[1]= in2;
   in[2]= in3;
@@ -331,17 +292,17 @@ void prnt( int in1, int in2, int in3, double fl1, double fl2,
   fl[3]= fl4;
   fl[4]= fl5;
   fl[5]= fl6;
-  
+
   /* integer format */
   i1=0;
   strcpy( record, "\n " );
-  
+
   if( (in1 == 0) && (in2 == 0) && (in3 == 0) )
   {
     strcat( record, " ALL" );
     i1=1;
   }
-  
+
   for( i = i1; i < 3; i++ )
   {
     if( in[i] == 0)
@@ -352,7 +313,7 @@ void prnt( int in1, int in2, int in3, double fl1, double fl2,
       strcat( record, buff );
     }
   }
-  
+
   /* floating point format */
   for( i = 0; i < 6; i++ )
   {
@@ -364,11 +325,11 @@ void prnt( int in1, int in2, int in3, double fl1, double fl2,
     else
       strcat( record, "            " );
   }
-  
+
   strcat( record, "   " );
   strcat( record, ia );
-  fprintf( output_fp, "%s", record );
-  
+  fprintf( ctx->output_fp, "%s", record );
+
   return;
 }
 

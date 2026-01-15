@@ -22,14 +22,14 @@
 /******************************************************************************
  * new_card
  *
- * Creates and returns a new empty Card.
+ * Creates and returns a new empty card_t.
  *
  * calloc'ing a card will set it up as wanted, but we'll use this explicit
  * constructor mostly as a form of documentation and possible future changes.
  *
  */
-Card* new_card(void) {
-  Card *card = calloc(1, sizeof(Card));
+card_t* new_card(void) {
+  card_t *card = calloc(1, sizeof(card_t));
   card->edited = FALSE;     // new cards are not edited, by default. this only applies to USER edits!
   card->ignore = FALSE;     // cards should not be ignored by default. should apply to geometry and commands?
   card->extn_code[0] = 0;   // this will be applied if there is a code found on the line or the user adds one
@@ -41,10 +41,10 @@ Card* new_card(void) {
  *
  * deletes an existing card and frees its various structures
  *
- * @param card the Card to free
+ * @param card the card_t to free
  *
  */
-void free_card(Card *card) {
+void free_card(card_t *card) {
   if(card == NULL) return;
   
   // start with the various strings
@@ -54,7 +54,7 @@ void free_card(Card *card) {
   if(card->comment != NULL) free(card->comment);
 
   // now the two lists
-  KeyValue *head, *temp;
+  key_value_t *head, *temp;
   head = card->formulas;
   while(head != NULL) {
     temp = head;
@@ -78,12 +78,12 @@ void free_card(Card *card) {
  * Loops over the deck and finds the start and end of the various sections,
  * like comments and geometry.
  *
- * @param deck the Deck to recalculate
+ * @param deck the deck_t to recalculate
  *
  */
-void recalculate_sections(Deck *deck)
+void recalculate_sections(deck_t *deck)
 {
-  Card *card;
+  card_t *card;
   
   // reset the indexes
   deck->comment_start = -1;
@@ -100,7 +100,7 @@ void recalculate_sections(Deck *deck)
     // if we haven't see a card in that section yet then it's the start, but
     // if we have, keep updating the end until we stop seeing them. that way
     // things like a missing CE won't cause the _end to be -1
-    bool isCmt = isComment(card);
+    bool isCmt = is_comment(card);
     if(isCmt) {
       if(deck->comment_start == -1)
         deck->comment_start = i;
@@ -108,7 +108,7 @@ void recalculate_sections(Deck *deck)
         deck->comment_end = i;
       continue;
     }
-    bool isGeo = isGeometry(card);
+    bool isGeo = is_geometry(card);
     if(isGeo) {
       if(deck->geometry_start == -1)
         deck->geometry_start = i;
@@ -130,26 +130,26 @@ void recalculate_sections(Deck *deck)
  * creates and returns a new empty Deck
  *
  */
-Deck* new_deck(void) {
-  Deck *deck = (Deck *)calloc(1, sizeof(Deck));
+deck_t* new_deck(void) {
+  deck_t *deck = (deck_t *)calloc(1, sizeof(deck_t));
   return deck;
 }
 
 /******************************************************************************
  * free_deck
  *
- * deletes all the Cards in this Deck and then any local bits
+ * deletes all the Cards in this deck_t and then any local bits
  *
- * @param deck the Deck to free
+ * @param deck the deck_t to free
  *
  */
-void free_deck(Deck *deck) {
+void free_deck(deck_t *deck) {
   // free all of the cards
   for(int i = 0; i < deck->num_cards; i++) {
     free_card(&deck->cards[i]);
   }
   // now the list of symbols/formulas
-  KeyValue *head, *temp;
+  key_value_t *head, *temp;
   head = deck->symbols;
   while(head != NULL) {
     temp = head;
@@ -161,21 +161,21 @@ void free_deck(Deck *deck) {
 /******************************************************************************
  * append_card
  *
- * append_card adds a Card to the end of the Deck
+ * append_card adds a card_t to the end of the Deck
  *
- * @param deck the Deck to add a new card to
- * @param card the Card to add
+ * @param deck the deck_t to add a new card to
+ * @param card the card_t to add
  *
  */
-int append_card(Deck *deck, Card *card) {
+int append_card(deck_t *deck, card_t *card) {
   // calloc/realloc the deck and add this card to it
   // there may be performance improvements possible by allocing blocks of 10 or 20 cards at a time
   if(deck->num_cards == 0) {
     deck->num_cards++;
-    deck->cards = calloc(1, sizeof(Card));
+    deck->cards = calloc(1, sizeof(card_t));
   } else {
     deck->num_cards++;
-    deck->cards = realloc(deck->cards, deck->num_cards * sizeof(Card));
+    deck->cards = realloc(deck->cards, deck->num_cards * sizeof(card_t));
   }
   deck->cards[deck->num_cards - 1] = *card;
   
@@ -195,23 +195,23 @@ int append_card(Deck *deck, Card *card) {
  * inserts a card into a deck at the given index in the Deck's card array.
  * may fail if the index is outside the bounds of the existing deck.
  *
- * @param deck the Deck to add a new card to
- * @param card the Card to add
+ * @param deck the deck_t to add a new card to
+ * @param card the card_t to add
  * @param location the index to add it at
  * @return 0 for success, 1 for any problem (currently only bad index)
  *
  */
-int insert_card(Deck *deck, Card *card, int location) {
+int insert_card(deck_t *deck, card_t *card, int location) {
   // sanity check the location
   if(location < 0 || location > deck->num_cards) return 1;
   
   // calloc/realloc space for another card
   if(deck->num_cards == 0) {
     deck->num_cards++;
-    deck->cards = calloc(1, sizeof(Card));
+    deck->cards = calloc(1, sizeof(card_t));
   } else {
     deck->num_cards++;
-    deck->cards = realloc(deck->cards, deck->num_cards * sizeof(Card));
+    deck->cards = realloc(deck->cards, deck->num_cards * sizeof(card_t));
   }
 
   // copy everything below the point down one space
@@ -238,19 +238,19 @@ int insert_card(Deck *deck, Card *card, int location) {
  *
  * removes the card at the given location from the deck and deletes its memory
  *
- * @param deck the Deck to delete the card from
+ * @param deck the deck_t to delete the card from
  * @param location the index of the item to delete
  * @return 0 for success, 1 for any problem (currently only bad index)
  *
  */
-int remove_card(Deck *deck, int location) {
+int remove_card(deck_t *deck, int location) {
   // sanity check the location
   if(location < 0 || location > deck->num_cards) return 1;
   
   // get a handle to the card for future references
-  Card temp = deck->cards[location];
+  card_t temp = deck->cards[location];
   
-  // don't calloc/realloc the Deck smaller, see
+  // don't calloc/realloc the deck_t smaller, see
   // https://stackoverflow.com/questions/7078019/using-realloc-to-shrink-the-allocated-memory
   // copy everything below it up one space
   for(int i = deck->num_cards - 1; i >= location; i--) {
@@ -272,16 +272,16 @@ int remove_card(Deck *deck, int location) {
  *
  * adds a key/value pair at the end of a card's formula or extensions list
  *
- * @param card the Deck to delete the card from
+ * @param card the deck_t to delete the card from
  * @param list which list we're adding it to
  * @param key a string for the key
  * @param value a string for the value
  * @param separator the char to use as a separator when writing the deck
  *
  */
-void add_key_value(Card *card, KeyValue *list, char *key, char *value, char separator)
+void add_key_value(const card_t *card, key_value_t *list, char *key, char *value, char separator)
 {
-  KeyValue *pair = (KeyValue *)malloc(sizeof(KeyValue));
+  key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
   if(pair != NULL) {
     // calloc the strings and store them...
     pair->key = (char *)calloc(strlen(key) + 1, sizeof(char));
@@ -297,7 +297,7 @@ void add_key_value(Card *card, KeyValue *list, char *key, char *value, char sepa
       pair->separator = ':';
     }
     // and then add it to the end of the list
-    KeyValue *tail = list;
+    key_value_t *tail = list;
     if(tail == NULL) {
       list = pair;
     } else {
@@ -308,14 +308,14 @@ void add_key_value(Card *card, KeyValue *list, char *key, char *value, char sepa
 }
 
 /******************************************************************************
- * isComment/isGeometry/isControl/isExtension
+ * is_comment/is_geometry/is_control/is_extension
  *
  * The series of "is" functions test a card code against the mnemonic
  * lists and return boolean TRUE if the card belongs to that class,
  * like "isComment" which returns TRUE for any comment card.
  *
  */
-int isComment(Card *card)
+int is_comment(const card_t *card)
 {
   int isCmt = FALSE;
   for(int i = 0; i < NUM_COMMENT_CODES; i++) {
@@ -327,7 +327,7 @@ int isComment(Card *card)
   return isCmt;
 }
 
-int isGeometry(Card *card)
+int is_geometry(const card_t *card)
 {
   int isGeo = FALSE;
   for(int i = 0; i < NUM_GEOMETRY_CODES; i++) {
@@ -339,7 +339,7 @@ int isGeometry(Card *card)
   return isGeo;
 }
 
-int isControl(Card *card)
+int is_control(const card_t *card)
 {
   int isCtl = FALSE;
   for(int i = 0; i < NUM_CONTROL_CODES; i++) {
@@ -351,7 +351,7 @@ int isControl(Card *card)
   return isCtl;
 }
 
-int isExtension(Card *card)
+int is_extension(const card_t *card)
 {
   int isExt = FALSE;
   for(int i = 0; i < NUM_ONEC_CODES; i++) {
@@ -377,7 +377,7 @@ int isExtension(Card *card)
  * is pretty much random.
  *
  */
-int min_int_fields(Card* card)
+int min_int_fields(const card_t* card)
 {
   // GE has zero minimum fields
   if(strcmp(card->card_code, "GE") == 0) return 0; // the ground type is optional
@@ -389,16 +389,16 @@ int min_int_fields(Card* card)
   if(strcmp(card->card_code, "EN") == 0) return 0;
 
   // now the default cases
-  if(isGeometry(card)) {
+  if(is_geometry(card)) {
     return 2;
-  } else if (isControl(card)) {
+  } else if (is_control(card)) {
     return 4;
   } else {
     return 0; // need to check this!
   }
 }
 
-int max_int_fields(Card* card)
+int max_int_fields(const card_t* card)
 {
   if(strcmp(card->card_code, "GF") == 0) return 1; // there is an option to print extra data
   if(strcmp(card->card_code, "GC") == 0) return 0; // tapers use I's from previous GW
@@ -408,16 +408,16 @@ int max_int_fields(Card* card)
   if(strcmp(card->card_code, "EN") == 0) return 0;
 
   // now the default cases
-  if(isGeometry(card)) {
+  if(is_geometry(card)) {
     return 2;
-  } else if (isControl(card)) {
+  } else if (is_control(card)) {
     return 4;
   } else {
     return 0; // need to check this!
   }
 }
 
-int min_flt_fields(Card* card)
+int min_flt_fields(const card_t* card)
 {
   // these are taken from the NEC-2 dox unless noted otherwise
   // the dox indicate optional parameters with () around the name
@@ -442,16 +442,16 @@ int min_flt_fields(Card* card)
   if(strcmp(card->card_code, "RF")) return 1; // can be a single frequency
 
   // now the default cases
-  if(isGeometry(card)) {
+  if(is_geometry(card)) {
     return 7;
-  } else if (isControl(card)) {
+  } else if (is_control(card)) {
     return 4;
   } else {
     return 0; // need to check this!
   }
 }
 
-int max_flt_fields(Card* card)
+int max_flt_fields(const card_t* card)
 {
   if(strcmp(card->card_code, "GA") == 0) return 4; // arcs have four inputs
   if(strcmp(card->card_code, "GE") == 0) return 0; // no floats
@@ -473,9 +473,9 @@ int max_flt_fields(Card* card)
   if(strcmp(card->card_code, "FR") == 0) return 2; // can be stepped
 
   // now the default cases
-  if(isGeometry(card)) {
+  if(is_geometry(card)) {
     return 7;
-  } else if (isControl(card)) {
+  } else if (is_control(card)) {
     return 6;
   } else {
     return 0; // need to check this!
@@ -492,7 +492,7 @@ int max_flt_fields(Card* card)
  * output every time.
  *
  */
-bool isGeometryEdited(Deck *deck)
+bool isGeometryEdited(deck_t *deck)
 {
   bool isEdited = FALSE;
   for(int i = deck->geometry_start; i < deck->geometry_end; i++) {
@@ -578,7 +578,7 @@ double convert_awg_to_meters(double awg_value)
  * actions like saving it out or running a calculation.
  * 
  */
-void update_deck_values(Deck *deck)
+void update_deck_values(deck_t *deck)
 {
   for(int i = 0; i < deck->num_cards; i++) {
     update_card_values(&deck->cards[i]);
@@ -593,7 +593,7 @@ void update_deck_values(Deck *deck)
  * of update_deck_values
  *
  */
-void update_card_values(Card *card)
+void update_card_values(card_t *card)
 {
   double ft, in, det;
   

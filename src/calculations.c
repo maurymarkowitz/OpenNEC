@@ -16,94 +16,94 @@
 /* cabc computes coefficients of the constant (a), sine (b), and */
 /* cosine (c) terms in the current interpolation functions for the */
 /* current vector cur. */
-void cabc(complex double *curx)
+void cabc(nec_context_t *ctx, double complex *curx)
 {
   int i, is, j, jx, jco1, jco2;
   double ar, ai, sh;
-  complex double  curd, cs1, cs2;
+  double complex  curd, cs1, cs2;
   
-  if( geometry.n != 0)
+  if( ctx->geometry.n != 0)
   {
-    for( i = 0; i < geometry.n; i++ )
+    for( i = 0; i < ctx->geometry.n; i++ )
     {
-      crnt.air[i]=0.;
-      crnt.aii[i]=0.;
-      crnt.bir[i]=0.;
-      crnt.bii[i]=0.;
-      crnt.cir[i]=0.;
-      crnt.cii[i]=0.;
+      ctx->crnt.air[i]=0.;
+      ctx->crnt.aii[i]=0.;
+      ctx->crnt.bir[i]=0.;
+      ctx->crnt.bii[i]=0.;
+      ctx->crnt.cir[i]=0.;
+      ctx->crnt.cii[i]=0.;
     }
     
-    for( i = 0; i < geometry.n; i++ )
+    for( i = 0; i < ctx->geometry.n; i++ )
     {
       ar= creal( curx[i]);
       ai= cimag( curx[i]);
-      tbf( i+1, 1 );
+      tbf(ctx,  i+1, 1 );
       
-      for( jx = 0; jx < segj.jsno; jx++ )
+      for( jx = 0; jx < ctx->segj.jsno; jx++ )
       {
-        j= segj.jco[jx]-1;
-        crnt.air[j] += segj.ax[jx]* ar;
-        crnt.aii[j] += segj.ax[jx]* ai;
-        crnt.bir[j] += segj.bx[jx]* ar;
-        crnt.bii[j] += segj.bx[jx]* ai;
-        crnt.cir[j] += segj.cx[jx]* ar;
-        crnt.cii[j] += segj.cx[jx]* ai;
+        j= ctx->segj.jco[jx]-1;
+        ctx->crnt.air[j] += ctx->segj.ax[jx]* ar;
+        ctx->crnt.aii[j] += ctx->segj.ax[jx]* ai;
+        ctx->crnt.bir[j] += ctx->segj.bx[jx]* ar;
+        ctx->crnt.bii[j] += ctx->segj.bx[jx]* ai;
+        ctx->crnt.cir[j] += ctx->segj.cx[jx]* ar;
+        ctx->crnt.cii[j] += ctx->segj.cx[jx]* ai;
       }
       
     } /* for( i = 0; i < n; i++ ) */
     
-    if( vsorc.nqds != 0)
+    if( ctx->vsorc.nqds != 0)
     {
-      for( is = 0; is < vsorc.nqds; is++ )
+      for( is = 0; is < ctx->vsorc.nqds; is++ )
       {
-        i= vsorc.iqds[is]-1;
-        jx= geometry.icon1[i];
-        geometry.icon1[i]=0;
-        tbf(i+1,0);
-        geometry.icon1[i]= jx;
-        sh= geometry.si[i]*.5;
-        curd= CCJ* vsorc.vqds[is]/( (log(2.* sh/ geometry.bi[i])-1.)*
-                                   (segj.bx[segj.jsno-1]* cos(TP* sh)+ segj.cx[segj.jsno-1]*
-                                    sin(TP* sh))* geometry.wlam );
+        i= ctx->vsorc.iqds[is]-1;
+        jx= ctx->geometry.icon1[i];
+        ctx->geometry.icon1[i]=0;
+        tbf(ctx, i+1,0);
+        ctx->geometry.icon1[i]= jx;
+        sh= ctx->geometry.si[i]*.5;
+        curd= CCJ* ctx->vsorc.vqds[is]/( (log(2.* sh/ ctx->geometry.bi[i])-1.)*
+                                   (ctx->segj.bx[ctx->segj.jsno-1]* cos(TP* sh)+ ctx->segj.cx[ctx->segj.jsno-1]*
+                                    sin(TP* sh))* ctx->geometry.wlam );
         ar= creal( curd);
         ai= cimag( curd);
         
-        for( jx = 0; jx < segj.jsno; jx++ )
+        for( jx = 0; jx < ctx->segj.jsno; jx++ )
         {
-          j= segj.jco[jx]-1;
-          crnt.air[j]= crnt.air[j]+ segj.ax[jx]* ar;
-          crnt.aii[j]= crnt.aii[j]+ segj.ax[jx]* ai;
-          crnt.bir[j]= crnt.bir[j]+ segj.bx[jx]* ar;
-          crnt.bii[j]= crnt.bii[j]+ segj.bx[jx]* ai;
-          crnt.cir[j]= crnt.cir[j]+ segj.cx[jx]* ar;
-          crnt.cii[j]= crnt.cii[j]+ segj.cx[jx]* ai;
+          j= ctx->segj.jco[jx]-1;
+          ctx->crnt.air[j]= ctx->crnt.air[j]+ ctx->segj.ax[jx]* ar;
+          ctx->crnt.aii[j]= ctx->crnt.aii[j]+ ctx->segj.ax[jx]* ai;
+          ctx->crnt.bir[j]= ctx->crnt.bir[j]+ ctx->segj.bx[jx]* ar;
+          ctx->crnt.bii[j]= ctx->crnt.bii[j]+ ctx->segj.bx[jx]* ai;
+          ctx->crnt.cir[j]= ctx->crnt.cir[j]+ ctx->segj.cx[jx]* ar;
+          ctx->crnt.cii[j]= ctx->crnt.cii[j]+ ctx->segj.cx[jx]* ai;
         }
         
-      } /* for( is = 0; is < vsorc.nqds; is++ ) */
+      } /* for( is = 0; is < ctx->vsorc.nqds; is++ ) */
       
-    } /* if( vsorc.nqds != 0) */
+    } /* if( ctx->vsorc.nqds != 0) */
     
-    for( i = 0; i < geometry.n; i++ )
-      curx[i]= cmplx( crnt.air[i]+crnt.cir[i], crnt.aii[i]+crnt.cii[i] );
+    for( i = 0; i < ctx->geometry.n; i++ )
+      curx[i]= cmplx( ctx->crnt.air[i]+ctx->crnt.cir[i], ctx->crnt.aii[i]+ctx->crnt.cii[i] );
     
   } /* if( n != 0) */
   
-  if( geometry.m == 0)
+  if( ctx->geometry.m == 0)
     return;
   
   /* convert surface currents from */
   /* t1,t2 components to x,y,z components */
-  jco1= geometry.np2m;
-  jco2= jco1+ geometry.m;
-  for( i = 1; i <= geometry.m; i++ ) {
+  jco1= ctx->geometry.np2m;
+  jco2= jco1+ ctx->geometry.m;
+  for( i = 1; i <= ctx->geometry.m; i++ ) {
     jco1 -= 2;
     jco2 -= 3;
     cs1= curx[jco1];
     cs2= curx[jco1+1];
-    curx[jco2]  = cs1* geometry.t1x[geometry.m-i]+ cs2* geometry.t2x[geometry.m-i];
-    curx[jco2+1]= cs1* geometry.t1y[geometry.m-i]+ cs2* geometry.t2y[geometry.m-i];
-    curx[jco2+2]= cs1* geometry.t1z[geometry.m-i]+ cs2* geometry.t2z[geometry.m-i];
+    curx[jco2]  = cs1* ctx->geometry.t1x[ctx->geometry.m-i]+ cs2* ctx->geometry.t2x[ctx->geometry.m-i];
+    curx[jco2+1]= cs1* ctx->geometry.t1y[ctx->geometry.m-i]+ cs2* ctx->geometry.t2y[ctx->geometry.m-i];
+    curx[jco2+2]= cs1* ctx->geometry.t1z[ctx->geometry.m-i]+ cs2* ctx->geometry.t2z[ctx->geometry.m-i];
   }
   
   return;
@@ -112,45 +112,45 @@ void cabc(complex double *curx)
 /*-----------------------------------------------------------------------*/
 
 /* couple computes the maximum coupling between pairs of segments. */
-void couple( complex double *cur, double wlam )
+void couple(nec_context_t *ctx, double complex *cur, double wlam )
 {
   int j, j1, j2, l1, i, k, itt1, itt2, its1, its2, isg1, isg2, npm1;
   double dbc, c, gmax;
-  complex double y11, y12, y22, yl, yin, zl, zin, rho;
+  double complex y11, y12, y22, yl, yin, zl, zin, rho;
   size_t mreq;
   
-  if( (vsorc.nsant != 1) || (vsorc.nvqd != 0) )
+  if( (ctx->vsorc.nsant != 1) || (ctx->vsorc.nvqd != 0) )
     return;
   
-  j= segment_number( yparm.nctag[yparm.icoup], yparm.ncseg[yparm.icoup]);
-  if( j != vsorc.isant[0] )
+  j= segment_number(ctx,  ctx->yparm.nctag[ctx->yparm.icoup], ctx->yparm.ncseg[ctx->yparm.icoup]);
+  if( j != ctx->vsorc.isant[0] )
     return;
   
-  zin= vsorc.vsant[0];
-  yparm.icoup++;
-  mreq = (size_t)yparm.icoup;
-  mreq *= sizeof( complex double);
-  mem_realloc( (void *)&yparm.y11a, mreq );
-  yparm.y11a[yparm.icoup-1]= cur[j-1]*wlam/zin;
+  zin= ctx->vsorc.vsant[0];
+  ctx->yparm.icoup++;
+  mreq = (size_t)ctx->yparm.icoup;
+  mreq *= sizeof( double complex);
+  mem_realloc(ctx,  (void *)&ctx->yparm.y11a, mreq );
+  ctx->yparm.y11a[ctx->yparm.icoup-1]= cur[j-1]*wlam/zin;
   
-  l1=(yparm.icoup-1)*(yparm.ncoup-1);
-  for( i = 0; i < yparm.ncoup; i++ )
+  l1=(ctx->yparm.icoup-1)*(ctx->yparm.ncoup-1);
+  for( i = 0; i < ctx->yparm.ncoup; i++ )
   {
-    if( (i+1) == yparm.icoup)
+    if( (i+1) == ctx->yparm.icoup)
       continue;
     
     l1++;
     mreq = (size_t)l1;
-    mreq *= sizeof( complex double);
-    mem_realloc( (void *)&yparm.y12a, mreq );
-    k= segment_number( yparm.nctag[i], yparm.ncseg[i]);
-    yparm.y12a[l1-1]= cur[k-1]* wlam/ zin;
+    mreq *= sizeof( double complex);
+    mem_realloc(ctx,  (void *)&ctx->yparm.y12a, mreq );
+    k= segment_number(ctx,  ctx->yparm.nctag[i], ctx->yparm.ncseg[i]);
+    ctx->yparm.y12a[l1-1]= cur[k-1]* wlam/ zin;
   }
   
-  if( yparm.icoup < yparm.ncoup)
+  if( ctx->yparm.icoup < ctx->yparm.ncoup)
     return;
   
-  fprintf( output_fp, "\n\n\n"
+  fprintf( ctx->output_fp, "\n\n\n"
           "                        -----------"
           " ISOLATION DATA -----------\n\n"
           " ------- COUPLING BETWEEN ------     MAXIMUM    "
@@ -160,25 +160,25 @@ void couple( complex double *cur, double wlam )
           " TAG  SEG   No:   TAG  SEG   No:      (DB)       "
           " REAL     IMAGINARY         REAL       IMAGINARY" );
   
-  npm1= yparm.ncoup-1;
+  npm1= ctx->yparm.ncoup-1;
   
   for( i = 0; i < npm1; i++ )
   {
-    itt1= yparm.nctag[i];
-    its1= yparm.ncseg[i];
-    isg1= segment_number( itt1, its1);
+    itt1= ctx->yparm.nctag[i];
+    its1= ctx->yparm.ncseg[i];
+    isg1= segment_number(ctx,  itt1, its1);
     l1= i+1;
     
-    for( j = l1; j < yparm.ncoup; j++ )
+    for( j = l1; j < ctx->yparm.ncoup; j++ )
     {
-      itt2= yparm.nctag[j];
-      its2= yparm.ncseg[j];
-      isg2= segment_number( itt2, its2);
+      itt2= ctx->yparm.nctag[j];
+      its2= ctx->yparm.ncseg[j];
+      isg2= segment_number(ctx,  itt2, its2);
       j1= j+ i* npm1-1;
       j2= i+ j* npm1;
-      y11= yparm.y11a[i];
-      y22= yparm.y11a[j];
-      y12=.5*( yparm.y12a[j1]+ yparm.y12a[j2]);
+      y11= ctx->yparm.y11a[i];
+      y22= ctx->yparm.y11a[j];
+      y12=.5*( ctx->yparm.y12a[j1]+ ctx->yparm.y12a[j2]);
       yin= y12* y12;
       dbc= cabs( yin);
       c= dbc/(2.* creal( y11)* creal( y22)- creal( yin));
@@ -195,9 +195,9 @@ void couple( complex double *cur, double wlam )
         zl=1./ yl;
         yin= y11- yin/( y22+ yl);
         zin=1./ yin;
-        dbc= db10( gmax);
+        dbc= db10(ctx,  gmax);
         
-        fprintf( output_fp, "\n"
+        fprintf( ctx->output_fp, "\n"
                 " %4d %4d %5d  %4d %4d %5d  %9.3f"
                 "  %12.5E %12.5E  %12.5E %12.5E",
                 itt1, its1, isg1, itt2, its2, isg2, dbc,
@@ -207,12 +207,12 @@ void couple( complex double *cur, double wlam )
         
       } /* if( (c >= 0.0) && (c <= 1.0) ) */
       
-      fprintf( output_fp, "\n"
+      fprintf( ctx->output_fp, "\n"
               " %4d %4d %5d   %4d %4d %5d  **ERROR** "
               "COUPLING IS NOT BETWEEN 0 AND 1. (= %12.5E)",
               itt1, its1, isg1, itt2, its2, isg2, c );
       
-    } /* for( j = l1; j < yparm.ncoup; j++ ) */
+    } /* for( j = l1; j < ctx->yparm.ncoup; j++ ) */
     
   } /* for( i = 0; i < npm1; i++ ) */
   
@@ -223,15 +223,15 @@ void couple( complex double *cur, double wlam )
 
 /* load calculates the impedance of specified */
 /* segments for various types of loading */
-void load( int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
+void load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
           double *zlr, double *zli, double *zlc )
 {
   int i, iwarn, istep, istepx, l1, l2, ldtags, jump, ichk;
-  complex double zt=CPLX_00, tpcj;
+  double complex zt=CPLX_00, tpcj;
   size_t mreq;
   
   tpcj = (0.0+I*1.883698955e+9);
-  fprintf( output_fp, "\n"
+  fprintf( ctx->output_fp, "\n"
           "  LOCATION        RESISTANCE  INDUCTANCE  CAPACITANCE   "
           "  IMPEDANCE (OHMS)   CONDUCTIVITY  CIRCUIT\n"
           "  ITAG FROM THRU     OHMS       HENRYS      FARADS     "
@@ -239,11 +239,11 @@ void load( int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
   
   /* initialize d array, used for temporary */
   /* storage of loading information. */
-  mreq = (size_t)geometry.npm;
-  mreq *= sizeof(complex double);
-  mem_realloc( (void *)&zload.zarray, mreq );
-  for( i = 0; i < geometry.n; i++ )
-    zload.zarray[i]=CPLX_00;
+  mreq = (size_t)ctx->geometry.npm;
+  mreq *= sizeof(double complex);
+  mem_realloc(ctx,  (void *)&ctx->zload.zarray, mreq );
+  for( i = 0; i < ctx->geometry.n; i++ )
+    ctx->zload.zarray[i]=CPLX_00;
   
   iwarn=FALSE;
   istep=0;
@@ -254,38 +254,38 @@ void load( int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
     istepx = istep;
     istep++;
     
-    if( istep > zload.nload)
+    if( istep > ctx->zload.nload)
     {
       if( iwarn == TRUE )
-        fprintf( output_fp,
+        fprintf( ctx->output_fp,
                 "\n  NOTE, SOME OF THE ABOVE SEGMENTS "
                 "HAVE BEEN LOADED TWICE - IMPEDANCES ADDED" );
       
-      smat.nop = geometry.n/geometry.np;
-      if( smat.nop == 1)
+      ctx->smat.nop = ctx->geometry.n/ctx->geometry.np;
+      if( ctx->smat.nop == 1)
         return;
       
-      for( i = 0; i < geometry.np; i++ )
+      for( i = 0; i < ctx->geometry.np; i++ )
       {
-        zt= zload.zarray[i];
+        zt= ctx->zload.zarray[i];
         l1= i;
         
-        for( l2 = 1; l2 < smat.nop; l2++ )
+        for( l2 = 1; l2 < ctx->smat.nop; l2++ )
         {
-          l1 += geometry.np;
-          zload.zarray[l1]= zt;
+          l1 += ctx->geometry.np;
+          ctx->zload.zarray[l1]= zt;
         }
       }
       return;
       
-    } /* if( istep > zload.nload) */
+    } /* if( istep > ctx->zload.nload) */
     
     if( ldtyp[istepx] > 5 )
     {
-      fprintf( output_fp,
+      fprintf( ctx->output_fp,
               "\n  IMPROPER LOAD TYPE CHOSEN,"
               " REQUESTED TYPE IS %d", ldtyp[istepx] );
-      stop(-1);
+      stop(ctx, -1);
     }
     
     /* search segments for proper itags */
@@ -293,7 +293,7 @@ void load( int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
     jump= ldtyp[istepx]+1;
     ichk=0;
     l1= 1;
-    l2= geometry.n;
+    l2= ctx->geometry.n;
     
     if( ldtags == 0)
     {
@@ -308,7 +308,7 @@ void load( int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
     
     for(i = l1-1; i < l2; i++) {
       if(ldtags != 0) {
-        if( ldtags != geometry.tag_nums[i])
+        if( ldtags != ctx->geometry.tag_nums[i])
           continue;
         
         if( ldtagf[istepx] != 0)
@@ -328,88 +328,88 @@ void load( int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
       /* jump to appropriate section for loading type */
       switch( jump ) {
         case 1:
-          zt= zlr[istepx]/ geometry.si[i]+ tpcj* zli[istepx]/( geometry.si[i]* geometry.wlam);
+          zt= zlr[istepx]/ ctx->geometry.si[i]+ tpcj* zli[istepx]/( ctx->geometry.si[i]* ctx->geometry.wlam);
           if( fabs( zlc[istepx]) > 1.0e-20)
-            zt += geometry.wlam/( tpcj* geometry.si[i]* zlc[istepx]);
+            zt += ctx->geometry.wlam/( tpcj* ctx->geometry.si[i]* zlc[istepx]);
           break;
           
         case 2:
-          zt= tpcj* geometry.si[i]* zlc[istepx]/ geometry.wlam;
+          zt= tpcj* ctx->geometry.si[i]* zlc[istepx]/ ctx->geometry.wlam;
           if( fabs( zli[istepx]) > 1.0e-20)
-            zt += geometry.si[i]* geometry.wlam/( tpcj* zli[istepx]);
+            zt += ctx->geometry.si[i]* ctx->geometry.wlam/( tpcj* zli[istepx]);
           if( fabs( zlr[istepx]) > 1.0e-20)
-            zt += geometry.si[i]/ zlr[istepx];
+            zt += ctx->geometry.si[i]/ zlr[istepx];
           zt=1./ zt;
           break;
           
         case 3:
-          zt= zlr[istepx]* geometry.wlam+ tpcj* zli[istepx];
+          zt= zlr[istepx]* ctx->geometry.wlam+ tpcj* zli[istepx];
           if( fabs( zlc[istepx]) > 1.0e-20)
-            zt += 1./( tpcj* geometry.si[i]* geometry.si[i]* zlc[istepx]);
+            zt += 1./( tpcj* ctx->geometry.si[i]* ctx->geometry.si[i]* zlc[istepx]);
           break;
           
         case 4:
-          zt= tpcj* geometry.si[i]* geometry.si[i]* zlc[istepx];
+          zt= tpcj* ctx->geometry.si[i]* ctx->geometry.si[i]* zlc[istepx];
           if( fabs( zli[istepx]) > 1.0e-20)
             zt += 1./( tpcj* zli[istepx]);
           if( fabs( zlr[istepx]) > 1.0e-20)
-            zt += 1./( zlr[istepx]* geometry.wlam);
+            zt += 1./( zlr[istepx]* ctx->geometry.wlam);
           zt=1./ zt;
           break;
           
         case 5:
-          zt= cmplx( zlr[istepx], zli[istepx])/ geometry.si[i];
+          zt= cmplx( zlr[istepx], zli[istepx])/ ctx->geometry.si[i];
           break;
           
         case 6:
-          zint( zlr[istepx]* geometry.wlam, geometry.bi[i], &zt );
+          zint( ctx, zlr[istepx]* ctx->geometry.wlam, ctx->geometry.bi[i], &zt );
           
       } /* switch( jump ) */
       
-      if(( fabs( creal( zload.zarray[i]))+ fabs( cimag( zload.zarray[i]))) > 1.0e-20)
+      if(( fabs( creal( ctx->zload.zarray[i]))+ fabs( cimag( ctx->zload.zarray[i]))) > 1.0e-20)
         iwarn=TRUE;
-      zload.zarray[i] += zt;
+      ctx->zload.zarray[i] += zt;
       
     } /* for( i = l1-1; i < l2; i++ ) */
     
     if( ichk == 0 )
     {
-      fprintf( output_fp,
+      fprintf( ctx->output_fp,
               "\n  LOADING DATA CARD ERROR,"
               " NO SEGMENT HAS AN ITAG = %d", ldtags );
-      stop(-1);
+      stop(ctx, -1);
     }
     
     /* printing the segment loading data, jump to proper print */
     switch( jump )
     {
       case 1:
-        prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+        prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
              zli[istepx], zlc[istepx],0.,0.,0.," SERIES ", 2);
         break;
         
       case 2:
-        prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+        prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
              zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL",2);
         break;
         
       case 3:
-        prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+        prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
              zli[istepx], zlc[istepx],0.,0.,0., "SERIES (PER METER)", 5);
         break;
         
       case 4:
-        prnt( ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+        prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
              zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL (PER METER)",5);
         break;
         
       case 5:
-        prnt( ldtags, ldtagf[istepx], ldtagt[istepx],0.,0.,0.,
+        prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx],0.,0.,0.,
              zlr[istepx], zli[istepx],0.,"FIXED IMPEDANCE ",4);
         break;
         
       case 6:
-        prnt( ldtags, ldtagf[istepx], ldtagt[istepx],
+        prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx],
              0.,0.,0.,0.,0., zlr[istepx],"  WIRE  ",2);
         
     } /* switch( jump ) */
@@ -419,15 +419,15 @@ void load( int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
 /*-----------------------------------------------------------------------*/
 
 /* gf computes the integrand exp(jkr)/(kr) for numerical integration. */
-void gf( double zk, double *co, double *si )
+void gf(nec_context_t *ctx, double zk, double *co, double *si )
 {
   double zdk, rk, rks;
   
-  zdk= zk- tmi.zpk;
-  rk= sqrt( tmi.rkb2+ zdk* zdk);
+  zdk= zk- ctx->tmi.zpk;
+  rk= sqrt( ctx->tmi.rkb2+ zdk* zdk);
   *si= sin( rk)/ rk;
   
-  if( tmi.ij != 0 )
+  if( ctx->tmi.ij != 0 )
   {
     *co= cos( rk)/ rk;
     return;
@@ -448,7 +448,7 @@ void gf( double zk, double *co, double *si )
 /*-----------------------------------------------------------------------*/
 
 /* function db10 returns db for magnitude (field) */
-double db10( double x )
+double db10(nec_context_t *ctx, double x )
 {
   if( x < 1.e-20 )
     return( -999.99 );
@@ -459,7 +459,7 @@ double db10( double x )
 /*-----------------------------------------------------------------------*/
 
 /* function db20 returns db for mag**2 (power) i */
-double db20( double x )
+double db20(nec_context_t *ctx, double x )
 {
   if( x < 1.e-20 )
     return( -999.99 );
@@ -471,8 +471,8 @@ double db20( double x )
 
 /* intrp uses bivariate cubic interpolation to obtain */
 /* the values of 4 functions at the point (x,y). */
-void intrp( double x, double y, complex double *f1,
-           complex double *f2, complex double *f3, complex double *f4 )
+void intrp(nec_context_t *ctx, double x, double y, double complex *f1,
+           double complex *f2, double complex *f3, double complex *f4 )
 {
   static int ix, iy, ixs=-10, iys=-10, igrs=-10, ixeg=0, iyeg=0;
   static int nxm2, nym2, nxms, nyms, nd, ndp;
@@ -480,9 +480,9 @@ void intrp( double x, double y, complex double *f1,
   int jump;
   static double dx = 1., dy = 1., xs = 0., ys = 0., xz, yz;
   double xx, yy;
-  static complex double a[4][4], b[4][4], c[4][4], d[4][4];
-  complex double p1=CPLX_00, p2=CPLX_00, p3=CPLX_00, p4=CPLX_00;
-  complex double fx1, fx2, fx3, fx4;
+  static double complex a[4][4], b[4][4], c[4][4], d[4][4];
+  double complex p1=CPLX_00, p2=CPLX_00, p3=CPLX_00, p4=CPLX_00;
+  double complex fx1, fx2, fx3, fx4;
   
   jump = FALSE;
   if( (x < xs) || (y < ys) )
@@ -503,11 +503,11 @@ void intrp( double x, double y, complex double *f1,
   {
     int igr, iadd, iadz, i, k;
     /* determine correct grid and grid region */
-    if( x <= ggrid.xsa[1])
+    if( x <= ctx->ggrid.xsa[1])
       igr=0;
     else
     {
-      if( y > ggrid.ysa[2])
+      if( y > ctx->ggrid.ysa[2])
         igr=2;
       else
         igr=1;
@@ -516,12 +516,12 @@ void intrp( double x, double y, complex double *f1,
     if( igr != igrs)
     {
       igrs= igr;
-      dx= ggrid.dxa[igrs];
-      dy= ggrid.dya[igrs];
-      xs= ggrid.xsa[igrs];
-      ys= ggrid.ysa[igrs];
-      nxm2= ggrid.nxa[igrs]-2;
-      nym2= ggrid.nya[igrs]-2;
+      dx= ctx->ggrid.dxa[igrs];
+      dy= ctx->ggrid.dya[igrs];
+      xs= ctx->ggrid.xsa[igrs];
+      ys= ctx->ggrid.ysa[igrs];
+      nxm2= ctx->ggrid.nxa[igrs]-2;
+      nym2= ctx->ggrid.nya[igrs]-2;
       nxms=(( nxm2+1)/3)*3+1;
       nyms=(( nym2+1)/3)*3+1;
       nd= nda[igrs];
@@ -568,24 +568,24 @@ void intrp( double x, double y, complex double *f1,
         switch( igrs )
         {
           case 0:
-            p1= ggrid.ar1[iadd-2];
-            p2= ggrid.ar1[iadd-1];
-            p3= ggrid.ar1[iadd];
-            p4= ggrid.ar1[iadd+1];
+            p1= ctx->ggrid.ar1[iadd-2];
+            p2= ctx->ggrid.ar1[iadd-1];
+            p3= ctx->ggrid.ar1[iadd];
+            p4= ctx->ggrid.ar1[iadd+1];
             break;
             
           case 1:
-            p1= ggrid.ar2[iadd-2];
-            p2= ggrid.ar2[iadd-1];
-            p3= ggrid.ar2[iadd];
-            p4= ggrid.ar2[iadd+1];
+            p1= ctx->ggrid.ar2[iadd-2];
+            p2= ctx->ggrid.ar2[iadd-1];
+            p3= ctx->ggrid.ar2[iadd];
+            p4= ctx->ggrid.ar2[iadd+1];
             break;
             
           case 2:
-            p1= ggrid.ar3[iadd-2];
-            p2= ggrid.ar3[iadd-1];
-            p3= ggrid.ar3[iadd];
-            p4= ggrid.ar3[iadd+1];
+            p1= ctx->ggrid.ar3[iadd-2];
+            p2= ctx->ggrid.ar3[iadd-1];
+            p3= ctx->ggrid.ar3[iadd];
+            p4= ctx->ggrid.ar3[iadd+1];
             
         } /* switch( igrs ) */
         
@@ -648,7 +648,7 @@ void intrp( double x, double y, complex double *f1,
 /* intx performs numerical integration of exp(jkr)/r by the method of */
 /* variable interval width romberg integration.  the integrand value */
 /* is supplied by subroutine gf. */
-void intx( double el1, double el2, double b,
+void intx(nec_context_t *ctx, double el1, double el2, double b,
           int ij, double *sgr, double *sgi)
 {
   int ns, nt;
@@ -671,7 +671,7 @@ void intx( double el1, double el2, double b,
   *sgi=0.;
   ns= nx;
   nt=0;
-  gf( z, &g1r, &g1i);
+  gf(ctx,  z, &g1r, &g1i);
   
   while( TRUE )
   {
@@ -699,9 +699,9 @@ void intx( double el1, double el2, double b,
       
       dzot= dz*.5;
       zp= z+ dzot;
-      gf( zp, &g3r, &g3i);
+      gf(ctx,  zp, &g3r, &g3i);
       zp= z+ dz;
-      gf( zp, &g5r, &g5i);
+      gf(ctx,  zp, &g5r, &g5i);
       
     } /* if( flag ) */
     
@@ -713,7 +713,7 @@ void intx( double el1, double el2, double b,
     t10i=(4.0* t01i- t00i)/3.0;
     
     /* test convergence of 3 point romberg result. */
-    test( t01r, t10r, &te1r, t01i, t10i, &te1i, 0.);
+    test(ctx,  t01r, t10r, &te1r, t01i, t10i, &te1i, 0.);
     if( (te1i <= rx) && (te1r <= rx) )
     {
       *sgr= *sgr+ t10r;
@@ -747,9 +747,9 @@ void intx( double el1, double el2, double b,
     } /* if( (te1i <= rx) && (te1r <= rx) ) */
     
     zp= z+ dz*0.25;
-    gf( zp, &g2r, &g2i);
+    gf(ctx,  zp, &g2r, &g2i);
     zp= z+ dz*0.75;
-    gf( zp, &g4r, &g4i);
+    gf(ctx,  zp, &g4r, &g4i);
     t02r=( t01r+ dzot*( g2r+ g4r))*0.5;
     t02i=( t01i+ dzot*( g2i+ g4i))*0.5;
     t11r=(4.0* t02r- t01r)/3.0;
@@ -758,12 +758,12 @@ void intx( double el1, double el2, double b,
     t20i=(16.0* t11i- t10i)/15.0;
     
     /* test convergence of 5 point romberg result. */
-    test( t11r, t20r, &te2r, t11i, t20i, &te2i, 0.);
+    test(ctx,  t11r, t20r, &te2r, t11i, t20i, &te2i, 0.);
     if( (te2i > rx) || (te2r > rx) )
     {
       nt=0;
       if( ns >= nma)
-        fprintf( output_fp, "\n  STEP SIZE LIMITED AT Z= %10.5f", z );
+        fprintf( ctx->output_fp, "\n  STEP SIZE LIMITED AT Z= %10.5f", z );
       else
       {
         /* halve step size */
@@ -816,7 +816,7 @@ void intx( double el1, double el2, double b,
 /*-----------------------------------------------------------------------*/
 
 /* returns smallest of two arguments */
-int min( int a, int b )
+int min(nec_context_t *ctx, int a, int b )
 {
   if( a < b )
     return(a);
@@ -827,7 +827,7 @@ int min( int a, int b )
 /*-----------------------------------------------------------------------*/
 
 /* test for convergence in numerical integration */
-void test( double f1r, double f2r, double *tr,
+void test(nec_context_t *ctx, double f1r, double f2r, double *tr,
           double f1i, double f2i, double *ti, double dmin )
 {
   double den;
@@ -856,7 +856,7 @@ void test( double f1r, double f2r, double *tr,
 /*-----------------------------------------------------------------------*/
 
 /* compute component of basis function i on segment is. */
-void sbf( int i, int is, double *aa, double *bb, double *cc )
+void sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
 {
   int ix, jsno, june, jcox, jcoxx, jend, iend, njun1=0, njun2;
   double d, sig, pp, sdh, cdh, sd, omc, aj, pm=0, cd, ap, qp, qm, xxi;
@@ -869,7 +869,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
   pp=0.;
   ix=i-1;
   
-  jcox= geometry.icon1[ix];
+  jcox= ctx->geometry.icon1[ix];
   if( jcox > PCHCON) jcox= i;
   
   jend=-1;
@@ -890,7 +890,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
       jcoxx = jcox-1;
       
       jsno++;
-      d= PI* geometry.si[jcoxx];
+      d= PI* ctx->geometry.si[jcoxx];
       sdh= sin( d);
       cdh= cos( d);
       sd=2.* sdh* cdh;
@@ -903,7 +903,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
       else
         omc=1.- cdh* cdh+ sdh* sdh;
       
-      aj=1./( log(1./( PI* geometry.bi[jcoxx]))-.577215664);
+      aj=1./( log(1./( PI* ctx->geometry.bi[jcoxx]))-.577215664);
       pp -= omc/ sd* aj;
       
       if( jcox == is)
@@ -917,17 +917,17 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
       if( jcox != i )
       {
         if( jend != 1)
-          jcox= geometry.icon1[jcoxx];
+          jcox= ctx->geometry.icon1[jcoxx];
         else
-          jcox= geometry.icon2[jcoxx];
+          jcox= ctx->geometry.icon2[jcoxx];
         
         if( abs(jcox) != i )
         {
           if( jcox == 0 )
           {
-            fprintf( output_fp,
+            fprintf( ctx->output_fp,
                     "\n  SBF - SEGMENT CONNECTION ERROR FOR SEGMENT %d", i);
-            stop(-1);
+            stop(ctx, -1);
           }
           else
             continue;
@@ -947,7 +947,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
     pp=0.;
     njun1= jsno;
     
-    jcox= geometry.icon2[ix];
+    jcox= ctx->geometry.icon2[ix];
     if( jcox > PCHCON) jcox= i;
     
     jend=1;
@@ -958,7 +958,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
   while( jcox != 0 );
   
   njun2= jsno- njun1;
-  d= PI* geometry.si[ix];
+  d= PI* ctx->geometry.si[ix];
   sdh= sin( d);
   cdh= cos( d);
   sd=2.* sdh* cdh;
@@ -972,7 +972,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
   else
     omc=1.- cd;
   
-  ap=1./( log(1./( PI* geometry.bi[ix])) -.577215664);
+  ap=1./( log(1./( PI* ctx->geometry.bi[ix])) -.577215664);
   aj= ap;
   
   if( njun1 == 0)
@@ -980,14 +980,14 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
     if( njun2 == 0)
     {
       *aa =-1.;
-      qp= PI* geometry.bi[ix];
+      qp= PI* ctx->geometry.bi[ix];
       xxi= qp* qp;
       xxi= qp*(1.-.5* xxi)/(1.- xxi);
       *cc=1./( cdh- xxi* sdh);
       return;
     }
     
-    qp= PI* geometry.bi[ix];
+    qp= PI* ctx->geometry.bi[ix];
     xxi= qp* qp;
     xxi= qp*(1.-.5* xxi)/(1.- xxi);
     qp=-( omc+ xxi* sd)/( sd*( ap+ xxi* pp)+ cd*( xxi* ap- pp));
@@ -1011,7 +1011,7 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
   
   if( njun2 == 0)
   {
-    qm= PI* geometry.bi[ix];
+    qm= PI* ctx->geometry.bi[ix];
     xxi= qm* qm;
     xxi= qm*(1.-.5* xxi)/(1.- xxi);
     qm=( omc+ xxi* sd)/( sd*( aj- xxi* pm)+ cd*( pm+ xxi* aj));
@@ -1067,16 +1067,16 @@ void sbf( int i, int is, double *aa, double *bb, double *cc )
 /*-----------------------------------------------------------------------*/
 
 /* compute basis function i */
-void tbf( int i, int icap )
+void tbf(nec_context_t *ctx, int i, int icap )
 {
   int ix, jcox, jcoxx, jend, iend, njun1=0, njun2, jsnop, jsnox;
   double pp, sdh, cdh, sd, omc, aj, pm=0, cd, ap, qp, qm, xxi;
   double d, sig; /*** also global ***/
   
-  segj.jsno=0;
+  ctx->segj.jsno=0;
   pp=0.;
   ix = i-1;
-  jcox= geometry.icon1[ix];
+  jcox= ctx->geometry.icon1[ix];
   
   if( jcox > PCHCON) jcox= i;
   
@@ -1095,10 +1095,10 @@ void tbf( int i, int icap )
       }
       
       jcoxx = jcox-1;
-      segj.jsno++;
-      jsnox = segj.jsno-1;
-      segj.jco[jsnox]= jcox;
-      d= PI* geometry.si[jcoxx];
+      ctx->segj.jsno++;
+      jsnox = ctx->segj.jsno-1;
+      ctx->segj.jco[jsnox]= jcox;
+      d= PI* ctx->geometry.si[jcoxx];
       sdh= sin( d);
       cdh= cos( d);
       sd=2.* sdh* cdh;
@@ -1111,18 +1111,18 @@ void tbf( int i, int icap )
       else
         omc=1.- cdh* cdh+ sdh* sdh;
       
-      aj=1./( log(1./( PI* geometry.bi[jcoxx]))-.577215664);
+      aj=1./( log(1./( PI* ctx->geometry.bi[jcoxx]))-.577215664);
       pp= pp- omc/ sd* aj;
-      segj.ax[jsnox]= aj/ sd* sig;
-      segj.bx[jsnox]= aj/(2.* cdh);
-      segj.cx[jsnox]= -aj/(2.* sdh)* sig;
+      ctx->segj.ax[jsnox]= aj/ sd* sig;
+      ctx->segj.bx[jsnox]= aj/(2.* cdh);
+      ctx->segj.cx[jsnox]= -aj/(2.* sdh)* sig;
       
       if( jcox != i)
       {
         if( jend == 1)
-          jcox= geometry.icon2[jcoxx];
+          jcox= ctx->geometry.icon2[jcoxx];
         else
-          jcox= geometry.icon1[jcoxx];
+          jcox= ctx->geometry.icon1[jcoxx];
         
         if( abs(jcox) != i )
         {
@@ -1130,15 +1130,15 @@ void tbf( int i, int icap )
             continue;
           else
           {
-            fprintf( output_fp,
+            fprintf( ctx->output_fp,
                     "\n  TBF - SEGMENT CONNECTION ERROR FOR SEGMENT %5d", i );
-            stop(-1);
+            stop(ctx, -1);
           }
         }
         
       } /* if( jcox != i) */
       else
-        segj.bx[jsnox] = -segj.bx[jsnox];
+        ctx->segj.bx[jsnox] = -ctx->segj.bx[jsnox];
       
       if( iend == 1)
         break;
@@ -1147,9 +1147,9 @@ void tbf( int i, int icap )
     
     pm= -pp;
     pp=0.;
-    njun1= segj.jsno;
+    njun1= ctx->segj.jsno;
     
-    jcox= geometry.icon2[ix];
+    jcox= ctx->geometry.icon2[ix];
     if( jcox > PCHCON) jcox= i;
     
     jend=1;
@@ -1159,10 +1159,10 @@ void tbf( int i, int icap )
   } /* do */
   while( jcox != 0 );
   
-  njun2= segj.jsno- njun1;
-  jsnop= segj.jsno;
-  segj.jco[jsnop]= i;
-  d= PI* geometry.si[ix];
+  njun2= ctx->segj.jsno- njun1;
+  jsnop= ctx->segj.jsno;
+  ctx->segj.jco[jsnop]= i;
+  d= PI* ctx->geometry.si[ix];
   sdh= sin( d);
   cdh= cos( d);
   sd=2.* sdh* cdh;
@@ -1176,27 +1176,27 @@ void tbf( int i, int icap )
   else
     omc=1.- cd;
   
-  ap=1./( log(1./( PI* geometry.bi[ix]))-.577215664);
+  ap=1./( log(1./( PI* ctx->geometry.bi[ix]))-.577215664);
   aj= ap;
   
   if( njun1 == 0)
   {
     if( njun2 == 0)
     {
-      segj.bx[jsnop]=0.;
+      ctx->segj.bx[jsnop]=0.;
       
       if( icap == 0)
         xxi=0.;
       else
       {
-        qp= PI* geometry.bi[ix];
+        qp= PI* ctx->geometry.bi[ix];
         xxi= qp* qp;
         xxi= qp*(1.-.5* xxi)/(1.- xxi);
       }
       
-      segj.cx[jsnop]=1./( cdh- xxi* sdh);
-      segj.jsno= jsnop+1;
-      segj.ax[jsnop]=-1.;
+      ctx->segj.cx[jsnop]=1./( cdh- xxi* sdh);
+      ctx->segj.jsno= jsnop+1;
+      ctx->segj.ax[jsnop]=-1.;
       return;
       
     } /* if( njun2 == 0) */
@@ -1205,25 +1205,25 @@ void tbf( int i, int icap )
       xxi=0.;
     else
     {
-      qp= PI* geometry.bi[ix];
+      qp= PI* ctx->geometry.bi[ix];
       xxi= qp* qp;
       xxi= qp*(1.-.5* xxi)/(1.- xxi);
     }
     
     qp=-( omc+ xxi* sd)/( sd*( ap+ xxi* pp)+ cd*( xxi* ap- pp));
     d= cd- xxi* sd;
-    segj.bx[jsnop]=( sdh+ ap* qp*( cdh- xxi* sdh))/ d;
-    segj.cx[jsnop]=( cdh+ ap* qp*( sdh+ xxi* cdh))/ d;
+    ctx->segj.bx[jsnop]=( sdh+ ap* qp*( cdh- xxi* sdh))/ d;
+    ctx->segj.cx[jsnop]=( cdh+ ap* qp*( sdh+ xxi* cdh))/ d;
     
     for( iend = 0; iend < njun2; iend++ )
     {
-      segj.ax[iend]= -segj.ax[iend]* qp;
-      segj.bx[iend]= segj.bx[iend]* qp;
-      segj.cx[iend]= -segj.cx[iend]* qp;
+      ctx->segj.ax[iend]= -ctx->segj.ax[iend]* qp;
+      ctx->segj.bx[iend]= ctx->segj.bx[iend]* qp;
+      ctx->segj.cx[iend]= -ctx->segj.cx[iend]* qp;
     }
     
-    segj.jsno= jsnop+1;
-    segj.ax[jsnop]=-1.;
+    ctx->segj.jsno= jsnop+1;
+    ctx->segj.ax[jsnop]=-1.;
     return;
     
   } /* if( njun1 == 0) */
@@ -1234,25 +1234,25 @@ void tbf( int i, int icap )
       xxi=0.;
     else
     {
-      qm= PI* geometry.bi[ix];
+      qm= PI* ctx->geometry.bi[ix];
       xxi= qm* qm;
       xxi= qm*(1.-.5* xxi)/(1.- xxi);
     }
     
     qm=( omc+ xxi* sd)/( sd*( aj- xxi* pm)+ cd*( pm+ xxi* aj));
     d= cd- xxi* sd;
-    segj.bx[jsnop]=( aj* qm*( cdh- xxi* sdh)- sdh)/ d;
-    segj.cx[jsnop]=( cdh- aj* qm*( sdh+ xxi* cdh))/ d;
+    ctx->segj.bx[jsnop]=( aj* qm*( cdh- xxi* sdh)- sdh)/ d;
+    ctx->segj.cx[jsnop]=( cdh- aj* qm*( sdh+ xxi* cdh))/ d;
     
     for( iend = 0; iend < njun1; iend++ )
     {
-      segj.ax[iend]= segj.ax[iend]* qm;
-      segj.bx[iend]= segj.bx[iend]* qm;
-      segj.cx[iend]= segj.cx[iend]* qm;
+      ctx->segj.ax[iend]= ctx->segj.ax[iend]* qm;
+      ctx->segj.bx[iend]= ctx->segj.bx[iend]* qm;
+      ctx->segj.cx[iend]= ctx->segj.cx[iend]* qm;
     }
     
-    segj.jsno= jsnop+1;
-    segj.ax[jsnop]=-1.;
+    ctx->segj.jsno= jsnop+1;
+    ctx->segj.ax[jsnop]=-1.;
     return;
     
   } /* if( njun2 == 0) */
@@ -1260,38 +1260,38 @@ void tbf( int i, int icap )
   qp= sd*( pm* pp+ aj* ap)+ cd*( pm* ap- pp* aj);
   qm=( ap* omc- pp* sd)/ qp;
   qp=-( aj* omc+ pm* sd)/ qp;
-  segj.bx[jsnop]=( aj* qm+ ap* qp)* sdh/ sd;
-  segj.cx[jsnop]=( aj* qm- ap* qp)* cdh/ sd;
+  ctx->segj.bx[jsnop]=( aj* qm+ ap* qp)* sdh/ sd;
+  ctx->segj.cx[jsnop]=( aj* qm- ap* qp)* cdh/ sd;
   
   for( iend = 0; iend < njun1; iend++ )
   {
-    segj.ax[iend]= segj.ax[iend]* qm;
-    segj.bx[iend]= segj.bx[iend]* qm;
-    segj.cx[iend]= segj.cx[iend]* qm;
+    ctx->segj.ax[iend]= ctx->segj.ax[iend]* qm;
+    ctx->segj.bx[iend]= ctx->segj.bx[iend]* qm;
+    ctx->segj.cx[iend]= ctx->segj.cx[iend]* qm;
   }
   
   jend= njun1;
-  for( iend = jend; iend < segj.jsno; iend++ )
+  for( iend = jend; iend < ctx->segj.jsno; iend++ )
   {
-    segj.ax[iend]= -segj.ax[iend]* qp;
-    segj.bx[iend]= segj.bx[iend]* qp;
-    segj.cx[iend]= -segj.cx[iend]* qp;
+    ctx->segj.ax[iend]= -ctx->segj.ax[iend]* qp;
+    ctx->segj.bx[iend]= ctx->segj.bx[iend]* qp;
+    ctx->segj.cx[iend]= -ctx->segj.cx[iend]* qp;
   }
   
-  segj.jsno= jsnop+1;
-  segj.ax[jsnop]=-1.;
+  ctx->segj.jsno= jsnop+1;
+  ctx->segj.ax[jsnop]=-1.;
 }
 
 /*-----------------------------------------------------------------------*/
 
 /* compute the components of all basis functions on segment j */
-void trio( int j )
+void trio(nec_context_t *ctx, int j )
 {
   int jcox, jcoxx, jsnox, jx, jend=0, iend=0;
   
-  segj.jsno=0;
+  ctx->segj.jsno=0;
   jx = j-1;
-  jcox= geometry.icon1[jx];
+  jcox= ctx->geometry.icon1[jx];
   
   if( jcox <= PCHCON)
   {
@@ -1301,7 +1301,7 @@ void trio( int j )
   
   if( (jcox == 0) || (jcox > PCHCON) )
   {
-    jcox= geometry.icon2[jx];
+    jcox= ctx->geometry.icon2[jx];
     
     if( jcox <= PCHCON)
     {
@@ -1311,25 +1311,25 @@ void trio( int j )
     
     if( jcox == 0 || (jcox > PCHCON) )
     {
-      jsnox = segj.jsno;
-      segj.jsno++;
+      jsnox = ctx->segj.jsno;
+      ctx->segj.jsno++;
       
       /* Allocate to connections buffers */
-      if( segj.jsno >= segj.maxcon )
+      if( ctx->segj.jsno >= ctx->segj.maxcon )
       {
-        segj.maxcon = segj.jsno +1;
-        size_t mreq = (size_t)segj.maxcon;
+        ctx->segj.maxcon = ctx->segj.jsno +1;
+        size_t mreq = (size_t)ctx->segj.maxcon;
         mreq *= sizeof(int);
-        mem_realloc( (void *)&segj.jco, mreq );
-        mreq = (size_t)segj.maxcon;
+        mem_realloc(ctx,  (void *)&ctx->segj.jco, mreq );
+        mreq = (size_t)ctx->segj.maxcon;
         mreq *= sizeof(double);
-        mem_realloc( (void *) &segj.ax, mreq );
-        mem_realloc( (void *) &segj.bx, mreq );
-        mem_realloc( (void *) &segj.cx, mreq );
+        mem_realloc(ctx,  (void *) &ctx->segj.ax, mreq );
+        mem_realloc(ctx,  (void *) &ctx->segj.bx, mreq );
+        mem_realloc(ctx,  (void *) &ctx->segj.cx, mreq );
       }
       
-      sbf( j, j, &segj.ax[jsnox], &segj.bx[jsnox], &segj.cx[jsnox]);
-      segj.jco[jsnox]= j;
+      sbf(ctx,  j, j, &ctx->segj.ax[jsnox], &ctx->segj.bx[jsnox], &ctx->segj.cx[jsnox]);
+      ctx->segj.jco[jsnox]= j;
       return;
     }
     
@@ -1345,36 +1345,36 @@ void trio( int j )
     
     if( jcox != j)
     {
-      jsnox = segj.jsno;
-      segj.jsno++;
+      jsnox = ctx->segj.jsno;
+      ctx->segj.jsno++;
       
       /* Allocate to connections buffers */
-      if( segj.jsno >= segj.maxcon )
+      if( ctx->segj.jsno >= ctx->segj.maxcon )
       {
-        segj.maxcon = segj.jsno +1;
-        size_t mreq = (size_t)segj.maxcon;
+        ctx->segj.maxcon = ctx->segj.jsno +1;
+        size_t mreq = (size_t)ctx->segj.maxcon;
         mreq *= sizeof(int);
-        mem_realloc( (void *)&segj.jco, mreq );
-        mreq = (size_t)segj.maxcon;
+        mem_realloc(ctx,  (void *)&ctx->segj.jco, mreq );
+        mreq = (size_t)ctx->segj.maxcon;
         mreq *= sizeof(double);
-        mem_realloc( (void *) &segj.ax, mreq );
-        mem_realloc( (void *) &segj.bx, mreq );
-        mem_realloc( (void *) &segj.cx, mreq );
+        mem_realloc(ctx,  (void *) &ctx->segj.ax, mreq );
+        mem_realloc(ctx,  (void *) &ctx->segj.bx, mreq );
+        mem_realloc(ctx,  (void *) &ctx->segj.cx, mreq );
       }
       
-      sbf( jcox, j, &segj.ax[jsnox], &segj.bx[jsnox], &segj.cx[jsnox]);
-      segj.jco[jsnox]= jcox;
+      sbf(ctx,  jcox, j, &ctx->segj.ax[jsnox], &ctx->segj.bx[jsnox], &ctx->segj.cx[jsnox]);
+      ctx->segj.jco[jsnox]= jcox;
       
       if( jend != 1)
-        jcox= geometry.icon1[jcoxx];
+        jcox= ctx->geometry.icon1[jcoxx];
       else
-        jcox= geometry.icon2[jcoxx];
+        jcox= ctx->geometry.icon2[jcoxx];
       
       if( jcox == 0 )
       {
-        fprintf( output_fp,
+        fprintf( ctx->output_fp,
                 "\n  TRIO - SEGMENT CONNENTION ERROR FOR SEGMENT %5d", j );
-        stop(-1);
+        stop(ctx, -1);
       }
       else
         continue;
@@ -1384,7 +1384,7 @@ void trio( int j )
     if( iend == 1)
       break;
     
-    jcox= geometry.icon2[jx];
+    jcox= ctx->geometry.icon2[jx];
     
     if( jcox > PCHCON ) break;
     
@@ -1394,25 +1394,25 @@ void trio( int j )
   } /* do */
   while( jcox != 0 );
   
-  jsnox = segj.jsno;
-  segj.jsno++;
+  jsnox = ctx->segj.jsno;
+  ctx->segj.jsno++;
   
   /* Allocate to connections buffers */
-  if( segj.jsno >= segj.maxcon )
+  if( ctx->segj.jsno >= ctx->segj.maxcon )
   {
-    segj.maxcon = segj.jsno +1;
-    size_t mreq = (size_t)segj.maxcon;
+    ctx->segj.maxcon = ctx->segj.jsno +1;
+    size_t mreq = (size_t)ctx->segj.maxcon;
     mreq *= sizeof(int);
-    mem_realloc( (void *)&segj.jco, mreq );
-    mreq = (size_t)segj.maxcon;
+    mem_realloc(ctx,  (void *)&ctx->segj.jco, mreq );
+    mreq = (size_t)ctx->segj.maxcon;
     mreq *= sizeof(double);
-    mem_realloc( (void *) &segj.ax, mreq );
-    mem_realloc( (void *) &segj.bx, mreq );
-    mem_realloc( (void *) &segj.cx, mreq );
+    mem_realloc(ctx,  (void *) &ctx->segj.ax, mreq );
+    mem_realloc(ctx,  (void *) &ctx->segj.bx, mreq );
+    mem_realloc(ctx,  (void *) &ctx->segj.cx, mreq );
   }
   
-  sbf( j, j, &segj.ax[jsnox], &segj.bx[jsnox], &segj.cx[jsnox]);
-  segj.jco[jsnox]= j;
+  sbf(ctx,  j, j, &ctx->segj.ax[jsnox], &ctx->segj.bx[jsnox], &ctx->segj.cx[jsnox]);
+  ctx->segj.jco[jsnox]= j;
   
   return;
   
@@ -1421,7 +1421,7 @@ void trio( int j )
 /*-----------------------------------------------------------------------*/
 
 /* zint computes the internal impedance of a circular wire */
-void zint( double sigl, double rolam, complex double *zint )
+void zint(nec_context_t *ctx, double sigl, double rolam, double complex *zint )
 {
 #define cc1		( 6.0e-7     + I*1.9e-6)
 #define cc2		(-3.4e-6     + I*5.1e-6)
@@ -1445,7 +1445,7 @@ void zint( double sigl, double rolam, complex double *zint )
 #define g(d)  ( cexp(cn*(d)+th(8./x))/csqrt(TP*(d)) )
   
   double x, tpcmu = 2.368705e+3, cmotp = 60.00;
-  complex double br1, br2;
+  double complex br1, br2;
   
   x= sqrt( tpcmu* sigl)* rolam;
   if( x <= 110.)
@@ -1492,7 +1492,7 @@ void zint( double sigl, double rolam, complex double *zint )
 /*-----------------------------------------------------------------------*/
 
 /* cang returns the phase angle of a complex number in degrees. */
-double cang( complex double z )
+double cang(nec_context_t *ctx, double complex z )
 {
   return( carg(z)*TD );
 }

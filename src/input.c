@@ -37,16 +37,16 @@
  * array with the resulting data. After this completes, the caller
  * should call parse_deck() to process the data.
  *
- * @param deck Deck structure that will hold the Cards
- * @param input_fp file pointer to the file to be read, assumed
+ * @param deck deck_t structure that will hold the Cards
+ * @param pfile file pointer to the file to be read, assumed
  *  to have been opened previous to this call
  *
  */
-void read_deck(Deck *deck, FILE *input_fp)
+void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
 {
   // the card we're working on, have to null it or the Free()
   // below may fail when this contains garbage
-  Card *card = NULL;
+  card_t *card = NULL;
 
   char line_buf[MAX_LINE_LEN];  // make it large enough to hold any line
   size_t line_len;              // actual length of the current card being read
@@ -60,14 +60,14 @@ void read_deck(Deck *deck, FILE *input_fp)
   // loop and read lines one-by-one until we hit the EOF
   while(TRUE) {
     // read a line from input file and exit if it's the end of the stack
-    if(read_line(line_buf, input_fp) == EOF) break;
+    if(read_line(ctx, line_buf, pfile) == EOF) break;
     
     // store the line length because we do lots of comparisons against it
     line_len = strlen(line_buf);
     
     // make a new card and copy in the line
     // we save every line to a card, even blank lines
-    card = calloc(1, sizeof(Card));
+    card = calloc(1, sizeof(card_t));
     card->orig_str = calloc(line_len + 1, sizeof(char));
     card->edited = FALSE;
     card->ignore = FALSE; // should apply to geometery and commands?
@@ -76,10 +76,10 @@ void read_deck(Deck *deck, FILE *input_fp)
     // calloc/realloc the deck and add this card to it
     if(deck->num_cards == 0) {
       deck->num_cards++;
-      deck->cards = calloc(1, sizeof(Card));
+      deck->cards = calloc(1, sizeof(card_t));
     } else {
       deck->num_cards++;
-      deck->cards = realloc(deck->cards, deck->num_cards * sizeof(Card));
+      deck->cards = realloc(deck->cards, deck->num_cards * sizeof(card_t));
     }
     deck->cards[deck->num_cards - 1] = *card;
     
@@ -130,7 +130,7 @@ void read_deck(Deck *deck, FILE *input_fp)
  *  to have been opened previous to this call
  * 
 */
-int read_line(char *buff, FILE *file)
+int read_line(nec_context_t *ctx, char *buff, FILE *pfile)
 {
   int
     num_chr = 0,  // number of characters read, excluding lf/cr
@@ -141,10 +141,10 @@ int read_line(char *buff, FILE *file)
   buff[0] = '\0';
   
   // if we're at the end of the file, return that, we're done
-  if((chr = getc(file)) == EOF) {
+  if((chr = getc(pfile)) == EOF) {
     return(EOF);
   }
-  
+
   // the line parser below stops and returns as soon as it sees a single
   // cr or lf. That means that when we re-enter the routine, the file might
   // have leading cr's or lf's left over. this code eats them. note that this
@@ -153,30 +153,30 @@ int read_line(char *buff, FILE *file)
   // case, it would seem we should do this eating at the end of the routine?
   while((chr == CR) || (chr == LF)) {
     // eat the next char, and return if that's the eof
-    if((chr = getc(file)) == EOF) {
+    if((chr = getc(pfile)) == EOF) {
       return(EOF);
     }
-    
+
     // eat any remaining line-ends
     while((chr == CR) || (chr == LF)) {
-      if((chr = getc(file)) == EOF) {
+      if((chr = getc(pfile)) == EOF) {
         return(EOF);
       }
     }
   } /* end of while( (chr == CR) || ... */
-  
+
   // read the line until you pick up any trailing cr's or lfs.
   while(num_chr < MAX_LINE_LEN) {
     // if lf/cr reached before filling buffer, exit
     if((chr == CR) || (chr == LF))
       break;
-    
+
     // enter new char to buffer
     buff[num_chr++] = (char)chr;
-    
+
     // if we get the EOF, end the string at that point by replacing it
     // with a null and then setting the flag that we're done
-    if((chr = getc(file)) == EOF) {
+    if((chr = getc(pfile)) == EOF) {
       buff[num_chr] = '\0'; // FIXME: do we need this? it happens below
       eof = EOF;
     }
@@ -203,9 +203,9 @@ int read_line(char *buff, FILE *file)
  * extn_str.
  *
  */
-void parse_deck(Deck *deck, Errors *errors)
+void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
-  Card *card;
+  card_t *card;
   
   size_t line_len; // length of the original string for this card
   char type_buff[3];
@@ -241,10 +241,10 @@ void parse_deck(Deck *deck, Errors *errors)
     strncpy(card->card_code, type_buff, 2);
     
     /* see if we can find out what sort of card it is */
-    isCmt = isComment(card);
-    isGeo = isGeometry(card);
-    isCtl = isControl(card);
-    isExt = isExtension(card);
+    isCmt = is_comment(card);
+    isGeo = is_geometry(card);
+    isCtl = is_control(card);
+    isExt = is_extension(card);
 
     // while we loop, we want to keep track of key points in the deck
     // which will make it easier to work with in other parts of the code.
@@ -342,7 +342,7 @@ void parse_deck(Deck *deck, Errors *errors)
     // an error
     if (!sawEN && !isCmt && !isCtl && !isGeo && !isExt) {
       char *msg = calloc(1, MAX_ERROR_LEN);
-      sprintf(msg, "Unknown card type '%s' encountered on card %d. Card will not be processed.", type_buff, i);
+      sprintf(msg, "Unknown card type '%s' encountered on card %d. card_t will not be processed.", type_buff, i);
       add_error(errors, msg, 0);
       free(msg);
     }
@@ -386,19 +386,19 @@ void parse_deck(Deck *deck, Errors *errors)
     
     // now call the card parsers on the different card types
     if(isCmt) {
-      parse_comment_card(card, errors);
+      parse_comment_card(ctx, card, errors);
     }
     if(isGeo || isCtl) {
-      parse_geometry_or_control_card(card, errors);
+      parse_geometry_or_control_card(ctx, card, errors);
     }
     if(isExt) {
-      parse_onec_card(card, errors);
+      parse_onec_card(ctx, card, errors);
     }
     
     // process inline comments to look for key/value pairs
     // this can apply to any card, even comments
     if(card->extn_code[0] != '\0') {
-      parse_key_values(card, errors);
+      parse_key_values(ctx, card, errors);
     }
   } // foreach card
 } /* end of parse_deck() */
@@ -412,7 +412,7 @@ void parse_deck(Deck *deck, Errors *errors)
  * only applies to whole-line comments.
  *
  */
-void parse_comment_card(Card *card, Errors *errors)
+void parse_comment_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
 {
   // look for the different comment markers in the card_code and then
   // just copy everything else on the line to the comment. this
@@ -446,7 +446,7 @@ void parse_comment_card(Card *card, Errors *errors)
  * the addition of parsers for measurement units and formulas.
  *
  */
-void parse_geometry_or_control_card(Card *card, Errors *errors)
+void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
 {
   int ints_processed = 0;
   int flts_processed = 0;
@@ -472,7 +472,7 @@ void parse_geometry_or_control_card(Card *card, Errors *errors)
   // can't be a single-char comment market, which was handled above
   // we'll use this as the pointer to the current start location
   char str[MAX_LINE_LEN];
-  strcpy(str, trim_start(card->card_str + 2)); // skip the card code and remove whitespace
+  strcpy(str, trim_start(ctx, card->card_str + 2)); // skip the card code and remove whitespace
   
   // tokenize the rest of the line on the remaining whitespace
   token = strtok(str, ONEC_WHITESPACE);
@@ -535,7 +535,7 @@ void parse_geometry_or_control_card(Card *card, Errors *errors)
         token += 1; // move forward to skip the symbol
       }
       // or the onec indicator at the end
-      if(strendswith(token, "awg") == 0) {
+      if(strendswith(ctx, token, "awg") == 0) {
         isUnit = TRUE;
         unit = 7;
         token[strlen(token) - 3] = '\0'; // cut the awg off the end
@@ -632,7 +632,7 @@ void parse_geometry_or_control_card(Card *card, Errors *errors)
  *   produce multiple output runs
  *
  */
-void parse_onec_card(Card *card, Errors *errors)
+void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
 {
   // see if this is an SY card, otherwise exit
   // TODO: add all onec_codes here, we currently only do SY
@@ -662,7 +662,7 @@ void parse_onec_card(Card *card, Errors *errors)
         // now check that both sides are >0 len
         if(strlen(token) > 0 && strlen(split) > 0) {
           // if so, make a new keyvalue pair and add it to the card's collection
-          KeyValue *pair = (KeyValue *)malloc(sizeof(KeyValue));
+          key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
           if(pair != NULL) {
             // calloc the strings and store them...
             pair->key = (char *)calloc(split - token, sizeof(char));
@@ -674,7 +674,7 @@ void parse_onec_card(Card *card, Errors *errors)
             // and null this out, as its going on the end
             pair->next = NULL;
             // and then add it to the end of the list
-            KeyValue *tail = card->formulas;
+            key_value_t *tail = card->formulas;
             if(tail == NULL) {
               card->formulas = pair;
             } else {
@@ -699,7 +699,7 @@ void parse_onec_card(Card *card, Errors *errors)
  * everything after the marker is a comment
  *
  */
-void parse_key_values(Card *card, Errors *errors)
+void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors)
 {
   char str[MAX_LINE_LEN];
   char key[MAX_LINE_LEN], value[MAX_LINE_LEN];
@@ -743,8 +743,8 @@ void parse_key_values(Card *card, Errors *errors)
       // there are a couple of cases here:
       // 1) the key is "name", "group", "material", "visible" or "ignore", which are stored separately
       // 2) the key is "comment" - copy everything after it into comment string and exit
-      // 3) the key is a formula - make a KeyValue pair and add it to the formulas list
-      // 4) the key is anything else - make a KeyValue pair and add it to the pairs list
+      // 3) the key is a formula - make a key_value_t pair and add it to the formulas list
+      // 4) the key is anything else - make a key_value_t pair and add it to the pairs list
       
       // handle known
       if(strcasecmp(key, "ignore") == 0) {
@@ -772,9 +772,9 @@ void parse_key_values(Card *card, Errors *errors)
       }
       
       // formulas and any other tags not pulled out above are handled
-      // in the same fashion - we make a KeyValue pair to hold it.
+      // in the same fashion - we make a key_value_t pair to hold it.
       // They differ only in where we put them in the end
-      KeyValue *pair = (KeyValue *)malloc(sizeof(KeyValue));
+      key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
       if(pair != NULL) {
         // calloc the strings and store them...
         pair->key = calloc(split - token, sizeof(char));
@@ -787,7 +787,7 @@ void parse_key_values(Card *card, Errors *errors)
         pair->next = NULL;
         
         // now decide which list to add it to
-        KeyValue *head, *tail;
+        key_value_t *head, *tail;
         if(isFormula) {
           head = card->formulas;
         } else {

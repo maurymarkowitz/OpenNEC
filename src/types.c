@@ -4,8 +4,9 @@
  * types.c defines the various enums
  *
  *****************************************************************************/
- 
+
 #include "types.h"
+#include <string.h>
 
 // NOTE: ordering of these lists is important! they are used in
 //       various places to convert the code back to a number for
@@ -60,5 +61,34 @@ char *unit_codes[NUM_ONEC_UNIT_CODES] = {
 double unit_mult[NUM_ONEC_UNIT_CODES] = {
   0, 1.0, 0.01, 0.001, 0.30480, 0.0254, 0, 0, 0
 };
+
+void nec_context_init(nec_context_t *ctx)
+{
+    memset(ctx, 0, sizeof(nec_context_t));
+}
+
+void nec_context_cleanup(nec_context_t *ctx)
+{
+    if (ctx->input_fp != NULL) {
+        fclose(ctx->input_fp);
+        ctx->input_fp = NULL;
+    }
+    if (ctx->output_fp != NULL) {
+        fclose(ctx->output_fp);
+        ctx->output_fp = NULL;
+    }
+    if (ctx->error_fp != NULL) {
+        fclose(ctx->error_fp);
+        ctx->error_fp = NULL;
+    }
+    if (ctx->green_fp != NULL) {
+        fclose(ctx->green_fp);
+        ctx->green_fp = NULL;
+    }
+    if (ctx->plot_fp != NULL) {
+        fclose(ctx->plot_fp);
+        ctx->plot_fp = NULL;
+    }
+}
 
 /* end of types.c */

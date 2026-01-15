@@ -5,9 +5,9 @@
  * types.h defines the many data structures that are used to pass
  * data around the calculation system. In nec2c these were defined
  * in nec2c.h, and have been moved here for clarity. OpenNEC also
- * adds new types for the Deck and Card, so they can be passed
+ * adds new types for the deck_t and card_t, so they can be passed
  * instead of using globals. Other new types include Error and
- * Errors, KeyValue, and various definitions of measurements and such.
+ * Errors, key_value_t, and various definitions of measurements and such.
  *
  *****************************************************************************/
 
@@ -102,43 +102,43 @@ extern double unit_mult[NUM_ONEC_UNIT_CODES];
 /*** Error levels are used internally, external software should use negatives ***/
 typedef enum { NONE, MINOR, PROBLEM, FATAL } error_level;    // 1 = warning, 2 = error, 3 = fatal, <0 informational
 
-/*** Error has information about a single error or warning */
+/*** error_t has information about a single error or warning */
 typedef struct
 {
   int severity;
   char *message;  // the error string
-} Error;
+} error_t;
 
-/*** Errors is a list generated during a particular stage, typically
+/*** errors_list_t is a list generated during a particular stage, typically
 there will be different error lists for import, sanity checks, running
 and export
  ***/
 typedef struct
 {
   int num_errors; // total number of errors in this list
-  Error *errors;  // pointer to a list of errors
-} Errors;
+  error_t *errors;  // pointer to a list of errors
+} errors_list_t;
 
-/*** Outputs is a list of informational messages generated during
+/*** outputs_list_t is a list of informational messages generated during
 processing, to be output later by output.c instead of direct fprintf
  ***/
 typedef struct
 {
   int num_messages; // total number of messages in this list
   char **messages;  // pointer to a list of message strings
-} Outputs;
+} outputs_list_t;
 
-/*** KeyValue is a key:value pair used to store an OpenNEC extension on a card */
-typedef struct KeyValue
+/*** key_value_t is a key:value pair used to store an OpenNEC extension on a card */
+typedef struct key_value_t
 {
   char *key;
   char *value;
   char separator; // what separator was used, a colon or an equals?
-  struct KeyValue* next;
-} KeyValue;
+  struct key_value_t* next;
+} key_value_t;
 
-/*** Card encapsulates a single card ***/
-typedef struct
+/*** card_t encapsulates a single card ***/
+typedef struct card_t
 {
   // used to track whether this card has been edited since being read
   bool edited;
@@ -187,18 +187,18 @@ typedef struct
   char *extn_str;     // the entire inline comment, anything after the comment marker
   char *comment;      // if a comment was found, it's placed here, this is *not* the same
                       //    as extn_str, it might be found in a 'comment:' key/value pair
-  KeyValue *extensns; // pairs of name:value key/value entries, this will **not** include a comment if there was one
-  KeyValue *formulas; // pairs of name:value key/value entries for any formulas, inline or in the extension area
+  key_value_t *extensns; // pairs of name:value key/value entries, this will **not** include a comment if there was one
+  key_value_t *formulas; // pairs of name:value key/value entries for any formulas, inline or in the extension area
 
   // onec flags - only this one needs to be known during processing
   bool ignore;        // cards can be marked to be deliberately ignored
-} Card;
+} card_t;
 
-/*** Deck encapsulates a single deck of cards ***/
-typedef struct Deck
+/*** deck_t encapsulates a single deck of cards ***/
+typedef struct deck_t
 {
   // input data
-  Card *cards;        // array of cards
+  card_t *cards;        // array of cards
   int num_cards;      // total number of cards read in, including any trailing lines
   int comment_start;  // card number of the start of the comments section, normally 0. -1 if there are no CM or CE cards
   int comment_end;    // card number of the last continuous CM card, or the CE card if present. -1 if there are no CM or CE cards
@@ -208,11 +208,11 @@ typedef struct Deck
   char cmt_code;      // the default marker to use for inline comments, !, $ or '
   int unit_val;       // if there is a single GS, this is the f1 value, otherwise 1
   int unit_typ;       // if there is a single GS, and we recognize the value, put our index here
-  KeyValue *symbols;  // any variables read in from SY cards, consisting of name/inital value pairs
+  key_value_t *symbols;  // any variables read in from SY cards, consisting of name/inital value pairs
   
   // calculated bits
   //geometry_t geometry;  // a deck can have only one geometry, but it might change
-} Deck;
+} deck_t;
 
 /* common  /crnt/ */
 typedef struct
@@ -282,7 +282,7 @@ typedef struct geometry_t
     wlam;
   
   // list of errors added while processing this geometry
-  Errors errors;
+  errors_list_t errors;
 } geometry_t;
 
 /* common  /dataj/ */
@@ -591,5 +591,40 @@ typedef struct
 	int nload;	/* Number of loading networks */
 	complex double *zarray;	/* = Zi/(Di/lambda) */
 } zload_t;
+
+/* nec_context_t structure containing all context variables */
+typedef struct nec_context_t
+{
+	geometry_t geometry;
+	crnt_t crnt;
+	dataj_t dataj;
+	FILE *input_fp;
+	FILE *output_fp;
+	FILE *error_fp;
+	FILE *green_fp;
+	FILE *plot_fp;
+	fpat_t fpat;
+	ggrid_t ggrid;
+	gnd_t gnd;
+	gwav_t gwav;
+	incom_t incom;
+	matpar_t matpar;
+	netcx_t netcx;
+	plot_t plot;
+	save_t save;
+	segj_t segj;
+	smat_t smat;
+	tmi_t tmi;
+	vsorc_t vsorc;
+	yparm_t yparm;
+	zload_t zload;
+} nec_context_t;
+
+void nec_context_init(nec_context_t *ctx);
+void nec_context_cleanup(nec_context_t *ctx);
+
+// typedefs for backward compatibility
+typedef card_t Card;
+typedef deck_t Deck;
 
 #endif /* end of types_h */
