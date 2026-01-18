@@ -37,7 +37,7 @@
  * @param errors the errors_list_t to add new messages to
  *
  */
-void test_deck_structure(deck_t *deck, errors_list_t *errors)
+void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   // A short list of the minimum structure is found in the 4nec2
   // documentation:
@@ -81,12 +81,12 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
   // start with some obvious ones
   if(deck->num_cards == 0) {
     sprintf(msg, "The deck has no cards.");
-    add_error(errors, msg, 2);  // this is a critical error, this deck will not process
+    add_error(ctx, errors, msg, 2);  // this is a critical error, this deck will not process
     return;
   }
   if(deck->num_cards < 5) {
     sprintf(msg, "A deck has to have at least five cards; one or more comments, one or more Gx cards, a GE, an FX, and an EX.");
-    add_error(errors, msg, 2);  // same here, there is no way this will calculate property
+    add_error(ctx, errors, msg, 2);  // same here, there is no way this will calculate property
     return;
   }
   
@@ -104,7 +104,7 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
         sawGS = i;
       } else {
         sprintf(msg, "The card on line %d is a GS, but we already saw one on card %d. No single measurement type can be defined.", i, sawGS + 1);
-        add_error(errors, msg, 0);  // this will calculate fine, so this is merely a warning
+        add_error(ctx, errors, msg, 0);  // this will calculate fine, so this is merely a warning
       }
     }
     // NOTE: nec4 does not require a CE or CM, but we'll demand them here for compatibility
@@ -113,7 +113,7 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
         sawCE = i;
       } else {
         sprintf(msg, "The card on line %d is a CE, but we already saw one on card %d.", i, sawCE + 1);
-        add_error(errors, msg, 0);
+        add_error(ctx, errors, msg, 0);
       }
     }
     if(strcmp(code, "GE") == 0) {
@@ -122,7 +122,7 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
         GEType = deck->cards[i].i[1];
       } else {
         sprintf(msg, "The card on line %d is a GE, but we already saw one on card %d.", i, sawGE + 1);
-        add_error(errors, msg, 0);
+        add_error(ctx, errors, msg, 0);
       }
     }
     if(strcmp(code, "EN") == 0) {
@@ -130,7 +130,7 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
         sawEN = i;
       } else {
         sprintf(msg, "The card on line %d is an EN, but we already saw one on card %d.", i, sawEN + 1);
-        add_error(errors, msg, 0);
+        add_error(ctx, errors, msg, 0);
       }
     }
     
@@ -142,7 +142,7 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
         sawGF = i;
       } else {
         sprintf(msg, "The card on line %d is a GF, but we already saw one on card %d.", i, sawGF + 1);
-        add_error(errors, msg, 0);
+        add_error(ctx, errors, msg, 0);
       }
     }
     if(strcmp(code, "FR") == 0) {
@@ -150,7 +150,7 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
         sawFR = i;
       } else {
         sprintf(msg, "The card on line %d is an FR, but we already saw one on card %d.", i, sawFR + 1);
-        add_error(errors, msg, 0);
+        add_error(ctx, errors, msg, 0);
       }
     }
     
@@ -197,7 +197,7 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
         // we do have a potential problem when we find Gx cards after a GE
         if(sawGx > 0 && sawGE > 0) {
           sprintf(msg, "The card on line %d has geometry code %s, but we already saw the GE on card %d.", i, code, sawGE + 1);
-          add_error(errors, msg, 1);
+          add_error(ctx, errors, msg, 1);
         }
       }
     } /* loop over geometry codes */
@@ -213,7 +213,7 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
     // GC cards have to follow GW cards
     if(strcmp(code, "GC") == 0 && strcmp(last_code, "GW") != 0) {
       sprintf(msg, "The card on line %d is a GC, but the card above it is not a GW.", i + 1);
-      add_error(errors, msg, 1);
+      add_error(ctx, errors, msg, 1);
     }
     
     // FIXME: we should do this, but it has to be calculated first because it might be a formula or units
@@ -226,11 +226,11 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
     // GD cards have to follow GN cards
     if(strcmp(code, "GD") == 0 && strcmp(last_code, "GN") != 0) {
       sprintf(msg, "The card on line %d is a GD, but the card above it is not a GN.", i + 1);
-      add_error(errors, msg, 1);
+      add_error(ctx, errors, msg, 1);
     }
     if(strcmp(code, "GN") == 0 && strcmp(deck->cards[i+1].card_code, "GD") != 0) {
       sprintf(msg, "The card on line %d is a GN, but the card after it is not a GN.", i + 1);
-      add_error(errors, msg, 1);
+      add_error(ctx, errors, msg, 1);
     }
 
     // GF cards have to be the first item in the geometry section, which
@@ -238,19 +238,19 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
     // FIXME: it could also follow onec comment cards, so this is somewhat complex
     if(strcmp(code, "GF") == 0 && !(strcmp(last_code, "CE") == 0 || strcmp(last_code, "SY") == 0)) {
       sprintf(msg, "The card on line %d is a GF, but the card above it is not a CE or SY.", i + 1);
-      add_error(errors, msg, 1);
+      add_error(ctx, errors, msg, 1);
     }
 
     // SC cards have to follow an SP or SM, or another SC. this is not an exhaustive
     // test, it should really roll backward until it finds an SP or SM, but...
     if(strcmp(code, "SC") == 0 && !(strcmp(last_code, "SP") || strcmp(last_code, "SM") || strcmp(last_code, "SC"))) {
       sprintf(msg, "The card on line %d is an SC, but the card above it is not an SP, SM or another SC.", i + 1);
-      add_error(errors, msg, 1);
+      add_error(ctx, errors, msg, 1);
     }
     // SM cards *must* be followed by a SC
     if(strcmp(last_code, "SM") && !strcmp(code, "SC")) {
       sprintf(msg, "The card on line %d is an SM, but the card after it is not an SC.", i);
-      add_error(errors, msg, 1);
+      add_error(ctx, errors, msg, 1);
     }
     
     // QUESTION: it appears GR cards have to follow some other sort of geometry card, but it's not clear what
@@ -258,7 +258,7 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
     // FR cards have to have either one input or three
     if(strcmp(code, "SC") == 0) {
       sprintf(msg, "The card on line %d is an SM, but the card after it is not an SC.", i);
-      add_error(errors, msg, 1);
+      add_error(ctx, errors, msg, 1);
     }
 
     //TODO: modifiers have to follow normal geometry, not another modifier or some other card
@@ -269,42 +269,43 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
   // and with the entire deck tested, make sure we got the key cards
   if(!sawCE) {
     sprintf(msg, "A NEC-2 deck should have a CE card.");
-    add_error(errors, msg, 0);
+    add_error(ctx, errors, msg, 0);
   }
   if(!sawGx) {
     sprintf(msg, "A deck has to have at least one geometry card.");
-    add_error(errors, msg, 1);
+    add_error(ctx, errors, msg, 1);
   }
   if(!sawGE) {
     sprintf(msg, "A deck has to have a GE card.");
-    add_error(errors, msg, 1);
+    add_error(ctx, errors, msg, 1);
   }
   if(!sawFR) {
     sprintf(msg, "A deck has to have an FR card.");
-    add_error(errors, msg, 1);
+    add_error(ctx, errors, msg, 1);
   }
   if(!sawEN) {
     sprintf(msg, "A deck should end with a EN card.");
-    add_error(errors, msg, 0);
+    add_error(ctx, errors, msg, 0);
   }
   if(!sawEX && !sawLD) {
     sprintf(msg, "A deck has to have at least one EX or LD card.");
-    add_error(errors, msg, 1);
+    add_error(ctx, errors, msg, 1);
   }
   if(sawSY && !sawCE) {
     sprintf(msg, "We found SY cards in the deck, but there is no CE in the deck. SYs should follow the CE.");
-    add_error(errors, msg, 0);
+    add_error(ctx, errors, msg, 0);
   }
   
   // if the GE card was -1, there has to be a GN
   if(sawGE && GEType == -1 && !sawGN) {
     sprintf(msg, "The GE is set to -1, but there is no GN card in the deck.");
-    add_error(errors, msg, 1);
+    add_error(ctx, errors, msg, 1);
   }
   
   // and get rid of the local string
   free(msg);
 }
+
 
 /*******************************************************************
  * test_duplicate_tags
@@ -318,7 +319,7 @@ void test_deck_structure(deck_t *deck, errors_list_t *errors)
  * @param errors the errors_list_t to add new messages to
  *
  */
-void test_duplicate_tags(deck_t *deck, errors_list_t *errors)
+void test_duplicate_tags(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   // we will also check to see if there are duplicate tags
   char *msg = calloc(1, MAX_ERROR_LEN);
@@ -332,7 +333,7 @@ void test_duplicate_tags(deck_t *deck, errors_list_t *errors)
       for(int j = i + 1; j < deck->num_cards; j++) {
         if(deck->cards[j].i[1] == deck->cards[i].i[1]) {
           sprintf(msg, "The tag number %d is found on card %d and card %d.", i, j, deck->cards[i].i[1]);
-          add_error(errors, msg, 1);
+          add_error(ctx, errors, msg, 1);
         }
       }
     }
@@ -356,7 +357,7 @@ void test_duplicate_tags(deck_t *deck, errors_list_t *errors)
  * TODO: this needs to be greatly expanded!
  *
  */
-void test_card_inputs(deck_t *deck, errors_list_t *errors)
+void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   char *code;
   char *msg = calloc(1, MAX_ERROR_LEN);
@@ -369,22 +370,22 @@ void test_card_inputs(deck_t *deck, errors_list_t *errors)
       // there must be a value in F1
       if(deck->cards[i].f[1] == 0) {
         sprintf(msg, "The card on line %d is a FR but has no base frequency in F1.", i);
-        add_error(errors, msg, 0);
+        add_error(ctx, errors, msg, 0);
       }
       // I2 has to be >= 1
       if(deck->cards[i].i[2] < 1) {
         sprintf(msg, "The card on line %d is a FR with I2 < 1, which is illegal.", i);
-        add_error(errors, msg, 0);
+        add_error(ctx, errors, msg, 0);
       }
       // if I2=1, then F2 should be 0
       else if(deck->cards[i].i[2] == 1 && deck->cards[i].f[2] != 0) {
         sprintf(msg, "The card on line %d is a FR with I2 = 1 (no steps), but has a step value in F2.", i);
-        add_error(errors, msg, 0);
+        add_error(ctx, errors, msg, 0);
       }
       // but if I2 > 1 then F2 has to be > 0
       else if(deck->cards[i].i[2] > 1 && deck->cards[i].f[2] == 0) {
           sprintf(msg, "The card on line %d is a FR with I2 > 1 (steps), but has no step value in F2.", i);
-          add_error(errors, msg, 0);
+          add_error(ctx, errors, msg, 0);
       }
     }
   }
@@ -406,7 +407,7 @@ void test_card_inputs(deck_t *deck, errors_list_t *errors)
  * @param errors the errors_list_t to add new messages to
  *
  */
-void test_bad_symbols(deck_t *deck, errors_list_t *errors)
+void test_bad_symbols(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   key_value_t *outer, *inner;
   char *msg = calloc(1, MAX_ERROR_LEN);
@@ -417,7 +418,7 @@ void test_bad_symbols(deck_t *deck, errors_list_t *errors)
     for(int i = 0; i < NUM_ONEC_UNIT_CODES; i++) {
       if(strcasecmp(outer->key, unit_codes[i]) == 0) {
         sprintf(msg, "The symbol '%s' has been defined and overrides a system-wide symbol of the same name.", unit_codes[i]);
-        add_error(errors, msg, 0);
+        add_error(ctx, errors, msg, 0);
       }
     }
     // and now see if any other symbol has the same name
@@ -426,7 +427,7 @@ void test_bad_symbols(deck_t *deck, errors_list_t *errors)
     while(inner != NULL) {
       if(strcasecmp(outer->key, inner->key)  == 0) {
         sprintf(msg, "The symbol '%s' has been defined more than once.", outer->key);
-        add_error(errors, msg, 0);
+        add_error(ctx, errors, msg, 0);
       }
     }
     outer = outer->next;

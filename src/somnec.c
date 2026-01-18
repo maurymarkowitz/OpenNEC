@@ -31,7 +31,7 @@ static complex double a, b;
 /*-----------------------------------------------------------------------*/
 
 /* This is the "main" of somnec */
-void somnec( double epr, double sig, double fmhz )
+void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
 {
   int k, nth, ith, irs, ir, nr;
   double tim, wlam, tst, dr, dth=0.0, r, rk, thet, tfac1, tfac2;
@@ -39,12 +39,12 @@ void somnec( double epr, double sig, double fmhz )
 
   if(sig >= 0.) {
     wlam=CVEL/fmhz;
-    ggrid.epscf=cmplx(epr,-sig*wlam*59.96);
+    ctx->ggrid.epscf=cmplx(epr,-sig*wlam*59.96);
   }
   else
-    ggrid.epscf=cmplx(epr,sig);
+    ctx->ggrid.epscf=cmplx(epr,sig);
 
-  secnds(&tst);
+  secnds(ctx, &tst);
   ck2 = TP;
   ck2sq = ck2 * ck2;
 
@@ -52,7 +52,7 @@ void somnec( double epr, double sig, double fmhz )
   /* hence need conjg(ggrid.epscf).  conjugate of fields occurs in subroutine */
   /* evlua. */
 
-  ck1sq=ck2sq*conj(ggrid.epscf);
+  ck1sq=ck2sq*conj(ctx->ggrid.epscf);
   ck1=csqrt(ck1sq);
   ck1r=creal(ck1);
   tkmag=100.*cabs(ck1);
@@ -68,21 +68,21 @@ void somnec( double epr, double sig, double fmhz )
 
   /* loop over 3 grid regions */
   for(k = 0; k < 3; k++) {
-    nr=ggrid.nxa[k];
-    nth=ggrid.nya[k];
-    dr=ggrid.dxa[k];
-    dth=ggrid.dya[k];
-    r=ggrid.xsa[k]-dr;
+    nr=ctx->ggrid.nxa[k];
+    nth=ctx->ggrid.nya[k];
+    dr=ctx->ggrid.dxa[k];
+    dth=ctx->ggrid.dya[k];
+    r=ctx->ggrid.xsa[k]-dr;
     irs=1;
     if(k == 0) {
-      r=ggrid.xsa[k];
+      r=ctx->ggrid.xsa[k];
       irs=2;
     }
     
     /*  loop over r.  (r=sqrt(rho**2 + (z+h)**2)) */
     for(ir = irs-1; ir < nr; ir++) {
       r += dr;
-      thet = ggrid.ysa[k]-dth;
+      thet = ctx->ggrid.ysa[k]-dth;
       
       /* loop over theta.  (theta=atan((z+h)/rho)) */
       for(ith = 0; ith < nth; ith++) {
@@ -94,43 +94,43 @@ void somnec( double epr, double sig, double fmhz )
         if(zph < 1.e-7)
           zph=0.;
         
-        evlua( &erv, &ezv, &erh, &eph );
+        evlua(ctx, &erv, &ezv, &erh, &eph );
         
         rk=ck2*r;
         con=-CONST1*r/cmplx(cos(rk),-sin(rk));
         
         switch( k ) {
           case 0:
-            ggrid.ar1[ir+ith*11+  0]=erv*con;
-            ggrid.ar1[ir+ith*11+110]=ezv*con;
-            ggrid.ar1[ir+ith*11+220]=erh*con;
-            ggrid.ar1[ir+ith*11+330]=eph*con;
+            ctx->ggrid.ar1[ir+ith*11+  0]=erv*con;
+            ctx->ggrid.ar1[ir+ith*11+110]=ezv*con;
+            ctx->ggrid.ar1[ir+ith*11+220]=erh*con;
+            ctx->ggrid.ar1[ir+ith*11+330]=eph*con;
             break;
             
           case 1:
-            ggrid.ar2[ir+ith*17+  0]=erv*con;
-            ggrid.ar2[ir+ith*17+ 85]=ezv*con;
-            ggrid.ar2[ir+ith*17+170]=erh*con;
-            ggrid.ar2[ir+ith*17+255]=eph*con;
+            ctx->ggrid.ar2[ir+ith*17+  0]=erv*con;
+            ctx->ggrid.ar2[ir+ith*17+ 85]=ezv*con;
+            ctx->ggrid.ar2[ir+ith*17+170]=erh*con;
+            ctx->ggrid.ar2[ir+ith*17+255]=eph*con;
             break;
             
           case 2:
-            ggrid.ar3[ir+ith*9+  0]=erv*con;
-            ggrid.ar3[ir+ith*9+ 72]=ezv*con;
-            ggrid.ar3[ir+ith*9+144]=erh*con;
-            ggrid.ar3[ir+ith*9+216]=eph*con;
+            ctx->ggrid.ar3[ir+ith*9+  0]=erv*con;
+            ctx->ggrid.ar3[ir+ith*9+ 72]=ezv*con;
+            ctx->ggrid.ar3[ir+ith*9+144]=erh*con;
+            ctx->ggrid.ar3[ir+ith*9+216]=eph*con;
             
         } /* switch( k ) */
       } /* for( ith = 0; ith < nth; ith++ ) */
-    } /* for( ir = irs-1; ir < nr; ir++; ) */
-  } /* for( k = 0; k < 3; k++; ) */
+    } /* for( ir = irs-1; ir < nr; ir++) */
+  } /* for( k = 0; k < 3; k++) */
 
   /* fill grid 1 for r equal to zero. */
-  cl2=-CONST4*(ggrid.epscf-1.)/(ggrid.epscf+1.);
-  cl1=cl2/(ggrid.epscf+1.);
-  ezv=ggrid.epscf*cl1;
+  cl2=-CONST4*(ctx->ggrid.epscf-1.)/(ctx->ggrid.epscf+1.);
+  cl1=cl2/(ctx->ggrid.epscf+1.);
+  ezv=ctx->ggrid.epscf*cl1;
   thet=-dth;
-  nth=ggrid.nya[0];
+  nth=ctx->ggrid.nya[0];
 
   for( ith = 0; ith < nth; ith++ )
   {
@@ -140,7 +140,7 @@ void somnec( double epr, double sig, double fmhz )
     tfac2=cos(thet);
     tfac1=(1.-sin(thet))/tfac2;
     tfac2=tfac1/tfac2;
-    erv=ggrid.epscf*cl1*tfac1;
+    erv=ctx->ggrid.epscf*cl1*tfac1;
     erh=cl1*(tfac2-1.)+cl2;
     eph=cl1*tfac2-cl2;
   }
@@ -151,13 +151,13 @@ void somnec( double epr, double sig, double fmhz )
     eph=-erh;
   }
 
-  ggrid.ar1[0+ith*11+  0]=erv;
-  ggrid.ar1[0+ith*11+110]=ezv;
-  ggrid.ar1[0+ith*11+220]=erh;
-  ggrid.ar1[0+ith*11+330]=eph;
+  ctx->ggrid.ar1[0+ith*11+  0]=erv;
+  ctx->ggrid.ar1[0+ith*11+110]=ezv;
+  ctx->ggrid.ar1[0+ith*11+220]=erh;
+  ctx->ggrid.ar1[0+ith*11+330]=eph;
   }
 
-  secnds(&tim);
+  secnds(ctx, &tim);
   tim -= tst;
 
   return;
@@ -167,7 +167,7 @@ void somnec( double epr, double sig, double fmhz )
 
 /* bessel evaluates the zero-order bessel function */
 /* and its derivative for complex argument z. */
-void bessel( complex double z, complex double *j0, complex double *j0p )
+void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex double *j0p )
 {
   int k, ib;
   static int m[101], init = FALSE;
@@ -269,7 +269,7 @@ void bessel( complex double z, complex double *j0, complex double *j0p )
 
 /* evlua controls the integration contour in the complex */
 /* lambda plane for evaluation of the sommerfeld integrals */
-void evlua( complex double *erv, complex double *ezv,
+void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
 	complex double *erh, complex double *eph )
 {
   int i, jump;
@@ -290,21 +290,21 @@ void evlua( complex double *erv, complex double *ezv,
 	if( del > tkmag)
 	{
 	  b=cmplx(.1*tkmag,-.1*tkmag);
-	  rom1(6,sum,2);
+	  rom1(ctx,6,sum,2);
 	  a=b;
 	  b=cmplx(del,-del);
-	  rom1 (6,ans,2);
+	  rom1 (ctx,6,ans,2);
 	  for( i = 0; i < 6; i++ )
 		sum[i] += ans[i];
 	}
 	else
 	{
 	  b=cmplx(del,-del);
-	  rom1(6,sum,2);
+	  rom1(ctx,6,sum,2);
 	}
 
 	delta=PTP*del;
-	gshank(b,delta,ans,6,sum,0,b,b);
+	gshank(ctx,b,delta,ans,6,sum,0,b,b);
 	ans[5] *= ck1;
 
 	/* conjugate since nec uses exp(+jwt) */
@@ -324,10 +324,10 @@ void evlua( complex double *erv, complex double *ezv,
   cp3=cmplx(1.02*ck2,-.2*ck2);
   a=cp1;
   b=cp2;
-  rom1(6,sum,2);
+  rom1(ctx,6,sum,2);
   a=cp2;
   b=cp3;
-  rom1(6,ans,2);
+  rom1(ctx,6,ans,2);
 
   for( i = 0; i < 6; i++ )
 	sum[i]=-(sum[i]+ans[i]);
@@ -341,7 +341,7 @@ void evlua( complex double *erv, complex double *ezv,
   del=PTP/del;
   delta=cmplx(-1.0,slope)*del/sqrt(1.+slope*slope);
   delta2=-conj(delta);
-  gshank(cp1,delta,ans,6,sum,0,bk,bk);
+  gshank(ctx,cp1,delta,ans,6,sum,0,bk,bk);
   rmis=rho*(creal(ck1)-ck2);
 
   jump = FALSE;
@@ -361,15 +361,15 @@ void evlua( complex double *erv, complex double *ezv,
 	  cp1=ck1-(.1+I*0.2);
 	  cp2=cp1+.2;
 	  bk=cmplx(0.,del);
-	  gshank(cp1,bk,sum,6,ans,0,bk,bk);
+	  gshank(ctx,cp1,bk,sum,6,ans,0,bk,bk);
 	  a=cp1;
 	  b=cp2;
-	  rom1(6,ans,1);
+	  rom1(ctx,6,ans,1);
 	  for( i = 0; i < 6; i++ )
 		ans[i] -= sum[i];
 
-	  gshank(cp3,bk,sum,6,ans,0,bk,bk);
-	  gshank(cp2,delta2,ans,6,sum,0,bk,bk);
+	  gshank(ctx,cp3,bk,sum,6,ans,0,bk,bk);
+	  gshank(ctx,cp2,delta2,ans,6,sum,0,bk,bk);
 	}
 
 	jump = TRUE;
@@ -391,7 +391,7 @@ void evlua( complex double *erv, complex double *ezv,
 	bk=cmplx(rmis,.99*cimag(ck1));
 	delta=bk-cp3;
 	delta *= del/cabs(delta);
-	gshank(cp3,delta,ans,6,sum,1,bk,delta2);
+	gshank(ctx,cp3,delta,ans,6,sum,1,bk,delta2);
 
   } /* if( ! jump ) */
 
@@ -409,7 +409,7 @@ void evlua( complex double *erv, complex double *ezv,
 /*-----------------------------------------------------------------------*/
 
 /* fbar is sommerfeld attenuation function for numerical distance p */
-void fbar( complex double p, complex double *fbar )
+void fbar(nec_context_t *ctx, complex double p, complex double *fbar )
 {
   int i, minus;
   double tms, sms;
@@ -469,7 +469,7 @@ void fbar( complex double p, complex double *fbar )
 /* the step increment may be changed from dela to delb.  shank's */
 /* algorithm to accelerate convergence of a slowly converging series */
 /* is used */
-void gshank( complex double start, complex double dela,
+void gshank(nec_context_t *ctx, complex double start, complex double dela,
 	complex double *sum, int nans, complex double *seed,
 	int ibk, complex double bk, complex double delb )
 {
@@ -486,53 +486,53 @@ void gshank( complex double start, complex double dela,
 	ibx=0;
 
   for( i = 0; i < nans; i++ )
-	ans2[i]=seed[i];
-  b=start;
+    ans2[i] = seed[i];
+  b = start;
 
   for( intx = 1; intx <= MAXH; intx++ )
   {
-	inx=intx-1;
-	a=b;
-	b += del;
+    inx=intx-1;
+    a=b;
+    b += del;
 
-	if( (ibx == 0) && (creal(b) >= rbk) )
-	{
-	  /* hit break point.  reset seed and start over. */
-	  ibx=1;
-	  b=bk;
-	  del=delb;
-	  rom1(nans,sum,2);
-	  for( i = 0; i < nans; i++ )
-		ans2[i] += sum[i];
-	  intx = 0;
-	  continue;
-	} /* if( (ibx == 0) && (creal(b) >= rbk) ) */
+    if( (ibx == 0) && (creal(b) >= rbk) )
+    {
+      /* hit break point.  reset seed and start over. */
+      ibx=1;
+      b=bk;
+      del=delb;
+      rom1(ctx,nans,sum,2);
+      for( i = 0; i < nans; i++ )
+        ans2[i] += sum[i];
+      intx = 0;
+      continue;
+    } /* if( (ibx == 0) && (creal(b) >= rbk) ) */
 
-	rom1(nans,sum,2);
-	for( i = 0; i < nans; i++ )
-	  ans1[i] = ans2[i]+sum[i];
-	a=b;
-	b += del;
-	if( (ibx == 0) && (creal(b) >= rbk) )
-	{
-	  /* hit break point.  reset seed and start over. */
-	  ibx=2;
-	  b=bk;
-	  del=delb;
-	  rom1(nans,sum,2);
-	  for( i = 0; i < nans; i++ )
-		ans2[i] = ans1[i]+sum[i];
-	  intx = 0;
-	  continue;
-	} /* if( (ibx == 0) && (creal(b) >= rbk) ) */
+    rom1(ctx,nans,sum,2);
+    for( i = 0; i < nans; i++ )
+      ans1[i] = ans2[i]+sum[i];
+    a=b;
+    b += del;
+    if( (ibx == 0) && (creal(b) >= rbk) )
+    {
+      /* hit break point.  reset seed and start over. */
+      ibx=2;
+      b=bk;
+      del=delb;
+      rom1(ctx,nans,sum,2);
+      for( i = 0; i < nans; i++ )
+        ans2[i] += sum[i];
+      intx = 0;
+      continue;
+    } /* if( (ibx == 0) && (creal(b) >= rbk) ) */
 
-	rom1(nans,sum,2);
-	for( i = 0; i < nans; i++ )
-	  ans2[i]=ans1[i]+sum[i];
+    rom1(ctx,nans,sum,2);
+    for( i = 0; i < nans; i++ )
+      ans2[i]=ans1[i]+sum[i];
 
-	den=0.;
-	for( i = 0; i < nans; i++ )
-	{
+    den=0.;
+    for( i = 0; i < nans; i++ )
+    {
 	  as1=ans1[i];
 	  as2=ans2[i];
 
@@ -612,14 +612,14 @@ void gshank( complex double start, complex double dela,
   } /* for( intx = 1; intx <= maxh; intx++ ) */
 
   /* No convergence */
-  abort_on_error(-6);
+  abort_on_error(ctx, -6);
 }
 
 /*-----------------------------------------------------------------------*/
 
 /* hankel evaluates hankel function of the first kind,   */
 /* order zero, and its derivative for complex argument z */
-void hankel( complex double z, complex double *h0, complex double *h0p )
+void hankel(nec_context_t *ctx, complex double z, complex double *h0, complex double *h0p )
 {
   int k, ib;
   static int m[101], init = FALSE;
@@ -660,7 +660,7 @@ void hankel( complex double z, complex double *h0, complex double *h0p )
 
   zms=creal(z*conj(z));
   if(zms == 0.)
-	abort_on_error(-7);
+    abort_on_error(ctx, -7);
 
   ib=0;
   if(zms <= 16.81)
@@ -726,7 +726,7 @@ void hankel( complex double z, complex double *h0, complex double *h0p )
 /*-----------------------------------------------------------------------*/
 
 /* compute integration parameter xlam=lambda from parameter t. */
-void lambda( double t, complex double *xlam, complex double *dxlam )
+void lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam )
 {
   *dxlam=b-a;
   *xlam=a+*dxlam*t;
@@ -737,7 +737,7 @@ void lambda( double t, complex double *xlam, complex double *dxlam )
 
 /* rom1 integrates the 6 sommerfeld integrals from a to b in lambda. */
 /* the method of variable interval width romberg integration is used. */
-void rom1( int n, complex double *sum, int nx )
+void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
 {
   int jump, lstep, nogo, i, ns, nt;
   static double z, ze, s, ep, zend, dz=0., dzot=0., tr, ti;
@@ -747,146 +747,146 @@ void rom1( int n, complex double *sum, int nx )
   lstep=0;
   z=0.;
   ze=1.;
-  s=1.;
+  s=1;
   ep=s/(1.e4*NM);
   zend=ze-ep;
   for( i = 0; i < n; i++ )
-	sum[i]=CPLX_00;
+    sum[i]=CPLX_00;
   ns=nx;
   nt=0;
-  saoa(z,g1);
+  saoa(ctx, z, g1);
 
   jump = FALSE;
   while( TRUE )
   {
-	if( ! jump )
-	{
-	  dz=s/ns;
-	  if( (z+dz) > ze )
-	  {
-		dz=ze-z;
-		if( dz <= ep )
-		  return;
-	  }
+    if( ! jump )
+    {
+      dz=s/ns;
+      if( (z+dz) > ze )
+      {
+        dz=ze-z;
+        if( dz <= ep )
+          return;
+      }
 
-	  dzot=dz*.5;
-	  saoa(z+dzot,g3);
-	  saoa(z+dz,g5);
+      dzot=dz*.5;
+      saoa(ctx, z+dzot, g3);
+      saoa(ctx, z+dz, g5);
 
-	} /* if( ! jump ) */
+    } /* if( ! jump ) */
 
-	nogo=FALSE;
-	for( i = 0; i < n; i++ )
-	{
-	  t00=(g1[i]+g5[i])*dzot;
-	  t01[i]=(t00+dz*g3[i])*.5;
-	  t10[i]=(4.*t01[i]-t00)/3.;
+    nogo=FALSE;
+    for( i = 0; i < n; i++ )
+    {
+      t00=(g1[i]+g5[i])*dzot;
+      t01[i]=(t00+dz*g3[i])*.5;
+      t10[i]=(4.*t01[i]-t00)/3.;
 
-	  /* test convergence of 3 point romberg result */
-	  test( creal(t01[i]), creal(t10[i]), &tr, cimag(t01[i]), cimag(t10[i]), &ti, 0. );
-	  if( (tr > CRIT) || (ti > CRIT) )
-		nogo = TRUE;
-	}
+      /* test convergence of 3 point romberg result */
+      test(ctx, creal(t01[i]), creal(t10[i]), &tr, cimag(t01[i]), cimag(t10[i]), &ti, 0. );
+      if( (tr > CRIT) || (ti > CRIT) )
+        nogo = TRUE;
+    }
 
-	if( ! nogo )
-	{
-	  for( i = 0; i < n; i++ )
-		sum[i] += t10[i];
-	  nt += 2;
+    if( ! nogo )
+    {
+      for( i = 0; i < n; i++ )
+        sum[i] += t10[i];
+      nt += 2;
 
-	  z += dz;
-	  if(z > zend)
-		return;
+      z += dz;
+      if(z > zend)
+        return;
 
-	  for( i = 0; i < n; i++ )
-		g1[i]=g5[i];
+      for( i = 0; i < n; i++ )
+        g1[i]=g5[i];
 
-	  if( (nt >= NTS) && (ns > nx) )
-	  {
-		ns=ns/2;
-		nt=1;
-	  }
+      if( (nt >= NTS) && (ns > nx) )
+      {
+        ns=ns/2;
+        nt=1;
+      }
 
-	  jump = FALSE;
-	  continue;
+      jump = FALSE;
+      continue;
 
-	} /* if( ! nogo ) */
+    } /* if( ! nogo ) */
 
-	saoa(z+dz*.25,g2);
-	saoa(z+dz*.75,g4);
-	nogo=FALSE;
-	for( i = 0; i < n; i++ )
-	{
-	  t02=(t01[i]+dzot*(g2[i]+g4[i]))*.5;
-	  t11=(4.*t02-t01[i])/3.;
-	  t20[i]=(16.*t11-t10[i])/15.;
+    saoa(ctx, z+dz*.25, g2);
+    saoa(ctx, z+dz*.75, g4);
+    nogo=FALSE;
+    for( i = 0; i < n; i++ )
+    {
+      t02=(t01[i]+dzot*(g2[i]+g4[i]))*.5;
+      t11=(4.*t02-t01[i])/3.;
+      t20[i]=(16.*t11-t10[i])/15.;
 
-	  /* test convergence of 5 point romberg result */
-	  test( creal(t11), creal(t20[i]), &tr, cimag(t11), cimag(t20[i]), &ti, 0. );
-	  if( (tr > CRIT) || (ti > CRIT) )
-		nogo = TRUE;
-	}
+      /* test convergence of 5 point romberg result */
+      test(ctx, creal(t11), creal(t20[i]), &tr, cimag(t11), cimag(t20[i]), &ti, 0. );
+      if( (tr > CRIT) || (ti > CRIT) )
+        nogo = TRUE;
+    }
 
-	if( ! nogo )
-	{
-	  for( i = 0; i < n; i++ )
-		sum[i] += t20[i];
+    if( ! nogo )
+    {
+      for( i = 0; i < n; i++ )
+        sum[i] += t20[i];
 
-	  nt++;
-	  z += dz;
-	  if(z > zend)
-		return;
+      nt++;
+      z += dz;
+      if(z > zend)
+        return;
 
-	  for( i = 0; i < n; i++ )
-		g1[i]=g5[i];
+      for( i = 0; i < n; i++ )
+        g1[i]=g5[i];
 
-	  if( (nt >= NTS) && (ns > nx) )
-	  {
-		ns=ns/2;
-		nt=1;
-	  }
+      if( (nt >= NTS) && (ns > nx) )
+      {
+        ns=ns/2;
+        nt=1;
+      }
 
-	  jump = FALSE;
-	  continue;
+      jump = FALSE;
+      continue;
 
-	} /* if( ! nogo ) */
+    } /* if( ! nogo ) */
 
-	nt=0;
-	if(ns < NM)
-	{
-	  ns *= 2;
-	  dz=s/ns;
-	  dzot=dz*.5;
+    nt=0;
+    if(ns < NM)
+    {
+      ns *= 2;
+      dz=s/ns;
+      dzot=dz*.5;
 
-	  for( i = 0; i < n; i++ )
-	  {
-		g5[i]=g3[i];
-		g3[i]=g2[i];
-	  }
+      for( i = 0; i < n; i++ )
+      {
+        g5[i]=g3[i];
+        g3[i]=g2[i];
+      }
 
-	  jump = TRUE;
-	  continue;
+      jump = TRUE;
+      continue;
 
-	} /* if(ns < nm) */
+    } /* if(ns < nm) */
 
-	if( ! lstep )
-	{
-	  lstep = TRUE;
-	  lambda( z, &t00, &t11 );
-	}
+    if( ! lstep )
+    {
+      lstep = TRUE;
+      lambda(ctx, z, &t00, &t11 );
+    }
 
-	for( i = 0; i < n; i++ )
-	  sum[i] += t20[i];
+    for( i = 0; i < n; i++ )
+      sum[i] += t20[i];
 
-	nt++;
-	z += dz;
-	if(z > zend)
-	  return;
+    nt++;
+    z += dz;
+    if(z > zend)
+      return;
 
-	for( i = 0; i < n; i++ )
-	  g1[i]=g5[i];
+    for( i = 0; i < n; i++ )
+      g1[i]=g5[i];
 
-	jump = FALSE;
+    jump = FALSE;
 
   } /* while( TRUE ) */
 
@@ -896,75 +896,75 @@ void rom1( int n, complex double *sum, int nx )
 
 /* saoa computes the integrand for each of the 6 sommerfeld */
 /* integrals for source and observer above ground */
-void saoa( double t, complex double *ans)
+void saoa(nec_context_t *ctx, double t, complex double *ans)
 {
   double xlr;
   static complex double xl, dxl, cgam1, cgam2, b0, b0p, com, dgam, den1, den2;
 
-  lambda(t, &xl, &dxl);
+  lambda(ctx, t, &xl, &dxl);
   if( jh == 0 )
   {
-	/* bessel function form */
-	bessel(xl*rho, &b0, &b0p);
-	b0  *=2.;
-	b0p *=2.;
-	cgam1=csqrt(xl*xl-ck1sq);
-	cgam2=csqrt(xl*xl-ck2sq);
-	if(creal(cgam1) == 0.)
-	  cgam1=cmplx(0.,-fabs(cimag(cgam1)));
-	if(creal(cgam2) == 0.)
-	  cgam2=cmplx(0.,-fabs(cimag(cgam2)));
+    /* bessel function form */
+    bessel(ctx, xl*rho, &b0, &b0p);
+    b0  *=2.;
+    b0p *=2.;
+    cgam1=csqrt(xl*xl-ck1sq);
+    cgam2=csqrt(xl*xl-ck2sq);
+    if(creal(cgam1) == 0.)
+      cgam1=cmplx(0.,-fabs(cimag(cgam1)));
+    if(creal(cgam2) == 0.)
+      cgam2=cmplx(0.,-fabs(cimag(cgam2)));
   }
   else
   {
-	/* hankel function form */
-	hankel(xl*rho, &b0, &b0p);
-	com=xl-ck1;
-	cgam1=csqrt(xl+ck1)*csqrt(com);
-	if(creal(com) < 0. && cimag(com) >= 0.)
-	  cgam1=-cgam1;
-	com=xl-ck2;
-	cgam2=csqrt(xl+ck2)*csqrt(com);
-	if(creal(com) < 0. && cimag(com) >= 0.)
-	  cgam2=-cgam2;
+    /* hankel function form */
+    hankel(ctx, xl*rho, &b0, &b0p);
+    com=xl-ck1;
+    cgam1=csqrt(xl+ck1)*csqrt(com);
+    if(creal(com) < 0. && cimag(com) >= 0.)
+      cgam1=-cgam1;
+    com=xl-ck2;
+    cgam2=csqrt(xl+ck2)*csqrt(com);
+    if(creal(com) < 0. && cimag(com) >= 0.)
+      cgam2=-cgam2;
   }
 
   xlr=creal(xl*conj(xl));
   if(xlr >= tsmag)
   {
-	double sign;
-	if(cimag(xl) >= 0.)
-	{
-	  xlr=creal(xl);
-	  if(xlr >= ck2)
-	  {
-		if(xlr <= ck1r)
-		  dgam=cgam2-cgam1;
-		else
-		{
-		  sign=1.;
-		  dgam=1./(xl*xl);
-		  dgam=sign*((ct3*dgam+ct2)*dgam+ct1)/xl;
-		}
-	  }
-	  else
-	  {
-		sign=-1.;
-		dgam=1./(xl*xl);
-		dgam=sign*((ct3*dgam+ct2)*dgam+ct1)/xl;
-	  } /* if(xlr >= ck2) */
+    double sign;
+    if(cimag(xl) >= 0.)
+    {
+      xlr=creal(xl);
+      if(xlr >= ck2)
+      {
+        if(xlr <= ck1r)
+          dgam=cgam2-cgam1;
+        else
+        {
+          sign=1.;
+          dgam=1./(xl*xl);
+          dgam=sign*((ct3*dgam+ct2)*dgam+ct1)/xl;
+        }
+      }
+      else
+      {
+        sign=-1.;
+        dgam=1./(xl*xl);
+        dgam=sign*((ct3*dgam+ct2)*dgam+ct1)/xl;
+      } /* if(xlr >= ck2) */
 
-	} /* if(cimag(xl) >= 0.) */
-	else
-	{
-	  sign=1.;
-	  dgam=1./(xl*xl);
-	  dgam=sign*((ct3*dgam+ct2)*dgam+ct1)/xl;
-	}
+    } /* if(cimag(xl) >= 0.) */
+    else
+    {
+      sign=1.;
+      dgam=1./(xl*xl);
+      dgam=sign*((ct3*dgam+ct2)*dgam+ct1)/xl;
+    }
 
   } /* if(xlr < tsmag) */
   else
-	dgam=cgam2-cgam1;
+    dgam=cgam2-cgam1;
 
   den2=cksm*dgam/(cgam2*(ck1sq*cgam2+ck2sq*cgam1));
   den1=1./(cgam1+cgam2)-cksm/cgam2;
@@ -974,14 +974,14 @@ void saoa( double t, complex double *ans)
 
   if(rho != 0.)
   {
-	b0p=b0p/rho;
-	ans[0]=-com*xl*(b0p+b0*xl);
-	ans[3]=com*xl*b0p;
+    b0p=b0p/rho;
+    ans[0]=-com*xl*(b0p+b0*xl);
+    ans[3]=com*xl*b0p;
   }
   else
   {
-	ans[0]=-com*xl*xl*.5;
-	ans[3]=ans[0];
+    ans[0]=-com*xl*xl*.5;
+    ans[3]=ans[0];
   }
 
   ans[1]=com*cgam2*cgam2*b0;

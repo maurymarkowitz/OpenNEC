@@ -1,4 +1,3 @@
-
 #include "opennec.h"
 #include "shared.h"
 
@@ -8,7 +7,7 @@
 /* variable interval width romberg integration is used.  there are 9 */
 /* field components - the x, y, and z components due to constant, */
 /* sine, and cosine current distributions. */
-void rom2( double a, double b, complex double *sum, double dmin )
+void rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmin)
 {
   int i, ns, nt, flag=TRUE;
   int nts = 4, nx = 1, n = 9;
@@ -24,11 +23,11 @@ void rom2( double a, double b, complex double *sum, double dmin )
   
   if( s < 0.)
   {
-    fprintf( output_fp, "\n  ERROR - B LESS THAN A IN ROM2" );
-    stop(-1);
+    fprintf( ctx->output_fp, "\n  ERROR - B LESS THAN A IN ROM2" );
+    stop(ctx, -1);
   }
   
-  ep= s/(1.e4* geometry.npm);
+  ep= s/(1.e4* ctx->geometry.npm);
   zend= ze- ep;
   
   for( i = 0; i < n; i++ )
@@ -36,7 +35,7 @@ void rom2( double a, double b, complex double *sum, double dmin )
   
   ns= nx;
   nt=0;
-  sflds( z, g1);
+  sflds(ctx, z, g1);
   
   while( TRUE )
   {
@@ -51,8 +50,8 @@ void rom2( double a, double b, complex double *sum, double dmin )
       }
       
       dzot= dz*.5;
-      sflds( z+ dzot, g3);
-      sflds( z+ dz, g5);
+      sflds(ctx, z+ dzot, g3);
+      sflds(ctx, z+ dz, g5);
       
     } /* if( flag ) */
     
@@ -79,7 +78,7 @@ void rom2( double a, double b, complex double *sum, double dmin )
     
     tmag1= sqrt( tmag1);
     tmag2= sqrt( tmag2);
-    test( tmag1, tmag2, &tr, 0., 0., &ti, dmin);
+    test(ctx, tmag1, tmag2, &tr, 0., 0., &ti, dmin);
     
     if( tr <= rx)
     {
@@ -104,8 +103,8 @@ void rom2( double a, double b, complex double *sum, double dmin )
       
     } /* if( tr <= rx) */
     
-    sflds( z+ dz*.25, g2);
-    sflds( z+ dz*.75, g4);
+    sflds(ctx, z+ dz*.25, g2);
+    sflds(ctx, z+ dz*.75, g4);
     tmag1=0.;
     tmag2=0.;
     
@@ -129,12 +128,12 @@ void rom2( double a, double b, complex double *sum, double dmin )
     
     tmag1= sqrt( tmag1);
     tmag2= sqrt( tmag2);
-    test( tmag1, tmag2, &tr, 0.,0., &ti, dmin);
+    test(ctx, tmag1, tmag2, &tr, 0.,0., &ti, dmin);
     
     if( tr > rx)
     {
       nt=0;
-      if( ns < geometry.npm )
+      if( ns < ctx->geometry.npm )
       {
         ns= ns*2;
         dz= s/ ns;
@@ -151,7 +150,7 @@ void rom2( double a, double b, complex double *sum, double dmin )
         
       } /* if( ns < npm) */
       
-      fprintf( output_fp,
+      fprintf( ctx->output_fp,
               "\n  ROM2 -- STEP SIZE LIMITED AT Z = %12.5E", z );
       
     } /* if( tr > rx) */
@@ -181,17 +180,17 @@ void rom2( double a, double b, complex double *sum, double dmin )
 
 /* sfldx returns the field due to ground for a current element on */
 /* the source segment at t relative to the segment center. */
-void sflds( double t, complex double *e )
+void sflds(nec_context_t *ctx, double t, complex double *e )
 {
   double xt, yt, zt, rhx, rhy, rhs, rho, phx, phy;
   double cph, sph, zphs, r2s, rk, sfac, thet;
   complex double  erv, ezv, erh, ezh, eph, er, et, hrv, hzv, hrh;
   
-  xt= dataj.xj+ t* dataj.cabj;
-  yt= dataj.yj+ t* dataj.sabj;
-  zt= dataj.zj+ t* dataj.salpj;
-  rhx= incom.xo- xt;
-  rhy= incom.yo- yt;
+  xt= ctx->dataj.xj+ t* ctx->dataj.cabj;
+  yt= ctx->dataj.yj+ t* ctx->dataj.sabj;
+  zt= ctx->dataj.zj+ t* ctx->dataj.salpj;
+  rhx= ctx->incom.xo- xt;
+  rhy= ctx->incom.yo- yt;
   rhs= rhx* rhx+ rhy* rhy;
   rho= sqrt( rhs);
   
@@ -210,35 +209,35 @@ void sflds( double t, complex double *e )
     phy= rhx;
   }
   
-  cph= rhx* incom.xsn+ rhy* incom.ysn;
-  sph= rhy* incom.xsn- rhx* incom.ysn;
+  cph= rhx* ctx->incom.xsn+ rhy* ctx->incom.ysn;
+  sph= rhy* ctx->incom.xsn- rhx* ctx->incom.ysn;
   
   if( fabs( cph) < 1.0e-10)
     cph=0.;
   if( fabs( sph) < 1.0e-10)
     sph=0.;
   
-  gwav.zph= incom.zo+ zt;
-  zphs= gwav.zph* gwav.zph;
+  ctx->gwav.zph= ctx->incom.zo+ zt;
+  zphs= ctx->gwav.zph* ctx->gwav.zph;
   r2s= rhs+ zphs;
-  gwav.r2= sqrt( r2s);
-  rk= gwav.r2* TP;
-  gwav.xx2= cmplx( cos( rk),- sin( rk));
+  ctx->gwav.r2= sqrt( r2s);
+  rk= ctx->gwav.r2* TP;
+  ctx->gwav.xx2= cmplx( cos( rk),- sin( rk));
   
   /* use norton approximation for field due to ground.  current is */
   /* lumped at segment center with current moment for constant, sine, */
   /* or cosine distribution. */
-  if( incom.isnor != 1)
+  if( ctx->incom.isnor != 1)
   {
-    gwav.zmh=1.;
-    gwav.r1=1.;
-    gwav.xx1=0.;
-    gwave( &erv, &ezv, &erh, &ezh, &eph);
+    ctx->gwav.zmh=1.;
+    ctx->gwav.r1=1.;
+    ctx->gwav.xx1=0.;
+    gwave(ctx, &erv, &ezv, &erh, &ezh, &eph);
     
-    et=-CONST1* gnd.frati* gwav.xx2/( r2s* gwav.r2);
+    et=-CONST1* ctx->gnd.frati* ctx->gwav.xx2/( r2s* ctx->gwav.r2);
     er=2.* et* cmplx(1.0, rk);
     et= et* cmplx(1.0 - rk* rk, rk);
-    hrv=( er+ et)* rho* gwav.zph/ r2s;
+    hrv=( er+ et)* rho* ctx->gwav.zph/ r2s;
     hzv=( zphs* er- rhs* et)/ r2s;
     hrh=( rhs* er- zphs* et)/ r2s;
     erv= erv- hrv;
@@ -246,19 +245,19 @@ void sflds( double t, complex double *e )
     erh= erh+ hrh;
     ezh= ezh+ hrv;
     eph= eph+ et;
-    erv= erv* dataj.salpj;
-    ezv= ezv* dataj.salpj;
-    erh= erh* incom.sn* cph;
-    ezh= ezh* incom.sn* cph;
-    eph= eph* incom.sn* sph;
+    erv= erv* ctx->dataj.salpj;
+    ezv= ezv* ctx->dataj.salpj;
+    erh= erh* ctx->incom.sn* cph;
+    ezh= ezh* ctx->incom.sn* cph;
+    eph= eph* ctx->incom.sn* sph;
     erh= erv+ erh;
-    e[0]=( erh* rhx+ eph* phx)* dataj.s;
-    e[1]=( erh* rhy+ eph* phy)* dataj.s;
-    e[2]=( ezv+ ezh)* dataj.s;
+    e[0]=( erh* rhx+ eph* phx)* ctx->dataj.s;
+    e[1]=( erh* rhy+ eph* phy)* ctx->dataj.s;
+    e[2]=( ezv+ ezh)* ctx->dataj.s;
     e[3]=0.;
     e[4]=0.;
     e[5]=0.;
-    sfac= PI* dataj.s;
+    sfac= PI* ctx->dataj.s;
     sfac= sin( sfac)/ sfac;
     e[6]= e[0]* sfac;
     e[7]= e[1]* sfac;
@@ -269,19 +268,19 @@ void sflds( double t, complex double *e )
   
   /* interpolate in sommerfeld field tables */
   if( rho >= 1.0e-12)
-    thet= atan( gwav.zph/ rho);
+    thet= atan( ctx->gwav.zph/ rho);
   else
     thet= POT;
   
   /* combine vertical and horizontal components and convert */
   /* to x,y,z components. multiply by exp(-jkr)/r. */
-  intrp( gwav.r2, thet, &erv, &ezv, &erh, &eph );
-  gwav.xx2= gwav.xx2/ gwav.r2;
-  sfac= incom.sn* cph;
-  erh= gwav.xx2*( dataj.salpj* erv+ sfac* erh);
-  ezh= gwav.xx2*( dataj.salpj* ezv- sfac* erv);
+  intrp(ctx, ctx->gwav.r2, thet, &erv, &ezv, &erh, &eph );
+  ctx->gwav.xx2= ctx->gwav.xx2/ ctx->gwav.r2;
+  sfac= ctx->incom.sn* cph;
+  erh= ctx->gwav.xx2*( ctx->dataj.salpj* erv+ sfac* erh);
+  ezh= ctx->gwav.xx2*( ctx->dataj.salpj* ezv- sfac* erv);
   /* x,y,z fields for constant current */
-  eph= incom.sn* sph* gwav.xx2* eph;
+  eph= ctx->incom.sn* sph* ctx->gwav.xx2* eph;
   e[0]= erh* rhx+ eph* phx;
   e[1]= erh* rhy+ eph* phy;
   e[2]= ezh;

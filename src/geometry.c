@@ -16,16 +16,16 @@
  *
  * calculate_geometry (formerly datagn) is the main routine for creation
  * of geometry data. It reads the geometry cards, builds segments and patches,
- * and returns various errors. The resulting data, in geometry, can then be
- * used to draw a diagram of the antenna as well as being used in the
+ * and returns various errors. The resulting data, in ctx->geometry, can then
+ * be used to draw a diagram of the antenna as well as being used in the
  * calculations.
  *
  * The list of errors is local to geometry, as this allows the various work
- * methods to add new entries without having to pass around an Errors object.
- * It's likely useful to create a new Errors object for every geometry, but
- * it's equally usable by passing in a global Errors.
+ * methods to add new entries without having to pass around an errors object.
+ * It's likely useful to create a new errors object for every geometry, but
+ * it's equally usable by passing in a global errors.
  *
- * @param deck deck_t structure that has the geometry Cards
+ * @param deck deck_t structure that has the geometry cards
  * @param errors a list of errors to add to
  *
  */
@@ -105,13 +105,13 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           // make sure the next card is a GC, although we should have already done that
           if(strcmp(deck->cards[i + 1].card_code, "GC") != 0) {
             sprintf(msg, "The card on line %d is a GW with a zero radius, but the next card is not a GC with the tapering info.", i + 1);
-            add_error(errors, msg, 1);
+            add_error(ctx, errors, msg, 1);
             continue;
           }
           // and also that the values in it are valid
           if((deck->cards[i + 1].fv[2] == 0.0) || (deck->cards[i + 1].fv[3] == 0.0)) {
             sprintf(msg, "The card on line %d is a GC with tapering info for GW in card %d, but there is a zero in Y1 or Z1.", i + 2, i + 1);
-            add_error(errors, msg, 1);
+            add_error(ctx,errors, msg, 1);
             continue;
           }
           // override the original inputs with the ones from the GC
@@ -197,7 +197,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         // SP cards have to have a blank in I1, but is this really an error?
         if (tag != 0) {
           sprintf(msg, "card_t %d is a SP, but it has data in I1.", i);
-          add_error(errors, msg, 1);
+          add_error(ctx,errors, msg, 1);
         }
         
         // start with the simple case of a simple, single patch, no set shape
@@ -212,7 +212,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           // TODO: we should test the sanity of the inputs based on the ns
           if(strcmp(deck->cards[i + 1].card_code, "SC") != 0) {
             sprintf(msg, "The card on line %d is a SP with type %d, but the next card is not an SC, which it needs.", i + 1, segs);
-            add_error(errors, msg, 1);
+            add_error(ctx, errors, msg, 1);
             continue;
           }
           // if it's a triangle we just read one more point from the new card and go...
@@ -263,12 +263,12 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
       case 7: // SM, generate multiple-patch rectangular surface
         if(tag < 1 || segs < 1) {
           sprintf(msg, "The card on line %d is a SM, but the number of patches in I1 or I2 is too small.", i + 1);
-          add_error(errors, msg, 1);
+          add_error(ctx, errors, msg, 1);
           continue;
         }
         if(strcmp(deck->cards[i + 1].card_code, "SC") != 0) {
           sprintf(msg, "The card on line %d is a SM, but the next card is not an SC, which it needs.", i + 1);
-          add_error(errors, msg, 1);
+          add_error(ctx, errors, msg, 1);
           continue;
         }
         
@@ -305,7 +305,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
       default: // error message if this isn't a comment
         if(!is_comment(card)) {
           sprintf(msg, "Geometry card on line %d has an unknown mnemonic, '%s'.", i + 1, card->card_code);
-          add_error(errors, msg, 1);
+          add_error(ctx, errors, msg, 1);
         }
     } /* switch on card type */
   } /* for loop over cards */
@@ -333,7 +333,7 @@ int segment_number(nec_context_t *ctx, int tag, int m)
   if (m <= 0) {
     msg = calloc(MAX_ERROR_LEN, sizeof(char));
     sprintf(msg, "segment_number was called with a segment number less or equal to zero.");
-    add_error(&ctx->geometry.errors, msg, 1);
+    add_error(ctx, &ctx->geometry.errors, msg, 1);
     free(msg);
   }
   
@@ -363,7 +363,7 @@ int segment_number(nec_context_t *ctx, int tag, int m)
   {
     msg = calloc(MAX_ERROR_LEN, sizeof(char));
     sprintf(msg, "segment_number was called with an unknown tag %d", tag);
-    add_error(&ctx->geometry.errors, msg, 1);
+    add_error(ctx, &ctx->geometry.errors, msg, 1);
     free(msg);
   }
   
@@ -411,7 +411,7 @@ void connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
     if(ctx->geometry.np > ctx->geometry.n) {
       char *msg = calloc(MAX_ERROR_LEN, sizeof(char));
       sprintf(msg, "connect_segments was called np > n, %d > %d", ctx->geometry.np, ctx->geometry.n);
-      add_error(&ctx->geometry.errors, msg, 1);
+      add_error(ctx, &ctx->geometry.errors, msg, 1);
       free(msg);
       
       //            fprintf( output_fp,
@@ -449,7 +449,7 @@ void connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
         if(zi1 <= -slen) {
           char *msg = calloc(MAX_ERROR_LEN, sizeof(char));
           sprintf(msg, "GEOMETRY DATA ERROR -- SEGMENT %d EXTENDS BELOW GROUND", iz);
-          add_error(&ctx->geometry.errors, msg, 1);
+          add_error(ctx, &ctx->geometry.errors, msg, 1);
           free(msg);
 
           //                    add_message(ctx, outputs,
@@ -491,7 +491,7 @@ void connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
         if( zi2 <= -slen) {
           char *msg = calloc(MAX_ERROR_LEN, sizeof(char));
           sprintf(msg, "\n  GEOMETRY DATA ERROR -- SEGMENT %d EXTENDS BELOW GROUND", iz);
-          add_error(&ctx->geometry.errors, msg, FATAL);
+          add_error(ctx, &ctx->geometry.errors, msg, FATAL);
           free(msg);
           stop(ctx, -1);
         }
@@ -500,7 +500,7 @@ void connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
           if( ctx->geometry.icon1[i] == iz ) {
             char *msg = calloc(MAX_ERROR_LEN, sizeof(char));
             sprintf(msg, "\n  GEOMETRY DATA ERROR -- SEGMENT %d LIES IN GROUND PLANE", iz);
-            add_error(&ctx->geometry.errors, msg, FATAL);
+            add_error(ctx, &ctx->geometry.errors, msg, FATAL);
             free(msg);
             stop(ctx, -1);
           }
@@ -795,11 +795,11 @@ void finish_geometry(nec_context_t *ctx)
       
       if(ctx->geometry.si[i] <= 1.e-20) {
         sprintf(msg, "The length of segment %d is too small to process.", i + 1);
-        add_error(&ctx->geometry.errors, msg, 1);
+        add_error(ctx, &ctx->geometry.errors, msg, 1);
       }
       if(ctx->geometry.bi[i] <= 0.0) {
         sprintf(msg, "The radius of segment %d is too small to process.", i + 1);
-        add_error(&ctx->geometry.errors, msg, 1);
+        add_error(ctx, &ctx->geometry.errors, msg, 1);
       }
     } /* for( i = 0; i < ctx->geometry.n; i++ ) */
   } /* if( ctx->geometry.n != 0) */
@@ -966,7 +966,7 @@ void arc(nec_context_t *ctx, int card_num, int tag_num, int segs, double rada, d
   if(fabs(ang2- ang1) > 360.0000) {
     char *msg = calloc(1, MAX_ERROR_LEN);
     sprintf(msg, "The card on line %d is a GA with an angle >360 degrees.", card_num + 1);
-    add_error(&ctx->geometry.errors, msg, 1);
+    add_error(ctx, &ctx->geometry.errors, msg, 1);
     free(msg);
     return;
   }
@@ -1396,7 +1396,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
   if(ix == 0 && iy == 0 && iz == 0) {
     char *msg = calloc(1, MAX_ERROR_LEN);
     sprintf(msg, "GX on card %d has no reflection axes.", card_num + 1);
-    add_error(&ctx->geometry.errors, msg, 1);
+    add_error(ctx, &ctx->geometry.errors, msg, 1);
     free(msg);
     return;
   }
@@ -1456,7 +1456,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
                   "\n  GEOMETRY DATA ERROR--SEGMENT %d"
                   " LIES IN PLANE OF SYMMETRY",
                   i + 1);
-          add_error(&ctx->geometry.errors, msg, 1);
+          add_error(ctx, &ctx->geometry.errors, msg, 1);
           free(msg);
           return;
         }
@@ -1513,7 +1513,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
                   "\n  GEOMETRY DATA ERROR--PATCH %d"
                   " LIES IN PLANE OF SYMMETRY",
                   i + 1);
-          add_error(&ctx->geometry.errors, msg, 1);
+          add_error(ctx, &ctx->geometry.errors, msg, 1);
           free(msg);
           return;
         }
@@ -1565,7 +1565,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
                   "\n  GEOMETRY DATA ERROR--SEGMENT %d"
                   " LIES IN PLANE OF SYMMETRY",
                   i + 1);
-          add_error(&ctx->geometry.errors, msg, 1);
+          add_error(ctx, &ctx->geometry.errors, msg, 1);
           free(msg);
           return;
         }
@@ -1618,7 +1618,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
                   "\n  GEOMETRY DATA ERROR--PATCH %d"
                   " LIES IN PLANE OF SYMMETRY",
                   i + 1);
-          add_error(&ctx->geometry.errors, msg, 1);
+          add_error(ctx, &ctx->geometry.errors, msg, 1);
           free(msg);
           return;
         }
@@ -1673,7 +1673,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
                 "\n  GEOMETRY DATA ERROR--SEGMENT %d"
                 " LIES IN PLANE OF SYMMETRY",
                 i + 1);
-        add_error(&ctx->geometry.errors, msg, 1);
+        add_error(ctx, &ctx->geometry.errors, msg, 1);
         free(msg);
         return;
       }
@@ -1724,7 +1724,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
               "\n  GEOMETRY DATA ERROR--PATCH %d"
               " LIES IN PLANE OF SYMMETRY",
               i + 1);
-      add_error(&ctx->geometry.errors, msg, 1);
+      add_error(ctx, &ctx->geometry.errors, msg, 1);
       free(msg);
       return;
     }
@@ -1742,7 +1742,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
     ctx->geometry.pbi[nx]= ctx->geometry.pbi[i];
   }
   
-  ctx->geometry.m= ctx->geometry.m*2;
+  ctx->geometry.m= ctx->geometry.m * 2;
 } /* end of reflect */
 
 /******************************************************************************
@@ -2008,7 +2008,7 @@ void patch(nec_context_t *ctx, int card_num, int nx, int ny,
           sprintf(msg,
                   "\n  ERROR -- CORNERS OF QUADRILATERAL"
                   " PATCH DO NOT LIE IN A PLANE" );
-          add_error(&ctx->geometry.errors, msg, 1);
+          add_error(ctx, &ctx->geometry.errors, msg, 1);
           free(msg);
           return;
         }

@@ -344,7 +344,7 @@ void write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
   card_t card;
   int geo_card_num;
   int num_wires = 0;
-  int num_patches = 0;
+  /* int num_patches = 0; */
 
   int ix, iy, iz;
   
@@ -435,7 +435,7 @@ void write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
         break;
         
       case 6: // SP card, generate single surface patch
-        num_patches++;
+        /* num_patches++; */
         fprintf( ctx->output_fp, "\n"
                 " %5d%c %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f",
                 card.iv[1], card.iv[i-1], card.fv[1], card.fv[2], card.fv[3], card.fv[4], card.fv[5], card.fv[6]);

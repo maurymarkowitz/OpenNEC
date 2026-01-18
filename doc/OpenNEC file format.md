@@ -1,12 +1,12 @@
 OpenNEC file format
 ===================
 
-Version 1.0, January 2022
+Version 1.0, January 2026
 
 Introduction
 ------------
 
-OpenNEC, or onec for short, is an implementation of the Numerical Electromagnetics Code ("NEC") system for simulating antennas. It is based on a port of the original NEC-2 code converted from Fortran to C, nec2c, written by Neoklis Kyriazis.
+OpenNEC, or onec for short, is an implementation of the Numerical Electromagnetics Code ("NEC") system for simulating antennas. It is based on a port of the original NEC-2 code converted from Fortran to C written by Neoklis Kyriazis, called nec2c.
 
 NEC systems use text files known as "decks" to exchange design information between antenna simulator programs using the NEC-2 and NEC-4 programs, or compatible systems like nec2c, 4nec2, MININEC, and many others. The OpenNEC file format is an extended version of the *de facto* NEC file format, adding a small number of new features and more clearly specifying some formerly ill-defined features.
 
@@ -19,14 +19,14 @@ Background
 
 The NEC code traces its history to BRACT, written in Fortran in the 1960s. As was the case for most programs of that era, BRACT was a single large program that parsed user input from a card reader, ran the calculations, and then output the results to a line printer. The code mixed these functions together, processing the data piece-by-piece in order to reduce temporary memory requirements. Because paper cards were expensive, the input format contains a number of features intended to reduce the total card count. This results in a number of "variant" formats for cards, where the number and meaning of fields on the cards changed depending on values in other fields, or values on earlier cards in the deck. The system is highly modal.
 
-Starting in the 1970s the original BRACT code was updated several times, becoming NEC. As part of these modifications, the input moved from cards to text files by recording each 80-character card into a single line of text in a file. Fortran code for the NEC-2 version was released into the public domain in the early 1980s. A number of ports of this code have been made, most recently in the C or C++ languages. The format of a deck was not formally defined when these ports were being made, and as a result there are a profusion of slightly different versions. Matters were not helped when the original NEC code was updated, introducing still more variations as part of NEC-4.
+Starting in the 1970s the original BRACT code was updated several times, becoming NEC. As part of these modifications, the input was changed to text files by recording each 80-character card into a single line of text in a file. The resulting file was known as a deck, in keeping with it's origins as a deck of cards. The Fortran code for the NEC-2 version was released into the public domain in the early 1980s. A number of ports of this code have been made, most recently in the C or C++ languages. The format of a deck was not formally defined when these ports were being made, and as a result there are a profusion of slightly different versions. Matters were not helped when the original NEC code was updated, introducing still more variations as part of NEC-4.
 
 For example, almost all deck formats allow comments to be placed at the end of a line (or "card") to provide documentation. However, the comment indicator varies across implementations. The original NEC used `CM`, but later implementations allowed `!`, `'` and `#`. Additionally, the individual fields, formerly delimited by their column number on the punch cards, are now what the NEC-4 documentation calls "close to free format" - tabs, commas, spaces and even fixed-format versions can be found in use. On top of all this, new card types like `SY` have been added by 3rd party software which add useful functionality but make the decks incompatible with other software.
 
 Impetus
 -------
 
-onec is an attempt to solve (some of) these problems. It does so by defining a single canonical format for the files. It also includes an extension mechanism that allows the addition of arbitrary data to any card, in a way that will simply ignored by (most) NEC implementations. onec also supports the SY card type, as this feature is both common and very useful in practice.
+OpenNEC is an attempt to solve (some of) these problems. It does so by defining a single canonical format for the files. It also includes an extension mechanism that allows the addition of arbitrary data to any card, in a way that will be safely ignored by (most) NEC implementations. onec also supports the SY card type, as this feature is both common and very useful in practice.
 
 The inclusion of these new features means the onec format is not fully compatible with the original NEC format. However, onec defines a simple mechanism to convert any onec deck into a fully compatible form with no loss of information. This makes onec files easy to use in the traditional role where the NEC code is in an external library or executable that communicates only through files.
 

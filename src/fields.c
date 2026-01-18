@@ -110,10 +110,10 @@ void efld(nec_context_t *ctx, double xi, double yi, double zi, double ai, int ij
     {
       /* eksc for thin wire approx. or ekscx for extended t.w. approx. */
       if( ctx->dataj.iexk != 1)
-        eksc( ctx->dataj.s, zp, rh, TP, ijx, &tezs, &ters,
+        eksc(ctx, ctx->dataj.s, zp, rh, TP, ijx, &tezs, &ters,
              &tezc, &terc, &tezk, &terk );
       else
-        ekscx( ctx->dataj.b, ctx->dataj.s, zp, rh, TP, ijx, ctx->dataj.ind1, ctx->dataj.ind2,
+        ekscx(ctx, ctx->dataj.b, ctx->dataj.s, zp, rh, TP, ijx, ctx->dataj.ind1, ctx->dataj.ind2,
               &tezs, &ters, &tezc, &terc, &tezk, &terk);
       
       txs= tezs* ctx->dataj.cabj+ ters* rhox;
@@ -325,7 +325,7 @@ void efld(nec_context_t *ctx, double xi, double yi, double zi, double ai, int ij
 
 /* compute e field of sine, cosine, and constant */
 /* current filaments by thin wire approximation. */
-void eksc( double s, double z, double rh, double xk, int ij,
+void eksc(nec_context_t *ctx, double s, double z, double rh, double xk, int ij,
           complex double *ezs, complex double *ers, complex double *ezc,
           complex double *erc, complex double *ezk, complex double *erk )
 {
@@ -342,8 +342,8 @@ void eksc( double s, double z, double rh, double xk, int ij,
   cs= cos( shk);
   z2a= sh- z;
   z1a=-( sh+ z);
-  gx( z1a, rh, xk, &gz1, &gp1);
-  gx( z2a, rh, xk, &gz2, &gp2);
+  gx(ctx, z1a, rh, xk, &gz1, &gp1);
+  gx(ctx, z2a, rh, xk, &gz2, &gp2);
   gzp1= gp1* z1a;
   gzp2= gp2* z2a;
   *ezs=  CONST1*(( gz2- gz1)* cs* xk-( gzp2+ gzp1)* ss);
@@ -373,7 +373,7 @@ void eksc( double s, double z, double rh, double xk, int ij,
 
 /* compute e field of sine, cosine, and constant current */
 /* filaments by extended thin wire approximation. */
-void ekscx( double bx, double s, double z,
+void ekscx(nec_context_t *ctx, double bx, double s, double z,
            double rhx, double xk, int ij, int inx1, int inx2,
            complex double *ezs, complex double *ers, complex double *ezc,
            complex double *erc, complex double *ezk, complex double *erk )
@@ -410,11 +410,10 @@ void ekscx( double bx, double s, double z,
   a2= b* b;
   
   if( inx1 != 2)
-    gxx( z1a, rh, b, a2, xk, ira, &gz1,
-        &gzp1, &gr1, &grp1, &grk1, &gzz1);
+    gxx(ctx, z1a, rh, b, a2, xk, ira, &gz1, &gzp1, &gr1, &grp1, &grk1, &gzz1);
   else
   {
-    gx( z1a, rhx, xk, &gz1, &grk1);
+    gx(ctx, z1a, rhx, xk, &gz1, &grk1);
     gzp1= grk1* z1a;
     gr1= gz1/ rhx;
     grp1= gzp1/ rhx;
@@ -423,11 +422,10 @@ void ekscx( double bx, double s, double z,
   }
   
   if( inx2 != 2)
-    gxx( z2a, rh, b, a2, xk, ira, &gz2,
-        &gzp2, &gr2, &grp2, &grk2, &gzz2);
+    gxx(ctx, z2a, rh, b, a2, xk, ira, &gz2, &gzp2, &gr2, &grp2, &grk2, &gzz2);
   else
   {
-    gx( z2a, rhx, xk, &gz2, &grk2);
+    gx(ctx, z2a, rhx, xk, &gz2, &grk2);
     gzp2= grk2* z2a;
     gr2= gz2/ rhx;
     grp2= gzp2/ rhx;
@@ -454,7 +452,7 @@ void ekscx( double bx, double s, double z,
 /*-----------------------------------------------------------------------*/
 
 /* integrand for h field of a wire */
-void gh( double zk, double *hr, double *hi)
+void gh(nec_context_t *ctx, double zk, double *hr, double *hi)
 {
   double rs, r, ckr, skr, rr2, rr3;
   
@@ -477,7 +475,7 @@ void gh( double zk, double *hr, double *hi)
 /* current element over a ground plane using formulas of k.a. norton */
 /* (proc. ire, sept., 1937, pp.1203,1236.) */
 
-void gwave( complex double *erv, complex double *ezv,
+void gwave(nec_context_t *ctx, complex double *erv, complex double *ezv,
            complex double *erh, complex double *ezh, complex double *eph )
 {
   double sppp, sppp2, cppp2, cppp, spp, spp2, cpp2, cpp;
@@ -557,7 +555,7 @@ void gwave( complex double *erv, complex double *ezv,
 /*-----------------------------------------------------------------------*/
 
 /* segment end contributions for thin wire approx. */
-void gx( double zz, double rh, double xk,
+void gx(nec_context_t *ctx, double zz, double rh, double xk,
         complex double *gz, complex double *gzp)
 {
   double r, r2, rkz;
@@ -574,7 +572,7 @@ void gx( double zz, double rh, double xk,
 /*-----------------------------------------------------------------------*/
 
 /* segment end contributions for ext. thin wire approx. */
-void gxx( double zz, double rh, double a,
+void gxx(nec_context_t *ctx, double zz, double rh, double a,
          double a2, double xk, int ira, complex double *g1,
          complex double *g1p, complex double *g2,
          complex double *g2p, complex double *g3, complex double *gzp )
@@ -634,7 +632,7 @@ void gxx( double zz, double rh, double a,
 
 /* hfk computes the h field of a uniform current */
 /* filament by numerical integration */
-void hfk( double el1, double el2, double rhk,
+void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
          double zpkx, double *sgr, double *sgi )
 {
   int nx = 1, nma = 65536, nts = 4;
@@ -656,7 +654,7 @@ void hfk( double el1, double el2, double rhk,
   *sgi=0.0;
   ns= nx;
   nt=0;
-  gh( z, &g1r, &g1i);
+  gh(ctx, z, &g1r, &g1i);
   
   while( TRUE )
   {
@@ -678,9 +676,9 @@ void hfk( double el1, double el2, double rhk,
       
       dzot= dz*.5;
       zp= z+ dzot;
-      gh( zp, &g3r, &g3i);
+      gh(ctx, zp, &g3r, &g3i);
       zp= z+ dz;
-      gh( zp, &g5r, &g5i);
+      gh(ctx, zp, &g5r, &g5i);
       
     } /* if( flag ) */
     
@@ -691,7 +689,7 @@ void hfk( double el1, double el2, double rhk,
     t10r=(4.0* t01r- t00r)/3.0;
     t10i=(4.0* t01i- t00i)/3.0;
     
-    test(ctx,  t01r, t10r, &te1r, t01i, t10i, &te1i, 0.);
+    test(ctx, t01r, t10r, &te1r, t01i, t10i, &te1i, 0.);
     if( (te1i <= rx) && (te1r <= rx) )
     {
       *sgr= *sgr+ t10r;
@@ -720,9 +718,9 @@ void hfk( double el1, double el2, double rhk,
     } /* if( (te1i <= rx) && (te1r <= rx) ) */
     
     zp= z+ dz*0.25;
-    gh( zp, &g2r, &g2i);
+    gh(ctx, zp, &g2r, &g2i);
     zp= z+ dz*0.75;
-    gh( zp, &g4r, &g4i);
+    gh(ctx, zp, &g4r, &g4i);
     t02r=( t01r+ dzot*( g2r+ g4r))*0.5;
     t02i=( t01i+ dzot*( g2i+ g4i))*0.5;
     t11r=(4.0* t02r- t01r)/3.0;
@@ -730,7 +728,7 @@ void hfk( double el1, double el2, double rhk,
     t20r=(16.0* t11r- t10r)/15.0;
     t20i=(16.0* t11i- t10i)/15.0;
     
-    test(ctx,  t11r, t20r, &te2r, t11i, t20i, &te2i, 0.);
+    test(ctx, t11r, t20r, &te2r, t11i, t20i, &te2i, 0.);
     if( (te2i > rx) || (te2r > rx) )
     {
       nt=0;
@@ -781,7 +779,7 @@ void hfk( double el1, double el2, double rhk,
 /*-----------------------------------------------------------------------*/
 
 /* hintg computes the h field of a patch current */
-void hintg(ctx,  double xi, double yi, double zi )
+void hintg(nec_context_t *ctx, double xi, double yi, double zi )
 {
   int ip;
   double rx, ry, rfl, xymag, pxx, pyy, cth;
@@ -887,7 +885,7 @@ void hintg(ctx,  double xi, double yi, double zi )
 
 /* hsfld computes the h field for constant, sine, and */
 /* cosine current on a segment including ground effects. */
-void hsfld(ctx,  double xi, double yi, double zi, double ai )
+void hsfld(nec_context_t *ctx,  double xi, double yi, double zi, double ai )
 {
   int ip;
   double xij, yij, rfl, salpr, zij, zp, rhox, rhoy, rhoz, rh, phx;
@@ -930,7 +928,7 @@ void hsfld(ctx,  double xi, double yi, double zi, double ai )
     phy= salpr* rhox- ctx->dataj.cabj* rhoz;
     phz= ctx->dataj.cabj* rhoy- ctx->dataj.sabj* rhox;
     
-    hsflx( ctx->dataj.s, rh, zp, &hpk, &hps, &hpc);
+    hsflx(ctx, ctx->dataj.s, rh, zp, &hpk, &hps, &hpc);
     
     if( ip == 1 )
     {
@@ -1022,7 +1020,7 @@ void hsfld(ctx,  double xi, double yi, double zi, double ai )
 /*-----------------------------------------------------------------------*/
 
 /* calculates h field of sine cosine, and constant current of segment */
-void hsflx( double s, double rh, double zpx,
+void hsflx(nec_context_t *ctx, double s, double rh, double zpx,
            complex double *hpk, complex double *hps,
            complex double *hpc )
 {
@@ -1056,7 +1054,7 @@ void hsflx( double s, double rh, double zpx,
     dk= TP* dh;
     cdk= cos( dk);
     sdk= sin( dk);
-    hfk(- dk, dk, rh* TP, zp* TP, &hkr, &hki);
+    hfk(ctx, -dk, dk, rh* TP, zp* TP, &hkr, &hki);
     *hpk= cmplx( hkr, hki);
     
     if( rhz >= 1.0e-3)
@@ -1099,7 +1097,7 @@ void hsflx( double s, double rh, double zpx,
 
 /* nefld computes the near field at specified points in space after */
 /* the structure currents have been computed. */
-void nefld(ctx,  double xob, double yob, double zob,
+void nefld(nec_context_t *ctx, double xob, double yob, double zob,
            complex double *ex, complex double *ey, complex double *ez )
 {
   int i, ix, ipr, iprx, jc, ipa;
@@ -1300,7 +1298,7 @@ void nefld(ctx,  double xob, double yob, double zob,
 /*-------------------------------------------------------------------*/
 /* fill incident field array for charge discontinuity voltage source */
 //for some reason this was in input.c in nec2c
-void qdsrc( int is, complex double v, complex double *e )
+void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
 {
   int i, jx, j, jp1, ipr, ij, i1;
   double xi, yi, zi, ai, cabi, sabi, salpi, tx, ty, tz;
@@ -1308,8 +1306,8 @@ void qdsrc( int is, complex double v, complex double *e )
   
   is--;
   i= ctx->geometry.icon1[is];
-  ctx->geometry.icon1[is]=0;
-  tbf( is+1,0);
+  ctx->geometry.icon1[is] = 0;
+  tbf(ctx, is+1, 0);
   ctx->geometry.icon1[is]= i;
   ctx->dataj.s= ctx->geometry.si[is]*.5;
   curd= CCJ* v/(( log(2.* ctx->dataj.s/ ctx->geometry.bi[is])-1.)*( ctx->segj.bx[ctx->segj.jsno-1]*
@@ -1489,7 +1487,7 @@ void qdsrc( int is, complex double v, complex double *e )
 /*-----------------------------------------------------------------------*/
 
 /* compute near e or h fields over a range of points */
-void nfpat( void )
+void nfpat(nec_context_t *ctx)
 {
   int i, j, kk;
   double znrt, cth=0., sth=0., ynrt, cph=0., sph=0., xnrt, xob, yob;
@@ -1562,12 +1560,12 @@ void nfpat( void )
           nhfld(ctx,  tmp1, tmp2, tmp3, &ex, &ey, &ez);
         
         tmp1= cabs( ex);
-        tmp2= cang( ex);
+        tmp2= cang(ctx, ex);
         tmp3= cabs( ey);
-        tmp4= cang( ey);
+        tmp4= cang(ctx, ey);
         tmp5= cabs( ez);
-        tmp6= cang( ez);
-        
+        tmp6= cang(ctx, ez);
+
         fprintf( ctx->output_fp, "\n"
                 " %9.4f %9.4f %9.4f  %11.4E %7.2f  %11.4E %7.2f  %11.4E %7.2f",
                 xob, yob, zob, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6 );
@@ -1588,16 +1586,16 @@ void nfpat( void )
           switch( ctx->plot.iplp3 )
           {
             case 1:
-              fprintf( plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp1, tmp2 );
+              fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp1, tmp2 );
               break;
             case 2:
-              fprintf( plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp3, tmp4 );
+              fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp3, tmp4 );
               break;
             case 3:
-              fprintf( plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp5, tmp6 );
+              fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp5, tmp6 );
               break;
             case 4:
-              fprintf( plot_fp, "%12.4E %12.4E %12.4E %12.4E %12.4E %12.4E %12.4E\n",
+              fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E %12.4E %12.4E %12.4E %12.4E\n",
                       xxx, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6 );
           }
           continue;
@@ -1609,16 +1607,16 @@ void nfpat( void )
         switch( ctx->plot.iplp3 )
         {
           case 1:
-            fprintf( plot_fp, "%12.4E %12.4E %12.4E\n", xxx, creal(ex), cimag(ex) );
+            fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, creal(ex), cimag(ex) );
             break;
           case 2:
-            fprintf( plot_fp, "%12.4E %12.4E %12.4E\n", xxx, creal(ey), cimag(ey) );
+            fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, creal(ey), cimag(ey) );
             break;
           case 3:
-            fprintf( plot_fp, "%12.4E %12.4E %12.4E\n", xxx, creal(ez), cimag(ez) );
+            fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, creal(ez), cimag(ez) );
             break;
           case 4:
-            fprintf( plot_fp, "%12.4E %12.4E %12.4E %12.4E %12.4E %12.4E %12.4E\n",
+            fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E %12.4E %12.4E %12.4E %12.4E\n",
                     xxx,creal(ex),cimag(ex),creal(ey),cimag(ey),creal(ez),cimag(ez) );
         }
       } /* for( kk = 0; kk < ctx->fpat.nrx; kk++ ) */
@@ -1635,7 +1633,7 @@ void nfpat( void )
 /* nhfld computes the near field at specified points in space after */
 /* the structure currents have been computed. */
 
-void nhfld(ctx,  double xob, double yob, double zob,
+void nhfld(nec_context_t *ctx,  double xob, double yob, double zob,
            complex double *hx, complex double *hy, complex double *hz )
 {
   int i, jc;
@@ -1717,7 +1715,7 @@ void nhfld(ctx,  double xob, double yob, double zob,
 /*-----------------------------------------------------------------------*/
 
 /* integrate over patches at wire connection point */
-void pcint(ctx,  double xi, double yi, double zi, double cabi,
+void pcint(nec_context_t *ctx,  double xi, double yi, double zi, double cabi,
            double sabi, double salpi, complex double *e )
 {
   int nint, i1, i2;
@@ -1814,7 +1812,7 @@ void pcint(ctx,  double xi, double yi, double zi, double cabi,
 
 /* calculates the electric field due to unit current */
 /* in the t1 and t2 directions on a patch */
-void unere(ctx,  double xob, double yob, double zob )
+void unere(nec_context_t *ctx,  double xob, double yob, double zob )
 {
   double zr, t1zr, t2zr, rx, ry, rz, r, tt1;
   double tt2, rt, xymag, px, py, cth, r2;

@@ -39,7 +39,7 @@ static char *greens_file = "";
 static void print_version();
 static void print_version()
 {
-  puts("OpenNEC " VERSION_STRING);
+  puts("Onec " VERSION_STRING);
 }
 
 /******************************************************************************
@@ -84,7 +84,7 @@ static struct option program_options[] =
 void parse_options(int argc, char *argv[])
 {
   int option_index = 0;
-  int printed_help = FALSE;
+  /* int printed_help = FALSE; */
   
   while(1) {
     // eat an option and exit if we're done
@@ -100,12 +100,12 @@ void parse_options(int argc, char *argv[])
         
       case 'h':
         print_usage(argv);
-        printed_help = TRUE;
+        /* printed_help = TRUE; */
         break;
         
       case 'v':
         print_version();
-        printed_help =  TRUE;
+        /* printed_help =  TRUE; */
         break;
         
       case 'o':
@@ -175,7 +175,7 @@ int main(int argc, char **argv)
   // open input file or use stdin
   if (strlen(input_file) > 0) {
     if ((input_fp = fopen(input_file, "r")) == NULL) {
-      char mesg[88] = "opennec: ";
+      char mesg[88] = "onec: ";
       strcat(mesg, input_file);
       perror(mesg);
       exit(EXIT_FAILURE);
@@ -188,7 +188,7 @@ int main(int argc, char **argv)
   // open the error file if it was provided, otherwise stderr
   if(strlen(error_file) > 0) {
     if((error_fp = fopen(error_file, "w")) == NULL) {
-      char mesg[128] = "opennec: ";
+      char mesg[128] = "onec: ";
       strcat(mesg, error_file);
       perror(mesg);
       exit(EXIT_FAILURE);
@@ -233,8 +233,8 @@ int main(int argc, char **argv)
 
   // run basic sanity checks on the structure
   if(run_tests) {
-    test_deck_structure(&deck, &test_errors);
-    test_duplicate_tags(&deck, &test_errors);
+    test_deck_structure(&ctx, &deck, &test_errors);
+    test_duplicate_tags(&ctx, &deck, &test_errors);
   }
   // TESTING: print any structure errors
   for(int i = 0; i < test_errors.num_errors; i++) {
@@ -252,7 +252,7 @@ int main(int argc, char **argv)
   // open output file if not already set to stdout
   if (output_fp == NULL) {
     if((output_fp = fopen(output_file, "w")) == NULL) {
-      char mesg[88] = "opennec: ";
+      char mesg[88] = "onec: ";
       strcat(mesg, output_file);
       perror(mesg);
       exit(-1);
@@ -341,24 +341,24 @@ static void sig_handler( int signal )
   switch( signal )
   {
     case SIGINT :
-      fprintf( error_fp, "%s\n", "opennec: exiting via user interrupt" );
+      fprintf( error_fp, "%s\n", "onec: exiting via user interrupt" );
       exit( signal );
       
     case SIGSEGV :
-      fprintf( error_fp, "%s\n", "opennec: segmentation fault" );
+      fprintf( error_fp, "%s\n", "onec: segmentation fault" );
       exit( signal );
       
     case SIGFPE :
-      fprintf( error_fp, "%s\n", "opennec: floating point exception" );
+      fprintf( error_fp, "%s\n", "onec: floating point exception" );
       exit( signal );
       
     case SIGABRT :
-      fprintf( error_fp, "%s\n", "opennec: abort signal received" );
+      fprintf( error_fp, "%s\n", "onec: abort signal received" );
       exit( signal );
       
     case SIGTERM :
-      fprintf( error_fp, "%s\n", "opennec: termination request received" );
-      
+      fprintf( error_fp, "%s\n", "onec: termination request received" );
+
       stop( signal );
   }
   

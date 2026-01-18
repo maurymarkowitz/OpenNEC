@@ -343,7 +343,7 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     if (!sawEN && !isCmt && !isCtl && !isGeo && !isExt) {
       char *msg = calloc(1, MAX_ERROR_LEN);
       sprintf(msg, "Unknown card type '%s' encountered on card %d. card_t will not be processed.", type_buff, i);
-      add_error(errors, msg, 0);
+      add_error(ctx, errors, msg, 0);
       free(msg);
     }
     
@@ -535,7 +535,7 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
         token += 1; // move forward to skip the symbol
       }
       // or the onec indicator at the end
-      if(strendswith(ctx, token, "awg") == 0) {
+      if(str_ends_with(ctx, token, "awg") == 0) {
         isUnit = TRUE;
         unit = 7;
         token[strlen(token) - 3] = '\0'; // cut the awg off the end

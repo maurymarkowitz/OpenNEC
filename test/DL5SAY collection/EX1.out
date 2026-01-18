@@ -1,0 +1,44 @@
+
+
+
+                               __________________________________________
+                              |                                          |
+                              |  NUMERICAL ELECTROMAGNETICS CODE (onec) |
+                              |   Translated to 'C' in Double Precision  |
+                              |__________________________________________|
+
+
+
+                               ---------------- COMMENTS ----------------
+                               EXAMPLE 1.  CENTER FED LINEAR ANTENNA
+                              
+
+
+
+                               -------- STRUCTURE SPECIFICATION ---------
+                                     COORDINATES MUST BE INPUT IN
+                                     METERS OR BE SCALED TO METERS
+                                     BEFORE STRUCTURE INPUT IS ENDED
+
+  WIRE                                                                                 SEG FIRST  LAST  TAG
+   NO.        X1         Y1         Z1         X2         Y2         Z2       RADIUS   NO. SEG.   SEG.  NO.
+     1     0.00000    0.00000   -0.25000    0.00000    0.00000    0.25000    0.00100     7     1     7    0
+
+     TOTAL SEGMENTS USED: 7   SEGMENTS IN A SYMMETRIC CELL: 7   SYMMETRY FLAG: 0
+  STRUCTURE HAS 0 PLANES OF SYMMETRY
+
+
+
+                               ---------- SEGMENTATION DATA ----------
+                                        COORDINATES IN METERS
+                            I+ AND I- INDICATE THE SEGMENTS BEFORE AND AFTER I
+
+   SEG    COORDINATES OF SEGM CENTER     SEGM    ORIENTATION ANGLES    WIRE    CONNECTION DATA   TAG
+   NO.       X         Y         Z      LENGTH     ALPHA      BETA    RADIUS    I-     I    I+   NO.
+     1    0.0000    0.0000   -0.2143    0.0714   90.0000    0.0000    0.0010     0     1     2     0
+     2    0.0000    0.0000   -0.1429    0.0714   90.0000    0.0000    0.0010     1     2     3     0
+     3    0.0000    0.0000   -0.0714    0.0714   90.0000    0.0000    0.0010     2     3     4     0
+     4    0.0000    0.0000   -0.0000    0.0714   90.0000    0.0000    0.0010     3     4     5     0
+     5    0.0000    0.0000    0.0714    0.0714   90.0000    0.0000    0.0010     4     5     6     0
+     6    0.0000    0.0000    0.1429    0.0714   90.0000    0.0000    0.0010     5     6     7     0
+     7    0.0000    0.0000    0.2143    0.0714   90.0000    0.0000    0.0010     6     7     0     0

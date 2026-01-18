@@ -8,7 +8,7 @@ LIB_SOURCES = $(filter-out src/main.c, $(SOURCES))
 LIB_OBJECTS = $(LIB_SOURCES:.c=.o)
 LIBRARY = libonec.a
 
-EXECUTABLE = opennec
+EXECUTABLE = onec
 
 all: $(EXECUTABLE)
 

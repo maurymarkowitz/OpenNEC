@@ -505,17 +505,17 @@ int main(int argc, char **argv);
 void Null_Pointers(void);
 void prnt(int in1, int in2, int in3, double fl1, double fl2, double fl3, double fl4, double fl5, double fl6, char *ia, int ichar);
 /* matrix.c */
-void cmset(int nrow, complex double *cm, double rkhx, int iexkx);
-void cmss(int j1, int j2, int im1, int im2, complex double *cm, int nrow, int itrp);
-void cmsw(int j1, int j2, int i1, int i2, complex double *cm, complex double *cw, int ncw, int nrow, int itrp);
-void cmws(int j, int i1, int i2, complex double *cm, int nr, complex double *cw, int itrp);
-void cmww(int j, int i1, int i2, complex double *cm, int nr, complex double *cw, int nw, int itrp);
-void etmns(double p1, double p2, double p3, double p4, double p5, double p6, int ipr, complex double *e);
-void factr(int n, complex double *a, int *ip, int ndim);
-void factrs(int np, int nrow, complex double *a, int *ip);
-void fblock(int nrow, int ncol, int imax, int ipsym);
-void solve(int n, complex double *a, int *ip, complex double *b, int ndim);
-void solves(complex double *a, int *ip, complex double *b, int neq, int nrh, int np, int n, int mp, int m);
+void cmset(nec_context_t *ctx, int nrow, complex double *cm, double rkhx, int iexkx);
+void cmss(nec_context_t *ctx, int j1, int j2, int im1, int im2, complex double *cm, int nrow, int itrp);
+void cmsw(nec_context_t *ctx, int j1, int j2, int i1, int i2, complex double *cm, complex double *cw, int ncw, int nrow, int itrp);
+void cmws(nec_context_t *ctx, int j, int i1, int i2, complex double *cm, int nr, complex double *cw, int itrp);
+void cmww(nec_context_t *ctx, int j, int i1, int i2, complex double *cm, int nr, complex double *cw, int nw, int itrp);
+void etmns(nec_context_t *ctx, double p1, double p2, double p3, double p4, double p5, double p6, int ipr, complex double *e);
+void factr(nec_context_t *ctx, int n, complex double *a, int *ip, int ndim);
+void factrs(nec_context_t *ctx, int np, int nrow, complex double *a, int *ip);
+void fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym);
+void solve(nec_context_t *ctx, int n, complex double *a, int *ip, complex double *b, int ndim);
+void solves(nec_context_t *ctx, complex double *a, int *ip, complex double *b, int neq, int nrh, int np, int n, int mp, int m);
 /* misc.c */
 void usage(void);
 void abort_on_error(int why);
@@ -528,19 +528,19 @@ void free_ptr(void **ptr);
 /* network.c */
 void netwk(complex double *cm, int *ip, complex double *einc);
 /* radiation.c */
-void ffld(double thet, double phi, complex double *eth, complex double *eph);
-void fflds(double rox, double roy, double roz, complex double *scur, complex double *ex, complex double *ey, complex double *ez);
-void gfld(double rho, double phi, double rz, complex double *eth, complex double *epi, complex double *erd, complex double ux, int ksymp);
-void rdpat(void);
+void ffld(nec_context_t *ctx, double thet, double phi, complex double *eth, complex double *eph);
+void fflds(nec_context_t *ctx, double rox, double roy, double roz, complex double *scur, complex double *ex, complex double *ey, complex double *ez);
+void gfld(nec_context_t *ctx, double rho, double phi, double rz, complex double *eth, complex double *epi, complex double *erd, complex double ux, int ksymp);
+void rdpat(nec_context_t *ctx);
 /* somnec.c */
-void somnec(double epr, double sig, double fmhz);
-void bessel(complex double z, complex double *j0, complex double *j0p);
-void evlua(complex double *erv, complex double *ezv, complex double *erh, complex double *eph);
-void fbar(complex double p, complex double *r);
-void gshank(complex double start, complex double dela, complex double *sum, int nans, complex double *seed, int ibk, complex double bk, complex double delb);
-void hankel(complex double z, complex double *h0, complex double *h0p);
-void lambda(double t, complex double *xlam, complex double *dxlam);
-void rom1(int n, complex double *sum, int nx);
-void saoa(double t, complex double *ans);
+void somnec(nec_context_t *ctx, double epr, double sig, double fmhz);
+void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex double *j0p);
+void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv, complex double *erh, complex double *eph);
+void fbar(nec_context_t *ctx, complex double p, complex double *r);
+void gshank(nec_context_t *ctx, complex double start, complex double dela, complex double *sum, int nans, complex double *seed, int ibk, complex double bk, complex double delb);
+void hankel(nec_context_t *ctx, complex double z, complex double *h0, complex double *h0p);
+void lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam);
+void rom1(nec_context_t *ctx, int n, complex double *sum, int nx);
+void saoa(nec_context_t *ctx, double t, complex double *ans);
 #endif
 

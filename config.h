@@ -52,19 +52,19 @@
 #define HAVE_UNISTD_H 1
 
 /* Name of package */
-#define PACKAGE "opennec"
+#define PACKAGE "onec"
 
 /* Define to the address where bug reports for this package should be sent. */
 #define PACKAGE_BUGREPORT "nkcyham@yahoo.com"
 
 /* Define to the full name of this package. */
-#define PACKAGE_NAME "opennec"
+#define PACKAGE_NAME "onec"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "opennec 1.0"
+#define PACKAGE_STRING "onec 1.0"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "opennec"
+#define PACKAGE_TARNAME "onec"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL ""

@@ -24,8 +24,12 @@ void write_structure(nec_context_t *ctx, deck_t *deck, FILE *pfile);
 void write_segments(nec_context_t *ctx, deck_t *deck, FILE *pfile);
 void write_patches(nec_context_t *ctx, deck_t * deck, FILE *pfile);
 /* deck.c */
+// these methods work on updating the processed values in the deck and cards
 void update_deck_values(deck_t *deck);
 void update_card_values(card_t *card);
+void add_key_value(const card_t *card, key_value_t *list, char *key, char *value, char separator);
+// these methods work on identifying card types and their field counts,
+// they are read-only and do not need to be thread safe
 int is_comment(const card_t *card);
 int is_geometry(const card_t *card);
 int is_control(const card_t *card);
@@ -34,14 +38,16 @@ int min_int_fields(const card_t *card);
 int max_int_fields(const card_t *card);
 int min_flt_fields(const card_t *card);
 int max_flt_fields(const card_t *card);
-void add_key_value(const card_t *card, key_value_t *list, char *key, char *value, char separator);
 /* test.c */
-void test_deck_structure(deck_t *deck, errors_list_t *errors);
-void test_duplicate_tags(deck_t *deck, errors_list_t *errors);
+// various tests on the deck structure
+void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors);
+void test_duplicate_tags(nec_context_t *ctx, deck_t *deck, errors_list_t *errors);
+void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors);
 /* misc.c */
-void add_error(errors_list_t *errors, char *message, int severity);
+// all sorts of bits and pieces
+void add_error(nec_context_t *ctx, errors_list_t *errors, char *message, int severity);
 void add_message(nec_context_t *ctx, outputs_list_t *outputs, char *message);
-int strendswith(nec_context_t *ctx, const char *str, const char *suffix);
+int str_ends_with(nec_context_t *ctx, const char *str, const char *suffix);
 char* substr(nec_context_t *ctx, char* dest, char *src, int start, int len);
 char* trim_start(nec_context_t *ctx, char* dest);
 char* trim_end(nec_context_t *ctx, char* dest);

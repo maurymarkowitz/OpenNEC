@@ -23,26 +23,25 @@
 
 *******************************************************************/
 
-#include "opennec.h"
 #include "shared.h"
 
 /*-------------------------------------------------------------------*/
 
 /* cmset sets up the complex structure matrix in the array cm */
-void cmset( int nrow, complex double *cm, double rkhx, int iexkx )
+void cmset(nec_context_t *ctx, int nrow, complex double *cm, double rkhx, int iexkx)
 {
   int mp2, neq, npeq, it, i, j, i1, i2, in2;
   int im1, im2, ist, ij, ipr, jss, jm1, jm2, jst, k, ka, kk;
   complex double zaj, deter, *scm = NULL;
 
-  mp2=2* geometry.mp;
-  npeq= geometry.np+ mp2;
-  neq= geometry.n+2* geometry.m;
-  smat.nop = neq/npeq;
+  mp2 = 2 * ctx->geometry.mp;
+  npeq = ctx->geometry.np + mp2;
+  neq = ctx->geometry.n + 2 * ctx->geometry.m;
+  ctx->smat.nop = neq / npeq;
 
-  dataj.rkh= rkhx;
-  dataj.iexk= iexkx;
-  it= matpar.nlast;
+  ctx->dataj.rkh = rkhx;
+  ctx->dataj.iexk = iexkx;
+  it = ctx->matpar.nlast;
 
   for( i = 0; i < nrow; i++ )
 	for( j = 0; j < it; j++ )
@@ -52,96 +51,96 @@ void cmset( int nrow, complex double *cm, double rkhx, int iexkx )
   i2= it;
   in2= i2;
 
-  if( in2 > geometry.np)
-	in2= geometry.np;
+  if( in2 > ctx->geometry.np)
+	in2= ctx->geometry.np;
 
-  im1= i1- geometry.np;
-  im2= i2- geometry.np;
+  im1= i1- ctx->geometry.np;
+  im2= i2- ctx->geometry.np;
 
   if( im1 < 1)
 	im1=1;
 
   ist=1;
-  if( i1 <= geometry.np)
-	ist= geometry.np- i1+2;
+  if( i1 <= ctx->geometry.np)
+	ist= ctx->geometry.np- i1+2;
 
   /* wire source loop */
-  if( geometry.n != 0)
+  if( ctx->geometry.n != 0)
   {
-	for( j = 1; j <= geometry.n; j++ )
+	for( j = 1; j <= ctx->geometry.n; j++ )
 	{
-	  trio(j);
-	  for( i = 0; i < segj.jsno; i++ )
+	  trio(ctx, j);
+	  for( i = 0; i < ctx->segj.jsno; i++ )
 	  {
-		ij= segj.jco[i];
-		segj.jco[i]=(( ij-1)/ geometry.np)* mp2+ ij;
+		ij = ctx->segj.jco[i];
+		ctx->segj.jco[i] = (( ij - 1 ) / ctx->geometry.np) * mp2 + ij;
 	  }
 
 	  if( i1 <= in2)
-		cmww( j, i1, in2, cm, nrow, cm, nrow,1);
+		cmww(ctx, j, i1, in2, cm, nrow, cm, nrow, 1);
 
 	  if( im1 <= im2)
-		cmws( j, im1, im2, &cm[(ist-1)*nrow], nrow, cm, 1);
+		cmws(ctx, j, im1, im2, &cm[(ist - 1) * nrow], nrow, cm, 1);
 
 	  /* matrix elements modified by loading */
-	  if( zload.nload == 0)
+	  if( ctx->zload.nload == 0)
 		continue;
 
-	  if( j > geometry.np)
+	  if( j > ctx->geometry.np)
 		continue;
 
-	  ipr= j;
+	  ipr = j;
 	  if( (ipr < 1) || (ipr > it) )
 		continue;
 
-	  zaj= zload.zarray[j-1];
+	  zaj = ctx->zload.zarray[j-1];
 
-	  for( i = 0; i < segj.jsno; i++ )
+	  for( i = 0; i < ctx->segj.jsno; i++ )
 	  {
-		jss= segj.jco[i];
-		cm[(jss-1)+(ipr-1)*nrow] -= ( segj.ax[i]+ segj.cx[i])* zaj;
+		jss = ctx->segj.jco[i];
+		cm[(jss - 1) + (ipr - 1) * nrow] -= ( ctx->segj.ax[i] + ctx->segj.cx[i] ) * zaj;
 	  }
 
 	} /* for( j = 1; j <= n; j++ ) */
 
   } /* if( n != 0) */
 
-  if( geometry.m != 0)
+  if( ctx->geometry.m != 0)
   {
 	/* matrix elements for patch current sources */
-	jm1=1- geometry.mp;
-	jm2=0;
-	jst=1- mp2;
+	jm1 = 1 - ctx->geometry.mp;
+	jm2 = 0;
+	jst = 1 - mp2;
 
-	for( i = 0; i < smat.nop; i++ )
+	for( i = 0; i < ctx->smat.nop; i++ )
 	{
-	  jm1 += geometry.mp;
-	  jm2 += geometry.mp;
+	  jm1 += ctx->geometry.mp;
+	  jm2 += ctx->geometry.mp;
 	  jst += npeq;
 
 	  if( i1 <= in2)
-		cmsw( jm1, jm2, i1, in2, &cm[(jst-1)], cm, 0, nrow, 1);
+		cmsw(ctx, jm1, jm2, i1, in2, &cm[(jst - 1)], cm, 0, nrow, 1);
 
 	  if( im1 <= im2)
-		cmss( jm1, jm2, im1, im2, &cm[(jst-1)+(ist-1)*nrow], nrow, 1);
+		cmss(ctx, jm1, jm2, im1, im2, &cm[(jst - 1) + (ist - 1) * nrow], nrow, 1);
 	}
 
   } /* if( m != 0) */
 
-  if( matpar.icase == 1)
+  if( ctx->matpar.icase == 1)
 	return;
 
   /* Allocate to scratch memory */
-  size_t mreq = (size_t)geometry.np2m;
+  size_t mreq = (size_t)ctx->geometry.np2m;
   mreq *= sizeof(complex double);
-  mem_alloc( (void *)&scm, mreq );
+  mem_alloc(ctx, (void *)&scm, mreq );
 
   /* combine elements for symmetry modes */
   for( i = 0; i < it; i++ )
   {
 	for( j = 0; j < npeq; j++ )
 	{
-	  for( k = 0; k < smat.nop; k++ )
+	  for( k = 0; k < ctx->smat.nop; k++ )
 	  {
 		ka= j+ k*npeq;
 		scm[k]= cm[ka+i*nrow];
@@ -149,19 +148,19 @@ void cmset( int nrow, complex double *cm, double rkhx, int iexkx )
 
 	  deter= scm[0];
 
-	  for( kk = 1; kk < smat.nop; kk++ )
+	  for( kk = 1; kk < ctx->smat.nop; kk++ )
 		deter += scm[kk];
 
 	  cm[j+i*nrow]= deter;
 
-	  for( k = 1; k < smat.nop; k++ )
+	  for( k = 1; k < ctx->smat.nop; k++ )
 	  {
 		ka= j+ k*npeq;
 		deter= scm[0];
 
-		for( kk = 1; kk < smat.nop; kk++ )
+		for( kk = 1; kk < ctx->smat.nop; kk++ )
 		{
-		  deter += scm[kk]* smat.ssx[k+kk*smat.nop];
+		  deter += scm[kk]* ctx->smat.ssx[k+kk*ctx->smat.nop];
 		  cm[ka+i*nrow]= deter;
 		}
 
@@ -171,7 +170,7 @@ void cmset( int nrow, complex double *cm, double rkhx, int iexkx )
 
   } /* for( i = 0; i < it; i++ ) */
 
-  mem_free( (void *)&scm );
+  mem_free(ctx, (void *)&scm );
 
   return;
 }
@@ -179,10 +178,10 @@ void cmset( int nrow, complex double *cm, double rkhx, int iexkx )
 /*-----------------------------------------------------------------------*/
 
 /* cmss computes matrix elements for surface-surface interactions. */
-void cmss( int j1, int j2, int im1, int im2,
-	complex double *cm, int nrow, int itrp )
+void cmss(nec_context_t *ctx, int j1, int j2, int im1, int im2,
+    complex double *cm, int nrow, int itrp )
 {
-  int i1, i2, icomp, ii1, i, il, ii2, jj1, j, jl, jj2;
+  int i1, i2, icomp, ii1, i, il, ii2, jj1, j, jl, /*jl2,*/ jj2;
   double t1xi, t1yi, t1zi, t2xi, t2yi, t2zi, xi, yi, zi;
   complex double g11, g12, g21, g22;
 
@@ -202,15 +201,15 @@ void cmss( int j1, int j2, int im1, int im2,
 	ii1 += 2;
 	ii2 = ii1+1;
 
-	t1xi= geometry.t1x[il]* geometry.psalp[il];
-	t1yi= geometry.t1y[il]* geometry.psalp[il];
-	t1zi= geometry.t1z[il]* geometry.psalp[il];
-	t2xi= geometry.t2x[il]* geometry.psalp[il];
-	t2yi= geometry.t2y[il]* geometry.psalp[il];
-	t2zi= geometry.t2z[il]* geometry.psalp[il];
-	xi= geometry.px[il];
-	yi= geometry.py[il];
-	zi= geometry.pz[il];
+	t1xi = ctx->geometry.t1x[il] * ctx->geometry.psalp[il];
+	t1yi = ctx->geometry.t1y[il] * ctx->geometry.psalp[il];
+	t1zi = ctx->geometry.t1z[il] * ctx->geometry.psalp[il];
+	t2xi = ctx->geometry.t2x[il] * ctx->geometry.psalp[il];
+	t2yi = ctx->geometry.t2y[il] * ctx->geometry.psalp[il];
+	t2zi = ctx->geometry.t2z[il] * ctx->geometry.psalp[il];
+	xi = ctx->geometry.px[il];
+	yi = ctx->geometry.py[il];
+	zi = ctx->geometry.pz[il];
 
 	/* loop over source patches */
 	jj1=-2;
@@ -220,23 +219,23 @@ void cmss( int j1, int j2, int im1, int im2,
 	  jj1 += 2;
 	  jj2 = jj1+1;
 
-	  dataj.s= geometry.pbi[jl];
-	  dataj.xj= geometry.px[jl];
-	  dataj.yj= geometry.py[jl];
-	  dataj.zj= geometry.pz[jl];
-	  dataj.t1xj= geometry.t1x[jl];
-	  dataj.t1yj= geometry.t1y[jl];
-	  dataj.t1zj= geometry.t1z[jl];
-	  dataj.t2xj= geometry.t2x[jl];
-	  dataj.t2yj= geometry.t2y[jl];
-	  dataj.t2zj= geometry.t2z[jl];
+	  ctx->dataj.s = ctx->geometry.pbi[jl];
+	  ctx->dataj.xj = ctx->geometry.px[jl];
+	  ctx->dataj.yj = ctx->geometry.py[jl];
+	  ctx->dataj.zj = ctx->geometry.pz[jl];
+	  ctx->dataj.t1xj = ctx->geometry.t1x[jl];
+	  ctx->dataj.t1yj = ctx->geometry.t1y[jl];
+	  ctx->dataj.t1zj = ctx->geometry.t1z[jl];
+	  ctx->dataj.t2xj = ctx->geometry.t2x[jl];
+	  ctx->dataj.t2yj = ctx->geometry.t2y[jl];
+	  ctx->dataj.t2zj = ctx->geometry.t2z[jl];
 
-	  hintg( xi, yi, zi);
+	  hintg(ctx, xi, yi, zi);
 
-	  g11=-( t2xi* dataj.exk+ t2yi* dataj.eyk+ t2zi* dataj.ezk);
-	  g12=-( t2xi* dataj.exs+ t2yi* dataj.eys+ t2zi* dataj.ezs);
-	  g21=-( t1xi* dataj.exk+ t1yi* dataj.eyk+ t1zi* dataj.ezk);
-	  g22=-( t1xi* dataj.exs+ t1yi* dataj.eys+ t1zi* dataj.ezs);
+	  g11 = -( t2xi * ctx->dataj.exk + t2yi * ctx->dataj.eyk + t2zi * ctx->dataj.ezk );
+	  g12 = -( t2xi * ctx->dataj.exs + t2yi * ctx->dataj.eys + t2zi * ctx->dataj.ezs );
+	  g21 = -( t1xi * ctx->dataj.exk + t1yi * ctx->dataj.eyk + t1zi * ctx->dataj.ezk );
+	  g22 = -( t1xi * ctx->dataj.exs + t1yi * ctx->dataj.eys + t1zi * ctx->dataj.ezs );
 
 	  if( i == j )
 	  {
@@ -285,13 +284,13 @@ void cmss( int j1, int j2, int im1, int im2,
 /*-----------------------------------------------------------------------*/
 
 /* computes matrix elements for e along wires due to patch current */
-void cmsw( int j1, int j2, int i1, int i2, complex double *cm,
-	complex double *cw, int ncw, int nrow, int itrp )
+void cmsw(nec_context_t *ctx, int j1, int j2, int i1, int i2, complex double *cm,
+    complex double *cw, int ncw, int nrow, int itrp )
 {
   int jsnox; /* -1 offset to "jsno" for array indexing */
   complex double emel[9];
 
-  jsnox = segj.jsno-1;
+  jsnox = ctx->segj.jsno-1;
 
   if( itrp >= 0)
   {
@@ -305,23 +304,23 @@ void cmsw( int j1, int j2, int i1, int i2, complex double *cm,
 	for( i = i1-1; i < i2; i++ )
 	{
 	  k++;
-	  xi= geometry.x[i];
-	  yi= geometry.y[i];
-	  zi= geometry.z[i];
-	  cabi= geometry.cab[i];
-	  sabi= geometry.sab[i];
-	  salpi= geometry.salp[i];
+	  xi = ctx->geometry.x[i];
+	  yi = ctx->geometry.y[i];
+	  zi = ctx->geometry.z[i];
+	  cabi = ctx->geometry.cab[i];
+	  sabi = ctx->geometry.sab[i];
+	  salpi = ctx->geometry.salp[i];
 	  ipch=0;
 
-	  if( geometry.icon1[i] >= PCHCON)
+	  if( ctx->geometry.icon1[i] >= PCHCON)
 	  {
-		ipch= geometry.icon1[i]-PCHCON;
+		ipch= ctx->geometry.icon1[i]-PCHCON;
 		fsign=-1.;
 	  }
 
-	  if( geometry.icon2[i] >= PCHCON)
+	  if( ctx->geometry.icon2[i] >= PCHCON)
 	  {
-		ipch= geometry.icon2[i]-PCHCON;
+		ipch= ctx->geometry.icon2[i]-PCHCON;
 		fsign=1.;
 	  }
 
@@ -331,45 +330,45 @@ void cmsw( int j1, int j2, int i1, int i2, complex double *cm,
 	  {
 		jl += 2;
 		js = j-1;
-		dataj.t1xj= geometry.t1x[js];
-		dataj.t1yj= geometry.t1y[js];
-		dataj.t1zj= geometry.t1z[js];
-		dataj.t2xj= geometry.t2x[js];
-		dataj.t2yj= geometry.t2y[js];
-		dataj.t2zj= geometry.t2z[js];
-		dataj.xj= geometry.px[js];
-		dataj.yj= geometry.py[js];
-		dataj.zj= geometry.pz[js];
-		dataj.s= geometry.pbi[js];
+		ctx->dataj.t1xj = ctx->geometry.t1x[js];
+		ctx->dataj.t1yj = ctx->geometry.t1y[js];
+		ctx->dataj.t1zj = ctx->geometry.t1z[js];
+		ctx->dataj.t2xj = ctx->geometry.t2x[js];
+		ctx->dataj.t2yj = ctx->geometry.t2y[js];
+		ctx->dataj.t2zj = ctx->geometry.t2z[js];
+		ctx->dataj.xj = ctx->geometry.px[js];
+		ctx->dataj.yj = ctx->geometry.py[js];
+		ctx->dataj.zj = ctx->geometry.pz[js];
+		ctx->dataj.s = ctx->geometry.pbi[js];
 
 		/* ground loop */
-		for( ip = 1; ip <= gnd.ksymp; ip++ )
+		for( ip = 1; ip <= ctx->gnd.ksymp; ip++ )
 		{
-		  dataj.ipgnd= ip;
+		  ctx->dataj.ipgnd= ip;
 
 		  if( ((ipch == j) || (icgo != 0)) && (ip != 2) )
 		  {
 			if( icgo <= 0 )
 			{
-			  pcint( xi, yi, zi, cabi, sabi, salpi, emel);
+			  pcint(ctx, xi, yi, zi, cabi, sabi, salpi, emel);
 
-			  pyl= PI* geometry.si[i]* fsign;
+			  pyl= PI* ctx->geometry.si[i]* fsign;
 			  pxl= sin( pyl);
 			  pyl= cos( pyl);
-			  dataj.exc= emel[8]* fsign;
+			  ctx->dataj.exc= emel[8]* fsign;
 
-			  trio(i+1);
+			  trio(ctx, i+1);
 
 			  il= i-ncw;
-			  if( i < geometry.np)
-				il += (il/geometry.np)*2*geometry.mp;
+			  if( i < ctx->geometry.np)
+				il += (il/ctx->geometry.np)*2*ctx->geometry.mp;
 
 			  if( itrp == 0 )
 				cw[k+il*nrow] +=
-				  dataj.exc*( segj.ax[jsnox]+ segj.bx[jsnox]* pxl+ segj.cx[jsnox]* pyl);
+				  ctx->dataj.exc * ( ctx->segj.ax[jsnox] + ctx->segj.bx[jsnox] * pxl + ctx->segj.cx[jsnox] * pyl );
 			  else
 				cw[il+k*nrow] +=
-				  dataj.exc*( segj.ax[jsnox]+ segj.bx[jsnox]* pxl+ segj.cx[jsnox]* pyl);
+				  ctx->dataj.exc * ( ctx->segj.ax[jsnox] + ctx->segj.bx[jsnox] * pxl + ctx->segj.cx[jsnox] * pyl );
 
 			} /* if( icgo <= 0 ) */
 
@@ -392,19 +391,19 @@ void cmsw( int j1, int j2, int i1, int i2, complex double *cm,
 
 		  } /* if( ((ipch == (j+1)) || (icgo != 0)) && (ip != 2) ) */
 
-		  unere( xi, yi, zi);
+		  unere(ctx, xi, yi, zi);
 
 		  /* normal fill */
 		  if( itrp == 0)
 		  {
-			cm[k+(jl-1)*nrow] += dataj.exk* cabi+ dataj.eyk* sabi+ dataj.ezk* salpi;
-			cm[k+jl*nrow]     += dataj.exs* cabi+ dataj.eys* sabi+ dataj.ezs* salpi;
+			cm[k+(jl-1)*nrow] += ctx->dataj.exk* cabi+ ctx->dataj.eyk* sabi+ ctx->dataj.ezk* salpi;
+			cm[k+jl*nrow]     += ctx->dataj.exs* cabi+ ctx->dataj.eys* sabi+ ctx->dataj.ezs* salpi;
 			continue;
 		  }
 
 		  /* transposed fill */
-		  cm[(jl-1)+k*nrow] += dataj.exk* cabi+ dataj.eyk* sabi+ dataj.ezk* salpi;
-		  cm[jl+k*nrow]     += dataj.exs* cabi+ dataj.eys* sabi+ dataj.ezs* salpi;
+		  cm[(jl-1)+k*nrow] += ctx->dataj.exk* cabi+ ctx->dataj.eyk* sabi+ ctx->dataj.ezk* salpi;
+		  cm[jl+k*nrow]     += ctx->dataj.exs* cabi+ ctx->dataj.eys* sabi+ ctx->dataj.ezs* salpi;
 
 		} /* for( ip = 1; ip <= gnd.ksymp; ip++ ) */
 
@@ -420,22 +419,22 @@ void cmsw( int j1, int j2, int i1, int i2, complex double *cm,
 /*-----------------------------------------------------------------------*/
 
 /* cmws computes matrix elements for wire-surface interactions */
-void cmws( int j, int i1, int i2, complex double *cm,
-	int nr, complex double *cw, int itrp )
-{
+void cmws(nec_context_t *ctx, int j, int i1, int i2, complex double *cm,
+    int nr, complex double *cw, int itrp )
+ {
   int ipr, i, ipatch, ik, js=0, ij, jx;
   double xi, yi, zi, tx, ty, tz;
   complex double etk, ets, etc;
 
   j--;
-  dataj.s= geometry.si[j];
-  dataj.b= geometry.bi[j];
-  dataj.xj= geometry.x[j];
-  dataj.yj= geometry.y[j];
-  dataj.zj= geometry.z[j];
-  dataj.cabj= geometry.cab[j];
-  dataj.sabj= geometry.sab[j];
-  dataj.salpj= geometry.salp[j];
+  ctx->dataj.s = ctx->geometry.si[j];
+  ctx->dataj.b = ctx->geometry.bi[j];
+  ctx->dataj.xj = ctx->geometry.x[j];
+  ctx->dataj.yj = ctx->geometry.y[j];
+  ctx->dataj.zj = ctx->geometry.z[j];
+  ctx->dataj.cabj = ctx->geometry.cab[j];
+  ctx->dataj.sabj = ctx->geometry.sab[j];
+  ctx->dataj.salpj = ctx->geometry.salp[j];
 
   /* observation loop */
   ipr= -1;
@@ -448,36 +447,36 @@ void cmws( int j, int i1, int i2, complex double *cm,
 	if( (ik != 0) || (ipr == 0) )
 	{
 	  js= ipatch-1;
-	  xi= geometry.px[js];
-	  yi= geometry.py[js];
-	  zi= geometry.pz[js];
-	  hsfld( xi, yi, zi,0.);
+	  xi= ctx->geometry.px[js];
+	  yi= ctx->geometry.py[js];
+	  zi= ctx->geometry.pz[js];
+	  hsfld(ctx, xi, yi, zi, 0.);
 
 	  if( ik != 0 )
 	  {
-		tx= geometry.t2x[js];
-		ty= geometry.t2y[js];
-		tz= geometry.t2z[js];
+		tx= ctx->geometry.t2x[js];
+		ty= ctx->geometry.t2y[js];
+		tz= ctx->geometry.t2z[js];
 	  }
 	  else
 	  {
-		tx= geometry.t1x[js];
-		ty= geometry.t1y[js];
-		tz= geometry.t1z[js];
+		tx= ctx->geometry.t1x[js];
+		ty= ctx->geometry.t1y[js];
+		tz= ctx->geometry.t1z[js];
 	  }
 
 	} /* if( (ik != 0) || (ipr == 0) ) */
 	else
 	{
-	  tx= geometry.t1x[js];
-	  ty= geometry.t1y[js];
-	  tz= geometry.t1z[js];
+	  tx= ctx->geometry.t1x[js];
+	  ty= ctx->geometry.t1y[js];
+	  tz= ctx->geometry.t1z[js];
 
 	} /* if( (ik != 0) || (ipr == 0) ) */
 
-	etk=-( dataj.exk* tx+ dataj.eyk* ty+ dataj.ezk* tz)* geometry.psalp[js];
-	ets=-( dataj.exs* tx+ dataj.eys* ty+ dataj.ezs* tz)* geometry.psalp[js];
-	etc=-( dataj.exc* tx+ dataj.eyc* ty+ dataj.ezc* tz)* geometry.psalp[js];
+	etk=-( ctx->dataj.exk* tx+ ctx->dataj.eyk* ty+ ctx->dataj.ezk* tz)* ctx->geometry.psalp[js];
+	ets=-( ctx->dataj.exs* tx+ ctx->dataj.eys* ty+ ctx->dataj.ezs* tz)* ctx->geometry.psalp[js];
+	etc=-( ctx->dataj.exc* tx+ ctx->dataj.eyc* ty+ ctx->dataj.ezc* tz)* ctx->geometry.psalp[js];
 
 	/* fill matrix elements.  element locations */
 	/* determined by connection data. */
@@ -485,10 +484,10 @@ void cmws( int j, int i1, int i2, complex double *cm,
 	/* normal fill */
 	if( itrp == 0)
 	{
-	  for( ij = 0; ij < segj.jsno; ij++ )
+	  for( ij = 0; ij < ctx->segj.jsno; ij++ )
 	  {
-		jx= segj.jco[ij]-1;
-		cm[ipr+jx*nr] += etk* segj.ax[ij]+ ets* segj.bx[ij]+ etc* segj.cx[ij];
+		jx= ctx->segj.jco[ij]-1;
+		cm[ipr+jx*nr] += etk* ctx->segj.ax[ij]+ ets* ctx->segj.bx[ij]+ etc* ctx->segj.cx[ij];
 	  }
 
 	  continue;
@@ -497,25 +496,25 @@ void cmws( int j, int i1, int i2, complex double *cm,
 	/* transposed fill */
 	if( itrp != 2)
 	{
-	  for( ij = 0; ij < segj.jsno; ij++ )
+	  for( ij = 0; ij < ctx->segj.jsno; ij++ )
 	  {
-		jx= segj.jco[ij]-1;
-		cm[jx+ipr*nr] += etk* segj.ax[ij]+ ets* segj.bx[ij]+ etc* segj.cx[ij];
+		jx= ctx->segj.jco[ij]-1;
+		cm[jx+ipr*nr] += etk* ctx->segj.ax[ij]+ ets* ctx->segj.bx[ij]+ etc* ctx->segj.cx[ij];
 	  }
 
 	  continue;
 	} /* if( itrp != 2) */
 
 	/* transposed fill - c(ws) and d(ws)prime (=cw) */
-	for( ij = 0; ij < segj.jsno; ij++ )
+	for( ij = 0; ij < ctx->segj.jsno; ij++ )
 	{
-	  jx= segj.jco[ij]-1;
+	  jx= ctx->segj.jco[ij]-1;
 	  if( jx < nr)
-		cm[jx+ipr*nr] += etk* segj.ax[ij]+ ets* segj.bx[ij]+ etc* segj.cx[ij];
+		cm[jx+ipr*nr] += etk* ctx->segj.ax[ij]+ ets* ctx->segj.bx[ij]+ etc* ctx->segj.cx[ij];
 	  else
 	  {
 		jx -= nr;
-		cw[jx+ipr*nr] += etk* segj.ax[ij]+ ets* segj.bx[ij]+ etc* segj.cx[ij];
+		cw[jx+ipr*nr] += etk* ctx->segj.ax[ij]+ ets* ctx->segj.bx[ij]+ etc* ctx->segj.cx[ij];
 	  }
 	} /* for( ij = 0; ij < segj.jsno; ij++ ) */
 
@@ -527,9 +526,9 @@ void cmws( int j, int i1, int i2, complex double *cm,
 /*-----------------------------------------------------------------------*/
 
 /* cmww computes matrix elements for wire-wire interactions */
-void cmww( int j, int i1, int i2, complex double *cm,
-	int nr, complex double *cw, int nw, int itrp)
-{
+void cmww(nec_context_t *ctx, int j, int i1, int i2, complex double *cm,
+    int nr, complex double *cw, int nw, int itrp)
+ {
   int ipr, iprx, i, ij, jx;
   double xi, yi, zi, ai, cabi, sabi, salpi;
   complex double etk, ets, etc;
@@ -537,34 +536,34 @@ void cmww( int j, int i1, int i2, complex double *cm,
   /* set source segment parameters */
   jx = j;
   j--;
-  dataj.s= geometry.si[j];
-  dataj.b= geometry.bi[j];
-  dataj.xj= geometry.x[j];
-  dataj.yj= geometry.y[j];
-  dataj.zj= geometry.z[j];
-  dataj.cabj= geometry.cab[j];
-  dataj.sabj= geometry.sab[j];
-  dataj.salpj= geometry.salp[j];
+  ctx->dataj.s = ctx->geometry.si[j];
+  ctx->dataj.b = ctx->geometry.bi[j];
+  ctx->dataj.xj = ctx->geometry.x[j];
+  ctx->dataj.yj = ctx->geometry.y[j];
+  ctx->dataj.zj = ctx->geometry.z[j];
+  ctx->dataj.cabj = ctx->geometry.cab[j];
+  ctx->dataj.sabj = ctx->geometry.sab[j];
+  ctx->dataj.salpj = ctx->geometry.salp[j];
 
   /* decide whether ext. t.w. approx. can be used */
-  if( dataj.iexk != 0)
+  if( ctx->dataj.iexk != 0)
   {
-	ipr = geometry.icon1[j];
-	if (ipr > PCHCON) dataj.ind1 = 0;
+	ipr = ctx->geometry.icon1[j];
+	if (ipr > PCHCON) ctx->dataj.ind1 = 0;
 	else if( ipr < 0 )
 	{
 	  ipr= -ipr;
 	  iprx= ipr-1;
 
-	  if( -geometry.icon1[iprx] != jx )	dataj.ind1 = 2;
+	  if( -ctx->geometry.icon1[iprx] != jx )	ctx->dataj.ind1 = 2;
 	  else
 	  {
-		xi= fabs( dataj.cabj* geometry.cab[iprx]+ dataj.sabj*
-			geometry.sab[iprx]+ dataj.salpj* geometry.salp[iprx]);
-		if( (xi < 0.999999) || (fabs(geometry.bi[iprx]/dataj.b-1.) > 1.e-6) )
-		  dataj.ind1=2;
+		xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[iprx]+ ctx->dataj.sabj*
+			ctx->geometry.sab[iprx]+ ctx->dataj.salpj* ctx->geometry.salp[iprx]);
+		if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.b-1.) > 1.e-6) )
+		  ctx->dataj.ind1=2;
 		else
-		  dataj.ind1=0;
+		  ctx->dataj.ind1=0;
 
 	  } /* if( -data.icon1[iprx] != jx ) */
 
@@ -572,50 +571,50 @@ void cmww( int j, int i1, int i2, complex double *cm,
 	else
 	{
 	  iprx = ipr-1;
-	  if( ipr == 0 ) dataj.ind1=1;
+	  if( ipr == 0 ) ctx->dataj.ind1=1;
 	  else
 	  {
 		if( ipr != jx )
 		{
-		  if( geometry.icon2[iprx] != jx ) dataj.ind1=2;
+		  if( ctx->geometry.icon2[iprx] != jx ) ctx->dataj.ind1=2;
 		  else
 		  {
-			xi= fabs( dataj.cabj* geometry.cab[iprx]+ dataj.sabj*
-				geometry.sab[iprx]+ dataj.salpj* geometry.salp[iprx]);
-			if( (xi < 0.999999) || (fabs(geometry.bi[iprx]/dataj.b-1.) > 1.e-6) )
-			  dataj.ind1=2;
+			xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[iprx]+ ctx->dataj.sabj*
+				ctx->geometry.sab[iprx]+ ctx->dataj.salpj* ctx->geometry.salp[iprx]);
+			if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.b-1.) > 1.e-6) )
+			  ctx->dataj.ind1=2;
 			else
-			  dataj.ind1=0;
+			  ctx->dataj.ind1=0;
 
 		  } /* if( data.icon2[iprx] != jx ) */
 
 		} /* if( ipr != jx ) */
 		else
-		  if( dataj.cabj* dataj.cabj+ dataj.sabj* dataj.sabj > 1.e-8)
-			dataj.ind1=2;
+		  if( ctx->dataj.cabj* ctx->dataj.cabj+ ctx->dataj.sabj* ctx->dataj.sabj > 1.e-8)
+			ctx->dataj.ind1=2;
 		  else
-			dataj.ind1=0;
+			ctx->dataj.ind1=0;
 
 	  } /* if( ipr == 0 ) */
 
 	} /* if( ipr < 0 ) */
 
-	ipr = geometry.icon2[j];
-	if (ipr > PCHCON) dataj.ind2 = 2;
+	ipr = ctx->geometry.icon2[j];
+	if (ipr > PCHCON) ctx->dataj.ind2 = 2;
 	else if( ipr < 0 )
 	{
 	  ipr= -ipr;
 	  iprx = ipr-1;
-	  if( -geometry.icon2[iprx] != jx )
-		dataj.ind2=2;
+	  if( -ctx->geometry.icon2[iprx] != jx )
+		ctx->dataj.ind2=2;
 	  else
 	  {
-		xi= fabs( dataj.cabj* geometry.cab[iprx]+ dataj.sabj*
-			geometry.sab[iprx]+ dataj.salpj* geometry.salp[iprx]);
-		if( (xi < 0.999999) || (fabs(geometry.bi[iprx]/dataj.b-1.) > 1.e-6) )
-		  dataj.ind2=2;
+		xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[iprx]+ ctx->dataj.sabj*
+			ctx->geometry.sab[iprx]+ ctx->dataj.salpj* ctx->geometry.salp[iprx]);
+		if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.b-1.) > 1.e-6) )
+		  ctx->dataj.ind2=2;
 		else
-		  dataj.ind2=0;
+		  ctx->dataj.ind2=0;
 
 	  } /* if( -data.icon1[iprx] != jx ) */
 
@@ -623,30 +622,30 @@ void cmww( int j, int i1, int i2, complex double *cm,
 	else
 	{
 	  iprx = ipr-1;
-	  if( ipr == 0 ) dataj.ind2=1;
+	  if( ipr == 0 ) ctx->dataj.ind2=1;
 	  else
 	  {
 		if( ipr != jx )
 		{
-		  if( geometry.icon1[iprx] != jx )
-			dataj.ind2=2;
+		  if( ctx->geometry.icon1[iprx] != jx )
+			ctx->dataj.ind2=2;
 		  else
 		  {
-			xi= fabs( dataj.cabj* geometry.cab[iprx]+ dataj.sabj*
-				geometry.sab[iprx]+ dataj.salpj* geometry.salp[iprx]);
-			if( (xi < 0.999999) || (fabs(geometry.bi[iprx]/dataj.b-1.) > 1.e-6) )
-			  dataj.ind2=2;
+			xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[iprx]+ ctx->dataj.sabj*
+				ctx->geometry.sab[iprx]+ ctx->dataj.salpj* ctx->geometry.salp[iprx]);
+			if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.b-1.) > 1.e-6) )
+			  ctx->dataj.ind2=2;
 			else
-			  dataj.ind2=0;
+			  ctx->dataj.ind2=0;
 
 		  } /* if( data.icon2[iprx] != jx ) */
 
 		} /* if( ipr != jx ) */
 		else
-		  if( dataj.cabj* dataj.cabj+ dataj.sabj* dataj.sabj > 1.e-8)
-			dataj.ind2=2;
+		  if( ctx->dataj.cabj* ctx->dataj.cabj+ ctx->dataj.sabj* ctx->dataj.sabj > 1.e-8)
+			ctx->dataj.ind2=2;
 		  else
-			dataj.ind2=0;
+			ctx->dataj.ind2=0;
 
 	  } /* if( ipr == 0 ) */
 
@@ -660,19 +659,19 @@ void cmww( int j, int i1, int i2, complex double *cm,
   {
 	ipr++;
 	ij= i-j;
-	xi= geometry.x[i];
-	yi= geometry.y[i];
-	zi= geometry.z[i];
-	ai= geometry.bi[i];
-	cabi= geometry.cab[i];
-	sabi= geometry.sab[i];
-	salpi= geometry.salp[i];
+	xi= ctx->geometry.x[i];
+	yi= ctx->geometry.y[i];
+	zi= ctx->geometry.z[i];
+	ai= ctx->geometry.bi[i];
+	cabi= ctx->geometry.cab[i];
+	sabi= ctx->geometry.sab[i];
+	salpi= ctx->geometry.salp[i];
 
-	efld( xi, yi, zi, ai, ij);
+	efld( ctx, xi, yi, zi, ai, ij);
 
-	etk= dataj.exk* cabi+ dataj.eyk* sabi+ dataj.ezk* salpi;
-	ets= dataj.exs* cabi+ dataj.eys* sabi+ dataj.ezs* salpi;
-	etc= dataj.exc* cabi+ dataj.eyc* sabi+ dataj.ezc* salpi;
+	etk= ctx->dataj.exk* cabi+ ctx->dataj.eyk* sabi+ ctx->dataj.ezk* salpi;
+	ets= ctx->dataj.exs* cabi+ ctx->dataj.eys* sabi+ ctx->dataj.ezs* salpi;
+	etc= ctx->dataj.exc* cabi+ ctx->dataj.eyc* sabi+ ctx->dataj.ezc* salpi;
 
 	/* fill matrix elements. element locations */
 	/* determined by connection data. */
@@ -680,10 +679,10 @@ void cmww( int j, int i1, int i2, complex double *cm,
 	/* normal fill */
 	if( itrp == 0)
 	{
-	  for( ij = 0; ij < segj.jsno; ij++ )
+	  for( ij = 0; ij < ctx->segj.jsno; ij++ )
 	  {
-		jx = segj.jco[ij]-1;
-		cm[ipr+jx*nr] += etk* segj.ax[ij]+ ets* segj.bx[ij]+ etc* segj.cx[ij];
+		jx= ctx->segj.jco[ij]-1;
+		cm[ipr+jx*nr] += etk* ctx->segj.ax[ij]+ ets* ctx->segj.bx[ij]+ etc* ctx->segj.cx[ij];
 	  }
 	  continue;
 	}
@@ -691,26 +690,25 @@ void cmww( int j, int i1, int i2, complex double *cm,
 	/* transposed fill */
 	if( itrp != 2)
 	{
-	  for( ij = 0; ij < segj.jsno; ij++ )
+	  for( ij = 0; ij < ctx->segj.jsno; ij++ )
 	  {
-		jx= segj.jco[ij]-1;
-		cm[jx+ipr*nr] += etk* segj.ax[ij]+ ets* segj.bx[ij]+ etc* segj.cx[ij];
+		jx= ctx->segj.jco[ij]-1;
+		cm[jx+ipr*nr] += etk* ctx->segj.ax[ij]+ ets* ctx->segj.bx[ij]+ etc* ctx->segj.cx[ij];
 	  }
 	  continue;
 	}
 
 	/* trans. fill for c(ww) - test for elements for d(ww)prime.  (=cw) */
-	for( ij = 0; ij < segj.jsno; ij++ )
+	for( ij = 0; ij < ctx->segj.jsno; ij++ )
 	{
-	  jx= segj.jco[ij]-1;
+	  jx= ctx->segj.jco[ij]-1;
 	  if( jx < nr)
-		cm[jx+ipr*nr] += etk* segj.ax[ij]+ ets* segj.bx[ij]+ etc* segj.cx[ij];
+		cm[jx+ipr*nr] += etk* ctx->segj.ax[ij]+ ets* ctx->segj.bx[ij]+ etc* ctx->segj.cx[ij];
 	  else
 	  {
 		jx -= nr;
-		cw[jx*ipr*nw] += etk* segj.ax[ij]+ ets* segj.bx[ij]+ etc* segj.cx[ij];
+		cw[jx*ipr*nw] += etk* ctx->segj.ax[ij]+ ets* ctx->segj.bx[ij]+ etc* ctx->segj.cx[ij];
 	  }
-
 	} /* for( ij = 0; ij < segj.jsno; ij++ ) */
 
   } /* for( i = i1-1; i < i2; i++ ) */
@@ -723,39 +721,39 @@ void cmww( int j, int i1, int i2, complex double *cm,
 /* etmns fills the array e with the negative of the */
 /* electric field incident on the structure. e is the */
 /* right hand side of the matrix equation. */
-void etmns( double p1, double p2, double p3, double p4,
-	double p5, double p6, int ipr, complex double *e )
+void etmns(nec_context_t *ctx, double p1, double p2, double p3, double p4,
+    double p5, double p6, int ipr, complex double *e )
 {
   int i, is, i1, i2=0, neq;
   double cth, sth, cph, sph, cet, set, pxl, pyl, pzl, wx;
   double wy, wz, qx, qy, qz, arg, ds, dsh, rs, r;
   complex double cx, cy, cz, er, et, ezh, erh, rrv=CPLX_00, rrh=CPLX_00, tt1, tt2;
 
-  neq= geometry.n+2*geometry.m;
-  vsorc.nqds=0;
+  neq = ctx->geometry.n + 2 * ctx->geometry.m;
+  ctx->vsorc.nqds = 0;
 
   /* applied field of voltage sources for transmitting case */
   if( (ipr == 0) || (ipr == 5) )
   {
 	for( i = 0; i < neq; i++ )
-	  e[i]=CPLX_00;
+	  e[i] = CPLX_00;
 
-	if( vsorc.nsant != 0)
+	if( ctx->vsorc.nsant != 0)
 	{
-	  for( i = 0; i < vsorc.nsant; i++ )
+	  for( i = 0; i < ctx->vsorc.nsant; i++ )
 	  {
-		is= vsorc.isant[i]-1;
-		e[is]= -vsorc.vsant[i]/( geometry.si[is]* geometry.wlam);
+		is = ctx->vsorc.isant[i] - 1;
+		e[is] = -ctx->vsorc.vsant[i] / ( ctx->geometry.si[is] * ctx->geometry.wlam );
 	  }
 	}
 
-	if( vsorc.nvqd == 0)
+	if( ctx->vsorc.nvqd == 0)
 	  return;
 
-	for( i = 0; i < vsorc.nvqd; i++ )
+	for( i = 0; i < ctx->vsorc.nvqd; i++ )
 	{
-	  is= vsorc.ivqd[i];
-	  qdsrc( is, vsorc.vqd[i], e);
+	  is= ctx->vsorc.ivqd[i];
+	  qdsrc( ctx, is, ctx->vsorc.vqd[i], e);
 	}
 	return;
 
@@ -764,12 +762,12 @@ void etmns( double p1, double p2, double p3, double p4,
   /* incident plane wave, linearly polarized. */
   if( ipr <= 3)
   {
-	cth= cos( p1);
-	sth= sin( p1);
-	cph= cos( p2);
-	sph= sin( p2);
-	cet= cos( p3);
-	set= sin( p3);
+	cth = cos( p1 );
+	sth = sin( p1 );
+	cph = cos( p2 );
+	sph = sin( p2 );
+	cet = cos( p3 );
+	set = sin( p3 );
 	pxl= cth* cph* cet- sph* set;
 	pyl= cth* sph* cet+ cph* set;
 	pzl= -sth* cet;
@@ -780,70 +778,69 @@ void etmns( double p1, double p2, double p3, double p4,
 	qy= wz* pxl- wx* pzl;
 	qz= wx* pyl- wy* pxl;
 
-	if( gnd.ksymp != 1)
+	if( ctx->gnd.ksymp != 1)
 	{
-	  if( gnd.iperf != 1)
+	  if( ctx->gnd.iperf != 1)
 	  {
-		rrv= csqrt(1.- gnd.zrati* gnd.zrati* sth* sth);
-		rrh= gnd.zrati* cth;
-		rrh=( rrh- rrv)/( rrh+ rrv);
-		rrv= gnd.zrati* rrv;
-		rrv=-( cth- rrv)/( cth+ rrv);
+		rrv = csqrt(1. - ctx->gnd.zrati * ctx->gnd.zrati * sth * sth);
+		rrh = ctx->gnd.zrati * cth;
+		rrh = ( rrh - rrv ) / ( rrh + rrv );
+		rrv = ctx->gnd.zrati * rrv;
+		rrv = -( cth - rrv ) / ( cth + rrv );
 	  }
 	  else
 	  {
-		rrv=-CPLX_10;
-		rrh=-CPLX_10;
+		rrv = -CPLX_10;
+		rrh = -CPLX_10;
 	  } /* if( gnd.iperf != 1) */
 
 	} /* if( gnd.ksymp != 1) */
 
 	if( ipr == 1)
 	{
-	  if( geometry.n != 0)
+	  if( ctx->geometry.n != 0)
 	  {
-		for( i = 0; i < geometry.n; i++ )
+		for( i = 0; i < ctx->geometry.n; i++ )
 		{
-		  arg= -TP*( wx* geometry.x[i]+ wy* geometry.y[i]+ wz* geometry.z[i]);
-		  e[i]=-( pxl* geometry.cab[i]+ pyl* geometry.sab[i]+ pzl*
-			  geometry.salp[i])* cmplx( cos( arg), sin( arg));
+		  arg= -TP*( wx * ctx->geometry.x[i] + wy * ctx->geometry.y[i] + wz * ctx->geometry.z[i] );
+		  e[i]=-( pxl * ctx->geometry.cab[i] + pyl * ctx->geometry.sab[i] + pzl * ctx->geometry.salp[i] ) * cmplx( cos( arg ), sin( arg) );
 		}
 
-		if( gnd.ksymp != 1)
+		if( ctx->gnd.ksymp != 1)
 		{
 		  tt1=( pyl* cph- pxl* sph)*( rrh- rrv);
 		  cx= rrv* pxl- tt1* sph;
 		  cy= rrv* pyl+ tt1* cph;
 		  cz= -rrv* pzl;
 
-		  for( i = 0; i < geometry.n; i++ )
+		  for( i = 0; i < ctx->geometry.n; i++ )
 		  {
-			arg= -TP*( wx* geometry.x[i]+ wy* geometry.y[i]- wz* geometry.z[i]);
-			e[i]= e[i]-( cx* geometry.cab[i]+ cy* geometry.sab[i]+
-				cz* geometry.salp[i])* cmplx(cos( arg), sin( arg));
+			arg= -TP*( wx* ctx->geometry.x[i]+ wy* ctx->geometry.y[i]- wz* ctx->geometry.z[i]);
+			e[i]= e[i]-( cx* ctx->geometry.cab[i]+ cy* ctx->geometry.sab[i]+
+				cz* ctx->geometry.salp[i])* cmplx(cos( arg), sin( arg));
 		  }
 
 		} /* if( gnd.ksymp != 1) */
 
 	  } /* if( data.n != 0) */
 
-	  if( geometry.m == 0)
+	  if( ctx->geometry.m == 0)
 		return;
 
 	  i= -1;
-	  i1= geometry.n-2;
-	  for( is = 0; is < geometry.m; is++ )
+	  i1= ctx->geometry.n-2;
+	  for( is = 0; is < ctx->geometry.m; is++ )
 	  {
 		i++;
 		i1 += 2;
 		i2 = i1+1;
-		arg= -TP*( wx* geometry.px[i]+ wy* geometry.py[i]+ wz* geometry.pz[i]);
-		tt1= cmplx( cos( arg), sin( arg))* geometry.psalp[i]* RETA;
-		e[i2]=( qx* geometry.t1x[i]+ qy* geometry.t1y[i]+ qz* geometry.t1z[i])* tt1;
-		e[i1]=( qx* geometry.t2x[i]+ qy* geometry.t2y[i]+ qz* geometry.t2z[i])* tt1;
+		arg= -TP*( wx* ctx->geometry.px[i]+ wy* ctx->geometry.py[i]+ wz* ctx->geometry.pz[i]);
+		tt1= cmplx( cos( arg), sin( arg))* ctx->geometry.psalp[i]* RETA;
+		e[i2]=( qx* ctx->geometry.t1x[i]+ qy* ctx->geometry.t1y[i]+ qz* ctx->geometry.t1z[i])* tt1;
+		e[i1]=( qx* ctx->geometry.t2x[i]+ qy* ctx->geometry.t2y[i]+ qz* ctx->geometry.t2z[i])* tt1;
 	  }
 
-	  if( gnd.ksymp == 1)
+	  if( ctx->gnd.ksymp == 1)
 		return;
 
 	  tt1=( qy* cph- qx* sph)*( rrv- rrh);
@@ -852,16 +849,16 @@ void etmns( double p1, double p2, double p3, double p4,
 	  cz= rrh* qz;
 
 	  i= -1;
-	  i1= geometry.n-2;
-	  for( is = 0; is < geometry.m; is++ )
+	  i1= ctx->geometry.n-2;
+	  for( is = 0; is < ctx->geometry.m; is++ )
 	  {
 		i++;
 		i1 += 2;
 		i2 = i1+1;
-		arg= -TP*( wx* geometry.px[i]+ wy* geometry.py[i]- wz* geometry.pz[i]);
-		tt1= cmplx( cos( arg), sin( arg))* geometry.psalp[i]* RETA;
-		e[i2]= e[i2]+( cx* geometry.t1x[i]+ cy* geometry.t1y[i]+ cz* geometry.t1z[i])* tt1;
-		e[i1]= e[i1]+( cx* geometry.t2x[i]+ cy* geometry.t2y[i]+ cz* geometry.t2z[i])* tt1;
+		arg= -TP*( wx* ctx->geometry.px[i]+ wy* ctx->geometry.py[i]- wz* ctx->geometry.pz[i]);
+		tt1= cmplx( cos( arg), sin( arg))* ctx->geometry.psalp[i]* RETA;
+		e[i2]= e[i2]+( cx* ctx->geometry.t1x[i]+ cy* ctx->geometry.t1y[i]+ cz* ctx->geometry.t1z[i])* tt1;
+		e[i1]= e[i1]+( cx* ctx->geometry.t2x[i]+ cy* ctx->geometry.t2y[i]+ cz* ctx->geometry.t2z[i])* tt1;
 	  }
 	  return;
 
@@ -872,38 +869,38 @@ void etmns( double p1, double p2, double p3, double p4,
 	if( ipr == 3)
 	  tt1= -tt1;
 
-	if( geometry.n != 0)
+	if( ctx->geometry.n != 0)
 	{
 	  cx= pxl+ tt1* qx;
 	  cy= pyl+ tt1* qy;
 	  cz= pzl+ tt1* qz;
 
-	  for( i = 0; i < geometry.n; i++ )
+	  for( i = 0; i < ctx->geometry.n; i++ )
 	  {
-		arg= -TP*( wx* geometry.x[i]+ wy* geometry.y[i]+ wz* geometry.z[i]);
-		e[i]=-( cx* geometry.cab[i]+ cy* geometry.sab[i]+ cz*
-			geometry.salp[i])* cmplx( cos( arg), sin( arg));
+		arg= -TP*( wx* ctx->geometry.x[i]+ wy* ctx->geometry.y[i]+ wz* ctx->geometry.z[i]);
+		e[i]=-( cx* ctx->geometry.cab[i]+ cy* ctx->geometry.sab[i]+ cz*
+			ctx->geometry.salp[i])* cmplx( cos( arg), sin( arg));
 	  }
 
-	  if( gnd.ksymp != 1)
+	  if( ctx->gnd.ksymp != 1)
 	  {
 		tt2=( cy* cph- cx* sph)*( rrh- rrv);
 		cx= rrv* cx- tt2* sph;
 		cy= rrv* cy+ tt2* cph;
 		cz= -rrv* cz;
 
-		for( i = 0; i < geometry.n; i++ )
+		for( i = 0; i < ctx->geometry.n; i++ )
 		{
-		  arg= -TP*( wx* geometry.x[i]+ wy* geometry.y[i]- wz* geometry.z[i]);
-		  e[i]= e[i]-( cx* geometry.cab[i]+ cy* geometry.sab[i]+
-			  cz* geometry.salp[i])* cmplx(cos( arg), sin( arg));
+		  arg= -TP*( wx* ctx->geometry.x[i]+ wy* ctx->geometry.y[i]- wz* ctx->geometry.z[i]);
+		  e[i]= e[i]-( cx* ctx->geometry.cab[i]+ cy* ctx->geometry.sab[i]+
+			  cz* ctx->geometry.salp[i])* cmplx(cos( arg), sin( arg));
 		}
 
 	  } /* if( gnd.ksymp != 1) */
 
 	} /* if( n != 0) */
 
-	if( geometry.m == 0)
+	if( ctx->geometry.m == 0)
 	  return;
 
 	cx= qx- tt1* pxl;
@@ -911,19 +908,19 @@ void etmns( double p1, double p2, double p3, double p4,
 	cz= qz- tt1* pzl;
 
 	i= -1;
-	i1= geometry.n-2;
-	for( is = 0; is < geometry.m; is++ )
+	i1= ctx->geometry.n-2;
+	for( is = 0; is < ctx->geometry.m; is++ )
 	{
 	  i++;
 	  i1 += 2;
 	  i2 = i1+1;
-	  arg= -TP*( wx* geometry.px[i]+ wy* geometry.py[i]+ wz* geometry.pz[i]);
-	  tt2= cmplx( cos( arg), sin( arg))* geometry.psalp[i]* RETA;
-	  e[i2]=( cx* geometry.t1x[i]+ cy* geometry.t1y[i]+ cz* geometry.t1z[i])* tt2;
-	  e[i1]=( cx* geometry.t2x[i]+ cy* geometry.t2y[i]+ cz* geometry.t2z[i])* tt2;
+	  arg= -TP*( wx* ctx->geometry.px[i]+ wy* ctx->geometry.py[i]+ wz* ctx->geometry.pz[i]);
+	  tt2= cmplx( cos( arg), sin( arg))* ctx->geometry.psalp[i]* RETA;
+	  e[i2]=( cx* ctx->geometry.t1x[i]+ cy* ctx->geometry.t1y[i]+ cz* ctx->geometry.t1z[i])* tt2;
+	  e[i1]=( cx* ctx->geometry.t2x[i]+ cy* ctx->geometry.t2y[i]+ cz* ctx->geometry.t2z[i])* tt2;
 	}
 
-	if( gnd.ksymp == 1)
+	if( ctx->gnd.ksymp == 1)
 	  return;
 
 	tt1=( cy* cph- cx* sph)*( rrv- rrh);
@@ -932,16 +929,16 @@ void etmns( double p1, double p2, double p3, double p4,
 	cz= rrh* cz;
 
 	i= -1;
-	i1= geometry.n-2;
-	for( is=0; is < geometry.m; is++ )
+	i1= ctx->geometry.n-2;
+	for( is=0; is < ctx->geometry.m; is++ )
 	{
 	  i++;
 	  i1 += 2;
 	  i2 = i1+1;
-	  arg= -TP*( wx* geometry.px[i]+ wy* geometry.py[i]- wz* geometry.pz[i]);
-	  tt1= cmplx( cos( arg), sin( arg))* geometry.psalp[i]* RETA;
-	  e[i2]= e[i2]+( cx* geometry.t1x[i]+ cy* geometry.t1y[i]+ cz* geometry.t1z[i])* tt1;
-	  e[i1]= e[i1]+( cx* geometry.t2x[i]+ cy* geometry.t2y[i]+ cz* geometry.t2z[i])* tt1;
+	  arg= -TP*( wx* ctx->geometry.px[i]+ wy* ctx->geometry.py[i]- wz* ctx->geometry.pz[i]);
+	  tt1= cmplx( cos( arg), sin( arg))* ctx->geometry.psalp[i]* RETA;
+	  e[i2]= e[i2]+( cx* ctx->geometry.t1x[i]+ cy* ctx->geometry.t1y[i]+ cz* ctx->geometry.t1z[i])* tt1;
+	  e[i1]= e[i1]+( cx* ctx->geometry.t2x[i]+ cy* ctx->geometry.t2y[i]+ cz* ctx->geometry.t2z[i])* tt1;
 	}
 
 	return;
@@ -957,22 +954,22 @@ void etmns( double p1, double p2, double p3, double p4,
   dsh= p6/(2.* TP);
 
   is= 0;
-  i1= geometry.n-2;
-  for( i = 0; i < geometry.npm; i++ )
+  i1= ctx->geometry.n-2;
+  for( i = 0; i < ctx->geometry.npm; i++ )
   {
-	if( i >= geometry.n )
+	if( i >= ctx->geometry.n )
 	{
 	  i1 += 2;
 	  i2 = i1+1;
-	  pxl= geometry.px[is]- p1;
-	  pyl= geometry.py[is]- p2;
-	  pzl= geometry.pz[is]- p3;
+	  pxl= ctx->geometry.px[is]- p1;
+	  pyl= ctx->geometry.py[is]- p2;
+	  pzl= ctx->geometry.pz[is]- p3;
 	}
 	else
 	{
-	  pxl= geometry.x[i]- p1;
-	  pyl= geometry.y[i]- p2;
-	  pzl= geometry.z[i]- p3;
+	  pxl= ctx->geometry.x[i]- p1;
+	  pyl= ctx->geometry.y[i]- p2;
+	  pzl= ctx->geometry.z[i]- p3;
 	}
 
 	rs= pxl* pxl+ pyl* pyl+ pzl* pzl;
@@ -1007,7 +1004,7 @@ void etmns( double p1, double p2, double p3, double p4,
 	arg= -TP* r;
 	tt1= cmplx( cos( arg), sin( arg));
 
-	if( i < geometry.n )
+	if( i < ctx->geometry.n )
 	{
 	  tt2= cmplx(1.0,-1.0/( r* TP))/ rs;
 	  er= ds* tt1* tt2* cth;
@@ -1017,23 +1014,23 @@ void etmns( double p1, double p2, double p3, double p4,
 	  cx= ezh* wx+ erh* qx;
 	  cy= ezh* wy+ erh* qy;
 	  cz= ezh* wz+ erh* qz;
-	  e[i]=-( cx* geometry.cab[i]+ cy* geometry.sab[i]+ cz* geometry.salp[i]);
+	  e[i]=-( cx* ctx->geometry.cab[i]+ cy* ctx->geometry.sab[i]+ cz* ctx->geometry.salp[i]);
 	}
 	else
 	{
 	  pxl= wy* qz- wz* qy;
 	  pyl= wz* qx- wx* qz;
 	  pzl= wx* qy- wy* qx;
-	  tt2= dsh* tt1* cmplx(1./ r, TP)/ r* sth* geometry.psalp[is];
+	  tt2= dsh* tt1* cmplx(1./ r, TP)/ r* sth* ctx->geometry.psalp[is];
 	  cx= tt2* pxl;
 	  cy= tt2* pyl;
 	  cz= tt2* pzl;
-	  e[i2]= cx* geometry.t1x[is]+ cy* geometry.t1y[is]+ cz* geometry.t1z[is];
-	  e[i1]= cx* geometry.t2x[is]+ cy* geometry.t2y[is]+ cz* geometry.t2z[is];
+	  e[i2]= cx* ctx->geometry.t1x[is]+ cy* ctx->geometry.t1y[is]+ cz* ctx->geometry.t1z[is];
+	  e[i1]= cx* ctx->geometry.t2x[is]+ cy* ctx->geometry.t2y[is]+ cz* ctx->geometry.t2z[is];
 	  is++;
-	} /* if( i < data.n) */
+	} /* if( i < ctx->geometry.n) */
 
-  } /* for( i = 0; i < npm; i++ ) */
+  } /* for( i = 0; i < ctx->geometry.npm; i++ ) */
 
   return;
 }
@@ -1046,16 +1043,16 @@ void etmns( double p1, double p2, double p3, double p4,
 /* numerical analysis.  comments below refer to comments in ralstons */
 /* text.    (matrix transposed.) */
 
-void factr( int n, complex double *a, int *ip, int ndim)
+void factr(nec_context_t *ctx, int n, complex double *a, int *ip, int ndim)
 {
   int r, rm1, rp1, pj, pr, iflg, k, j, jp1, i;
   double dmax, elmag;
   complex double arj, *scm = NULL;
 
   /* Allocate to scratch memory */
-  size_t mreq = (size_t)geometry.np2m;
+  size_t mreq = (size_t)ctx->geometry.np2m;
   mreq *= sizeof(complex double);
-  mem_alloc( (void *)&scm, mreq );
+  mem_alloc(ctx, (void *)&scm, mreq );
 
   /* Un-transpose the matrix for Gauss elimination */
   for( i = 1; i < n; i++ )
@@ -1128,14 +1125,14 @@ void factr( int n, complex double *a, int *ip, int ndim)
 
 	if( iflg == TRUE )
 	{
-	  fprintf( output_fp,
+	  fprintf( ctx->output_fp,
 		  "\n  PIVOT(%d)= %16.8E", r, dmax );
 	  iflg=FALSE;
 	}
 
   } /* for( r=0; r < n; r++ ) */
 
-  mem_free( (void *)&scm );
+  mem_free(ctx, (void *)&scm );
 
   return;
 }
@@ -1146,15 +1143,15 @@ void factr( int n, complex double *a, int *ip, int ndim)
 /* matricies of the symmetric modes and calls routine to factor */
 /* matricies.  if no symmetry, the routine is called to factor the */
 /* complete matrix. */
-void factrs( int np, int nrow, complex double *a, int *ip )
+void factrs(nec_context_t *ctx, int np, int nrow, complex double *a, int *ip )
 {
   int kk, ka;
 
-  smat.nop = nrow/np;
-  for( kk = 0; kk < smat.nop; kk++ )
+  ctx->smat.nop = nrow/np;
+  for( kk = 0; kk < ctx->smat.nop; kk++ )
   {
 	ka= kk* np;
-	factr( np, &a[ka], &ip[ka], nrow );
+	factr(ctx, np, &a[ka], &ip[ka], nrow );
   }
   return;
 }
@@ -1163,7 +1160,7 @@ void factrs( int np, int nrow, complex double *a, int *ip )
 
 /* fblock sets parameters for out-of-core */
 /* solution for the primary matrix (a) */
-void fblock( int nrow, int ncol, int imax, int ipsym )
+void fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym )
 {
   int i, j, k, ka, kk;
   double phaz, arg;
@@ -1171,40 +1168,40 @@ void fblock( int nrow, int ncol, int imax, int ipsym )
 
   if( nrow*ncol <= imax)
   {
-	matpar.npblk= nrow;
-	matpar.nlast= nrow;
-	matpar.imat= nrow* ncol;
+	ctx->matpar.npblk= nrow;
+	ctx->matpar.nlast= nrow;
+	ctx->matpar.imat= nrow* ncol;
 
 	if( nrow == ncol)
 	{
-	  matpar.icase=1;
+	  ctx->matpar.icase=1;
 	  return;
 	}
 	else
-	  matpar.icase=2;
+	  ctx->matpar.icase=2;
 
   } /* if( nrow*ncol <= imax) */
 
-  smat.nop = ncol/nrow;
-  if( smat.nop*nrow != ncol)
+  ctx->smat.nop = ncol/nrow;
+  if( ctx->smat.nop*nrow != ncol)
   {
-	fprintf( output_fp,
+	fprintf( ctx->output_fp,
 		"\n  SYMMETRY ERROR - NROW: %d NCOL: %d", nrow, ncol );
-	stop(-1);
+	stop(ctx, -1);
   }
 
   /* set up smat.ssx matrix for rotational symmetry. */
   if( ipsym <= 0)
   {
-	phaz = TP/smat.nop;
+	phaz = TP / ctx->smat.nop;
 
-	for( i = 1; i < smat.nop; i++ )
+	for( i = 1; i < ctx->smat.nop; i++ )
 	{
-	  for( j= i; j < smat.nop; j++ )
+	  for( j= i; j < ctx->smat.nop; j++ )
 	  {
-		arg= phaz* (double)i * (double)j;
-		smat.ssx[i+j*smat.nop]= cmplx( cos( arg), sin( arg));
-		smat.ssx[j+i*smat.nop]= smat.ssx[i+j*smat.nop];
+		arg = phaz * (double)i * (double)j;
+		ctx->smat.ssx[i + j * ctx->smat.nop]= cmplx( cos( arg ), sin( arg) );
+		ctx->smat.ssx[j + i * ctx->smat.nop]= ctx->smat.ssx[i + j * ctx->smat.nop];
 	  }
 	}
 	return;
@@ -1213,10 +1210,10 @@ void fblock( int nrow, int ncol, int imax, int ipsym )
 
   /* set up smat.ssx matrix for plane symmetry */
   kk=1;
-  smat.ssx[0]=CPLX_10;
+  ctx->smat.ssx[0]=CPLX_10;
 
   k = 2;
-  for( ka = 1; k != smat.nop; ka++ )
+  for( ka = 1; k != ctx->smat.nop; ka++ )
 	k *= 2;
 
   for( k = 0; k < ka; k++ )
@@ -1225,10 +1222,10 @@ void fblock( int nrow, int ncol, int imax, int ipsym )
 	{
 	  for( j = 0; j < kk; j++ )
 	  {
-		deter= smat.ssx[i+j*smat.nop];
-		smat.ssx[i+(j+kk)*smat.nop]= deter;
-		smat.ssx[i+kk+(j+kk)*smat.nop]= -deter;
-		smat.ssx[i+kk+j*smat.nop]= deter;
+		deter= ctx->smat.ssx[i+j*ctx->smat.nop];
+		ctx->smat.ssx[i+(j+kk)*ctx->smat.nop]= deter;
+		ctx->smat.ssx[i+kk+(j+kk)*ctx->smat.nop]= -deter;
+		ctx->smat.ssx[i+kk+j*ctx->smat.nop]= deter;
 	  }
 	}
 	kk *= 2;
@@ -1240,20 +1237,21 @@ void fblock( int nrow, int ncol, int imax, int ipsym )
 
 /*-----------------------------------------------------------------------*/
 
+
 /* subroutine to solve the matrix equation lu*x=b where l is a unit */
 /* lower triangular matrix and u is an upper triangular matrix both */
 /* of which are stored in a.  the rhs vector b is input and the */
 /* solution is returned through vector b.   (matrix transposed. */
-void solve( int n, complex double *a, int *ip,
-	complex double *b, int ndim )
+void solve(nec_context_t *ctx, int n, complex double *a, int *ip,
+    complex double *b, int ndim )
 {
   int i, ip1, j, k, pia;
   complex double sum, *scm = NULL;
 
   /* Allocate to scratch memory */
-  size_t mreq = (size_t)geometry.np2m;
+  size_t mreq = (size_t)ctx->geometry.np2m;
   mreq *= sizeof(complex double);
-  mem_alloc( (void *)&scm, mreq );
+  mem_alloc(ctx, (void *)&scm, mreq );
 
   /* forward substitution */
   for( i = 0; i < n; i++ )
@@ -1282,7 +1280,7 @@ void solve( int n, complex double *a, int *ip,
 	b[i]=( scm[i]- sum)/ a[i+i*ndim];
   }
 
-  mem_free( (void *)&scm );
+  mem_free(ctx, (void *)&scm );
 
   return;
 }
@@ -1292,25 +1290,25 @@ void solve( int n, complex double *a, int *ip,
 /* subroutine solves, for symmetric structures, handles the */
 /* transformation of the right hand side vector and solution */
 /* of the matrix eq. */
-void solves( complex double *a, int *ip, complex double *b,
-	int neq, int nrh, int np, int n, int mp, int m)
+void solves(nec_context_t *ctx, complex double *a, int *ip, complex double *b,
+    int neq, int nrh, int np, int n, int mp, int m)
 {
   int npeq, nrow, ic, i, kk, ia, ib, j, k;
   double fnop, fnorm;
   complex double  sum, *scm = NULL;
 
   npeq= np+ 2*mp;
-  smat.nop = neq/npeq;
-  fnop= smat.nop;
+  ctx->smat.nop = neq/npeq;
+  fnop= ctx->smat.nop;
   fnorm=1./ fnop;
   nrow= neq;
 
   /* Allocate to scratch memory */
-  size_t mreq = (size_t)geometry.np2m;
+  size_t mreq = (size_t)ctx->geometry.np2m;
   mreq *= sizeof(complex double);
-  mem_alloc( (void *)&scm, mreq );
+  mem_alloc(ctx, (void *)&scm, mreq );
 
-  if( smat.nop != 1)
+  if( ctx->smat.nop != 1)
   {
 	for( ic = 0; ic < nrh; ic++ )
 	{
@@ -1324,7 +1322,7 @@ void solves( complex double *a, int *ip, complex double *b,
 		ib= n-1;
 		j= np-1;
 
-		for( k = 0; k < smat.nop; k++ )
+		for( k = 0; k < ctx->smat.nop; k++ )
 		{
 		  if( k != 0 )
 		  {
@@ -1335,7 +1333,7 @@ void solves( complex double *a, int *ip, complex double *b,
 			  b[j+ic*neq]= scm[ia];
 			}
 
-			if( k == (smat.nop-1) )
+			if( k == (ctx->smat.nop-1) )
 			  continue;
 
 		  } /* if( k != 0 ) */
@@ -1354,25 +1352,25 @@ void solves( complex double *a, int *ip, complex double *b,
 	  /* transform matrix eq. rhs vector according to symmetry modes */
 	  for( i = 0; i < npeq; i++ )
 	  {
-		for( k = 0; k < smat.nop; k++ )
+		for( k = 0; k < ctx->smat.nop; k++ )
 		{
 		  ia= i+ k* npeq;
 		  scm[k]= b[ia+ic*neq];
 		}
 
 		sum= scm[0];
-		for( k = 1; k < smat.nop; k++ )
+		for( k = 1; k < ctx->smat.nop; k++ )
 		  sum += scm[k];
 
 		b[i+ic*neq]= sum* fnorm;
 
-		for( k = 1; k < smat.nop; k++ )
+		for( k = 1; k < ctx->smat.nop; k++ )
 		{
 		  ia= i+ k* npeq;
 		  sum= scm[0];
 
-		  for( j = 1; j < smat.nop; j++ )
-			sum += scm[j]* conj( smat.ssx[k+j*smat.nop]);
+		  for( j = 1; j < ctx->smat.nop; j++ )
+			sum += scm[j]* conj( ctx->smat.ssx[k+j*ctx->smat.nop]);
 
 		  b[ia+ic*neq]= sum* fnorm;
 		}
@@ -1384,19 +1382,19 @@ void solves( complex double *a, int *ip, complex double *b,
   } /* if( smat.nop != 1) */
 
   /* solve each mode equation */
-  for( kk = 0; kk < smat.nop; kk++ )
+  for( kk = 0; kk < ctx->smat.nop; kk++ )
   {
-	ia= kk* npeq;
-	ib= ia;
+     ia= kk* npeq;
+     ib= ia;
 
-	for( ic = 0; ic < nrh; ic++ )
-	  solve( npeq, &a[ib], &ip[ia], &b[ia+ic*neq], nrow );
+     for( ic = 0; ic < nrh; ic++ )
+       solve(ctx, npeq, &a[ib], &ip[ia], &b[ia+ic*neq], nrow );
 
-  } /* for( kk = 0; kk < smat.nop; kk++ ) */
+   } /* for( kk = 0; kk < smat.nop; kk++ ) */
 
-  if( smat.nop == 1)
+  if( ctx->smat.nop == 1)
   {
-	mem_free( (void *)&scm );
+	mem_free(ctx, (void *)&scm );
 	return;
   }
 
@@ -1405,24 +1403,24 @@ void solves( complex double *a, int *ip, complex double *b,
   {
 	for( i = 0; i < npeq; i++ )
 	{
-	  for( k = 0; k < smat.nop; k++ )
+	  for( k = 0; k < ctx->smat.nop; k++ )
 	  {
 		ia= i+ k* npeq;
 		scm[k]= b[ia+ic*neq];
 	  }
 
 	  sum= scm[0];
-	  for( k = 1; k < smat.nop; k++ )
+	  for( k = 1; k < ctx->smat.nop; k++ )
 		sum += scm[k];
 
 	  b[i+ic*neq]= sum;
-	  for( k = 1; k < smat.nop; k++ )
+	  for( k = 1; k < ctx->smat.nop; k++ )
 	  {
 		ia= i+ k* npeq;
 		sum= scm[0];
 
-		for( j = 1; j < smat.nop; j++ )
-		  sum += scm[j]* smat.ssx[k+j*smat.nop];
+		for( j = 1; j < ctx->smat.nop; j++ )
+		  sum += scm[j]* ctx->smat.ssx[k+j*ctx->smat.nop];
 
 		b[ia+ic*neq]= sum;
 	  }
@@ -1440,7 +1438,7 @@ void solves( complex double *a, int *ip, complex double *b,
 	ib= n-1;
 	j= np-1;
 
-	for( k = 0; k < smat.nop; k++ )
+	for( k = 0; k < ctx->smat.nop; k++ )
 	{
 	  if( k != 0 )
 	  {
@@ -1451,7 +1449,7 @@ void solves( complex double *a, int *ip, complex double *b,
 		  b[ia+ic*neq]= scm[j];
 		}
 
-		if( k == smat.nop)
+		if( k == ctx->smat.nop)
 		  continue;
 
 	  } /* if( k != 0 ) */
@@ -1467,10 +1465,9 @@ void solves( complex double *a, int *ip, complex double *b,
 
   } /* for( ic = 0; ic < nrh; ic++ ) */
 
-  mem_free( (void *)&scm );
+  mem_free(ctx, (void *)&scm );
 
   return;
 }
 
 /*-----------------------------------------------------------------------*/
-

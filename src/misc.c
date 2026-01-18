@@ -23,7 +23,7 @@ void add_error(nec_context_t *ctx, errors_list_t *errors, char *message, int sev
   errors->num_errors++;
 }
 
-void add_message(nec_context_t *ctx, Outputs *outputs, char *message)
+void add_message(nec_context_t *ctx, outputs_list_t *outputs, char *message)
 {
   // make a new message string
   char *newMsg = calloc(strlen(message) + 1, sizeof(char));
@@ -41,7 +41,7 @@ void add_message(nec_context_t *ctx, Outputs *outputs, char *message)
 /***  String utils ***/
 
 /*-------------------------------------------------------------------*/
-int strendswith(nec_context_t *ctx, const char *str, const char *suffix)
+int str_ends_with(nec_context_t *ctx, const char *str, const char *suffix)
 {
     if (!str || !suffix)
         return 1;
