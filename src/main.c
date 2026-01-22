@@ -61,6 +61,25 @@ void print_usage(char *argv[])
   puts("If source_file is omitted, input is read from stdin and output goes to stdout.");
 }
 
+/******************************************************************************
+ * stop()
+ *
+ * Cleanup and exit - the single exit point for the program
+ * TODO: Make this static once all calculation files use add_error() instead
+ *
+ */
+int stop(nec_context_t *ctx, int flag)
+{
+  if (ctx->input_fp != NULL)
+    fclose(ctx->input_fp);
+  if (ctx->output_fp != NULL)
+    fclose(ctx->output_fp);
+  if (ctx->plot_fp != NULL)
+    fclose(ctx->plot_fp);
+
+  exit(flag);
+}
+
 static struct option program_options[] =
 {
   {"help", no_argument, NULL, 'h'},
@@ -249,6 +268,9 @@ int main(int argc, char **argv)
       exit(-1);
     }
     ctx.output_fp = output_fp;
+  } else {
+    // output_fp was set to stdout earlier
+    ctx.output_fp = output_fp;
   }
 
   // run it if we've been asked to
@@ -270,7 +292,27 @@ int main(int argc, char **argv)
     // Execute frequency loop calculations
     if (execute_frequency_loop(&ctx, ctx.save.nfrq, ctx.save.ifrq, ctx.save.delfrq) != 0) {
       fprintf(ctx.error_fp, "Error: Failed to execute frequency loop.\n");
-      exit(-1);
+      
+      // Display any accumulated errors
+      if (ctx.errors.num_errors > 0) {
+        fprintf(ctx.error_fp, "\n=== Calculation Errors ===\n");
+        for (int i = 0; i < ctx.errors.num_errors; i++) {
+          fprintf(ctx.error_fp, "%s\n", ctx.errors.errors[i].message);
+        }
+      }
+      
+      nec_context_cleanup(&ctx);
+      stop(&ctx, -1);
+    }
+    
+    // Check for any errors that occurred during calculation
+    if (ctx.errors.num_errors > 0) {
+      fprintf(ctx.error_fp, "\n=== Calculation Errors ===\n");
+      for (int i = 0; i < ctx.errors.num_errors; i++) {
+        fprintf(ctx.error_fp, "%s\n", ctx.errors.errors[i].message);
+      }
+      nec_context_cleanup(&ctx);
+      stop(&ctx, -1);
     }
   }
   for(int i = 0; i < geometry_errors.num_errors; i++) {
@@ -376,8 +418,7 @@ static void sig_handler( int signal )
       
     case SIGTERM :
       fprintf( error_fp, "%s\n", "onec: termination request received" );
-
-      stop( signal );
+      exit( signal );
   }
   
 } /* end of sig_handler() */

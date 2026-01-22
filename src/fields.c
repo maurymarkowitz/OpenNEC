@@ -269,7 +269,8 @@ void efld(nec_context_t *ctx, double xi, double yi, double zi, double ai, int ij
     creal(ctx->dataj.ezk*conj(ctx->dataj.ezk) );
     dmin=.01* sqrt( dmin);
     shaf=.5* ctx->dataj.s;
-    rom2(ctx, - shaf, shaf, egnd, dmin);
+    if (rom2(ctx, - shaf, shaf, egnd, dmin) != 0)
+      return;
   }
   else
   {
@@ -1306,7 +1307,8 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
   is--;
   i= ctx->geometry.icon1[is];
   ctx->geometry.icon1[is] = 0;
-  tbf(ctx, is+1, 0);
+  if (tbf(ctx, is+1, 0) != 0)
+    return;
   ctx->geometry.icon1[is]= i;
   ctx->dataj.s= ctx->geometry.si[is]*.5;
   curd= CCJ* v/(( log(2.* ctx->dataj.s/ ctx->geometry.bi[is])-1.)*( ctx->segj.bx[ctx->segj.jsno-1]*

@@ -353,7 +353,7 @@ void write_header(nec_context_t *ctx, deck_t *deck, FILE *file)
  * without having to rely on tag numbers, which are optional.
  *
  */
-void write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
+int write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
 {
   card_t card;
   int geo_card_num;
@@ -506,9 +506,8 @@ void write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
   if(iseg != 1)  {
     /*** may be error condition?? ***/
     if(ctx->geometry.ipsym == 0) {
-      fprintf(ctx->output_fp,
-              "\n  ERROR: IPSYM=0 IN CONECT()" );
-      stop(ctx, -1);
+      add_error(ctx, &ctx->errors, "ERROR: IPSYM=0 IN CONECT()", FATAL);
+      return -1;
     }
 
     if(ctx->geometry.ipsym < 0)
@@ -522,6 +521,7 @@ void write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
               "\n  STRUCTURE HAS %d PLANES OF SYMMETRY\n", ic );
     } /* if(ctx->geometry.ipsym < 0 ) */
   } /* if( iseg != 1) */
+  return 0;
 } /* write_structure() */
 
 /******************************************************************************
@@ -530,10 +530,10 @@ void write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
  * Writes the segment data section of the nec2 output.
  *
  */
-void write_segments(nec_context_t *ctx, deck_t * deck, FILE *file)
+int write_segments(nec_context_t *ctx, deck_t * deck, FILE *file)
 {
   // exit now if there's no segments
-  if(ctx->geometry.n == 0) return;
+  if(ctx->geometry.n == 0) return 0;
 
       fprintf(ctx->output_fp, "\n\n\n"
               "                              "
@@ -594,13 +594,14 @@ void write_segments(nec_context_t *ctx, deck_t * deck, FILE *file)
               ctx->geometry.bi[i], ctx->geometry.icon1[i], i + 1, ctx->geometry.icon2[i]);
     
     if((ctx->geometry.si[i] <= 1.e-20) || (ctx->geometry.bi[i] <= 0.0)) {
-      fprintf(ctx->output_fp, "\n SEGMENT DATA ERROR");
-      stop(ctx, -1);
+      add_error(ctx, &ctx->errors, "SEGMENT DATA ERROR", FATAL);
+      return -1;
     }
     
   } /* for( i = 0; i < data.n; i++ ) */
   
   fprintf(ctx->output_fp, "\n");
+  return 0;
 } /* write_segments */
 
 /******************************************************************************

@@ -137,7 +137,7 @@ void abort_on_error(nec_context_t *ctx, int why)
   }  /* switch( why ) */
 
   /* clean up and quit */
-  stop(ctx, why);
+  exit(why);
 
 } /* end of abort_on_error() */
 
@@ -157,19 +157,6 @@ void secnds(nec_context_t *ctx, double *x)
 }
 
 /*------------------------------------------------------------------------*/
-
-/* Does the STOP function of fortran but with return value */
-int stop( nec_context_t *ctx, int flag )
-{
-  if( ctx->input_fp != NULL )
-    fclose( ctx->input_fp );
-  if( ctx->output_fp != NULL )
-    fclose( ctx->output_fp );
-  if( ctx->plot_fp != NULL )
-    fclose( ctx->plot_fp );
-
-  exit( flag );
-}
 
 /***  Memory allocation/freeing utils ***/
 

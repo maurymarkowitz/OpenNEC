@@ -20,8 +20,8 @@ void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors);
 void write_deck_onec(nec_context_t *ctx, deck_t *deck, FILE *pfile);
 void write_nec_output(nec_context_t *ctx, deck_t *deck, FILE *pfile);
 void write_header(nec_context_t *ctx, deck_t *deck, FILE *pfile);
-void write_structure(nec_context_t *ctx, deck_t *deck, FILE *pfile);
-void write_segments(nec_context_t *ctx, deck_t *deck, FILE *pfile);
+int write_structure(nec_context_t *ctx, deck_t *deck, FILE *pfile);
+int write_segments(nec_context_t *ctx, deck_t *deck, FILE *pfile);
 void write_patches(nec_context_t *ctx, deck_t * deck, FILE *pfile);
 void write_input_cards(FILE *file, deck_t *deck);
 void write_frequency_data(FILE *file, nec_context_t *ctx);
@@ -69,14 +69,14 @@ char* trim_start(nec_context_t *ctx, char* dest);
 char* trim_end(nec_context_t *ctx, char* dest);
 void abort_on_error(nec_context_t *ctx, int why);
 void secnds(nec_context_t *ctx, double *x);
-int stop(nec_context_t *ctx, int flag);
+int stop(nec_context_t *ctx, int flag);  // TODO: Remove once all stop() calls converted to add_error()
 void mem_alloc(nec_context_t *ctx, void **ptr, size_t req);
 void mem_realloc(nec_context_t *ctx, void **ptr, size_t req);
 void mem_free(nec_context_t *ctx, void **ptr);
 /* calculations.c */
 void cabc(nec_context_t *ctx, complex double *curx);
 void couple(nec_context_t *ctx, complex double *cur, double wlam);
-void load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt, double *zlr, double *zli, double *zlc);
+int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt, double *zlr, double *zli, double *zlc);
 void gf(nec_context_t *ctx, double zk, double *co, double *si);
 double db10(nec_context_t *ctx, double x);
 double db20(nec_context_t *ctx, double x);
@@ -84,9 +84,9 @@ void intrp(nec_context_t *ctx, double x, double y, complex double *f1, complex d
 void intx(nec_context_t *ctx, double el1, double el2, double b, int ij, double *sgr, double *sgi);
 int min(nec_context_t *ctx, int a, int b);
 void test(nec_context_t *ctx, double f1r, double f2r, double *tr, double f1i, double f2i, double *ti, double dmin);
-void sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc);
-void tbf(nec_context_t *ctx, int i, int icap);
-void trio(nec_context_t *ctx, int j);
+int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc);
+int tbf(nec_context_t *ctx, int i, int icap);
+int trio(nec_context_t *ctx, int j);
 void zint(nec_context_t *ctx, double sigl, double rolam, complex double *zt);
 double cang(nec_context_t *ctx, complex double z);
 /* fields.c */
@@ -110,7 +110,7 @@ void unere(nec_context_t *ctx, double xob, double yob, double zob);
 int segment_number(nec_context_t *ctx, int tag, int m);
 void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors, outputs_list_t *outputs);
 void finish_geometry(nec_context_t *ctx);
-void connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs);
+int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs);
 void wire(nec_context_t *ctx, int card_num, int tag_num, int segs, double xw1, double yw1, double zw1, double xw2, double yw2, double zsw2, double rad, double rdel, double rrad);
 void arc(nec_context_t *ctx, int card_num, int tag_num, int segs, double rada, double ang1, double ang2, double rad);
 void helix(nec_context_t *ctx, int card_num, int tag_num, int segs, double s, double hl, double a1, double b1, double a2, double b2, double rad, outputs_list_t *outputs);
@@ -122,7 +122,7 @@ void rotate(nec_context_t *ctx, int card_num, int tag_increment, int num_copies)
 void scale(nec_context_t *ctx, double xw1);
 void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e);
 /* ground.c */
-void rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmin);
+int rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmin);
 void sflds(nec_context_t *ctx, double t, complex double *e);
 /* matrix.c */
 void cmset(nec_context_t *ctx, int nrow, complex double *cm, double rkhx, int iexkx);
@@ -133,7 +133,7 @@ void cmww(nec_context_t *ctx, int j, int i1, int i2, complex double *cm, int nr,
 void etmns(nec_context_t *ctx, double p1, double p2, double p3, double p4, double p5, double p6, int ipr, complex double *e);
 void factr(nec_context_t *ctx, int n, complex double *a, int *ip, int ndim);
 void factrs(nec_context_t *ctx, int np, int nrow, complex double *a, int *ip);
-void fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym);
+int fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym);
 void solve(nec_context_t *ctx, int n, complex double *a, int *ip, complex double *b, int ndim);
 void solves(nec_context_t *ctx, complex double *a, int *ip, complex double *b, int neq, int nrh, int np, int n, int mp, int m);
 /* network.c */

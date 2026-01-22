@@ -69,7 +69,8 @@ void cmset(nec_context_t *ctx, int nrow, complex double *cm, double rkhx, int ie
   {
 	for( j = 1; j <= ctx->geometry.n; j++ )
 	{
-	  trio(ctx, j);
+	  if (trio(ctx, j) != 0)
+	    return;
 	  for( i = 0; i < ctx->segj.jsno; i++ )
 	  {
 		ij = ctx->segj.jco[i];
@@ -357,7 +358,8 @@ void cmsw(nec_context_t *ctx, int j1, int j2, int i1, int i2, complex double *cm
 			  pyl= cos( pyl);
 			  ctx->dataj.exc= emel[8]* fsign;
 
-			  trio(ctx, i+1);
+			  if (trio(ctx, i+1) != 0)
+			    return;
 
 			  il= i-ncw;
 			  if( i < ctx->geometry.np)
@@ -1160,7 +1162,7 @@ void factrs(nec_context_t *ctx, int np, int nrow, complex double *a, int *ip )
 
 /* fblock sets parameters for out-of-core */
 /* solution for the primary matrix (a) */
-void fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym )
+int fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym )
 {
   int i, j, k, ka, kk;
   double phaz, arg;
@@ -1175,7 +1177,7 @@ void fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym )
 	if( nrow == ncol)
 	{
 	  ctx->matpar.icase=1;
-	  return;
+	  return 0;
 	}
 	else
 	  ctx->matpar.icase=2;
@@ -1185,9 +1187,11 @@ void fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym )
   ctx->smat.nop = ncol/nrow;
   if( ctx->smat.nop*nrow != ncol)
   {
-	fprintf( ctx->output_fp,
-		"\n  SYMMETRY ERROR - NROW: %d NCOL: %d", nrow, ncol );
-	stop(ctx, -1);
+	char err_msg[256];
+	snprintf(err_msg, sizeof(err_msg),
+		"SYMMETRY ERROR - NROW: %d NCOL: %d", nrow, ncol);
+	add_error(ctx, &ctx->errors, err_msg, FATAL);
+	return -1;
   }
 
   /* set up smat.ssx matrix for rotational symmetry. */
@@ -1204,7 +1208,7 @@ void fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym )
 		ctx->smat.ssx[j + i * ctx->smat.nop]= ctx->smat.ssx[i + j * ctx->smat.nop];
 	  }
 	}
-	return;
+	return 0;
 
   } /* if( ipsym <= 0) */
 
@@ -1232,7 +1236,7 @@ void fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym )
 
   } /* for( k = 0; k < ka; k++ ) */
 
-  return;
+  return 0;
 }
 
 /*-----------------------------------------------------------------------*/

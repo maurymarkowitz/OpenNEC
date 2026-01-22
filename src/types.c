@@ -67,6 +67,10 @@ void nec_context_init(nec_context_t *ctx)
 {
     memset(ctx, 0, sizeof(nec_context_t));
     
+    // Initialize error list
+    ctx->errors.num_errors = 0;
+    ctx->errors.errors = NULL;
+    
     // Initialize default values (matching original NEC2 initialization)
     ctx->gnd.ksymp = 1;  // Default to free space
     ctx->gnd.ifar = -1;
@@ -135,6 +139,18 @@ void nec_context_cleanup(nec_context_t *ctx)
         free(ctx->rpat.points);
         ctx->rpat.points = NULL;
     }
+    
+    // Free error list
+    if (ctx->errors.errors != NULL) {
+        for (int i = 0; i < ctx->errors.num_errors; i++) {
+            if (ctx->errors.errors[i].message != NULL) {
+                free(ctx->errors.errors[i].message);
+            }
+        }
+        free(ctx->errors.errors);
+        ctx->errors.errors = NULL;
+    }
+    ctx->errors.num_errors = 0;
 }
 
 /* end of types.c */

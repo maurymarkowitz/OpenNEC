@@ -6,7 +6,7 @@
 /* variable interval width romberg integration is used.  there are 9 */
 /* field components - the x, y, and z components due to constant, */
 /* sine, and cosine current distributions. */
-void rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmin)
+int rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmin)
 {
   int i, ns, nt, flag=TRUE;
   int nts = 4, nx = 1, n = 9;
@@ -22,8 +22,8 @@ void rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dm
   
   if( s < 0.)
   {
-    fprintf( ctx->output_fp, "\n  ERROR - B LESS THAN A IN ROM2" );
-    stop(ctx, -1);
+    add_error(ctx, &ctx->errors, "ERROR - B LESS THAN A IN ROM2", FATAL);
+    return -1;
   }
   
   ep= s/(1.e4* ctx->geometry.npm);
@@ -45,7 +45,7 @@ void rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dm
       {
         dz= ze- z;
         if( dz <= ep)
-          return;
+          return 0;
       }
       
       dzot= dz*.5;
@@ -87,7 +87,7 @@ void rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dm
       
       z += dz;
       if( z > zend)
-        return;
+        return 0;
       
       for( i = 0; i < n; i++ )
         g1[i]= g5[i];
@@ -160,7 +160,7 @@ void rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dm
     
     z= z+ dz;
     if( z > zend)
-      return;
+      return 0;
     
     for( i = 0; i < n; i++ )
       g1[i]= g5[i];

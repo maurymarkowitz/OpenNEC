@@ -579,7 +579,8 @@ int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq
             double *zli = ctx->zload.zli;
             double *zlc = ctx->zload.zlc;
             
-            load(ctx, ldtyp, ldtag, ldtagf, ldtagt, zlr, zli, zlc);
+            if (load(ctx, ldtyp, ldtag, ldtagf, ldtagt, zlr, zli, zlc) != 0)
+                return -1;
         }
         
         // Set up ground parameters

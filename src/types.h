@@ -700,6 +700,9 @@ typedef struct nec_context_t
 	/* Radiation pattern results */
 	rpat_results_t rpat;
 	
+	/* Error tracking */
+	errors_list_t errors;
+	
 	/* Timing data for output */
 	double mat_fill_time;   /* Matrix fill time in seconds */
 	double mat_factor_time; /* Matrix factor time in seconds */

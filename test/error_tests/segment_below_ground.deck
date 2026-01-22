@@ -1,0 +1,9 @@
+CM Test case for SEGMENT EXTENDS BELOW GROUND error
+CM This deck has a wire that extends below the ground plane
+CE
+GW 1 9 0. 0. 0.1 0. 0. -0.5 .001
+GN 1
+GE 0
+FR 0 1 0 0 299.8 0
+EX 0 1 5 0 1.0 0
+EN

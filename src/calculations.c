@@ -37,7 +37,8 @@ void cabc(nec_context_t *ctx, double complex *curx)
     {
       ar= creal( curx[i]);
       ai= cimag( curx[i]);
-      tbf(ctx,  i+1, 1 );
+      if (tbf(ctx,  i+1, 1) != 0)
+        return;
       
       for( jx = 0; jx < ctx->segj.jsno; jx++ )
       {
@@ -59,7 +60,8 @@ void cabc(nec_context_t *ctx, double complex *curx)
         i= ctx->vsorc.iqds[is]-1;
         jx= ctx->geometry.icon1[i];
         ctx->geometry.icon1[i]=0;
-        tbf(ctx, i+1,0);
+        if (tbf(ctx, i+1,0) != 0)
+          return;
         ctx->geometry.icon1[i]= jx;
         sh= ctx->geometry.si[i]*.5;
         curd= CCJ* ctx->vsorc.vqds[is]/( (log(2.* sh/ ctx->geometry.bi[i])-1.)*
@@ -222,7 +224,7 @@ void couple(nec_context_t *ctx, double complex *cur, double wlam )
 
 /* load calculates the impedance of specified */
 /* segments for various types of loading */
-void load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
+int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
           double *zlr, double *zli, double *zlc )
 {
   int i, iwarn, istep, istepx, l1, l2, ldtags, jump, ichk;
@@ -262,7 +264,7 @@ void load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
       
       ctx->smat.nop = ctx->geometry.n/ctx->geometry.np;
       if( ctx->smat.nop == 1)
-        return;
+        return 0;
       
       for( i = 0; i < ctx->geometry.np; i++ )
       {
@@ -275,16 +277,17 @@ void load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
           ctx->zload.zarray[l1]= zt;
         }
       }
-      return;
+      return 0;
       
     } /* if( istep > ctx->zload.nload) */
     
     if( ldtyp[istepx] > 5 )
     {
-      fprintf( ctx->output_fp,
-              "\n  IMPROPER LOAD TYPE CHOSEN,"
-              " REQUESTED TYPE IS %d", ldtyp[istepx] );
-      stop(ctx, -1);
+      char err_msg[256];
+      snprintf(err_msg, sizeof(err_msg), 
+              "IMPROPER LOAD TYPE CHOSEN, REQUESTED TYPE IS %d", ldtyp[istepx]);
+      add_error(ctx, &ctx->errors, err_msg, FATAL);
+      return -1;
     }
     
     /* search segments for proper itags */
@@ -373,10 +376,11 @@ void load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
     
     if( ichk == 0 )
     {
-      fprintf( ctx->output_fp,
-              "\n  LOADING DATA CARD ERROR,"
-              " NO SEGMENT HAS AN ITAG = %d", ldtags );
-      stop(ctx, -1);
+      char err_msg[256];
+      snprintf(err_msg, sizeof(err_msg),
+              "LOADING DATA CARD ERROR, NO SEGMENT HAS AN ITAG = %d", ldtags);
+      add_error(ctx, &ctx->errors, err_msg, FATAL);
+      return -1;
     }
     
     /* printing the segment loading data, jump to proper print */
@@ -855,7 +859,7 @@ void test(nec_context_t *ctx, double f1r, double f2r, double *tr,
 /*-----------------------------------------------------------------------*/
 
 /* compute component of basis function i on segment is. */
-void sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
+int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
 {
   int ix, jsno, june, jcox, jcoxx, jend, iend, njun1=0, njun2;
   double d, sig, pp, sdh, cdh, sd, omc, aj, pm=0, cd, ap, qp, qm, xxi;
@@ -924,9 +928,11 @@ void sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
         {
           if( jcox == 0 )
           {
-            fprintf( ctx->output_fp,
-                    "\n  SBF - SEGMENT CONNECTION ERROR FOR SEGMENT %d", i);
-            stop(ctx, -1);
+            char err_msg[256];
+            snprintf(err_msg, sizeof(err_msg),
+                    "SBF - SEGMENT CONNECTION ERROR FOR SEGMENT %d", i);
+            add_error(ctx, &ctx->errors, err_msg, FATAL);
+            return -1;
           }
           else
             continue;
@@ -983,7 +989,7 @@ void sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
       xxi= qp* qp;
       xxi= qp*(1.-.5* xxi)/(1.- xxi);
       *cc=1./( cdh- xxi* sdh);
-      return;
+      return 0;
     }
     
     qp= PI* ctx->geometry.bi[ix];
@@ -997,14 +1003,14 @@ void sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
       *bb=  *bb* qp;
       *cc= -*cc* qp;
       if( i != is)
-        return;
+        return 0;
     }
     
     *aa -= 1.;
     d = cd - xxi * sd;
     *bb += (sdh + ap * qp * (cdh - xxi * sdh)) / d;
     *cc += (cdh + ap * qp * (sdh + xxi * cdh)) / d;
-    return;
+    return 0;
     
   } /* if( njun1 == 0) */
   
@@ -1021,14 +1027,14 @@ void sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
       *bb= *bb* qm;
       *cc= *cc* qm;
       if( i != is)
-        return;
+        return 0;
     }
     
     *aa -= 1.;
     d= cd- xxi* sd;
     *bb += ( aj* qm*( cdh- xxi* sdh)- sdh)/ d;
     *cc += ( cdh- aj* qm*( sdh+ xxi* cdh))/ d;
-    return;
+    return 0;
     
   } /* if( njun2 == 0) */
   
@@ -1052,7 +1058,7 @@ void sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
     }
     
     if( i != is)
-      return;
+      return 0;
     
   } /* if( june != 0 ) */
   
@@ -1060,13 +1066,13 @@ void sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
   *bb += ( aj* qm+ ap* qp)* sdh/ sd;
   *cc += ( aj* qm- ap* qp)* cdh/ sd;
   
-  return;
+  return 0;
 }
 
 /*-----------------------------------------------------------------------*/
 
 /* compute basis function i */
-void tbf(nec_context_t *ctx, int i, int icap )
+int tbf(nec_context_t *ctx, int i, int icap )
 {
   int ix, jcox, jcoxx, jend, iend, njun1=0, njun2, jsnop, jsnox;
   double pp, sdh, cdh, sd, omc, aj, pm=0, cd, ap, qp, qm, xxi;
@@ -1129,9 +1135,11 @@ void tbf(nec_context_t *ctx, int i, int icap )
             continue;
           else
           {
-            fprintf( ctx->output_fp,
-                    "\n  TBF - SEGMENT CONNECTION ERROR FOR SEGMENT %5d", i );
-            stop(ctx, -1);
+            char err_msg[256];
+            snprintf(err_msg, sizeof(err_msg),
+                    "TBF - SEGMENT CONNECTION ERROR FOR SEGMENT %5d", i);
+            add_error(ctx, &ctx->errors, err_msg, FATAL);
+            return -1;
           }
         }
         
@@ -1196,7 +1204,7 @@ void tbf(nec_context_t *ctx, int i, int icap )
       ctx->segj.cx[jsnop]=1./( cdh- xxi* sdh);
       ctx->segj.jsno= jsnop+1;
       ctx->segj.ax[jsnop]=-1.;
-      return;
+      return 0;
       
     } /* if( njun2 == 0) */
     
@@ -1223,7 +1231,7 @@ void tbf(nec_context_t *ctx, int i, int icap )
     
     ctx->segj.jsno= jsnop+1;
     ctx->segj.ax[jsnop]=-1.;
-    return;
+    return 0;
     
   } /* if( njun1 == 0) */
   
@@ -1252,7 +1260,7 @@ void tbf(nec_context_t *ctx, int i, int icap )
     
     ctx->segj.jsno= jsnop+1;
     ctx->segj.ax[jsnop]=-1.;
-    return;
+    return 0;
     
   } /* if( njun2 == 0) */
   
@@ -1279,12 +1287,13 @@ void tbf(nec_context_t *ctx, int i, int icap )
   
   ctx->segj.jsno= jsnop+1;
   ctx->segj.ax[jsnop]=-1.;
+  return 0;
 }
 
 /*-----------------------------------------------------------------------*/
 
 /* compute the components of all basis functions on segment j */
-void trio(nec_context_t *ctx, int j )
+int trio(nec_context_t *ctx, int j )
 {
   int jcox, jcoxx, jsnox, jx, jend=0, iend=0;
   
@@ -1327,9 +1336,10 @@ void trio(nec_context_t *ctx, int j )
         mem_realloc(ctx,  (void *) &ctx->segj.cx, mreq );
       }
       
-      sbf(ctx,  j, j, &ctx->segj.ax[jsnox], &ctx->segj.bx[jsnox], &ctx->segj.cx[jsnox]);
+      if (sbf(ctx,  j, j, &ctx->segj.ax[jsnox], &ctx->segj.bx[jsnox], &ctx->segj.cx[jsnox]) != 0)
+        return -1;
       ctx->segj.jco[jsnox]= j;
-      return;
+      return 0;
     }
     
   } /* if( (jcox == 0) || (jcox > PCHCON) ) */
@@ -1361,7 +1371,8 @@ void trio(nec_context_t *ctx, int j )
         mem_realloc(ctx,  (void *) &ctx->segj.cx, mreq );
       }
       
-      sbf(ctx,  jcox, j, &ctx->segj.ax[jsnox], &ctx->segj.bx[jsnox], &ctx->segj.cx[jsnox]);
+      if (sbf(ctx,  jcox, j, &ctx->segj.ax[jsnox], &ctx->segj.bx[jsnox], &ctx->segj.cx[jsnox]) != 0)
+        return -1;
       ctx->segj.jco[jsnox]= jcox;
       
       if( jend != 1)
@@ -1371,9 +1382,11 @@ void trio(nec_context_t *ctx, int j )
       
       if( jcox == 0 )
       {
-        fprintf( ctx->output_fp,
-                "\n  TRIO - SEGMENT CONNENTION ERROR FOR SEGMENT %5d", j );
-        stop(ctx, -1);
+        char err_msg[256];
+        snprintf(err_msg, sizeof(err_msg),
+                "TRIO - SEGMENT CONNENTION ERROR FOR SEGMENT %5d", j);
+        add_error(ctx, &ctx->errors, err_msg, FATAL);
+        return -1;
       }
       else
         continue;
@@ -1410,10 +1423,11 @@ void trio(nec_context_t *ctx, int j )
     mem_realloc(ctx,  (void *) &ctx->segj.cx, mreq );
   }
   
-  sbf(ctx,  j, j, &ctx->segj.ax[jsnox], &ctx->segj.bx[jsnox], &ctx->segj.cx[jsnox]);
+  if (sbf(ctx,  j, j, &ctx->segj.ax[jsnox], &ctx->segj.bx[jsnox], &ctx->segj.cx[jsnox]) != 0)
+    return -1;
   ctx->segj.jco[jsnox]= j;
   
-  return;
+  return 0;
   
 }
 

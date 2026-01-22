@@ -378,7 +378,7 @@ int segment_number(nec_context_t *ctx, int tag, int m)
  * @param ignd If a ground plane is in use, checks if wires touch ground
  *
  */
-void connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
+int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
 {
   int i, iz, ic, j, jx, ix, ixx, iseg, iend, jend, jump, ipf;
   double sep=0., xi1, yi1, zi1, xi2, yi2, zi2;
@@ -408,14 +408,10 @@ void connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
     
     /** possibly should be error condition?? **/
     if(ctx->geometry.np > ctx->geometry.n) {
-      char *msg = calloc(MAX_ERROR_LEN, sizeof(char));
-      sprintf(msg, "connect_segments was called np > n, %d > %d", ctx->geometry.np, ctx->geometry.n);
-      add_error(ctx, &ctx->geometry.errors, msg, 1);
-      free(msg);
-      
-      //            fprintf( output_fp,
-      //                    "\n ERROR: NP > N IN CONECT()" );
-      stop(ctx, -1);
+      char err_msg[256];
+      snprintf(err_msg, sizeof(err_msg), "connect_segments was called np > n, %d > %d", ctx->geometry.np, ctx->geometry.n);
+      add_error(ctx, &ctx->errors, err_msg, FATAL);
+      return -1;
     }
     
     if((ctx->geometry.np == ctx->geometry.n) && (ctx->geometry.mp == ctx->geometry.m))
@@ -450,11 +446,7 @@ void connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
           sprintf(msg, "GEOMETRY DATA ERROR -- SEGMENT %d EXTENDS BELOW GROUND", iz);
           add_error(ctx, &ctx->geometry.errors, msg, 1);
           free(msg);
-
-          //                    add_message(ctx, outputs,
-          //                            "\n  GEOMETRY DATA ERROR -- SEGMENT"
-          //                            " %d EXTENDS BELOW GROUND", iz );
-          stop(ctx, -1);
+          return -1;
         }
         
         if( zi1 <= slen) {
@@ -488,20 +480,18 @@ void connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
       /* determine connection data for end 2 of segment. */
       if( (ignd > 0) || jump ) {
         if( zi2 <= -slen) {
-          char *msg = calloc(MAX_ERROR_LEN, sizeof(char));
-          sprintf(msg, "\n  GEOMETRY DATA ERROR -- SEGMENT %d EXTENDS BELOW GROUND", iz);
-          add_error(ctx, &ctx->geometry.errors, msg, FATAL);
-          free(msg);
-          stop(ctx, -1);
+          char err_msg[256];
+          snprintf(err_msg, sizeof(err_msg), "GEOMETRY DATA ERROR -- SEGMENT %d EXTENDS BELOW GROUND", iz);
+          add_error(ctx, &ctx->errors, err_msg, FATAL);
+          return -1;
         }
         
         if( zi2 <= slen) {
           if( ctx->geometry.icon1[i] == iz ) {
-            char *msg = calloc(MAX_ERROR_LEN, sizeof(char));
-            sprintf(msg, "\n  GEOMETRY DATA ERROR -- SEGMENT %d LIES IN GROUND PLANE", iz);
-            add_error(ctx, &ctx->geometry.errors, msg, FATAL);
-            free(msg);
-            stop(ctx, -1);
+            char err_msg[256];
+            snprintf(err_msg, sizeof(err_msg), "GEOMETRY DATA ERROR -- SEGMENT %d LIES IN GROUND PLANE", iz);
+            add_error(ctx, &ctx->errors, err_msg, FATAL);
+            return -1;
           }
           
           ctx->geometry.icon2[i] = iz;
@@ -578,7 +568,7 @@ void connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
   // if we have no geometry, we're done
   if(ctx->geometry.n == 0) {
     free(msg);
-    return;
+    return 0;
   }
   
   // allocate to connection buffers
@@ -731,6 +721,7 @@ void connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
   mem_realloc(ctx, (void *)&ctx->segj.bx, mreq);
   mem_realloc(ctx, (void *)&ctx->segj.cx, mreq);
   free(msg);
+  return 0;
 } /* end of connect_segments */
 
 /******************************************************************************
