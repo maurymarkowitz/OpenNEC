@@ -1,5 +1,5 @@
 /*
- * Function prototypes for nec2c.c
+ * Function prototypes for onec
  */
 
 #include "types.h"
@@ -23,6 +23,22 @@ void write_header(nec_context_t *ctx, deck_t *deck, FILE *pfile);
 void write_structure(nec_context_t *ctx, deck_t *deck, FILE *pfile);
 void write_segments(nec_context_t *ctx, deck_t *deck, FILE *pfile);
 void write_patches(nec_context_t *ctx, deck_t * deck, FILE *pfile);
+void write_input_cards(FILE *file, deck_t *deck);
+void write_frequency_data(FILE *file, nec_context_t *ctx);
+void write_loading_data(FILE *file, nec_context_t *ctx);
+void write_environment_data(FILE *file, nec_context_t *ctx);
+void write_matrix_timing(FILE *file, nec_context_t *ctx);
+void write_network_data(FILE *file, nec_context_t *ctx);
+void write_matrix_asymmetry(FILE *file, nec_context_t *ctx);
+void write_network_excitation(FILE *file, nec_context_t *ctx);
+void write_antenna_input_parameters(FILE *file, nec_context_t *ctx);
+void write_currents(FILE *file, nec_context_t *ctx);
+void write_power_budget(FILE *file, nec_context_t *ctx);
+void write_radiation_pattern_header(FILE *file, nec_context_t *ctx);
+void write_radiation_pattern_data(FILE *file, nec_context_t *ctx);
+void write_average_power_gain(FILE *file, nec_context_t *ctx);
+void write_normalized_gain(FILE *file, nec_context_t *ctx);
+void write_footer(FILE *file, nec_context_t *ctx, deck_t *deck);
 /* deck.c */
 // these methods work on updating the processed values in the deck and cards
 void update_deck_values(deck_t *deck);
@@ -137,3 +153,7 @@ void hankel(nec_context_t *ctx, complex double z, complex double *h0, complex do
 void lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam);
 void rom1(nec_context_t *ctx, int n, complex double *sum, int nx);
 void saoa(nec_context_t *ctx, double t, complex double *ans);
+/* control.c */
+int nec_calculation_defaults(nec_context_t *ctx);
+int process_control_cards(nec_context_t *ctx, deck_t *deck);
+int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq);

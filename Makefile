@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -I. -Isrc -O2 -Wall
+CFLAGS = -I. -Isrc -g -O2 -Wall
 LDFLAGS =
 
-SOURCES = src/main.c src/input.c src/output.c src/deck.c src/tests.c src/geometry.c src/calculations.c src/fields.c src/ground.c src/matrix.c src/network.c src/radiation.c src/somnec.c src/misc.c src/shared.c src/types.c src/tinyexpr.c
+SOURCES = src/main.c src/input.c src/output.c src/deck.c src/tests.c src/geometry.c src/calculations.c src/fields.c src/ground.c src/matrix.c src/network.c src/radiation.c src/somnec.c src/misc.c src/types.c src/tinyexpr.c src/control.c
 
 LIB_SOURCES = $(filter-out src/main.c, $(SOURCES))
 LIB_OBJECTS = $(LIB_SOURCES:.c=.o)

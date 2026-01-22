@@ -15,7 +15,6 @@
  *****************************************************************************/
 
 #include "opennec.h"
-#include "shared.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -283,13 +282,28 @@ void write_nec_output(nec_context_t *ctx, deck_t *deck, FILE *file)
   write_structure(ctx, deck, file);
   write_segments(ctx, deck, file);
   write_patches(ctx, deck, file);
+  write_input_cards(file, deck);
+  write_frequency_data(file, ctx);
+  write_loading_data(file, ctx);
+  write_environment_data(file, ctx);
+  write_matrix_timing(file, ctx);
+  write_network_data(file, ctx);
+  write_matrix_asymmetry(file, ctx);
+  write_network_excitation(file, ctx);
+  write_antenna_input_parameters(file, ctx);
+  write_currents(file, ctx);
+  write_power_budget(file, ctx);
+  write_radiation_pattern_header(file, ctx);
+  write_radiation_pattern_data(file, ctx);
+  write_average_power_gain(file, ctx);
+  write_normalized_gain(file, ctx);
+  write_footer(file, ctx, deck);
 }
-
 
 /******************************************************************************
  * write_headers()
  *
- * Writes the header area and comments to the standard NEC output file.
+ * Writes the header area and comment cards to the standard NEC output file.
  *
  */
 void write_header(nec_context_t *ctx, deck_t *deck, FILE *file)
@@ -300,7 +314,7 @@ void write_header(nec_context_t *ctx, deck_t *deck, FILE *file)
           "                              "
           "|                                          |\n"
           "                              "
-          "|  NUMERICAL ELECTROMAGNETICS CODE (onec) |\n"
+          "|  NUMERICAL ELECTROMAGNETICS CODE (onec)  |\n"
           "                              "
           "|   Translated to 'C' in Double Precision  |\n"
           "                              "
@@ -355,7 +369,7 @@ void write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
   // print the header
   fprintf(file, "\n\n\n"
           "                               "
-          "-------- STRUCTURE SPECIFICATION ---------\n"
+          "-------- STRUCTURE SPECIFICATION --------\n"
           "                                     "
           "COORDINATES MUST BE INPUT IN\n"
           "                                     "
@@ -496,18 +510,18 @@ void write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
               "\n  ERROR: IPSYM=0 IN CONECT()" );
       stop(ctx, -1);
     }
-  } /* if( iseg == 1) */
 
-  if(ctx->geometry.ipsym < 0)
-    fprintf(ctx->output_fp,
-            "\n  STRUCTURE HAS %d FOLD ROTATIONAL SYMMETRY\n", iseg );
-  else {
-    int ic = iseg / 2;
-    if(iseg == 8)
-      ic = 3;
-    fprintf(ctx->output_fp,
-            "\n  STRUCTURE HAS %d PLANES OF SYMMETRY\n", ic );
-  } /* if(ctx->geometry.ipsym < 0 ) */
+    if(ctx->geometry.ipsym < 0)
+      fprintf(ctx->output_fp,
+              "\n  STRUCTURE HAS %d FOLD ROTATIONAL SYMMETRY\n", iseg );
+    else {
+      int ic = iseg / 2;
+      if(iseg == 8)
+        ic = 3;
+      fprintf(ctx->output_fp,
+              "\n  STRUCTURE HAS %d PLANES OF SYMMETRY\n", ic );
+    } /* if(ctx->geometry.ipsym < 0 ) */
+  } /* if( iseg != 1) */
 } /* write_structure() */
 
 /******************************************************************************
@@ -538,6 +552,11 @@ void write_segments(nec_context_t *ctx, deck_t * deck, FILE *file)
   double xw1, yw1, zw1;
   double xw2, yw2;
   
+  // Calculate frequency ratio to unscale geometry back to meters
+  // The geometry has been scaled by fr = fmhz / CVEL during frequency loop
+  // We need to divide by fr to get back to the original meter values
+  double fr = ctx->save.fmhz / CVEL;
+  
   for(int i = 0; i < ctx->geometry.n; i++) {
     xw1 = ctx->geometry.x2[i] - ctx->geometry.x1[i];
     yw1 = ctx->geometry.y2[i] - ctx->geometry.y1[i];
@@ -566,7 +585,7 @@ void write_segments(nec_context_t *ctx, deck_t * deck, FILE *file)
             " %5d %9.4f %9.4f %9.4f %9.4f"
             " %9.4f %9.4f %9.4f %5d %5d %5d %5d",
             i + 1, ctx->geometry.x[i], ctx->geometry.y[i], ctx->geometry.z[i], ctx->geometry.si[i], xw2, yw2,
-            ctx->geometry.bi[i], ctx->geometry.icon1[i], i + 1, ctx->geometry.icon2[i], ctx->geometry.tag_nums[i]);
+            ctx->geometry.bi[i] / fr, ctx->geometry.icon1[i], i + 1, ctx->geometry.icon2[i], ctx->geometry.tag_nums[i]);
     
     if(ctx->plot.iplp1 == 1)
       fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E "
@@ -580,6 +599,8 @@ void write_segments(nec_context_t *ctx, deck_t * deck, FILE *file)
     }
     
   } /* for( i = 0; i < data.n; i++ ) */
+  
+  fprintf(ctx->output_fp, "\n");
 } /* write_segments */
 
 /******************************************************************************
@@ -615,6 +636,748 @@ void write_patches(nec_context_t *ctx, deck_t *deck, FILE *file)
             i + 1, ctx->geometry.px[i], ctx->geometry.py[i], ctx->geometry.pz[i], xw1, yw1, zw1, ctx->geometry.pbi[i],
             ctx->geometry.t1x[i], ctx->geometry.t1y[i], ctx->geometry.t1z[i], ctx->geometry.t2x[i], ctx->geometry.t2y[i], ctx->geometry.t2z[i]);
   } /* for( i = 0; i < data.m; i++ ) */
+}
+
+/**
+ * Write input cards echo to output file
+ * Echoes FR, TL, LD, EX, RP, and other control cards from the deck
+ */
+void write_input_cards(FILE *file, deck_t *deck)
+{
+    if (file == NULL || deck == NULL) {
+        return;
+    }
+
+    fprintf(file, "\n\n\n");
+
+    /* Iterate through all cards in the deck. */
+    int card_number = 0;
+    for (int i = 0; i < deck->num_cards - 1; i++) {
+        card_t *card = &deck->cards[i];
+        
+        /* Only echo control cards (skip geometry and comment cards, and the EN) */
+        if (strncmp(card->card_code, "FR", 2) == 0 ||
+            strncmp(card->card_code, "EX", 2) == 0 ||
+            strncmp(card->card_code, "LD", 2) == 0 ||
+            strncmp(card->card_code, "TL", 2) == 0 ||
+            strncmp(card->card_code, "NT", 2) == 0 ||
+            strncmp(card->card_code, "RP", 2) == 0 ||
+            strncmp(card->card_code, "GN", 2) == 0 ||
+            strncmp(card->card_code, "EK", 2) == 0 ||
+            strncmp(card->card_code, "KH", 2) == 0 ||
+            strncmp(card->card_code, "NE", 2) == 0 ||
+            strncmp(card->card_code, "NH", 2) == 0 ||
+            strncmp(card->card_code, "NX", 2) == 0 ||
+            strncmp(card->card_code, "PT", 2) == 0 ||
+            strncmp(card->card_code, "PQ", 2) == 0 ||
+            strncmp(card->card_code, "CP", 2) == 0 ||
+            strncmp(card->card_code, "GD", 2) == 0 ||
+            strncmp(card->card_code, "WG", 2) == 0 ||
+            strncmp(card->card_code, "XQ", 2) == 0) {
+            
+            card_number++;
+            
+            /* Output in exact NEC format: card number, card code, 4 ints, 7 floats */
+            fprintf(file, "  DATA CARD No: %3d %s", card_number, card->card_code);
+            
+            /* Output 4 integer fields */
+            fprintf(file, " %3d", card->iv[1]);
+            for (int j = 2; j <= 4; j++) {
+                fprintf(file, " %5d", card->iv[j]);
+            }
+            
+            /* Output 7 float fields in scientific notation */
+            for (int j = 1; j <= 6; j++) {
+                fprintf(file, " %12.5E", card->fv[j]);
+            }
+            
+            fprintf(file, "\n");
+        }
+    }
+
+    fprintf(file, "\n");
+}
+
+/******************************************************************************
+ * write_frequency_data
+ * 
+ * Writes the frequency in MHz and wavelength in meters, plus integration
+ * method information. This matches the NEC2 output format.
+ */
+void write_frequency_data(FILE *file, nec_context_t *ctx)
+{
+    fprintf(file, "\n\n"
+        "                               "
+        "--------- FREQUENCY --------\n"
+        "                                "
+        "FREQUENCY :%11.4E MHz\n"
+        "                                "
+        "WAVELENGTH:%11.4E Mtr", 
+        ctx->save.fmhz, 
+        ctx->geometry.wlam);
+    
+    fprintf(file, "\n\n"
+        "                        "
+        "APPROXIMATE INTEGRATION EMPLOYED FOR SEGMENTS \n"
+        "                        "
+        "THAT ARE MORE THAN %.3f WAVELENGTHS APART", ctx->dataj.rkh);
+    
+    if (ctx->dataj.iexk == 1) {
+        fprintf(file, "\n"
+            "                        "
+            "THE EXTENDED THIN WIRE KERNEL WILL BE USED");
+    }
+}
+
+/******************************************************************************
+ * write_loading_data
+ * 
+ * Writes the structure impedance loading section header.
+ * The actual loading details are printed by load() in calculations.c
+ * as it processes the loading cards.
+ */
+void write_loading_data(FILE *file, nec_context_t *ctx)
+{
+    fprintf(file, "\n\n\n"
+        "                          "
+        "------ STRUCTURE IMPEDANCE LOADING ------");
+    
+    if (ctx->zload.nload == 0) {
+        fprintf(file, "\n"
+            "                                 "
+            "THIS STRUCTURE IS NOT LOADED");
+    }
+}
+
+/******************************************************************************
+ * write_environment_data
+ * 
+ * Writes the antenna environment section (free space, perfect ground, or
+ * finite ground with parameters).
+ */
+void write_environment_data(FILE *file, nec_context_t *ctx)
+{
+    fprintf(file, "\n\n\n"
+        "                            "
+        "-------- ANTENNA ENVIRONMENT --------");
+    
+    if (ctx->gnd.ksymp == 1) {
+        fprintf(file, "\n"
+            "                            "
+            "FREE SPACE");
+    }
+    else {
+        if (ctx->gnd.iperf == 1) {
+            fprintf(file, "\n"
+                "                            "
+                "PERFECT GROUND");
+        }
+        else {
+            // Radial wire ground screen
+            if (ctx->gnd.nradl != 0) {
+                fprintf(file, "\n"
+                    "                            "
+                    "RADIAL WIRE GROUND SCREEN\n"
+                    "                            "
+                    "%d WIRES\n"
+                    "                            "
+                    "WIRE LENGTH: %8.2f METERS\n"
+                    "                            "
+                    "WIRE RADIUS: %10.3E METERS",
+                    ctx->gnd.nradl, ctx->save.scrwlt, ctx->save.scrwrt);
+                
+                fprintf(file, "\n"
+                    "                            "
+                    "MEDIUM UNDER SCREEN -");
+            }
+            
+            // Ground type
+            if (ctx->gnd.iperf != 2) {
+                fprintf(file, "\n"
+                    "                            "
+                    "FINITE GROUND - REFLECTION COEFFICIENT APPROXIMATION");
+            }
+            else {
+                fprintf(file, "\n"
+                    "                            "
+                    "FINITE GROUND - SOMMERFELD SOLUTION");
+            }
+            
+            // Ground parameters
+            complex double epsc = cmplx(ctx->save.epsr, -ctx->save.sig * ctx->geometry.wlam * 59.96);
+            fprintf(file, "\n"
+                "                            "
+                "RELATIVE DIELECTRIC CONST: %.3f\n"
+                "                            "
+                "CONDUCTIVITY: %10.3E MHOS/METER\n"
+                "                            "
+                "COMPLEX DIELECTRIC CONSTANT: %11.4E%+11.4Ej",
+                ctx->save.epsr, ctx->save.sig, creal(epsc), cimag(epsc));
+        }
+    }
+}
+
+/******************************************************************************
+ * write_matrix_timing
+ * 
+ * Writes the matrix fill and factor timing information.
+ */
+void write_matrix_timing(FILE *file, nec_context_t *ctx)
+{
+    fprintf(file, "\n\n\n"
+        "                             "
+        "---------- MATRIX TIMING ----------\n"
+        "                               "
+        "FILL: %d msec  FACTOR: %d msec",
+        (int)(ctx->mat_fill_time * 1000.0),
+        (int)(ctx->mat_factor_time * 1000.0));
+}
+
+/******************************************************************************
+ * write_network_data
+ * 
+ * Writes the network data section showing transmission lines and network
+ * connections between segments.
+ */
+void write_network_data(FILE *file, nec_context_t *ctx)
+{
+    if (ctx->netcx.nonet == 0) {
+        return;  // No network data to write
+    }
+    
+    fprintf(file, "\n\n\n"
+        "                                            "
+        "---------- NETWORK DATA ----------");
+    
+    int itmp1 = ctx->netcx.ntyp[0];
+    int itmp3 = 0;
+    const char *pnet[3] = {"  ", "NON-CROSSED", "CROSSED"};
+    
+    for (int i = 0; i < 2; i++) {
+        if (itmp1 == 3)
+            itmp1 = 2;
+        
+        if (itmp1 == 2) {
+            fprintf(file, "\n"
+                "  -- FROM -  --- TO --      TRANSMISSION LINE       "
+                " --------- SHUNT ADMITTANCES (MHOS) ---------   LINE\n"
+                "  TAG   SEG  TAG   SEG    IMPEDANCE      LENGTH    "
+                " ----- END ONE -----      ----- END TWO -----   TYPE\n"
+                "  No:   No:  No:   No:         OHMS      METERS     "
+                " REAL      IMAGINARY      REAL      IMAGINARY");
+        }
+        else if (itmp1 == 1) {
+            fprintf(file, "\n"
+                "  -- FROM -  --- TO --            --------"
+                " ADMITTANCE MATRIX ELEMENTS (MHOS) ---------\n"
+                "  TAG   SEG  TAG   SEG   ----- (ONE,ONE) ------  "
+                " ----- (ONE,TWO) -----   ----- (TWO,TWO) -------\n"
+                "  No:   No:  No:   No:      REAL      IMAGINARY     "
+                " REAL     IMAGINARY       REAL      IMAGINARY");
+        }
+        
+        for (int j = 0; j < ctx->netcx.nonet; j++) {
+            int itmp2 = ctx->netcx.ntyp[j];
+            
+            if ((itmp2 / itmp1) != 1) {
+                itmp3 = itmp2;
+            }
+            else {
+                int itmp4 = ctx->netcx.iseg1[j];
+                int itmp5 = ctx->netcx.iseg2[j];
+                int idx4 = itmp4 - 1;
+                int idx5 = itmp5 - 1;
+                
+                if ((itmp2 >= 2) && (ctx->netcx.x11i[j] <= 0.0)) {
+                    double xx = ctx->geometry.x[idx5] - ctx->geometry.x[idx4];
+                    double yy = ctx->geometry.y[idx5] - ctx->geometry.y[idx4];
+                    double zz = ctx->geometry.z[idx5] - ctx->geometry.z[idx4];
+                    ctx->netcx.x11i[j] = ctx->geometry.wlam * sqrt(xx*xx + yy*yy + zz*zz);
+                }
+                
+                fprintf(file, "\n"
+                    " %4d %5d %4d %5d  %11.4E %11.4E  "
+                    "%11.4E %11.4E  %11.4E %11.4E  %s",
+                    ctx->geometry.tag_nums[idx4], itmp4, 
+                    ctx->geometry.tag_nums[idx5], itmp5,
+                    ctx->netcx.x11r[j], ctx->netcx.x11i[j], 
+                    ctx->netcx.x12r[j], ctx->netcx.x12i[j],
+                    ctx->netcx.x22r[j], ctx->netcx.x22i[j], 
+                    pnet[itmp2-1]);
+            }
+        }
+        
+        if (itmp3 == 0)
+            break;
+        
+        itmp1 = itmp3;
+    }
+}
+
+/******************************************************************************
+ * write_matrix_asymmetry
+ * 
+ * Writes the maximum and RMS relative asymmetry of the driving point 
+ * admittance matrix. This data is computed during network solution.
+ */
+void write_matrix_asymmetry(FILE *file, nec_context_t *ctx)
+{
+    // Only write if asymmetry check was performed and data exists
+    if (ctx->netcx.masym == 0 || ctx->netcx.asmx == 0.0) {
+        return;
+    }
+    
+    fprintf(file, "\n\n"
+        "   MAXIMUM RELATIVE ASYMMETRY OF THE DRIVING POINT ADMITTANCE\n"
+        "   MATRIX IS %10.3E FOR SEGMENTS %d AND %d\n"
+        "   RMS RELATIVE ASYMMETRY IS %10.3E",
+        ctx->netcx.asmx, ctx->netcx.nteq_asym, ctx->netcx.ntsc_asym, ctx->netcx.asa);
+}
+
+/******************************************************************************
+ * write_network_excitation
+ * 
+ * Writes structure excitation data at network connection points, including
+ * voltage, current, impedance, admittance, and power for each connection.
+ */
+void write_network_excitation(FILE *file, nec_context_t *ctx)
+{
+    if (ctx->netcx.nexc == 0 || ctx->netcx.nprint != 0) {
+        return;  // No excitation data or printing suppressed
+    }
+    
+    fprintf(file, "\n\n\n"
+        "                          "
+        "--------- STRUCTURE EXCITATION DATA AT NETWORK CONNECTION POINTS --------");
+    
+    fprintf(file, "\n"
+        "  TAG   SEG       VOLTAGE (VOLTS)          CURRENT (AMPS)        "
+        " IMPEDANCE (OHMS)       ADMITTANCE (MHOS)     POWER\n"
+        "  No:   No:     REAL      IMAGINARY     REAL      IMAGINARY    "
+        " REAL      IMAGINARY     REAL      IMAGINARY   (WATTS)");
+    
+    for (int i = 0; i < ctx->netcx.nexc; i++) {
+        fprintf(file, "\n"
+            " %4d %5d %11.4E %11.4E %11.4E %11.4E"
+            " %11.4E %11.4E %11.4E %11.4E %11.4E",
+            ctx->netcx.exc_tag[i], ctx->netcx.exc_seg[i],
+            creal(ctx->netcx.exc_v[i]), cimag(ctx->netcx.exc_v[i]),
+            creal(ctx->netcx.exc_i[i]), cimag(ctx->netcx.exc_i[i]),
+            creal(ctx->netcx.exc_z[i]), cimag(ctx->netcx.exc_z[i]),
+            creal(ctx->netcx.exc_y[i]), cimag(ctx->netcx.exc_y[i]),
+            ctx->netcx.exc_pwr[i]);
+    }
+}
+
+/******************************************************************************
+ * write_antenna_input_parameters
+ * 
+ * Writes antenna input parameters at source segments, including voltage,
+ * current, impedance, admittance, and power.
+ */
+void write_antenna_input_parameters(FILE *file, nec_context_t *ctx)
+{
+    if (ctx->netcx.ninp == 0) {
+        return;  // No input data to write
+    }
+    
+    fprintf(file, "\n\n\n"
+        "                        "
+        "--------- ANTENNA INPUT PARAMETERS ---------");
+    
+    fprintf(file, "\n"
+        "  TAG   SEG       VOLTAGE (VOLTS)         "
+        "CURRENT (AMPS)         IMPEDANCE (OHMS)    "
+        "    ADMITTANCE (MHOS)     POWER\n"
+        "  No:   No:     REAL      IMAGINARY"
+        "     REAL      IMAGINARY     REAL      "
+        "IMAGINARY    REAL       IMAGINARY   (WATTS)");
+    
+    for (int i = 0; i < ctx->netcx.ninp; i++) {
+        fprintf(file, "\n"
+            " %4d %5d %11.4E %11.4E %11.4E %11.4E"
+            " %11.4E %11.4E %11.4E %11.4E %11.4E",
+            ctx->netcx.inp_tag[i], ctx->netcx.inp_seg[i],
+            creal(ctx->netcx.inp_v[i]), cimag(ctx->netcx.inp_v[i]),
+            creal(ctx->netcx.inp_i[i]), cimag(ctx->netcx.inp_i[i]),
+            creal(ctx->netcx.inp_z[i]), cimag(ctx->netcx.inp_z[i]),
+            creal(ctx->netcx.inp_y[i]), cimag(ctx->netcx.inp_y[i]),
+            ctx->netcx.inp_pwr[i]);
+    }
+}
+
+/******************************************************************************
+ * write_currents
+ * 
+ * Writes current distribution for all segments, including coordinates,
+ * segment length, and current magnitude and phase.
+ */
+void write_currents(FILE *file, nec_context_t *ctx)
+{
+    if (ctx->geometry.n == 0) {
+        return;  // No segments to write
+    }
+    
+    fprintf(file, "\n\n\n"
+        "                           "
+        "-------- CURRENTS AND LOCATION --------\n"
+        "                                  "
+        "DISTANCES IN WAVELENGTHS");
+    
+    fprintf(file, "\n\n"
+        "   SEG  TAG    COORDINATES OF SEGM CENTER     SEGM"
+        "    ------------- CURRENT (AMPS) -------------\n"
+        "   No:  No:       X         Y         Z      LENGTH"
+        "     REAL      IMAGINARY    MAGN        PHASE");
+    
+    for (int i = 0; i < ctx->geometry.n; i++) {
+        complex double curi = ctx->crnt.cur[i] * ctx->geometry.wlam;
+        double cmag = cabs(curi);
+        double ph = carg(curi) * TD;  // Convert to degrees (TD = 57.29577951)
+        
+        fprintf(file, "\n"
+            " %5d %4d %9.4f %9.4f %9.4f %8.5f %11.4E %11.4E %11.4E %9.3f",
+            i + 1, ctx->geometry.tag_nums[i],
+            ctx->geometry.x[i] * ctx->geometry.wlam,
+            ctx->geometry.y[i] * ctx->geometry.wlam,
+            ctx->geometry.z[i] * ctx->geometry.wlam,
+            ctx->geometry.si[i] * ctx->geometry.wlam,
+            creal(curi), cimag(curi), cmag, ph);
+    }
+}
+
+/******************************************************************************
+ * write_power_budget
+ * 
+ * Writes the power budget showing input power, radiated power, structure
+ * loss, network loss, and efficiency.
+ */
+void write_power_budget(FILE *file, nec_context_t *ctx)
+{
+    // Only write for standard radiation pattern types
+    if ((ctx->fpat.ixtyp != 0) && (ctx->fpat.ixtyp != 5)) {
+        return;
+    }
+    
+    double tmp1 = ctx->netcx.pin - ctx->netcx.pnls - ctx->fpat.ploss;
+    double tmp2 = 100.0 * tmp1 / ctx->netcx.pin;
+    
+    fprintf(file, "\n\n\n"
+        "                               "
+        "---------- POWER BUDGET ---------\n"
+        "                               "
+        "INPUT POWER   = %11.4E Watts\n"
+        "                               "
+        "RADIATED POWER= %11.4E Watts\n"
+        "                               "
+        "STRUCTURE LOSS= %11.4E Watts\n"
+        "                               "
+        "NETWORK LOSS  = %11.4E Watts\n"
+        "                               "
+        "EFFICIENCY    = %7.2f Percent",
+        ctx->netcx.pin, tmp1, ctx->fpat.ploss, ctx->netcx.pnls, tmp2);
+}
+
+/******************************************************************************
+ * write_radiation_pattern_header
+ * 
+ * Writes the radiation pattern section header and column headers.
+ */
+void write_radiation_pattern_header(FILE *file, nec_context_t *ctx)
+{
+    char *igtp[2] = { "----- POWER GAINS ----- ", "--- DIRECTIVE GAINS ---" };
+    char *igax[4] = { " MAJOR", " MINOR", " VERTC", " HORIZ" };
+    
+    // Check if radiation pattern was calculated
+    if (ctx->rpat.num_points == 0 || ctx->rpat.points == NULL) {
+        return;
+    }
+    
+    /* Write ground parameters if applicable */
+    if (ctx->gnd.ifar > 1) {
+        fprintf(file, "\n\n\n"
+            "                               "
+            "------ FAR FIELD GROUND PARAMETERS ------\n\n");
+        
+        if (ctx->gnd.ifar > 3) {
+            fprintf(file, "\n"
+                "                               "
+                "--- RADIAL WIRE GROUND SCREEN ---\n"
+                "                               "
+                "NUM OF WIRES= %d\n"
+                "                               "
+                "WIRE LENGTH= %8.2f METERS\n"
+                "                               "
+                "WIRE RADIUS= %10.3E METERS",
+                ctx->gnd.nradl, ctx->save.scrwlt, ctx->save.scrwrt);
+        }
+        
+        if (ctx->gnd.ifar != 4 && strlen(ctx->rpat.ground_cliff_type) > 0) {
+            fprintf(file, "\n"
+                "                               "
+                "--- %s CLIFF ---\n"
+                "                               "
+                "EDGE DISTANCE= %9.2f METERS\n"
+                "                               "
+                "       HEIGHT= %9.2f METERS\n"
+                "                               "
+                "--- SECOND MEDIUM ---\n"
+                "                               "
+                "RELATIVE DIELECTRIC CONST= %10.3f\n"
+                "                               "
+                "      GROUND CONDUCTIVITY= %10.3f MHOS",
+                ctx->rpat.ground_cliff_type, ctx->fpat.clt, ctx->fpat.cht,
+                ctx->fpat.epsr2, ctx->fpat.sig2);
+        }
+    }
+    
+    /* Write main header */
+    if (ctx->gnd.ifar == 1) {
+        fprintf(file, "\n\n\n"
+            "                             "
+            "------- RADIATED FIELDS NEAR GROUND --------\n\n"
+            "    ------- LOCATION -------     --- E(THETA) ---    "
+            " ---- E(PHI) ----    --- E(RADIAL) ---\n"
+            "      RHO    PHI        Z           MAG    PHASE     "
+            "    MAG    PHASE        MAG     PHASE\n"
+            "    METERS DEGREES    METERS      VOLTS/M DEGREES   "
+            "   VOLTS/M DEGREES     VOLTS/M  DEGREES");
+    }
+    else {
+        int itmp1 = 2 * ctx->fpat.iax;
+        int itmp2 = itmp1 + 1;
+        
+        fprintf(file, "\n\n\n"
+            "                             "
+            "---------- RADIATION PATTERNS -----------\n");
+        
+        if (ctx->fpat.rfld >= 1.0e-20) {
+            fprintf(file, "\n"
+                "                             "
+                "RANGE: %13.6E METERS\n"
+                "                             "
+                "EXP(-JKR)/R: %12.5E AT PHASE: %7.2f DEGREES\n",
+                ctx->fpat.rfld, ctx->rpat.exrm, ctx->rpat.exra);
+        }
+        
+        fprintf(file, "\n"
+            " ---- ANGLES -----     %23s      ---- POLARIZATION ----  "
+            " ---- E(THETA) ----    ----- E(PHI) ------\n"
+            "  THETA      PHI      %6s   %6s    TOTAL       AXIAL    "
+            "  TILT  SENSE   MAGNITUDE    PHASE    MAGNITUDE     PHASE\n"
+            " DEGREES   DEGREES        DB       DB       DB       RATIO  "
+            " DEGREES            VOLTS/M   DEGREES     VOLTS/M   DEGREES",
+            igtp[ctx->fpat.ipd], igax[itmp1], igax[itmp2]);
+    }
+}
+
+/******************************************************************************
+ * write_radiation_pattern_data
+ * 
+ * Writes the computed radiation pattern data for each theta/phi point.
+ * Data includes gains, polarization, and E-field components.
+ */
+void write_radiation_pattern_data(FILE *file, nec_context_t *ctx)
+{
+    char *hpol[3] = { "LINEAR", "RIGHT ", "LEFT  " };
+    double tmp5, tmp6;
+    
+    if (ctx->rpat.num_points == 0 || ctx->rpat.points == NULL) {
+        return;
+    }
+    
+    /* Write data for each point */
+    for (int i = 0; i < ctx->rpat.num_points; i++) {
+        rpat_point_t *pt = &ctx->rpat.points[i];
+        
+        if (ctx->gnd.ifar == 1) {
+            /* Near field output */
+            fprintf(file, "\n"
+                " %9.2f %7.2f %9.2f  %11.4E %7.2f  %11.4E %7.2f  %11.4E %7.2f",
+                ctx->fpat.rfld, pt->phi, pt->theta,
+                pt->ethm, pt->etha, pt->ephm, pt->epha, pt->erdm, pt->erda);
+        }
+        else {
+            /* Far field output */
+            if (ctx->fpat.iax != 1) {
+                tmp5 = pt->gnmj;
+                tmp6 = pt->gnmn;
+            }
+            else {
+                tmp5 = pt->gnv;
+                tmp6 = pt->gnh;
+            }
+            
+            fprintf(file, "\n"
+                " %7.2f %9.2f  %8.2f %8.2f %8.2f %11.4f"
+                " %9.2f %6s %11.4E %9.2f %11.4E %9.2f",
+                pt->theta, pt->phi, tmp5, tmp6, pt->gtot, pt->axrat,
+                pt->tilta, hpol[pt->pol_sense],
+                pt->ethm, pt->etha, pt->ephm, pt->epha);
+        }
+    }
+}
+
+/******************************************************************************
+ * write_average_power_gain
+ * 
+ * Writes the average power gain over the specified solid angle.
+ */
+void write_average_power_gain(FILE *file, nec_context_t *ctx)
+{
+    if (ctx->fpat.iavp == 0) {
+        return;
+    }
+    
+    fprintf(file, "\n\n\n"
+        "  AVERAGE POWER GAIN: %11.4E - SOLID ANGLE"
+        " USED IN AVERAGING: (%+7.4f)*PI STERADIANS",
+        ctx->rpat.pint, ctx->rpat.solid_angle);
+}
+
+/******************************************************************************
+ * write_normalized_gain
+ * 
+ * Writes the normalized gain table if requested.
+ */
+void write_normalized_gain(FILE *file, nec_context_t *ctx)
+{
+    char *igntp[5] = { " MAJOR AXIS", "  MINOR AXIS",
+        "    VERTICAL", "  HORIZONTAL", "       TOTAL " };
+    
+    if (ctx->fpat.inor == 0 || ctx->rpat.num_points == 0) {
+        return;
+    }
+    
+    int itmp1 = ctx->fpat.inor - 1;
+    
+    fprintf(file, "\n\n\n"
+        "                             "
+        " ---------- NORMALIZED GAIN ----------\n"
+        "                                      %6s GAIN\n"
+        "                                  "
+        " NORMALIZATION FACTOR: %.2f db\n\n"
+        "    ---- ANGLES ----                ---- ANGLES ----"
+        "                ---- ANGLES ----\n"
+        "    THETA      PHI        GAIN      THETA      PHI  "
+        "      GAIN      THETA      PHI       GAIN\n"
+        "   DEGREES   DEGREES        DB     DEGREES   DEGREES "
+        "       DB     DEGREES   DEGREES       DB",
+        igntp[itmp1], ctx->rpat.gmax);
+    
+    /* Print normalized gain in three columns */
+    int itmp2 = ctx->rpat.num_points;
+    int itmp3 = (itmp2 + 2) / 3;
+    int itmp4 = itmp3 * 3 - itmp2;
+    int idx1 = itmp3;
+    int idx2 = 2 * itmp3;
+    
+    if (itmp4 == 2)
+        idx2--;
+    
+    for (int i = 0; i < itmp3; i++) {
+        rpat_point_t *pt1 = &ctx->rpat.points[i];
+        double gain1;
+        
+        switch (ctx->fpat.inor) {
+            case 1: gain1 = pt1->gnmj; break;
+            case 2: gain1 = pt1->gnmn; break;
+            case 3: gain1 = pt1->gnv; break;
+            case 4: gain1 = pt1->gnh; break;
+            case 5: gain1 = pt1->gtot; break;
+            default: gain1 = pt1->gtot; break;
+        }
+        gain1 -= ctx->rpat.gmax;
+        
+        /* Check if we need fewer than 3 columns on the last row */
+        if ((i + 1) == itmp3 && itmp4 != 0) {
+            if (itmp4 != 2 && idx1 < ctx->rpat.num_points) {
+                rpat_point_t *pt2 = &ctx->rpat.points[idx1];
+                double gain2;
+                switch (ctx->fpat.inor) {
+                    case 1: gain2 = pt2->gnmj; break;
+                    case 2: gain2 = pt2->gnmn; break;
+                    case 3: gain2 = pt2->gnv; break;
+                    case 4: gain2 = pt2->gnh; break;
+                    case 5: gain2 = pt2->gtot; break;
+                    default: gain2 = pt2->gtot; break;
+                }
+                gain2 -= ctx->rpat.gmax;
+                fprintf(file, "\n"
+                    " %9.2f %9.2f %9.2f   %9.2f %9.2f %9.2f   ",
+                    pt1->theta, pt1->phi, gain1, pt2->theta, pt2->phi, gain2);
+            }
+            else {
+                fprintf(file, "\n"
+                    " %9.2f %9.2f %9.2f   ",
+                    pt1->theta, pt1->phi, gain1);
+            }
+            break;
+        }
+        
+        /* Print all three columns */
+        if (idx1 < ctx->rpat.num_points && idx2 < ctx->rpat.num_points) {
+            rpat_point_t *pt2 = &ctx->rpat.points[idx1];
+            rpat_point_t *pt3 = &ctx->rpat.points[idx2];
+            double gain2, gain3;
+            
+            switch (ctx->fpat.inor) {
+                case 1: gain2 = pt2->gnmj; gain3 = pt3->gnmj; break;
+                case 2: gain2 = pt2->gnmn; gain3 = pt3->gnmn; break;
+                case 3: gain2 = pt2->gnv; gain3 = pt3->gnv; break;
+                case 4: gain2 = pt2->gnh; gain3 = pt3->gnh; break;
+                case 5: gain2 = pt2->gtot; gain3 = pt3->gtot; break;
+                default: gain2 = pt2->gtot; gain3 = pt3->gtot; break;
+            }
+            gain2 -= ctx->rpat.gmax;
+            gain3 -= ctx->rpat.gmax;
+            
+            fprintf(file, "\n"
+                " %9.2f %9.2f %9.2f   %9.2f %9.2f %9.2f   %9.2f %9.2f %9.2f",
+                pt1->theta, pt1->phi, gain1,
+                pt2->theta, pt2->phi, gain2,
+                pt3->theta, pt3->phi, gain3);
+        }
+        
+        idx1++;
+        idx2++;
+    }
+}
+
+/******************************************************************************
+ * write_footer
+ * 
+ * Writes the footer with total run time and EN card echo.
+ */
+void write_footer(FILE *file, nec_context_t *ctx, deck_t *deck)
+{
+    // Output blank lines before footer
+    fprintf(file, "\n\n\n");
+    
+    // Output the EN card if it exists
+    if (deck != NULL && deck->deck_end >= 0 && deck->deck_end < deck->num_cards && deck->cards != NULL) {
+        card_t *en_card = &deck->cards[deck->deck_end];
+        // card_code is 2 chars, not null-terminated, so use %.2s format
+        fprintf(file, "  DATA CARD No: %3d %.2s", deck->deck_end + 1, en_card->card_code);
+        
+        // Output integer fields (i[1] through i[4])
+        for (int i = 1; i <= 4; i++) {
+            fprintf(file, " %5d", en_card->i[i]);
+        }
+        
+        // Output float fields (f[1] through f[6])
+        for (int i = 1; i <= 6; i++) {
+            fprintf(file, "  %.5E", en_card->f[i]);
+        }
+        fprintf(file, "\n");
+    }
+    
+    // Calculate and output total runtime
+    if (ctx != NULL) {
+        clock_t end_time = clock();
+        double elapsed = ((double)(end_time - ctx->start_time)) / CLOCKS_PER_SEC * 1000.0;  // Convert to milliseconds
+        fprintf(file, "\n  TOTAL RUN TIME: %.0f msec", elapsed);
+    }
 }
 
 /* end of output.c */

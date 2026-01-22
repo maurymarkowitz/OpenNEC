@@ -17,6 +17,7 @@
 #include <complex.h>
 #include <stdio.h>
 #include <stdbool.h>  // we will use the bool type!
+#include <time.h>     // for clock_t and timing
 
 // NEC has 4 int fields
 #ifndef MAX_INT_FIELDS_DEF
@@ -367,6 +368,40 @@ typedef struct
 
 } fpat_t;
 
+/* Radiation pattern data point */
+typedef struct
+{
+	double theta;
+	double phi;
+	double gnmj;      /* major axis gain (dB) */
+	double gnmn;      /* minor axis gain (dB) */
+	double gnv;       /* vertical gain (dB) */
+	double gnh;       /* horizontal gain (dB) */
+	double gtot;      /* total gain (dB) */
+	double axrat;     /* axial ratio */
+	double tilta;     /* tilt angle */
+	int    pol_sense; /* 0=LINEAR, 1=RIGHT, 2=LEFT */
+	double ethm;      /* E-theta magnitude */
+	double etha;      /* E-theta phase */
+	double ephm;      /* E-phi magnitude */
+	double epha;      /* E-phi phase */
+	double erdm;      /* E-radial magnitude (near field only) */
+	double erda;      /* E-radial phase (near field only) */
+} rpat_point_t;
+
+/* Radiation pattern results */
+typedef struct
+{
+	int num_points;
+	rpat_point_t *points;
+	double gmax;      /* maximum gain for normalization */
+	double pint;      /* average power */
+	double solid_angle; /* solid angle used in averaging */
+	double exrm;      /* exp(-jkr)/r magnitude */
+	double exra;      /* exp(-jkr)/r phase */
+	char ground_cliff_type[20]; /* "LINEAR" or "CIRCULAR" for cliff */
+} rpat_results_t;
+
 /*common  /ggrid/ */
 typedef struct
 {
@@ -478,7 +513,33 @@ typedef struct
 		*x22r,
 		*x22i,
 		pin,	  /* Total input power from sources */
-		pnls;	  /* Power lost in networks */
+		pnls,	  /* Power lost in networks */
+		asmx,     /* Maximum relative asymmetry */
+		asa,      /* RMS relative asymmetry */
+		mat_fill_time,   /* Time to fill interaction matrix (msec) */
+		mat_factor_time; /* Time to factor interaction matrix (msec) */
+
+	int
+		nteq_asym, /* Segment number for max asymmetry (first) */
+		ntsc_asym, /* Segment number for max asymmetry (second) */
+		nexc;      /* Number of network excitation points stored */
+
+	int *exc_tag;           /* Tag numbers for excitation points */
+	int *exc_seg;           /* Segment numbers for excitation points */
+	complex double *exc_v;  /* Voltage at excitation points */
+	complex double *exc_i;  /* Current at excitation points */
+	complex double *exc_z;  /* Impedance at excitation points */
+	complex double *exc_y;  /* Admittance at excitation points */
+	double *exc_pwr;        /* Power at excitation points */
+
+	int ninp;               /* Number of antenna input points stored */
+	int *inp_tag;           /* Tag numbers for antenna input points */
+	int *inp_seg;           /* Segment numbers for antenna input points */
+	complex double *inp_v;  /* Voltage at input points */
+	complex double *inp_i;  /* Current at input points */
+	complex double *inp_z;  /* Impedance at input points */
+	complex double *inp_y;  /* Admittance at input points */
+	double *inp_pwr;        /* Power at input points */
 
 	complex double zped;
 
@@ -501,12 +562,17 @@ typedef struct
 {
 	int *ip;	/* Vector of indices of pivot elements used to factor matrix */
 
+	int
+		nfrq,	  /* Number of frequency steps */
+		ifrq;	  /* Frequency stepping type (0=linear, 1=multiplicative) */
+
 	double
 		epsr,	  /* Relative dielectric constant of ground */
 		sig,	  /* Conductivity of ground */
 		scrwlt,	/* Length of radials in ground screen approximation */
 		scrwrt,	/* Radius of wires in ground screen approximation */
-		fmhz;	  /* Frequency in MHz */
+		fmhz,	  /* Frequency in MHz */
+		delfrq;	/* Frequency step size */
 
 } save_t;
 
@@ -589,6 +655,18 @@ typedef struct
 typedef struct
 {
 	int nload;	/* Number of loading networks */
+	
+	int
+		*ldtyp,	/* Type of loading (0=series RLC, 1=parallel RLC, etc.) */
+		*ldtag,	/* Tag number for loading */
+		*ldtagf,	/* Segment start for loading */
+		*ldtagt;	/* Segment end for loading */
+	
+	double
+		*zlr,	/* Loading resistance or impedance (real) */
+		*zli,	/* Loading reactance or impedance (imaginary) */
+		*zlc;	/* Loading capacitance */
+	
 	complex double *zarray;	/* = Zi/(Di/lambda) */
 } zload_t;
 
@@ -618,6 +696,14 @@ typedef struct nec_context_t
 	vsorc_t vsorc;
 	yparm_t yparm;
 	zload_t zload;
+	
+	/* Radiation pattern results */
+	rpat_results_t rpat;
+	
+	/* Timing data for output */
+	double mat_fill_time;   /* Matrix fill time in seconds */
+	double mat_factor_time; /* Matrix factor time in seconds */
+	clock_t start_time;     /* Start time for total runtime calculation */
 } nec_context_t;
 
 void nec_context_init(nec_context_t *ctx);

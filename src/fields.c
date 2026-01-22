@@ -24,7 +24,6 @@
  ******************************************************************/
 
 #include "opennec.h"
-#include "shared.h"
 
 /*common  /tmh/ */
 static tmh_t tmh;

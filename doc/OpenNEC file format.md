@@ -6,7 +6,7 @@ Version 1.0, January 2026
 Introduction
 ------------
 
-OpenNEC, or onec for short, is an implementation of the Numerical Electromagnetics Code ("NEC") system for simulating antennas. It is based on a port of the original NEC-2 code converted from Fortran to C written by Neoklis Kyriazis, called nec2c.
+OpenNEC, or onec for short, is an implementation of the Numerical Electromagnetics Code ("NEC") system for simulating antennas. It is based on a port of the original NEC-2 code converted from Fortran to C by Neoklis Kyriazis, called nec2c.
 
 NEC systems use text files known as "decks" to exchange design information between antenna simulator programs using the NEC-2 and NEC-4 programs, or compatible systems like nec2c, 4nec2, MININEC, and many others. The OpenNEC file format is an extended version of the *de facto* NEC file format, adding a small number of new features and more clearly specifying some formerly ill-defined features.
 

@@ -18,7 +18,6 @@
  status of output files set to 'unknown' */
 
 #include "opennec.h"
-#include "shared.h"
 
 /* common /evlcom/ */
 static int jh;

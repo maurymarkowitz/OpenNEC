@@ -1,8 +1,8 @@
 /*
- * Miscellaneous support functions for nec2c.c
+ * Miscellaneous support functions for onec
  */
 
-#include "shared.h"
+#include "opennec.h"
 
 /***  ONEC utils ***/
 

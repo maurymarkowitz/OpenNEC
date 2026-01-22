@@ -24,7 +24,6 @@
  ******************************************************************/
 
 #include "opennec.h"
-#include "shared.h"
 
 /*-----------------------------------------------------------------------*/
 
@@ -404,490 +403,277 @@ void gfld(nec_context_t *ctx, double rho, double phi, double rz,
 /*-----------------------------------------------------------------------*/
 
 /* compute radiation pattern, gain, normalized gain */
+
+#include "opennec.h"
+
+/* rdpat_calc - Calculate radiation patterns (no output)
+ * Refactored version that only performs calculations and stores results in ctx->rpat
+ */
 void rdpat(nec_context_t *ctx)
 {
-  char  *hpol[3] = { "LINEAR", "RIGHT ", "LEFT  " };
-  char  *igtp[2] = { "----- POWER GAINS ----- ", "--- DIRECTIVE GAINS ---" };
-  char  *igax[4] = { " MAJOR", " MINOR", " VERTC", " HORIZ" };
-  char *igntp[5] = { " MAJOR AXIS", "  MINOR AXIS",
-	"    VERTICAL", "  HORIZONTAL", "       TOTAL " };
-
-  char *hclif=NULL, *isens;
-  int i, j, jump, itmp1, itmp2, kth, kph, itmp3, itmp4;
-  double exrm=0., exra=0., prad, gcon, gcop, gmax, pint, tmp1, tmp2;
-  double phi, pha, thet, tha, erdm=0., erda=0., ethm2, ethm, *gain = NULL;
+  int i, kth, kph, point_idx;
+  double prad, gcon, gcop, gmax, pint, tmp1, tmp2;
+  double phi, pha, thet, tha, ethm2, ethm, *gain = NULL;
   double etha, ephm2, ephm, epha, tilta, emajr2, eminr2, axrat;
-  double dfaz, dfaz2, cdfaz, tstor1=0., tstor2, stilta, gnmj;
-  double gnmn, gnv, gnh, gtot, tmp3, tmp4, da, tmp5, tmp6;
+  double dfaz, dfaz2, cdfaz, tstor1, tstor2, stilta, gnmj;
+  double gnmn, gnv, gnh, gtot, tmp3, tmp4, da;
   complex double  eth, eph, erd;
-
-  /* Allocate memory to gain buffer */
-  if( ctx->fpat.inor > 0 )
-  {
-	size_t mreq = (size_t)(ctx->fpat.nth * ctx->fpat.nph);
-	mreq *= sizeof(double);
-	mem_alloc(ctx, (void *)&gain, mreq );
+  
+  /* Free any previous radiation pattern data */
+  if (ctx->rpat.points != NULL) {
+    mem_free(ctx, (void **)&ctx->rpat.points);
+    ctx->rpat.points = NULL;
   }
-
-  if( ctx->gnd.ifar > 1)
-  {
-	fprintf( ctx->output_fp, "\n\n\n"
-		"                               "
-		"------ FAR FIELD GROUND PARAMETERS ------\n\n" );
-
-	jump = FALSE;
-	if( ctx->gnd.ifar > 3)
-	{
-	  fprintf( ctx->output_fp, "\n"
-		  "                               "
-		  "--- RADIAL WIRE GROUND SCREEN ---\n"
-		  "                               "
-		  "NUM OF WIRES= %d\n"
-		  "                               "
-		  "WIRE LENGTH= %8.2f METERS\n"
-		  "                               "
-		  "WIRE RADIUS= %10.3E METERS",
-		  ctx->gnd.nradl, ctx->save.scrwlt, ctx->save.scrwrt );
-
-	  if( ctx->gnd.ifar == 4)
-		jump = TRUE;
-
-	} /* if( ctx->gnd.ifar > 3) */
-
-	if( ! jump )
-	{
-	  if( (ctx->gnd.ifar == 2) || (ctx->gnd.ifar == 5) )
-		hclif= "LINEAR";
-	  if( (ctx->gnd.ifar == 3) || (ctx->gnd.ifar == 6) )
-		hclif= "CIRCULAR";
-
-	  ctx->gnd.cl= ctx->fpat.clt/ ctx->geometry.wlam;
-	  ctx->gnd.ch= ctx->fpat.cht/ ctx->geometry.wlam;
-	  ctx->gnd.zrati2= csqrt(1./ cmplx( ctx->fpat.epsr2,- ctx->fpat.sig2* ctx->geometry.wlam*59.96));
-
-	  fprintf( ctx->output_fp, "\n"
-		  "                               "
-		  "--- %s CLIFF ---\n"
-		  "                               "
-		  "EDGE DISTANCE= %9.2f METERS\n"
-		  "                               "
-		  "       HEIGHT= %9.2f METERS\n"
-		  "                               "
-		  "--- SECOND MEDIUM ---\n"
-		  "                               "
-		  "RELATIVE DIELECTRIC CONST= %10.3f\n"
-		  "                               "
-		  "      GROUND CONDUCTIVITY= %10.3f MHOS",
-		  hclif, ctx->fpat.clt, ctx->fpat.cht, ctx->fpat.epsr2, ctx->fpat.sig2 );
-
-	} /* if( ! jump ) */
-
-  } /* if( ctx->gnd.ifar > 1) */
-
-  if( ctx->gnd.ifar == 1)
-  {
-	fprintf( ctx->output_fp, "\n\n\n"
-		"                             "
-		"------- RADIATED FIELDS NEAR GROUND --------\n\n"
-		"    ------- LOCATION -------     --- E(THETA) ---    "
-		" ---- E(PHI) ----    --- E(RADIAL) ---\n"
-		"      RHO    PHI        Z           MAG    PHASE     "
-		"    MAG    PHASE        MAG     PHASE\n"
-		"    METERS DEGREES    METERS      VOLTS/M DEGREES   "
-		"   VOLTS/M DEGREES     VOLTS/M  DEGREES" );
+  
+  /* Calculate ground parameters for cliff if needed */
+  if (ctx->gnd.ifar > 1 && ctx->gnd.ifar != 4) {
+    if ((ctx->gnd.ifar == 2) || (ctx->gnd.ifar == 5))
+      strcpy(ctx->rpat.ground_cliff_type, "LINEAR");
+    else if ((ctx->gnd.ifar == 3) || (ctx->gnd.ifar == 6))
+      strcpy(ctx->rpat.ground_cliff_type, "CIRCULAR");
+    
+    ctx->gnd.cl = ctx->fpat.clt / ctx->geometry.wlam;
+    ctx->gnd.ch = ctx->fpat.cht / ctx->geometry.wlam;
+    ctx->gnd.zrati2 = csqrt(1./ cmplx(ctx->fpat.epsr2, -ctx->fpat.sig2 * ctx->geometry.wlam * 59.96));
   }
-  else
-  {
-	itmp1=2* ctx->fpat.iax;
-	itmp2= itmp1+1;
-
-	fprintf( ctx->output_fp, "\n\n\n"
-		"                             "
-		"---------- RADIATION PATTERNS -----------\n" );
-
-	if( ctx->fpat.rfld >= 1.0e-20)
-	{
-	  exrm=1./ ctx->fpat.rfld;
-	  exra= ctx->fpat.rfld/ ctx->geometry.wlam;
-	  exra=-360.*( exra- floor( exra));
-
-	  fprintf( ctx->output_fp, "\n"
-		  "                             "
-		  "RANGE: %13.6E METERS\n"
-		  "                             "
-		  "EXP(-JKR)/R: %12.5E AT PHASE: %7.2f DEGREES\n",
-		  ctx->fpat.rfld, exrm, exra );
-	}
-
-	fprintf( ctx->output_fp, "\n"
-		" ---- ANGLES -----     %23s      ---- POLARIZATION ----  "
-		" ---- E(THETA) ----    ----- E(PHI) ------\n"
-		"  THETA      PHI      %6s   %6s    TOTAL       AXIAL    "
-		"  TILT  SENSE   MAGNITUDE    PHASE    MAGNITUDE     PHASE\n"
-		" DEGREES   DEGREES        DB       DB       DB       RATIO  "
-		" DEGREES            VOLTS/M   DEGREES     VOLTS/M   DEGREES",
-		 igtp[ctx->fpat.ipd], igax[itmp1], igax[itmp2] );
-
-  } /* if( ctx->gnd.ifar == 1) */
-
-  if( (ctx->fpat.ixtyp == 0) || (ctx->fpat.ixtyp == 5) )
-  {
-	gcop= ctx->geometry.wlam* ctx->geometry.wlam*2.* PI/(376.73* ctx->fpat.pinr);
-	prad= ctx->fpat.pinr- ctx->fpat.ploss- ctx->fpat.pnlr;
-	gcon= gcop;
-	if( ctx->fpat.ipd != 0)
-	  gcon= gcon* ctx->fpat.pinr/ prad;
+  
+  /* Calculate range factor if specified */
+  ctx->rpat.exrm = 0.0;
+  ctx->rpat.exra = 0.0;
+  if (ctx->fpat.rfld >= 1.0e-20) {
+    ctx->rpat.exrm = 1.0 / ctx->fpat.rfld;
+    double exra_tmp = ctx->fpat.rfld / ctx->geometry.wlam;
+    ctx->rpat.exra = -360.0 * (exra_tmp - floor(exra_tmp));
   }
-  else
-	if( ctx->fpat.ixtyp == 4)
-	{
-	  ctx->fpat.pinr=394.51* ctx->fpat.xpr6* ctx->fpat.xpr6* ctx->geometry.wlam* ctx->geometry.wlam;
-	  gcop= ctx->geometry.wlam* ctx->geometry.wlam*2.* PI/(376.73* ctx->fpat.pinr);
-	  prad= ctx->fpat.pinr- ctx->fpat.ploss- ctx->fpat.pnlr;
-	  gcon= gcop;
-	  if( ctx->fpat.ipd != 0)
-		gcon= gcon* ctx->fpat.pinr/ prad;
-	}
-	else
-	{
-	  gcon=4.* PI/(1.+ ctx->fpat.xpr6* ctx->fpat.xpr6);
-	  gcop= gcon;
-	}
-
-  i=0;
-  gmax=-1.e+10;
-  pint=0.;
-  tmp1= ctx->fpat.dph* TA;
-  tmp2=.5* ctx->fpat.dth* TA;
-  phi= ctx->fpat.phis- ctx->fpat.dph;
-
-  for( kph = 1; kph <= ctx->fpat.nph; kph++ )
-  {
-	phi += ctx->fpat.dph;
-	pha= phi* TA;
-	thet= ctx->fpat.thets- ctx->fpat.dth;
-
-	for( kth = 1; kth <= ctx->fpat.nth; kth++ )
-	{
-	  thet += ctx->fpat.dth;
-	  if( (ctx->gnd.ksymp == 2) && (thet > 90.01) && (ctx->gnd.ifar != 1) )
-		continue;
-
-	  tha= thet* TA;
-	  if( ctx->gnd.ifar != 1)
-	  {
-		ffld(ctx, tha, pha, &eth, &eph);
-	  }
-	  else
-	  {
-		gfld(ctx, ctx->fpat.rfld/ctx->geometry.wlam, pha, thet/ctx->geometry.wlam,
-			&eth, &eph, &erd, ctx->gnd.zrati, ctx->gnd.ksymp);
-		erdm= cabs( erd);
-		erda= cang(ctx, erd);
-	  }
-
-	  ethm2= creal( eth* conj( eth));
-	  ethm= sqrt( ethm2);
-	  etha= cang(ctx, eth);
-	  ephm2= creal( eph* conj( eph));
-	  ephm= sqrt( ephm2);
-	  epha= cang(ctx, eph);
-
-	  /* elliptical polarization calc. */
-	  if( ctx->gnd.ifar != 1)
-	  {
-		if( (ethm2 <= 1.0e-20) && (ephm2 <= 1.0e-20) )
-		{
-		  tilta=0.;
-		  emajr2=0.;
-		  eminr2=0.;
-		  axrat=0.;
-		  isens= " ";
-		}
-		else
-		{
-		  dfaz= epha- etha;
-		  if( epha >= 0.)
-			dfaz2= dfaz-360.;
-		  else
-			dfaz2= dfaz+360.;
-
-		  if( fabs(dfaz) > fabs(dfaz2) )
-			dfaz= dfaz2;
-
-		  cdfaz= cos( dfaz* TA);
-		  tstor1= ethm2- ephm2;
-		  tstor2=2.* ephm* ethm* cdfaz;
-		  tilta=.5* atan2( tstor2, tstor1);
-		  stilta= sin( tilta);
-		  tstor1= tstor1* stilta* stilta;
-		  tstor2= tstor2* stilta* cos( tilta);
-		  emajr2= -tstor1+ tstor2+ ethm2;
-		  eminr2= tstor1- tstor2+ ephm2;
-		  if( eminr2 < 0.)
-			eminr2=0.;
-
-		  axrat= sqrt( eminr2/ emajr2);
-		  tilta= tilta* TD;
-		  if( axrat <= 1.0e-5)
-			isens= hpol[0];
-		  else
-			if( dfaz <= 0.)
-			  isens= hpol[1];
-			else
-			  isens= hpol[2];
-
-		} /* if( (ethm2 <= 1.0e-20) && (ephm2 <= 1.0e-20) ) */
-
-		/* compute gains using db10 with ctx */
-		gnmj= db10(ctx, gcon* emajr2);
-		gnmn= db10(ctx, gcon* eminr2);
-		gnv = db10(ctx, gcon* ethm2);
-		gnh = db10(ctx, gcon* ephm2);
-		gtot= db10(ctx, gcon*(ethm2+ ephm2) );
-
-		if( ctx->fpat.inor > 0)
-		{
-		  i++;
-		  switch( ctx->fpat.inor )
-		  {
-			case 1:
-			  tstor1= gnmj;
-			  break;
-
-			case 2:
-			  tstor1= gnmn;
-			  break;
-
-			case 3:
-			  tstor1= gnv;
-			  break;
-
-			case 4:
-			  tstor1= gnh;
-			  break;
-
-			case 5:
-			  tstor1= gtot;
-			  break;
-		  }
-
-		  /* store in local gain buffer */
-		  if (gain != NULL) gain[i-1]= tstor1;
-		  if( tstor1 > gmax)
-			gmax= tstor1;
-
-		} /* if( ctx->fpat.inor > 0) */
-
-		if( ctx->fpat.iavp != 0)
-		{
-		  tstor1= gcop*( ethm2+ ephm2);
-		  tmp3= tha- tmp2;
-		  tmp4= tha+ tmp2;
-
-		  if( kth == 1)
-			tmp3= tha;
-		  else
-			if( kth == ctx->fpat.nth)
-			  tmp4= tha;
-
-		  da= fabs( tmp1*( cos( tmp3)- cos( tmp4)));
-		  if( (kph == 1) || (kph == ctx->fpat.nph) )
-			da *=.5;
-		  pint += tstor1* da;
-
-		  if( ctx->fpat.iavp == 2)
-			continue;
-		}
-
-		if( ctx->fpat.iax != 1)
-		{
-		  tmp5= gnmj;
-		  tmp6= gnmn;
-		}
-		else
-		{
-		  tmp5= gnv;
-		  tmp6= gnh;
-		}
-
-		ethm= ethm* ctx->geometry.wlam;
-		ephm= ephm* ctx->geometry.wlam;
-
-		if( ctx->fpat.rfld >= 1.0e-20 )
-		{
-		  ethm= ethm* exrm;
-		  etha= etha+ exra;
-		  ephm= ephm* exrm;
-		  epha= epha+ exra;
-		}
-
-		fprintf( ctx->output_fp, "\n"
-			" %7.2f %9.2f  %8.2f %8.2f %8.2f %11.4f"
-			" %9.2f %6s %11.4E %9.2f %11.4E %9.2f",
-			thet, phi, tmp5, tmp6, gtot, axrat,
-			tilta, isens, ethm, etha, ephm, epha );
-
-		if( ctx->plot.iplp1 != 3)
-		  continue;
-
-		if( ctx->plot.iplp3 != 0)
-		{
-		  if( ctx->plot.iplp2 == 1 )
-		  {
-			if( ctx->plot.iplp3 == 1 )
-			  fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", thet, ethm, etha );
-			else
-			  if( ctx->plot.iplp3 == 2 )
-				fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", thet, ephm, epha );
-		  }
-
-		  if( ctx->plot.iplp2 == 2 )
-		  {
-			if( ctx->plot.iplp3 == 1 )
-			  fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", phi, ethm, etha );
-			else
-			  if( ctx->plot.iplp3 == 2 )
-				fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", phi, ephm, epha );
-		  }
-		}
-
-		if( ctx->plot.iplp4 == 0 )
-		  continue;
-
-		if( ctx->plot.iplp2 == 1 )
-		{
-		  switch( ctx->plot.iplp4 )
-		  {
-			case 1:
-			  fprintf( ctx->plot_fp, "%12.4E %12.4E\n", thet, tmp5 );
-			  break;
-			case 2:
-			  fprintf( ctx->plot_fp, "%12.4E %12.4E\n", thet, tmp6 );
-			  break;
-			case 3:
-			  fprintf( ctx->plot_fp, "%12.4E %12.4E\n", thet, gtot );
-		  }
-		}
-
-		if( ctx->plot.iplp2 == 2 )
-		{
-		  switch( ctx->plot.iplp4 )
-		  {
-			case 1:
-			  fprintf( ctx->plot_fp, "%12.4E %12.4E\n", phi, tmp5 );
-			  break;
-			case 2:
-			  fprintf( ctx->plot_fp, "%12.4E %12.4E\n", phi, tmp6 );
-			  break;
-			case 3:
-			  fprintf( ctx->plot_fp, "%12.4E %12.4E\n", phi, gtot );
-		  }
-		}
-
-		continue;
-	  } /* if( ctx->gnd.ifar != 1) */
-
-	  fprintf( ctx->output_fp, "\n"
-		  " %9.2f %7.2f %9.2f  %11.4E %7.2f  %11.4E %7.2f  %11.4E %7.2f",
-		  ctx->fpat.rfld, phi, thet, ethm, etha, ephm, epha, erdm, erda );
-
-	} /* for( kth = 1; kth <= ctx->fpat.nth; kph++ ) */
-
-  } /* for( kph = 1; kph <= ctx->fpat.nph; kph++ ) */
-
-  if( ctx->fpat.iavp != 0)
-  {
-		tmp3= ctx->fpat.thets* TA;
-		tmp4= tmp3+ ctx->fpat.dth* TA* (double)( ctx->fpat.nth-1);
-		tmp3= fabs( ctx->fpat.dph* TA* (double)( ctx->fpat.nph-1)*( cos( tmp3)- cos( tmp4)));
-		pint /= tmp3;
-		tmp3 /= PI;
-
-		fprintf( ctx->output_fp, "\n\n\n"
-			"  AVERAGE POWER GAIN: %11.4E - SOLID ANGLE"
-			" USED IN AVERAGING: (%+7.4f)*PI STERADIANS",
-			pint, tmp3 );
-	}
-
-	if( ctx->fpat.inor > 0)
-	{
-		if( fabs( ctx->fpat.gnor) > 1.0e-20)
-		  gmax= ctx->fpat.gnor;
-		itmp1=( ctx->fpat.inor-1);
-
-		fprintf( ctx->output_fp, "\n\n\n"
-			"                             "
-			" ---------- NORMALIZED GAIN ----------\n"
-			"                                      %6s GAIN\n"
-			"                                  "
-			" NORMALIZATION FACTOR: %.2f db\n\n"
-			"    ---- ANGLES ----                ---- ANGLES ----"
-			"                ---- ANGLES ----\n"
-			"    THETA      PHI        GAIN      THETA      PHI  "
-			"      GAIN      THETA      PHI       GAIN\n"
-			"   DEGREES   DEGREES        DB     DEGREES   DEGREES "
-			"       DB     DEGREES   DEGREES       DB",
-			igntp[itmp1], gmax );
-
-		itmp2= ctx->fpat.nph* ctx->fpat.nth;
-		itmp1=( itmp2+2)/3;
-		itmp2= itmp1*3- itmp2;
-		itmp3= itmp1;
-		itmp4=2* itmp1;
-
-		if( itmp2 == 2)
-		  itmp4--;
-
-		for( i = 0; i < itmp1; i++ )
-		{
-		  itmp3++;
-		  itmp4++;
-		  j= i/ ctx->fpat.nth;
-		  tmp1= ctx->fpat.thets+ (double)( i - j*ctx->fpat.nth )* ctx->fpat.dth;
-		  tmp2= ctx->fpat.phis+ (double)(j)* ctx->fpat.dph;
-		  j=( itmp3-1)/ ctx->fpat.nth;
-		  tmp3= ctx->fpat.thets+ (double)( itmp3- j* ctx->fpat.nth-1)* ctx->fpat.dth;
-		  tmp4= ctx->fpat.phis+ (double)(j)* ctx->fpat.dph;
-		  j=( itmp4-1)/ ctx->fpat.nth;
-		  tmp5= ctx->fpat.thets+ (double)( itmp4- j* ctx->fpat.nth-1)* ctx->fpat.dth;
-		  tmp6= ctx->fpat.phis+ (double)(j)* ctx->fpat.dph;
-		  tstor1= (gain != NULL) ? gain[i]- gmax : 0.0;
-
-		  if( ((i+1) == itmp1) && (itmp2 != 0) )
-		  {
-			if( itmp2 != 2)
-			{
-			  tstor2= (gain != NULL) ? gain[itmp3-1]- gmax : 0.0;
-			  fprintf( ctx->output_fp, "\n"
-				  " %9.2f %9.2f %9.2f   %9.2f %9.2f %9.2f   ",
-				  tmp1, tmp2, tstor1, tmp3, tmp4, tstor2 );
-			  mem_free(ctx, (void *)&gain );
-			  return;
-			}
-
-			fprintf( ctx->output_fp, "\n"
-				" %9.2f %9.2f %9.2f   ",
-				 tmp1, tmp2, tstor1 );
-			mem_free(ctx, (void *)&gain );
-			return;
-
-		  } /* if( ((i+1) == itmp1) && (itmp2 != 0) ) */
-
-		  tstor2= (gain != NULL) ? gain[itmp3-1]- gmax : 0.0;
-		  pint= (gain != NULL) ? gain[itmp4-1]- gmax : 0.0;
-
-		  fprintf( ctx->output_fp, "\n"
-			  " %9.2f %9.2f %9.2f   %9.2f %9.2f %9.2f   %9.2f %9.2f %9.2f",
-			  tmp1, tmp2, tstor1, tmp3, tmp4, tstor2, tmp5, tmp6, pint );
-
-		} /* for( i = 0; i < itmp1; i++ ) */
-	}
-
-	mem_free(ctx, (void *)&gain );
-
-	return;
+  
+  /* Allocate memory for gain normalization buffer if needed */
+  if (ctx->fpat.inor > 0) {
+    size_t mreq = (size_t)(ctx->fpat.nth * ctx->fpat.nph);
+    mreq *= sizeof(double);
+    mem_alloc(ctx, (void *)&gain, mreq);
+  }
+  
+  /* Calculate gain factors */
+  if ((ctx->fpat.ixtyp == 0) || (ctx->fpat.ixtyp == 5)) {
+    gcop = ctx->geometry.wlam * ctx->geometry.wlam * 2.0 * PI / (376.73 * ctx->fpat.pinr);
+    prad = ctx->fpat.pinr - ctx->fpat.ploss - ctx->fpat.pnlr;
+    gcon = gcop;
+    if (ctx->fpat.ipd != 0)
+      gcon = gcon * ctx->fpat.pinr / prad;
+  }
+  else if (ctx->fpat.ixtyp == 4) {
+    ctx->fpat.pinr = 394.51 * ctx->fpat.xpr6 * ctx->fpat.xpr6 * ctx->geometry.wlam * ctx->geometry.wlam;
+    gcop = ctx->geometry.wlam * ctx->geometry.wlam * 2.0 * PI / (376.73 * ctx->fpat.pinr);
+    prad = ctx->fpat.pinr - ctx->fpat.ploss - ctx->fpat.pnlr;
+    gcon = gcop;
+    if (ctx->fpat.ipd != 0)
+      gcon = gcon * ctx->fpat.pinr / prad;
+  }
+  else {
+    gcon = 4.0 * PI / (1.0 + ctx->fpat.xpr6 * ctx->fpat.xpr6);
+    gcop = gcon;
+  }
+  
+  /* Allocate storage for radiation pattern points */
+  ctx->rpat.num_points = ctx->fpat.nth * ctx->fpat.nph;
+  size_t mreq = (size_t)ctx->rpat.num_points * sizeof(rpat_point_t);
+  mem_alloc(ctx, (void **)&ctx->rpat.points, mreq);
+  
+  /* Initialize calculation variables */
+  i = 0;
+  point_idx = 0;
+  gmax = -1.0e+10;
+  pint = 0.0;
+  tmp1 = ctx->fpat.dph * TA;
+  tmp2 = 0.5 * ctx->fpat.dth * TA;
+  phi = ctx->fpat.phis - ctx->fpat.dph;
+  
+  /* Main calculation loop over phi and theta */
+  for (kph = 1; kph <= ctx->fpat.nph; kph++) {
+    phi += ctx->fpat.dph;
+    pha = phi * TA;
+    thet = ctx->fpat.thets - ctx->fpat.dth;
+    
+    for (kth = 1; kth <= ctx->fpat.nth; kth++) {
+      thet += ctx->fpat.dth;
+      
+      /* Skip if beyond 90 degrees with symmetry */
+      if ((ctx->gnd.ksymp == 2) && (thet > 90.01) && (ctx->gnd.ifar != 1))
+        continue;
+      
+      tha = thet * TA;
+      rpat_point_t *pt = &ctx->rpat.points[point_idx];
+      pt->theta = thet;
+      pt->phi = phi;
+      
+      /* Calculate E-fields */
+      if (ctx->gnd.ifar != 1) {
+        ffld(ctx, tha, pha, &eth, &eph);
+        pt->erdm = 0.0;
+        pt->erda = 0.0;
+      }
+      else {
+        gfld(ctx, ctx->fpat.rfld / ctx->geometry.wlam, pha, thet / ctx->geometry.wlam,
+             &eth, &eph, &erd, ctx->gnd.zrati, ctx->gnd.ksymp);
+        pt->erdm = cabs(erd);
+        pt->erda = cang(ctx, erd);
+      }
+      
+      ethm2 = creal(eth * conj(eth));
+      ethm = sqrt(ethm2);
+      etha = cang(ctx, eth);
+      ephm2 = creal(eph * conj(eph));
+      ephm = sqrt(ephm2);
+      epha = cang(ctx, eph);
+      
+      /* Calculate polarization for far field */
+      if (ctx->gnd.ifar != 1) {
+        if ((ethm2 <= 1.0e-20) && (ephm2 <= 1.0e-20)) {
+          tilta = 0.0;
+          emajr2 = 0.0;
+          eminr2 = 0.0;
+          axrat = 0.0;
+          pt->pol_sense = 0; /* LINEAR */
+        }
+        else {
+          dfaz = epha - etha;
+          if (epha >= 0.0)
+            dfaz2 = dfaz - 360.0;
+          else
+            dfaz2 = dfaz + 360.0;
+          
+          if (fabs(dfaz) > fabs(dfaz2))
+            dfaz = dfaz2;
+          
+          cdfaz = cos(dfaz * TA);
+          tstor1 = ethm2 - ephm2;
+          tstor2 = 2.0 * ephm * ethm * cdfaz;
+          tilta = 0.5 * atan2(tstor2, tstor1);
+          stilta = sin(tilta);
+          tstor1 = tstor1 * stilta * stilta;
+          tstor2 = tstor2 * stilta * cos(tilta);
+          emajr2 = -tstor1 + tstor2 + ethm2;
+          eminr2 = tstor1 - tstor2 + ephm2;
+          if (eminr2 < 0.0)
+            eminr2 = 0.0;
+          
+          axrat = sqrt(eminr2 / emajr2);
+          tilta = tilta * TD;
+          
+          if (axrat <= 1.0e-5)
+            pt->pol_sense = 0; /* LINEAR */
+          else if (dfaz <= 0.0)
+            pt->pol_sense = 1; /* RIGHT */
+          else
+            pt->pol_sense = 2; /* LEFT */
+        }
+        
+        /* Calculate gains in dB */
+        gnmj = db10(ctx, gcon * emajr2);
+        gnmn = db10(ctx, gcon * eminr2);
+        gnv = db10(ctx, gcon * ethm2);
+        gnh = db10(ctx, gcon * ephm2);
+        gtot = db10(ctx, gcon * (ethm2 + ephm2));
+        
+        pt->gnmj = gnmj;
+        pt->gnmn = gnmn;
+        pt->gnv = gnv;
+        pt->gnh = gnh;
+        pt->gtot = gtot;
+        pt->axrat = axrat;
+        pt->tilta = tilta;
+        
+        /* Store gain for normalization if requested */
+        if (ctx->fpat.inor > 0) {
+          i++;
+          switch (ctx->fpat.inor) {
+            case 1: tstor1 = gnmj; break;
+            case 2: tstor1 = gnmn; break;
+            case 3: tstor1 = gnv; break;
+            case 4: tstor1 = gnh; break;
+            case 5: tstor1 = gtot; break;
+            default: tstor1 = gtot; break;
+          }
+          
+          if (gain != NULL) gain[i-1] = tstor1;
+          if (tstor1 > gmax)
+            gmax = tstor1;
+        }
+        
+        /* Accumulate for average power if requested */
+        if (ctx->fpat.iavp != 0) {
+          tstor1 = gcop * (ethm2 + ephm2);
+          tmp3 = tha - tmp2;
+          tmp4 = tha + tmp2;
+          
+          if (kth == 1)
+            tmp3 = tha;
+          else if (kth == ctx->fpat.nth)
+            tmp4 = tha;
+          
+          da = fabs(tmp1 * (cos(tmp3) - cos(tmp4)));
+          if ((kph == 1) || (kph == ctx->fpat.nph))
+            da *= 0.5;
+          pint += tstor1 * da;
+        }
+        
+        /* Scale and adjust E-field values for output */
+        ethm = ethm * ctx->geometry.wlam;
+        ephm = ephm * ctx->geometry.wlam;
+        
+        if (ctx->fpat.rfld >= 1.0e-20) {
+          ethm = ethm * ctx->rpat.exrm;
+          etha = etha + ctx->rpat.exra;
+          ephm = ephm * ctx->rpat.exrm;
+          epha = epha + ctx->rpat.exra;
+        }
+      }
+      else {
+        /* Near field - no polarization calculation */
+        pt->gnmj = 0.0;
+        pt->gnmn = 0.0;
+        pt->gnv = 0.0;
+        pt->gnh = 0.0;
+        pt->gtot = 0.0;
+        pt->axrat = 0.0;
+        pt->tilta = 0.0;
+        pt->pol_sense = 0;
+      }
+      
+      pt->ethm = ethm;
+      pt->etha = etha;
+      pt->ephm = ephm;
+      pt->epha = epha;
+      
+      point_idx++;
+    } /* for kth */
+  } /* for kph */
+  
+  /* Calculate average power if requested */
+  if (ctx->fpat.iavp != 0) {
+    tmp3 = ctx->fpat.thets * TA;
+    tmp4 = tmp3 + ctx->fpat.dth * TA * (double)(ctx->fpat.nth - 1);
+    tmp3 = fabs(ctx->fpat.dph * TA * (double)(ctx->fpat.nph - 1) * (cos(tmp3) - cos(tmp4)));
+    pint /= tmp3;
+    ctx->rpat.solid_angle = tmp3 / PI;
+    ctx->rpat.pint = pint;
+  }
+  else {
+    ctx->rpat.pint = 0.0;
+    ctx->rpat.solid_angle = 0.0;
+  }
+  
+  /* Store maximum gain for normalization */
+  if (ctx->fpat.inor > 0) {
+    if (fabs(ctx->fpat.gnor) > 1.0e-20)
+      gmax = ctx->fpat.gnor;
+    ctx->rpat.gmax = gmax;
+  }
+  else {
+    ctx->rpat.gmax = 0.0;
+  }
+  
+  /* Free temporary gain buffer */
+  if (gain != NULL)
+    mem_free(ctx, (void *)&gain);
 }
-
-/*-----------------------------------------------------------------------*/
-

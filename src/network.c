@@ -1,5 +1,4 @@
 #include "opennec.h"
-#include "shared.h"
 
 /*-------------------------------------------------------------------*/
 
@@ -20,6 +19,18 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
   ctx->netcx.pnls=0.;
   neqt= ctx->netcx.neq+ ctx->netcx.neq2;
   ndimn = (2*ctx->netcx.nonet + ctx->vsorc.nsant);
+
+  /* Calculate transmission line lengths from geometry if not specified */
+  for (j = 0; j < ctx->netcx.nonet; j++) {
+    if ((ctx->netcx.ntyp[j] >= 2) && (ctx->netcx.x11i[j] <= 0.0)) {
+      int seg1_idx = ctx->netcx.iseg1[j] - 1;
+      int seg2_idx = ctx->netcx.iseg2[j] - 1;
+      double xx = ctx->geometry.x[seg2_idx] - ctx->geometry.x[seg1_idx];
+      double yy = ctx->geometry.y[seg2_idx] - ctx->geometry.y[seg1_idx];
+      double zz = ctx->geometry.z[seg2_idx] - ctx->geometry.z[seg1_idx];
+      ctx->netcx.x11i[j] = ctx->geometry.wlam * sqrt(xx*xx + yy*yy + zz*zz);
+    }
+  }
 
   /* Allocate network buffers */
   if( ctx->netcx.nonet != 0 )
@@ -166,11 +177,12 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
         } /* for( i = 1; i < irow1; i++ ) */
 
         asa= sqrt( asa*2./ (double)( irow1*( irow1-1)));
-        fprintf( ctx->output_fp, "\n\n"
-            "   MAXIMUM RELATIVE ASYMMETRY OF THE DRIVING POINT ADMITTANCE\n"
-            "   MATRIX IS %10.3E FOR SEGMENTS %d AND %d\n"
-            "   RMS RELATIVE ASYMMETRY IS %10.3E",
-            asmx, nteq, ntsc, asa );
+        
+        /* Store asymmetry data in context for output */
+        ctx->netcx.asmx = asmx;
+        ctx->netcx.asa = asa;
+        ctx->netcx.nteq_asym = nteq;
+        ctx->netcx.ntsc_asym = ntsc;
 
       } /* if( irow1 >= 2) */
 
@@ -438,19 +450,17 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
     solves(ctx, cm, ip, einc, ctx->netcx.neq, 1, ctx->geometry.np, ctx->geometry.n, ctx->geometry.mp, ctx->geometry.m);
     cabc(ctx, einc);
 
-    if( ctx->netcx.nprint == 0)
-    {
-      fprintf( ctx->output_fp, "\n\n\n"
-          "                          "
-          "--------- STRUCTURE EXCITATION DATA AT NETWORK CONNECTION POINTS --------" );
+    /* Allocate arrays for network excitation data */
+    ctx->netcx.nexc = nteq + ntsc;
+    mem_realloc(ctx, (void **)&ctx->netcx.exc_tag, ctx->netcx.nexc * sizeof(int));
+    mem_realloc(ctx, (void **)&ctx->netcx.exc_seg, ctx->netcx.nexc * sizeof(int));
+    mem_realloc(ctx, (void **)&ctx->netcx.exc_v, ctx->netcx.nexc * sizeof(complex double));
+    mem_realloc(ctx, (void **)&ctx->netcx.exc_i, ctx->netcx.nexc * sizeof(complex double));
+    mem_realloc(ctx, (void **)&ctx->netcx.exc_z, ctx->netcx.nexc * sizeof(complex double));
+    mem_realloc(ctx, (void **)&ctx->netcx.exc_y, ctx->netcx.nexc * sizeof(complex double));
+    mem_realloc(ctx, (void **)&ctx->netcx.exc_pwr, ctx->netcx.nexc * sizeof(double));
 
-      fprintf( ctx->output_fp, "\n"
-          "  TAG   SEG       VOLTAGE (VOLTS)          CURRENT (AMPS)        "
-          " IMPEDANCE (OHMS)       ADMITTANCE (MHOS)     POWER\n"
-          "  No:   No:     REAL      IMAGINARY     REAL      IMAGINARY    "
-          " REAL      IMAGINARY     REAL      IMAGINARY   (WATTS)" );
-    }
-
+    /* Store network excitation data */
     for( i = 0; i < nteq; i++ )
     {
       irow1= nteqa[i]-1;
@@ -462,12 +472,14 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
       pwr=.5* creal( vlt* conj( cux));
       ctx->netcx.pnls= ctx->netcx.pnls- pwr;
 
-      if( ctx->netcx.nprint == 0)
-        fprintf( ctx->output_fp, "\n"
-            " %4d %5d %11.4E %11.4E %11.4E %11.4E"
-            " %11.4E %11.4E %11.4E %11.4E %11.4E",
-            irow2, irow1+1, creal(vlt), cimag(vlt), creal(cux), cimag(cux),
-            creal(ctx->netcx.zped), cimag(ctx->netcx.zped), creal(ymit), cimag(ymit), pwr );
+      /* Store in arrays */
+      ctx->netcx.exc_tag[i] = irow2;
+      ctx->netcx.exc_seg[i] = irow1 + 1;
+      ctx->netcx.exc_v[i] = vlt;
+      ctx->netcx.exc_i[i] = cux;
+      ctx->netcx.exc_z[i] = ctx->netcx.zped;
+      ctx->netcx.exc_y[i] = ymit;
+      ctx->netcx.exc_pwr[i] = pwr;
     }
 
     if( ntsc != 0)
@@ -483,12 +495,15 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
         pwr=.5* creal( vlt* conj( cux));
         ctx->netcx.pnls= ctx->netcx.pnls- pwr;
 
-        if( ctx->netcx.nprint == 0)
-          fprintf( ctx->output_fp, "\n"
-              " %4d %5d %11.4E %11.4E %11.4E %11.4E"
-              " %11.4E %11.4E %11.4E %11.4E %11.4E",
-              irow2, irow1+1, creal(vlt), cimag(vlt), creal(cux), cimag(cux),
-              creal(ctx->netcx.zped), cimag(ctx->netcx.zped), creal(ymit), cimag(ymit), pwr );
+        /* Store in arrays (offset by nteq) */
+        int idx = nteq + i;
+        ctx->netcx.exc_tag[idx] = irow2;
+        ctx->netcx.exc_seg[idx] = irow1 + 1;
+        ctx->netcx.exc_v[idx] = vlt;
+        ctx->netcx.exc_i[idx] = cux;
+        ctx->netcx.exc_z[idx] = ctx->netcx.zped;
+        ctx->netcx.exc_y[idx] = ymit;
+        ctx->netcx.exc_pwr[idx] = pwr;
 
       } /* for( i = 0; i < ntsc; i++ ) */
 
@@ -509,17 +524,15 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
     return;
   }
 
-  fprintf( ctx->output_fp, "\n\n\n"
-      "                        "
-      "--------- ANTENNA INPUT PARAMETERS ---------" );
-
-  fprintf( ctx->output_fp, "\n"
-      "  TAG   SEG       VOLTAGE (VOLTS)         "
-      "CURRENT (AMPS)         IMPEDANCE (OHMS)    "
-      "    ADMITTANCE (MHOS)     POWER\n"
-      "  No:   No:     REAL      IMAGINARY"
-      "     REAL      IMAGINARY     REAL      "
-      "IMAGINARY    REAL       IMAGINARY   (WATTS)" );
+  /* Allocate arrays for antenna input parameters */
+  ctx->netcx.ninp = ctx->vsorc.nsant + ctx->vsorc.nvqd;
+  mem_realloc(ctx, (void **)&ctx->netcx.inp_tag, ctx->netcx.ninp * sizeof(int));
+  mem_realloc(ctx, (void **)&ctx->netcx.inp_seg, ctx->netcx.ninp * sizeof(int));
+  mem_realloc(ctx, (void **)&ctx->netcx.inp_v, ctx->netcx.ninp * sizeof(complex double));
+  mem_realloc(ctx, (void **)&ctx->netcx.inp_i, ctx->netcx.ninp * sizeof(complex double));
+  mem_realloc(ctx, (void **)&ctx->netcx.inp_z, ctx->netcx.ninp * sizeof(complex double));
+  mem_realloc(ctx, (void **)&ctx->netcx.inp_y, ctx->netcx.ninp * sizeof(complex double));
+  mem_realloc(ctx, (void **)&ctx->netcx.inp_pwr, ctx->netcx.ninp * sizeof(double));
 
   if( ctx->vsorc.nsant != 0)
   {
@@ -557,11 +570,15 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
         ctx->netcx.pnls= ctx->netcx.pnls+ pwr;
 
       irow2= ctx->geometry.tag_nums[isc1];
-      fprintf( ctx->output_fp, "\n"
-          " %4d %5d %11.4E %11.4E %11.4E %11.4E"
-          " %11.4E %11.4E %11.4E %11.4E %11.4E",
-          irow2, isc1+1, creal(vlt), cimag(vlt), creal(cux), cimag(cux),
-          creal(ctx->netcx.zped), cimag(ctx->netcx.zped), creal(ymit), cimag(ymit), pwr );
+      
+      /* Store in arrays */
+      ctx->netcx.inp_tag[i] = irow2;
+      ctx->netcx.inp_seg[i] = isc1 + 1;
+      ctx->netcx.inp_v[i] = vlt;
+      ctx->netcx.inp_i[i] = cux;
+      ctx->netcx.inp_z[i] = ctx->netcx.zped;
+      ctx->netcx.inp_y[i] = ymit;
+      ctx->netcx.inp_pwr[i] = pwr;
 
     } /* for( i = 0; i < ctx->vsorc.nsant; i++ ) */
 
@@ -583,11 +600,15 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
       ctx->netcx.pin= ctx->netcx.pin+ pwr;
       irow2= ctx->geometry.tag_nums[isc1];
 
-      fprintf( ctx->output_fp,	"\n"
-          " %4d %5d %11.4E %11.4E %11.4E %11.4E"
-          " %11.4E %11.4E %11.4E %11.4E %11.4E",
-          irow2, isc1+1, creal(vlt), cimag(vlt), creal(cux), cimag(cux),
-          creal(ctx->netcx.zped), cimag(ctx->netcx.zped), creal(ymit), cimag(ymit), pwr );
+      /* Store in arrays (offset by nsant) */
+      int idx = ctx->vsorc.nsant + i;
+      ctx->netcx.inp_tag[idx] = irow2;
+      ctx->netcx.inp_seg[idx] = isc1 + 1;
+      ctx->netcx.inp_v[idx] = vlt;
+      ctx->netcx.inp_i[idx] = cux;
+      ctx->netcx.inp_z[idx] = ctx->netcx.zped;
+      ctx->netcx.inp_y[idx] = ymit;
+      ctx->netcx.inp_pwr[idx] = pwr;
 
     } /* for( i = 0; i < ctx->vsorc.nvqd; i++ ) */
 

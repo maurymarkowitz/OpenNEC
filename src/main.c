@@ -12,7 +12,6 @@
 #endif
 
 #include "opennec.h"
-#include "shared.h"
 
 #ifndef _GETOPT_H
 #include <getopt.h>
@@ -241,15 +240,7 @@ int main(int argc, char **argv)
     fprintf(ctx.error_fp, "%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
   }
 
-  // run it if we've been asked to
-  if(run_simulation) {
-    calculate_geometry(&ctx, &deck, &geometry_errors, &geometry_outputs);
-  }
-  for(int i = 0; i < geometry_errors.num_errors; i++) {
-    fprintf(ctx.error_fp, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
-  }
-
-  // open output file if not already set to stdout
+  // open output file if not already set to stdout (need this before simulation)
   if (output_fp == NULL) {
     if((output_fp = fopen(output_file, "w")) == NULL) {
       char mesg[88] = "onec: ";
@@ -259,7 +250,34 @@ int main(int argc, char **argv)
     }
     ctx.output_fp = output_fp;
   }
-  // and write out the results
+
+  // run it if we've been asked to
+  if(run_simulation) {
+    calculate_geometry(&ctx, &deck, &geometry_errors, &geometry_outputs);
+    
+    // Initialize calculation defaults (requires valid geometry)
+    if (nec_calculation_defaults(&ctx) != 0) {
+      fprintf(ctx.error_fp, "Error: Failed to initialize calculation defaults.\n");
+      exit(-1);
+    }
+    
+    // Process control cards to set up calculation parameters
+    if (process_control_cards(&ctx, &deck) != 0) {
+      fprintf(ctx.error_fp, "Error: Failed to process control cards.\n");
+      exit(-1);
+    }
+    
+    // Execute frequency loop calculations
+    if (execute_frequency_loop(&ctx, ctx.save.nfrq, ctx.save.ifrq, ctx.save.delfrq) != 0) {
+      fprintf(ctx.error_fp, "Error: Failed to execute frequency loop.\n");
+      exit(-1);
+    }
+  }
+  for(int i = 0; i < geometry_errors.num_errors; i++) {
+    fprintf(ctx.error_fp, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
+  }
+
+  // write out the results
   write_nec_output(&ctx, &deck, output_fp);
   
   // TESTING: write it back out
