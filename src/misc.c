@@ -162,24 +162,28 @@ void secnds(nec_context_t *ctx, double *x)
 
 /*------------------------------------------------------------------------*/
 
-void mem_alloc( nec_context_t *ctx, void **ptr, size_t req )
+int mem_alloc( nec_context_t *ctx, void **ptr, size_t req )
 {
   mem_free(ctx, ptr );
   *ptr = malloc( req );
-  if( *ptr == NULL )
-	abort_on_error(ctx, -4 );
-
-} /* End of void mem_alloc() */
+  if( *ptr == NULL ) {
+	add_error(ctx, &ctx->errors, "Memory allocation failed", FATAL);
+	return -1;
+  }
+  return 0;
+} /* End of mem_alloc() */
 
 /*------------------------------------------------------------------------*/
 
-void mem_realloc(nec_context_t *ctx, void **ptr, size_t req)
+int mem_realloc(nec_context_t *ctx, void **ptr, size_t req)
 {
   *ptr = realloc(*ptr, req);
-  if(*ptr == NULL)
-	abort_on_error(ctx, -4 );
-
-} /* End of void mem_realloc() */
+  if(*ptr == NULL) {
+	add_error(ctx, &ctx->errors, "Memory reallocation failed", FATAL);
+	return -1;
+  }
+  return 0;
+} /* End of mem_realloc() */
 
 /*------------------------------------------------------------------------*/
 

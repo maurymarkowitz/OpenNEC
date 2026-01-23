@@ -29,6 +29,21 @@ Tests the "SEGMENT DATA ERROR" in output.c write_segments().
 - Wire has zero radius (bi = 0.0)
 - Expected error: "SEGMENT DATA ERROR"
 
+### ld_bad_tags.deck
+Tests the "DATA FAULT ON LOADING CARD" error in control.c process_control_cards().
+- LD card has ITAG STEP1 (5) > ITAG STEP2 (2)
+- Expected error: "DATA FAULT ON LOADING CARD No: 1: ITAG STEP1: 5 IS GREATER THAN ITAG STEP2: 2"
+
+### gn_radial_sommerfeld.deck
+Tests the radial wire + Sommerfeld ground conflict in control.c process_control_cards().
+- GN card with both radial wires (nradl=5) and Sommerfeld ground (iperf=2)
+- Expected error: "RADIAL WIRE G.S. APPROXIMATION MAY NOT BE USED WITH SOMMERFELD GROUND OPTION"
+
+### wg_unsupported.deck
+Tests the unsupported WG card error in control.c process_control_cards().
+- WG (waveguide) card is not implemented in OpenNEC
+- Expected error: "WG CARD NOT SUPPORTED"
+
 ## Running Tests
 
 To run all error tests:

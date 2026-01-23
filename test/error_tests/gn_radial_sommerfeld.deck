@@ -1,0 +1,8 @@
+CM Test: Radial wire with Sommerfeld ground (conflict)
+CE
+GW 1 5 0 0 0 0 2 0 0.01
+GE 0
+FR 0 1 0 0 100 0
+EX 0 1 3 0 1 0
+GN 2 5 0 0 13 0.005 0.25 0.5
+EN

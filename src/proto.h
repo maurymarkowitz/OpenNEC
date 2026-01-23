@@ -69,9 +69,9 @@ char* trim_start(nec_context_t *ctx, char* dest);
 char* trim_end(nec_context_t *ctx, char* dest);
 void abort_on_error(nec_context_t *ctx, int why);
 void secnds(nec_context_t *ctx, double *x);
-int stop(nec_context_t *ctx, int flag);  // TODO: Remove once all stop() calls converted to add_error()
-void mem_alloc(nec_context_t *ctx, void **ptr, size_t req);
-void mem_realloc(nec_context_t *ctx, void **ptr, size_t req);
+int stop(nec_context_t *ctx, int flag);  // Only called from main.c - errors centralized to ctx->errors
+int mem_alloc(nec_context_t *ctx, void **ptr, size_t req);
+int mem_realloc(nec_context_t *ctx, void **ptr, size_t req);
 void mem_free(nec_context_t *ctx, void **ptr);
 /* calculations.c */
 void cabc(nec_context_t *ctx, complex double *curx);
@@ -148,8 +148,8 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz);
 void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex double *j0p);
 void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv, complex double *erh, complex double *eph);
 void fbar(nec_context_t *ctx, complex double p, complex double *r);
-void gshank(nec_context_t *ctx, complex double start, complex double dela, complex double *sum, int nans, complex double *seed, int ibk, complex double bk, complex double delb);
-void hankel(nec_context_t *ctx, complex double z, complex double *h0, complex double *h0p);
+int gshank(nec_context_t *ctx, complex double start, complex double dela, complex double *sum, int nans, complex double *seed, int ibk, complex double bk, complex double delb);
+int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex double *h0p);
 void lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam);
 void rom1(nec_context_t *ctx, int n, complex double *sum, int nx);
 void saoa(nec_context_t *ctx, double t, complex double *ans);

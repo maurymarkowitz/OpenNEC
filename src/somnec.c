@@ -468,7 +468,7 @@ void fbar(nec_context_t *ctx, complex double p, complex double *fbar )
 /* the step increment may be changed from dela to delb.  shank's */
 /* algorithm to accelerate convergence of a slowly converging series */
 /* is used */
-void gshank(nec_context_t *ctx, complex double start, complex double dela,
+int gshank(nec_context_t *ctx, complex double start, complex double dela,
 	complex double *sum, int nans, complex double *seed,
 	int ibk, complex double bk, complex double delb )
 {
@@ -605,20 +605,21 @@ void gshank(nec_context_t *ctx, complex double start, complex double dela,
 	{
 	  for( i = 0; i < nans; i++ )
 		sum[i]=.5*(q1[i][inx]+q2[i][inx]);
-	  return;
+	  return 0;
 	}
 
   } /* for( intx = 1; intx <= maxh; intx++ ) */
 
   /* No convergence */
-  abort_on_error(ctx, -6);
+  add_error(ctx, &ctx->errors, "No convergence in gshank()", FATAL);
+  return -1;
 }
 
 /*-----------------------------------------------------------------------*/
 
 /* hankel evaluates hankel function of the first kind,   */
 /* order zero, and its derivative for complex argument z */
-void hankel(nec_context_t *ctx, complex double z, complex double *h0, complex double *h0p )
+int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex double *h0p )
 {
   int k, ib;
   static int m[101], init = FALSE;
@@ -658,8 +659,10 @@ void hankel(nec_context_t *ctx, complex double z, complex double *h0, complex do
   } /* if( ! init ) */
 
   zms=creal(z*conj(z));
-  if(zms == 0.)
-    abort_on_error(ctx, -7);
+  if(zms == 0.) {
+    add_error(ctx, &ctx->errors, "Hankel function invalid for z=0", FATAL);
+    return -1;
+  }
 
   ib=0;
   if(zms <= 16.81)
@@ -694,7 +697,7 @@ void hankel(nec_context_t *ctx, complex double z, complex double *h0, complex do
 	*h0p=j0p+CPLX_01*y0p;
 
 	if(ib == 0)
-	  return;
+	  return 0;
 
 	y0=*h0;
 	y0p=*h0p;
@@ -713,13 +716,13 @@ void hankel(nec_context_t *ctx, complex double z, complex double *h0, complex do
   *h0p=CPLX_01*zk*(p1z+CPLX_01*q1z);
 
   if(ib == 0)
-	return;
+    return 0;
 
   zms=cos((sqrt(zms)-4.)*31.41592654);
   *h0=.5*(y0*(1.+zms)+ *h0*(1.-zms));
   *h0p=.5*(y0p*(1.+zms)+ *h0p*(1.-zms));
 
-  return;
+  return 0;
 }
 
 /*-----------------------------------------------------------------------*/

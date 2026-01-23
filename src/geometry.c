@@ -299,7 +299,8 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         
       case 11: // GF, not supported
         // TODO: support this!
-        abort_on_error(ctx, -5);
+        add_error(ctx, errors, "GF card not supported", FATAL);
+        return;
         
       default: // error message if this isn't a comment
         if(!is_comment(card)) {

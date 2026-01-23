@@ -93,7 +93,7 @@ int process_control_cards(nec_context_t *ctx, deck_t *deck)
     }
     
     if (deck->geometry_end < 0) {
-        fprintf(ctx->error_fp, "Error: No GE (geometry end) card found.\n");
+        add_error(ctx, &ctx->errors, "No GE (geometry end) card found", FATAL);
         return -1;
     }
     
@@ -151,10 +151,12 @@ int process_control_cards(nec_context_t *ctx, deck_t *deck)
             ctx->zload.ldtagt[idx] = (i4 == 0) ? i3 : i4;
             
             if (ctx->zload.ldtagt[idx] < ctx->zload.ldtagf[idx]) {
-                fprintf(ctx->error_fp,
-                    "\n\n  DATA FAULT ON LOADING CARD No: %d: ITAG "
-                    "STEP1: %d IS GREATER THAN ITAG STEP2: %d\n",
+                char msg[256];
+                snprintf(msg, sizeof(msg),
+                    "DATA FAULT ON LOADING CARD No: %d: ITAG "
+                    "STEP1: %d IS GREATER THAN ITAG STEP2: %d",
                     ctx->zload.nload, i3, i4);
+                add_error(ctx, &ctx->errors, msg, FATAL);
                 return -1;
             }
             
@@ -179,9 +181,9 @@ int process_control_cards(nec_context_t *ctx, deck_t *deck)
             
             if (ctx->gnd.nradl != 0) {
                 if (ctx->gnd.iperf == 2) {
-                    fprintf(ctx->error_fp,
-                        "\n\n  RADIAL WIRE G.S. APPROXIMATION MAY "
-                        "NOT BE USED WITH SOMMERFELD GROUND OPTION\n");
+                    add_error(ctx, &ctx->errors,
+                        "RADIAL WIRE G.S. APPROXIMATION MAY "
+                        "NOT BE USED WITH SOMMERFELD GROUND OPTION", FATAL);
                     return -1;
                 }
                 ctx->save.scrwlt = f3;
@@ -426,7 +428,7 @@ int process_control_cards(nec_context_t *ctx, deck_t *deck)
         }
         else if (strcmp(code, "WG") == 0) {
             // WG card - Not supported
-            fprintf(ctx->error_fp, "\n\n  WG CARD NOT SUPPORTED\n");
+            add_error(ctx, &ctx->errors, "WG CARD NOT SUPPORTED", FATAL);
             return -1;
         }
     }
@@ -458,12 +460,12 @@ int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq
     
     // Validate geometry exists
     if (ctx->netcx.neq == 0 || ctx->netcx.npeq == 0) {
-        fprintf(ctx->error_fp, "Error: Geometry not initialized before frequency loop\n");
+        add_error(ctx, &ctx->errors, "Geometry not initialized before frequency loop", FATAL);
         return -1;
     }
     
     if (ctx->geometry.n > 0 && (ctx->geometry.icon1 == NULL || ctx->geometry.icon2 == NULL)) {
-        fprintf(ctx->error_fp, "Error: Geometry connection data not allocated\n");
+        add_error(ctx, &ctx->errors, "Geometry connection data not allocated", FATAL);
         return -1;
     }
     

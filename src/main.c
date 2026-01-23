@@ -286,7 +286,17 @@ int main(int argc, char **argv)
     // Process control cards to set up calculation parameters
     if (process_control_cards(&ctx, &deck) != 0) {
       fprintf(ctx.error_fp, "Error: Failed to process control cards.\n");
-      exit(-1);
+      
+      // Display any accumulated errors
+      if (ctx.errors.num_errors > 0) {
+        fprintf(ctx.error_fp, "\n=== Calculation Errors ===\n");
+        for (int i = 0; i < ctx.errors.num_errors; i++) {
+          fprintf(ctx.error_fp, "%s\n", ctx.errors.errors[i].message);
+        }
+      }
+      
+      nec_context_cleanup(&ctx);
+      stop(&ctx, -1);
     }
     
     // Execute frequency loop calculations
