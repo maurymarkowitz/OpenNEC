@@ -1,7 +1,11 @@
 OpenNEC
 =======
 
-OpenNEC is an implementation of the NEC-2 code written in the C programming language. It is used to simulate the reception and transmission patterns of radio frequency antennas. The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". Cards are physically represented by lines of text in a text file representing a deck. The files are normally saved with a `.nec`, `.deck` or `.onec` extension.
+OpenNEC is an implementation of the NEC-2 code written in the C programming language. It is used to simulate the reception and transmission patterns of radio frequency antennas.
+
+The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". Cards are physically represented by lines of text in a text file representing a deck.
+
+The deck files are normally saved with a `.nec`, `.deck` or `.onec` extension.
 
 OpenNEC concept
 ---------------

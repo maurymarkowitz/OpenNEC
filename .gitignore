@@ -17,5 +17,8 @@ xcshareddata/
 .DS_Store
 .deps
 
+# old code
+old/
+
 # task lists
 thread_safety_refactor_todo.md

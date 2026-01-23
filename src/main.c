@@ -49,16 +49,17 @@ static void print_version()
  */
 void print_usage(char *argv[])
 {
-  printf("Usage: %s [-hvntg] [-o output_file] [-e error_file] [source_file]\n", argv[0]);
+  printf("Usage: %s [-hvntg] [-o output_file] [-e error_file] [source_file...]\n", argv[0]);
   puts("Options:");
   puts("  -h, --help: print this description");
   puts("  -v, --version: print version info");
   puts("  -n, --no-run: don't run the simulation after parsing");
   puts("  -t, --test-deck: run various sanity tests");
-  puts("  -o, --output-file: (path/)name of the output file");
+  puts("  -o, --output-file: (path/)name of the output file (single file only)");
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -g, --greens: write a greens function file to *.ngf or provided filename");
-  puts("If source_file is omitted, input is read from stdin and output goes to stdout.");
+  puts("Multiple input files can be specified; each will generate a .out file.");
+  puts("If no source_file is provided, input is read from stdin and output goes to stdout.");
 }
 
 /******************************************************************************
@@ -160,8 +161,14 @@ void parse_options(int argc, char *argv[])
   // if no input file, we'll use stdin
 }
 
-/*-------------------------------------------------------------------*/
-int main(int argc, char **argv)
+/******************************************************************************
+ * process_single_file()
+ *
+ * Process a single input file through the complete simulation pipeline.
+ * Returns 0 on success, -1 on error.
+ *
+ */
+static int process_single_file(const char *input_filename, const char *output_filename, FILE *error_fp)
 {
   nec_context_t ctx;
   nec_context_init(&ctx);
@@ -175,7 +182,6 @@ int main(int argc, char **argv)
 
   FILE *input_fp = NULL;
   FILE *output_fp = NULL;
-  FILE *error_fp = NULL;
 
   // empty these out so we can test them easier
   import_errors.num_errors = 0;
@@ -187,56 +193,35 @@ int main(int argc, char **argv)
   geometry_outputs.num_messages = 0;
   geometry_outputs.messages = NULL;
   
-  // process the command line options
-  parse_options(argc, argv);
+  ctx.error_fp = error_fp;
 
   // open input file or use stdin
-  if (strlen(input_file) > 0) {
-    if ((input_fp = fopen(input_file, "r")) == NULL) {
+  if (strlen(input_filename) > 0) {
+    if ((input_fp = fopen(input_filename, "r")) == NULL) {
       char mesg[88] = "onec: ";
-      strcat(mesg, input_file);
+      strcat(mesg, input_filename);
       perror(mesg);
-      exit(EXIT_FAILURE);
+      return -1;
     }
     ctx.input_fp = input_fp;
   } else {
     input_fp = stdin;
+    ctx.input_fp = stdin;
   }
-  
-  // open the error file if it was provided, otherwise stderr
-  if(strlen(error_file) > 0) {
-    if((error_fp = fopen(error_file, "w")) == NULL) {
-      char mesg[128] = "onec: ";
-      strcat(mesg, error_file);
+
+  // open output file or use stdout
+  if (strlen(output_filename) > 0) {
+    if((output_fp = fopen(output_filename, "w")) == NULL) {
+      char mesg[88] = "onec: ";
+      strcat(mesg, output_filename);
       perror(mesg);
-      exit(EXIT_FAILURE);
+      if (input_fp != stdin) fclose(input_fp);
+      return -1;
     }
-    ctx.error_fp = error_fp;
-  }
-  else {
-    error_fp = stderr;
-    ctx.error_fp = stderr;
-  }
-  
-  // make an output file name if not specified by user
-  if(strlen(output_file) == 0) {
-    if (strlen(input_file) > 0) {
-      // give it some room, with a little at the end for a potential extension
-      output_file = malloc(strlen(input_file) + 10);
-      // start with the input file name
-      strcpy(output_file, input_file);
-      // strip file name extension if there is one (search from end)
-      int len = strlen(output_file);
-      int idx = len - 1;
-      while (idx > 0 && output_file[idx] != '.') idx--;
-      if (idx > 0 && output_file[idx] == '.')
-        output_file[idx] = '\0';
-      // add the extension
-      strcat(output_file, ".out");
-    } else {
-      // no input file, use stdout
-      output_fp = stdout;
-    }
+    ctx.output_fp = output_fp;
+  } else {
+    output_fp = stdout;
+    ctx.output_fp = stdout;
   }
 
   // read input file into a deck
@@ -259,25 +244,12 @@ int main(int argc, char **argv)
     fprintf(ctx.error_fp, "%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
   }
 
-  // open output file if not already set to stdout (need this before simulation)
-  if (output_fp == NULL) {
-    if((output_fp = fopen(output_file, "w")) == NULL) {
-      char mesg[88] = "onec: ";
-      strcat(mesg, output_file);
-      perror(mesg);
-      exit(-1);
-    }
-    ctx.output_fp = output_fp;
-  } else {
-    // output_fp was set to stdout earlier
-    ctx.output_fp = output_fp;
-  }
-
   // run it if we've been asked to
   if(run_simulation) {
     // Run complete simulation with batch processing
     if (nec_run_simulation(&ctx, &deck) != 0) {
-      fprintf(ctx.error_fp, "Error: Failed to run simulation.\n");
+      fprintf(ctx.error_fp, "Error: Failed to run simulation for %s.\n", 
+              strlen(input_filename) > 0 ? input_filename : "stdin");
       
       // Display any accumulated errors
       if (ctx.errors.num_errors > 0) {
@@ -288,7 +260,9 @@ int main(int argc, char **argv)
       }
       
       nec_context_cleanup(&ctx);
-      stop(&ctx, -1);
+      if (input_fp != stdin) fclose(input_fp);
+      if (output_fp != stdout) fclose(output_fp);
+      return -1;
     }
     
     // Check for any errors that occurred during calculation
@@ -298,22 +272,116 @@ int main(int argc, char **argv)
         fprintf(ctx.error_fp, "%s\n", ctx.errors.errors[i].message);
       }
       nec_context_cleanup(&ctx);
-      stop(&ctx, -1);
+      if (input_fp != stdin) fclose(input_fp);
+      if (output_fp != stdout) fclose(output_fp);
+      return -1;
     }
   }
   for(int i = 0; i < geometry_errors.num_errors; i++) {
     fprintf(ctx.error_fp, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
   }
 
-  // write out the results
-  write_nec_output(&ctx, &deck, output_fp);
-  
-  // TESTING: write it back out
-  // TURNED OFF, SEEMS TO BE WORKING WELL
-  //write_deck_onec(&deck, output_fp);
+  // write out the results (only if simulation was configured and ran)
+  if (run_simulation && ctx.save.nfrq > 0) {
+    write_nec_output(&ctx, &deck, output_fp);
+  } else if (run_simulation && ctx.save.nfrq == 0) {
+    fprintf(ctx.error_fp, "Warning: No FR card found, skipping output generation\n");
+  }
 
   nec_context_cleanup(&ctx);
+  if (input_fp != stdin) fclose(input_fp);
+  if (output_fp != stdout) fclose(output_fp);
 
+  return 0;
+}
+
+/******************************************************************************
+ * generate_output_filename()
+ *
+ * Generate output filename by replacing extension with .out
+ *
+ */
+static void generate_output_filename(const char *input_filename, char *output_filename, size_t size)
+{
+  strncpy(output_filename, input_filename, size - 1);
+  output_filename[size - 1] = '\0';
+  
+  // Find the last dot in the filename
+  char *dot = strrchr(output_filename, '.');
+  char *slash = strrchr(output_filename, '/');
+  
+  // Only use the dot if it's after the last slash (part of filename, not directory)
+  if (dot != NULL && (slash == NULL || dot > slash)) {
+    *dot = '\0';
+  }
+  
+  // Add .out extension
+  strncat(output_filename, ".out", size - strlen(output_filename) - 1);
+}
+
+/*-------------------------------------------------------------------*/
+int main(int argc, char **argv)
+{
+  FILE *error_fp = NULL;
+  
+  // process the command line options
+  parse_options(argc, argv);
+
+  // open the error file if it was provided, otherwise stderr
+  if(strlen(error_file) > 0) {
+    if((error_fp = fopen(error_file, "w")) == NULL) {
+      char mesg[128] = "onec: ";
+      strcat(mesg, error_file);
+      perror(mesg);
+      exit(EXIT_FAILURE);
+    }
+  }
+  else {
+    error_fp = stderr;
+  }
+
+  // Collect input files from command line arguments
+  int num_files = argc - optind;
+  
+  if (num_files == 0) {
+    // No input files specified - use stdin/stdout
+    const char *out = (strlen(output_file) > 0) ? output_file : "";
+    if (process_single_file("", out, error_fp) != 0) {
+      fprintf(error_fp, "Error processing stdin\n");
+      if (error_fp != stderr) fclose(error_fp);
+      return EXIT_FAILURE;
+    }
+  } else {
+    // Process each input file
+    int failed_count = 0;
+    for (int i = optind; i < argc; i++) {
+      const char *input = argv[i];
+      char output[512];
+      
+      // Generate output filename if not explicitly provided
+      if (strlen(output_file) > 0 && num_files == 1) {
+        // Single file with explicit output name
+        strncpy(output, output_file, sizeof(output) - 1);
+        output[sizeof(output) - 1] = '\0';
+      } else {
+        // Auto-generate output filename
+        generate_output_filename(input, output, sizeof(output));
+      }
+      
+      fprintf(error_fp, "Processing %s -> %s\n", input, output);
+      
+      if (process_single_file(input, output, error_fp) != 0) {
+        fprintf(error_fp, "Error processing %s, continuing to next file...\n", input);
+        failed_count++;
+      }
+    }
+    
+    if (failed_count > 0) {
+      fprintf(error_fp, "\nCompleted with %d error(s) out of %d file(s)\n", failed_count, num_files);
+    }
+  }
+
+  if (error_fp != stderr) fclose(error_fp);
   return EXIT_SUCCESS;
 } /* main */
 
