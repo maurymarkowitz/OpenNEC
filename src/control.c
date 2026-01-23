@@ -12,6 +12,63 @@
 #include "opennec.h"
 
 /******************************************************************************
+ * nec_run_simulation()
+ *
+ * Complete wrapper function for running an NEC simulation from a parsed deck.
+ * This is the main entry point for library usage (e.g., from Swift).
+ *
+ * Performs all steps in order:
+ * 1. Calculate geometry (wires, patches)
+ * 2. Initialize calculation defaults
+ * 3. Process control cards (FR, LD, GN, EX, etc.)
+ * 4. Execute frequency loop calculations
+ *
+ * All errors are accumulated in ctx->errors for the caller to handle.
+ *
+ * @param ctx     The NEC context (must be initialized)
+ * @param deck    The deck containing geometry and control cards (must be parsed)
+ * @return        0 on success, -1 on error (check ctx->errors for details)
+ */
+int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
+{
+    errors_list_t geometry_errors = {0};
+    outputs_list_t geometry_outputs = {0};
+    
+    // Step 1: Calculate geometry
+    calculate_geometry(ctx, deck, &geometry_errors, &geometry_outputs);
+    
+    // Check for geometry errors
+    if (geometry_errors.num_errors > 0) {
+        // Copy geometry errors to ctx->errors
+        for (int i = 0; i < geometry_errors.num_errors; i++) {
+            add_error(ctx, &ctx->errors, geometry_errors.errors[i].message, 
+                     geometry_errors.errors[i].severity);
+        }
+        return -1;
+    }
+    
+    // Step 2: Initialize calculation defaults (requires valid geometry)
+    if (nec_calculation_defaults(ctx) != 0) {
+        add_error(ctx, &ctx->errors, "Failed to initialize calculation defaults (no valid geometry)", FATAL);
+        return -1;
+    }
+    
+    // Step 3: Process control cards to set up calculation parameters
+    if (process_control_cards(ctx, deck) != 0) {
+        // Errors already added to ctx->errors by process_control_cards
+        return -1;
+    }
+    
+    // Step 4: Execute frequency loop calculations
+    if (execute_frequency_loop(ctx, ctx->save.nfrq, ctx->save.ifrq, ctx->save.delfrq) != 0) {
+        // Errors already added to ctx->errors by execute_frequency_loop
+        return -1;
+    }
+    
+    return 0;
+}
+
+/******************************************************************************
  * nec_calculation_defaults()
  *
  * Initialize calculation defaults that depend on geometry being calculated first.
@@ -110,6 +167,11 @@ int process_control_cards(nec_context_t *ctx, deck_t *deck)
         
         // Get the card code
         char *code = card->card_code;
+        
+        // Check for XT card - stop processing and return successfully
+        if (strcmp(code, "XT") == 0) {
+            return 0;
+        }
         
         // Get field values for convenience
         int i1 = card->iv[1], i2 = card->iv[2], i3 = card->iv[3], i4 = card->iv[4];

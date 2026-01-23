@@ -16,6 +16,13 @@ void parse_comment_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
 void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
 void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
 void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors);
+/* control.c */
+int nec_run_simulation(nec_context_t *ctx, deck_t *deck);
+int nec_calculation_defaults(nec_context_t *ctx);
+int process_control_cards(nec_context_t *ctx, deck_t *deck);
+int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq);
+/* geometry.c */
+void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors, outputs_list_t *outputs);
 /* output.c */
 void write_deck_onec(nec_context_t *ctx, deck_t *deck, FILE *pfile);
 void write_nec_output(nec_context_t *ctx, deck_t *deck, FILE *pfile);

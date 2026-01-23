@@ -81,12 +81,6 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
       deck->cards = realloc(deck->cards, deck->num_cards * sizeof(card_t));
     }
     deck->cards[deck->num_cards - 1] = *card;
-    
-    // if this is an XT card, stop processing further lines
-    // note that we don't have the card_code at this point,
-    // so we do the the hard way
-    if((line_len >= 2) && ((line_buf[0] == 'X') && (line_buf[1] == 'T')))
-      break;
   }
 
   // card is temp, free it
