@@ -30,7 +30,7 @@ void write_header(nec_context_t *ctx, deck_t *deck, FILE *pfile);
 int write_structure(nec_context_t *ctx, deck_t *deck, FILE *pfile);
 int write_segments(nec_context_t *ctx, deck_t *deck, FILE *pfile);
 void write_patches(nec_context_t *ctx, deck_t * deck, FILE *pfile);
-void write_input_cards(FILE *file, deck_t *deck);
+void write_input_cards(FILE *file, deck_t *deck, int batch_start, int batch_end, int card_number_offset);
 void write_frequency_data(FILE *file, nec_context_t *ctx);
 void write_loading_data(FILE *file, nec_context_t *ctx);
 void write_environment_data(FILE *file, nec_context_t *ctx);

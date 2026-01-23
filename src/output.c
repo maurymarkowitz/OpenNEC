@@ -282,7 +282,8 @@ void write_nec_output(nec_context_t *ctx, deck_t *deck, FILE *file)
   write_structure(ctx, deck, file);
   write_segments(ctx, deck, file);
   write_patches(ctx, deck, file);
-  write_input_cards(file, deck);
+  // Write all control cards (for now as single batch - full XQ support pending)
+  write_input_cards(file, deck, deck->geometry_end + 1, deck->deck_end, 0);
   write_frequency_data(file, ctx);
   write_loading_data(file, ctx);
   write_environment_data(file, ctx);
@@ -641,9 +642,17 @@ void write_patches(nec_context_t *ctx, deck_t *deck, FILE *file)
 
 /**
  * Write input cards echo to output file
- * Echoes FR, TL, LD, EX, RP, and other control cards from the deck
+ * Echoes FR, TL, LD, EX, RP, and other control cards from the current batch.
+ * The batch is defined by batch_start and batch_end (inclusive).
+ * If batch_end points to EN or XT, that card is included as the final card.
+ * 
+ * @param file Output file pointer
+ * @param deck The deck containing all cards
+ * @param batch_start First card index of this batch (inclusive)
+ * @param batch_end Last card index of this batch (inclusive)
+ * @param card_number_offset Starting card number for this batch
  */
-void write_input_cards(FILE *file, deck_t *deck)
+void write_input_cards(FILE *file, deck_t *deck, int batch_start, int batch_end, int card_number_offset)
 {
     if (file == NULL || deck == NULL) {
         return;
@@ -651,10 +660,41 @@ void write_input_cards(FILE *file, deck_t *deck)
 
     fprintf(file, "\n\n\n");
 
-    /* Iterate through all cards in the deck. */
-    int card_number = 0;
-    for (int i = 0; i < deck->num_cards - 1; i++) {
+    /* Iterate through cards in this batch only. */
+    int card_number = card_number_offset;
+    for (int i = batch_start; i <= batch_end && i < deck->num_cards; i++) {
         card_t *card = &deck->cards[i];
+        
+        /* Check for XT card - echo it as final card of batch */
+        if (strncmp(card->card_code, "XT", 2) == 0) {
+            card_number++;
+            fprintf(file, "  DATA CARD No: %3d %s", card_number, card->card_code);
+            fprintf(file, " %3d", card->iv[1]);
+            for (int j = 2; j <= 4; j++) {
+                fprintf(file, " %5d", card->iv[j]);
+            }
+            for (int j = 1; j <= 6; j++) {
+                fprintf(file, " %12.5E", card->fv[j]);
+            }
+            fprintf(file, "\n");
+            fprintf(file, "\nOpenNEC: Exiting after an XT command.\n");
+            continue;  // Continue to include XT in batch, don't break
+        }
+        
+        /* Check for EN card - echo it as final card of batch */
+        if (strncmp(card->card_code, "EN", 2) == 0) {
+            card_number++;
+            fprintf(file, "  DATA CARD No: %3d %s", card_number, card->card_code);
+            fprintf(file, " %3d", card->iv[1]);
+            for (int j = 2; j <= 4; j++) {
+                fprintf(file, " %5d", card->iv[j]);
+            }
+            for (int j = 1; j <= 6; j++) {
+                fprintf(file, " %12.5E", card->fv[j]);
+            }
+            fprintf(file, "\n");
+            continue;  // Continue to include EN in batch
+        }
         
         /* Only echo control cards (skip geometry and comment cards, and the EN) */
         if (strncmp(card->card_code, "FR", 2) == 0 ||
@@ -1031,6 +1071,11 @@ void write_currents(FILE *file, nec_context_t *ctx)
         "   No:  No:       X         Y         Z      LENGTH"
         "     REAL      IMAGINARY    MAGN        PHASE");
     
+    // Calculate frequency ratio to convert meters to wavelengths
+    // The geometry arrays have been recalculated in meters by write_segments
+    // We need to multiply by fr (= 1/wlam) to convert to wavelengths
+    double fr = ctx->save.fmhz / CVEL;
+    
     for (int i = 0; i < ctx->geometry.n; i++) {
         complex double curi = ctx->crnt.cur[i] * ctx->geometry.wlam;
         double cmag = cabs(curi);
@@ -1039,10 +1084,10 @@ void write_currents(FILE *file, nec_context_t *ctx)
         fprintf(file, "\n"
             " %5d %4d %9.4f %9.4f %9.4f %8.5f %11.4E %11.4E %11.4E %9.3f",
             i + 1, ctx->geometry.tag_nums[i],
-            ctx->geometry.x[i] * ctx->geometry.wlam,
-            ctx->geometry.y[i] * ctx->geometry.wlam,
-            ctx->geometry.z[i] * ctx->geometry.wlam,
-            ctx->geometry.si[i] * ctx->geometry.wlam,
+            ctx->geometry.x[i] * fr,
+            ctx->geometry.y[i] * fr,
+            ctx->geometry.z[i] * fr,
+            ctx->geometry.si[i] * fr,
             creal(curi), cimag(curi), cmag, ph);
     }
 }
@@ -1348,30 +1393,13 @@ void write_normalized_gain(FILE *file, nec_context_t *ctx)
 /******************************************************************************
  * write_footer
  * 
- * Writes the footer with total run time and EN card echo.
+ * Writes the footer with total run time.
+ * Note: EN card is now written by write_input_cards as part of the final batch.
  */
 void write_footer(FILE *file, nec_context_t *ctx, deck_t *deck)
 {
     // Output blank lines before footer
     fprintf(file, "\n\n\n");
-    
-    // Output the EN card if it exists
-    if (deck != NULL && deck->deck_end >= 0 && deck->deck_end < deck->num_cards && deck->cards != NULL) {
-        card_t *en_card = &deck->cards[deck->deck_end];
-        // card_code is 2 chars, not null-terminated, so use %.2s format
-        fprintf(file, "  DATA CARD No: %3d %.2s", deck->deck_end + 1, en_card->card_code);
-        
-        // Output integer fields (i[1] through i[4])
-        for (int i = 1; i <= 4; i++) {
-            fprintf(file, " %5d", en_card->i[i]);
-        }
-        
-        // Output float fields (f[1] through f[6])
-        for (int i = 1; i <= 6; i++) {
-            fprintf(file, "  %.5E", en_card->f[i]);
-        }
-        fprintf(file, "\n");
-    }
     
     // Calculate and output total runtime
     if (ctx != NULL) {

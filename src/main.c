@@ -275,33 +275,9 @@ int main(int argc, char **argv)
 
   // run it if we've been asked to
   if(run_simulation) {
-    calculate_geometry(&ctx, &deck, &geometry_errors, &geometry_outputs);
-    
-    // Initialize calculation defaults (requires valid geometry)
-    if (nec_calculation_defaults(&ctx) != 0) {
-      fprintf(ctx.error_fp, "Error: Failed to initialize calculation defaults.\n");
-      exit(-1);
-    }
-    
-    // Process control cards to set up calculation parameters
-    if (process_control_cards(&ctx, &deck) != 0) {
-      fprintf(ctx.error_fp, "Error: Failed to process control cards.\n");
-      
-      // Display any accumulated errors
-      if (ctx.errors.num_errors > 0) {
-        fprintf(ctx.error_fp, "\n=== Calculation Errors ===\n");
-        for (int i = 0; i < ctx.errors.num_errors; i++) {
-          fprintf(ctx.error_fp, "%s\n", ctx.errors.errors[i].message);
-        }
-      }
-      
-      nec_context_cleanup(&ctx);
-      stop(&ctx, -1);
-    }
-    
-    // Execute frequency loop calculations
-    if (execute_frequency_loop(&ctx, ctx.save.nfrq, ctx.save.ifrq, ctx.save.delfrq) != 0) {
-      fprintf(ctx.error_fp, "Error: Failed to execute frequency loop.\n");
+    // Run complete simulation with batch processing
+    if (nec_run_simulation(&ctx, &deck) != 0) {
+      fprintf(ctx.error_fp, "Error: Failed to run simulation.\n");
       
       // Display any accumulated errors
       if (ctx.errors.num_errors > 0) {

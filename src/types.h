@@ -707,6 +707,13 @@ typedef struct nec_context_t
 	double mat_fill_time;   /* Matrix fill time in seconds */
 	double mat_factor_time; /* Matrix factor time in seconds */
 	clock_t start_time;     /* Start time for total runtime calculation */
+	
+	/* Batch processing state for XQ command support */
+	int current_card_idx;   /* Current position in deck for batch processing */
+	int batch_start_card;   /* Start of current batch (inclusive) */
+	int batch_end_card;     /* End of current batch (inclusive) */
+	int card_number_offset; /* Starting card number for current batch */
+	int iflow;              /* Processing state: 1=FR, 2=CP, 3=LD, 6=NT/TL, 7-11=execution */
 } nec_context_t;
 
 void nec_context_init(nec_context_t *ctx);

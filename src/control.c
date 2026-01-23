@@ -11,6 +11,12 @@
 
 #include "opennec.h"
 
+// Forward declarations for static functions
+static void reset_loading_buffers(nec_context_t *ctx);
+static void reset_network_buffers(nec_context_t *ctx);
+static void reset_coupling_buffers(nec_context_t *ctx);
+static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start, int *batch_end);
+
 /******************************************************************************
  * nec_run_simulation()
  *
@@ -53,16 +59,47 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
         return -1;
     }
     
-    // Step 3: Process control cards to set up calculation parameters
-    if (process_control_cards(ctx, deck) != 0) {
-        // Errors already added to ctx->errors by process_control_cards
-        return -1;
-    }
+    // Step 3: Initialize batch processing state
+    ctx->current_card_idx = deck->geometry_end + 1;  // Start after GE card
+    ctx->card_number_offset = 0;  // Card numbering starts at 0
+    ctx->iflow = 0;  // Initial state
     
-    // Step 4: Execute frequency loop calculations
-    if (execute_frequency_loop(ctx, ctx->save.nfrq, ctx->save.ifrq, ctx->save.delfrq) != 0) {
-        // Errors already added to ctx->errors by execute_frequency_loop
-        return -1;
+    // Step 4: Process batches in a loop
+    bool deck_complete = false;
+    while (!deck_complete) {
+        int batch_start, batch_end;
+        
+        // Process next batch of control cards
+        int batch_result = process_next_batch(ctx, deck, &batch_start, &batch_end);
+        if (batch_result < 0) {
+            // Error occurred
+            return -1;
+        }
+        
+        // Save batch boundaries in context for output
+        ctx->batch_start_card = batch_start;
+        ctx->batch_end_card = batch_end;
+        
+        // Check if this batch is EN or XT (no calculations)
+        bool is_termination = false;
+        if (batch_start == batch_end) {
+            card_t *card = &deck->cards[batch_start];
+            if (strcmp(card->card_code, "EN") == 0 || strcmp(card->card_code, "XT") == 0) {
+                is_termination = true;
+            }
+        }
+        
+        // Execute frequency loop for this batch (unless EN/XT)
+        if (!is_termination) {
+            if (execute_frequency_loop(ctx, ctx->save.nfrq, ctx->save.ifrq, ctx->save.delfrq) != 0) {
+                return -1;
+            }
+        }
+        
+        // Check if we're done
+        if (batch_result == 1) {
+            deck_complete = true;
+        }
     }
     
     return 0;
@@ -126,6 +163,447 @@ int nec_calculation_defaults(nec_context_t *ctx)
     //   mpcnt  - command card counter
     
     return 0;
+}
+
+/******************************************************************************
+ * reset_loading_buffers()
+ *
+ * Reset and free loading buffers. Called when starting a new batch.
+ */
+static void reset_loading_buffers(nec_context_t *ctx)
+{
+    if (ctx->zload.nload > 0) {
+        mem_free(ctx, (void **)&ctx->zload.ldtyp);
+        mem_free(ctx, (void **)&ctx->zload.ldtag);
+        mem_free(ctx, (void **)&ctx->zload.ldtagf);
+        mem_free(ctx, (void **)&ctx->zload.ldtagt);
+        mem_free(ctx, (void **)&ctx->zload.zlr);
+        mem_free(ctx, (void **)&ctx->zload.zli);
+        mem_free(ctx, (void **)&ctx->zload.zlc);
+        ctx->zload.nload = 0;
+    }
+}
+
+/******************************************************************************
+ * reset_network_buffers()
+ *
+ * Reset and free network buffers. Called when starting a new batch.
+ */
+static void reset_network_buffers(nec_context_t *ctx)
+{
+    if (ctx->netcx.nonet > 0) {
+        mem_free(ctx, (void **)&ctx->netcx.ntyp);
+        mem_free(ctx, (void **)&ctx->netcx.iseg1);
+        mem_free(ctx, (void **)&ctx->netcx.iseg2);
+        mem_free(ctx, (void **)&ctx->netcx.x11r);
+        mem_free(ctx, (void **)&ctx->netcx.x11i);
+        mem_free(ctx, (void **)&ctx->netcx.x12r);
+        mem_free(ctx, (void **)&ctx->netcx.x12i);
+        mem_free(ctx, (void **)&ctx->netcx.x22r);
+        mem_free(ctx, (void **)&ctx->netcx.x22i);
+        ctx->netcx.nonet = 0;
+    }
+}
+
+/******************************************************************************
+ * reset_coupling_buffers()
+ *
+ * Reset and free coupling buffers. Called when starting a new batch.
+ */
+static void reset_coupling_buffers(nec_context_t *ctx)
+{
+    if (ctx->yparm.ncoup > 0) {
+        mem_free(ctx, (void **)&ctx->yparm.nctag);
+        mem_free(ctx, (void **)&ctx->yparm.ncseg);
+        ctx->yparm.ncoup = 0;
+    }
+}
+
+/******************************************************************************
+ * process_next_batch()
+ *
+ * Process control cards from current position up to next XQ, EN, or XT card.
+ * Updates batch boundaries in context and handles iflow state transitions.
+ *
+ * @param ctx          The NEC context
+ * @param deck         The deck containing control cards
+ * @param batch_start  Output: first card index of this batch (inclusive)
+ * @param batch_end    Output: last card index of this batch (inclusive)
+ * @return             0 on success, -1 on error, 1 if EN/XT reached (end of deck)
+ */
+static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start, int *batch_end)
+{
+    // Validate inputs
+    if (ctx == NULL || deck == NULL || batch_start == NULL || batch_end == NULL) {
+        return -1;
+    }
+    
+    // Set batch start from current position
+    *batch_start = ctx->current_card_idx;
+    
+    // Find end of batch (next XQ, EN, or XT card)
+    *batch_end = ctx->current_card_idx;
+    bool found_batch_end = false;
+    
+    for (int card_idx = ctx->current_card_idx; card_idx < deck->num_cards; card_idx++) {
+        card_t *card = &deck->cards[card_idx];
+        
+        // Skip ignored or comment cards
+        if (card->ignore || is_comment(card)) {
+            continue;
+        }
+        
+        char *code = card->card_code;
+        
+        // Check for batch termination cards
+        if (strcmp(code, "XQ") == 0) {
+            *batch_end = card_idx;  // Include XQ in this batch
+            ctx->current_card_idx = card_idx + 1;  // Next batch starts after XQ
+            found_batch_end = true;
+            break;
+        }
+        else if (strcmp(code, "EN") == 0 || strcmp(code, "XT") == 0) {
+            // EN/XT should be a separate batch by itself
+            if (card_idx > ctx->current_card_idx) {
+                // There are cards before EN/XT, end batch before EN/XT
+                *batch_end = card_idx - 1;
+                ctx->current_card_idx = card_idx;  // Next batch starts at EN/XT
+                found_batch_end = true;
+                break;
+            } else {
+                // EN/XT is the first/only card in this batch
+                *batch_end = card_idx;
+                ctx->current_card_idx = card_idx + 1;
+                found_batch_end = true;
+                break;
+            }
+        }
+        
+        *batch_end = card_idx;
+    }
+    
+    if (!found_batch_end) {
+        // Reached end of deck without XQ/EN/XT - treat as implicit EN
+        ctx->current_card_idx = deck->num_cards;
+    }
+    
+    // Determine if this is the final batch (EN or XT)
+    bool is_final_batch = false;
+    if (*batch_end < deck->num_cards) {
+        card_t *last_card = &deck->cards[*batch_end];
+        if (!is_comment(last_card) && !last_card->ignore) {
+            if (strcmp(last_card->card_code, "EN") == 0 || strcmp(last_card->card_code, "XT") == 0) {
+                is_final_batch = true;
+            }
+        }
+    }
+    if (!found_batch_end) {
+        is_final_batch = true;  // Implicit EN at end of deck
+    }
+    
+    // Now process the control cards in this batch to configure ctx
+    for (int card_idx = *batch_start; card_idx <= *batch_end; card_idx++) {
+        card_t *card = &deck->cards[card_idx];
+        
+        // Skip ignored, comment, or empty cards
+        if (card->ignore || is_comment(card)) {
+            continue;
+        }
+        
+        char *code = card->card_code;
+        
+        // Skip XQ, EN, XT cards (they don't configure anything)
+        if (strcmp(code, "XQ") == 0 || strcmp(code, "EN") == 0 || strcmp(code, "XT") == 0) {
+            continue;
+        }
+        
+        // Get field values for convenience
+        int i1 = card->iv[1], i2 = card->iv[2], i3 = card->iv[3], i4 = card->iv[4];
+        double f1 = card->fv[1], f2 = card->fv[2], f3 = card->fv[3];
+        double f4 = card->fv[4], f5 = card->fv[5], f6 = card->fv[6];
+        
+        // Process based on card type
+        if (strcmp(code, "FR") == 0) {
+            // FR card - Frequency specification
+            if (ctx->iflow != 1) {
+                ctx->iflow = 1;
+            }
+            ctx->save.ifrq = i1;
+            ctx->save.nfrq = (i2 == 0) ? 1 : i2;
+            ctx->save.fmhz = f1;
+            ctx->save.delfrq = f2;
+        }
+        else if (strcmp(code, "LD") == 0) {
+            // LD card - Loading
+            if (i1 == -1) {
+                continue;
+            }
+            
+            // First LD in batch resets loading (iflow transition to 3)
+            if (ctx->iflow != 3 && ctx->zload.nload == 0) {
+                reset_loading_buffers(ctx);
+                ctx->iflow = 3;
+            }
+            
+            // Reallocate loading buffers
+            ctx->zload.nload++;
+            size_t mreq = (size_t)ctx->zload.nload * sizeof(int);
+            mem_realloc(ctx, (void **)&ctx->zload.ldtyp, mreq);
+            mem_realloc(ctx, (void **)&ctx->zload.ldtag, mreq);
+            mem_realloc(ctx, (void **)&ctx->zload.ldtagf, mreq);
+            mem_realloc(ctx, (void **)&ctx->zload.ldtagt, mreq);
+            
+            mreq = (size_t)ctx->zload.nload * sizeof(double);
+            mem_realloc(ctx, (void **)&ctx->zload.zlr, mreq);
+            mem_realloc(ctx, (void **)&ctx->zload.zli, mreq);
+            mem_realloc(ctx, (void **)&ctx->zload.zlc, mreq);
+            
+            int idx = ctx->zload.nload - 1;
+            ctx->zload.ldtyp[idx] = i1;
+            ctx->zload.ldtag[idx] = i2;
+            ctx->zload.ldtagf[idx] = (i4 == 0) ? i3 : i3;
+            ctx->zload.ldtagt[idx] = (i4 == 0) ? i3 : i4;
+            
+            if (ctx->zload.ldtagt[idx] < ctx->zload.ldtagf[idx]) {
+                char msg[256];
+                snprintf(msg, sizeof(msg),
+                    "DATA FAULT ON LOADING CARD No: %d: ITAG "
+                    "STEP1: %d IS GREATER THAN ITAG STEP2: %d",
+                    ctx->zload.nload, i3, i4);
+                add_error(ctx, &ctx->errors, msg, FATAL);
+                return -1;
+            }
+            
+            ctx->zload.zlr[idx] = f1;
+            ctx->zload.zli[idx] = f2;
+            ctx->zload.zlc[idx] = f3;
+        }
+        else if (strcmp(code, "GN") == 0) {
+            // GN card - Ground parameters  
+            if (i1 == -1) {
+                ctx->gnd.ksymp = 1;
+                ctx->gnd.nradl = 0;
+                ctx->gnd.iperf = 0;
+                continue;
+            }
+            
+            ctx->gnd.iperf = i1;
+            ctx->gnd.nradl = i2;
+            ctx->gnd.ksymp = 2;
+            ctx->save.epsr = f1;
+            ctx->save.sig = f2;
+            
+            if (ctx->gnd.nradl != 0) {
+                if (ctx->gnd.iperf == 2) {
+                    add_error(ctx, &ctx->errors,
+                        "RADIAL WIRE G.S. APPROXIMATION MAY "
+                        "NOT BE USED WITH SOMMERFELD GROUND OPTION", FATAL);
+                    return -1;
+                }
+                if (f3 >= 1.0e-20 || f4 >= 1.0e-20) {
+                    ctx->save.scrwlt = f3;
+                    ctx->save.scrwrt = f4;
+                }
+            }
+        }
+        // Continue processing other cards...
+        else if (strcmp(code, "EX") == 0) {
+            // EX card - Excitation
+            ctx->fpat.ixtyp = i1;
+            ctx->netcx.masym = i4 / 10;
+            
+            // For voltage source types (0 and 5)
+            if (i1 == 0 || i1 == 5) {
+                ctx->netcx.ntsol = 0;
+                
+                if (i1 == 5) {
+                    // Incident plane wave or elementary current source
+                    ctx->vsorc.nvqd++;
+                    size_t mreq = (size_t)ctx->vsorc.nvqd * sizeof(int);
+                    mem_realloc(ctx, (void **)&ctx->vsorc.ivqd, mreq);
+                    mem_realloc(ctx, (void **)&ctx->vsorc.iqds, mreq);
+                    
+                    mreq = (size_t)ctx->vsorc.nvqd * sizeof(complex double);
+                    mem_realloc(ctx, (void **)&ctx->vsorc.vqd, mreq);
+                    mem_realloc(ctx, (void **)&ctx->vsorc.vqds, mreq);
+                    
+                    int idx = ctx->vsorc.nvqd - 1;
+                    ctx->vsorc.ivqd[idx] = segment_number(ctx, i2, i3);
+                    ctx->vsorc.vqd[idx] = f1 + I * f2;
+                    if (cabs(ctx->vsorc.vqd[idx]) < 1.e-20) {
+                        ctx->vsorc.vqd[idx] = CPLX_10;
+                    }
+                } else {
+                    // Applied voltage source
+                    ctx->vsorc.nsant++;
+                    size_t mreq = (size_t)ctx->vsorc.nsant * sizeof(int);
+                    mem_realloc(ctx, (void **)&ctx->vsorc.isant, mreq);
+                    
+                    mreq = (size_t)ctx->vsorc.nsant * sizeof(complex double);
+                    mem_realloc(ctx, (void **)&ctx->vsorc.vsant, mreq);
+                    
+                    int idx = ctx->vsorc.nsant - 1;
+                    ctx->vsorc.isant[idx] = segment_number(ctx, i2, i3);
+                    ctx->vsorc.vsant[idx] = f1 + I * f2;
+                    if (cabs(ctx->vsorc.vsant[idx]) < 1.e-20) {
+                        ctx->vsorc.vsant[idx] = CPLX_10;
+                    }
+                }
+            } else {
+                // Far field pattern for receiving antenna
+                ctx->fpat.xpr6 = f6;
+                ctx->vsorc.nsant = 0;
+                ctx->vsorc.nvqd = 0;
+            }
+        }
+        else if (strcmp(code, "NT") == 0 || strcmp(code, "TL") == 0) {
+            // NT/TL cards - Network parameters
+            if (i2 == -1) {
+                continue;
+            }
+            
+            // First NT/TL in batch resets network (iflow transition to 6)
+            if (ctx->iflow != 6 && ctx->netcx.nonet == 0) {
+                reset_network_buffers(ctx);
+                ctx->iflow = 6;
+            }
+            
+            // Reallocate network buffers
+            ctx->netcx.nonet++;
+            size_t mreq = (size_t)ctx->netcx.nonet * sizeof(int);
+            mem_realloc(ctx, (void **)&ctx->netcx.ntyp, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.iseg1, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.iseg2, mreq);
+            
+            mreq = (size_t)ctx->netcx.nonet * sizeof(double);
+            mem_realloc(ctx, (void **)&ctx->netcx.x11r, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.x11i, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.x12r, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.x12i, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.x22r, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.x22i, mreq);
+            
+            int idx = ctx->netcx.nonet - 1;
+            if (strcmp(code, "NT") == 0) {
+                ctx->netcx.ntyp[idx] = 1;
+            } else {
+                ctx->netcx.ntyp[idx] = 2;
+            }
+            
+            ctx->netcx.iseg1[idx] = segment_number(ctx, i1, i2);
+            ctx->netcx.iseg2[idx] = segment_number(ctx, i3, i4);
+            ctx->netcx.x11r[idx] = f1;
+            ctx->netcx.x11i[idx] = f2;
+            ctx->netcx.x12r[idx] = f3;
+            ctx->netcx.x12i[idx] = f4;
+            ctx->netcx.x22r[idx] = f5;
+            ctx->netcx.x22i[idx] = f6;
+            
+            // Check for transmission line with impedance
+            if ((ctx->netcx.ntyp[idx] == 2) && (f1 <= 0.0)) {
+                ctx->netcx.ntyp[idx] = 3;
+                ctx->netcx.x11r[idx] = -f1;
+            }
+        }
+        else if (strcmp(code, "CP") == 0) {
+            // CP card - Maximum coupling between antennas
+            if (i2 == 0) {
+                continue;
+            }
+            
+            // First CP in batch resets coupling (iflow transition to 2)
+            if (ctx->iflow != 2 && ctx->yparm.ncoup == 0) {
+                reset_coupling_buffers(ctx);
+                ctx->iflow = 2;
+            }
+            
+            ctx->yparm.icoup = 0;
+            
+            // First antenna
+            ctx->yparm.ncoup++;
+            size_t mreq = (size_t)ctx->yparm.ncoup * sizeof(int);
+            mem_realloc(ctx, (void **)&ctx->yparm.nctag, mreq);
+            mem_realloc(ctx, (void **)&ctx->yparm.ncseg, mreq);
+            ctx->yparm.nctag[ctx->yparm.ncoup - 1] = i1;
+            ctx->yparm.ncseg[ctx->yparm.ncoup - 1] = i2;
+            
+            // Second antenna (if specified)
+            if (i4 != 0) {
+                ctx->yparm.ncoup++;
+                mreq = (size_t)ctx->yparm.ncoup * sizeof(int);
+                mem_realloc(ctx, (void **)&ctx->yparm.nctag, mreq);
+                mem_realloc(ctx, (void **)&ctx->yparm.ncseg, mreq);
+                ctx->yparm.nctag[ctx->yparm.ncoup - 1] = i3;
+                ctx->yparm.ncseg[ctx->yparm.ncoup - 1] = i4;
+            }
+        }
+        else if (strcmp(code, "GD") == 0) {
+            // GD card - Ground representation (for patterns)
+            ctx->fpat.epsr2 = f1;
+            ctx->fpat.sig2 = f2;
+            ctx->fpat.clt = f3;
+            ctx->fpat.cht = f4;
+        }
+        else if (strcmp(code, "NX") == 0 || strcmp(code, "PT") == 0 || strcmp(code, "PQ") == 0 || strcmp(code, "PL") == 0) {
+            // These cards are for print control or job control - skip in batch processing
+            continue;
+        }
+        else if (strcmp(code, "RP") == 0) {
+            // RP card - Radiation pattern parameters
+            ctx->gnd.ifar = i1;
+            ctx->fpat.nth = (i2 == 0) ? 1 : i2;
+            ctx->fpat.nph = (i3 == 0) ? 1 : i3;
+            
+            ctx->fpat.ipd = i4 / 10;
+            ctx->fpat.iavp = i4 - ctx->fpat.ipd * 10;
+            ctx->fpat.inor = ctx->fpat.ipd / 10;
+            ctx->fpat.ipd = ctx->fpat.ipd - ctx->fpat.inor * 10;
+            ctx->fpat.iax = ctx->fpat.inor / 10;
+            ctx->fpat.inor = ctx->fpat.inor - ctx->fpat.iax * 10;
+            
+            if (ctx->fpat.iax != 0) ctx->fpat.iax = 1;
+            if (ctx->fpat.ipd != 0) ctx->fpat.ipd = 1;
+            if ((ctx->fpat.nth < 2) || (ctx->fpat.nph < 2) || (ctx->gnd.ifar == 1)) {
+                ctx->fpat.iavp = 0;
+            }
+            
+            ctx->fpat.thets = f1;
+            ctx->fpat.phis = f2;
+            ctx->fpat.dth = f3;
+            ctx->fpat.dph = f4;
+            ctx->fpat.rfld = f5;
+            ctx->fpat.gnor = f6;
+        }
+        else if (strcmp(code, "NE") == 0 || strcmp(code, "NH") == 0) {
+            // NE/NH cards - Near field calculation
+            ctx->fpat.nfeh = (strcmp(code, "NH") == 0) ? 1 : 0;
+            ctx->fpat.near = i1;
+            ctx->fpat.nrx = i2;
+            ctx->fpat.nry = i3;
+            ctx->fpat.nrz = i4;
+            ctx->fpat.xnr = f1;
+            ctx->fpat.ynr = f2;
+            ctx->fpat.znr = f3;
+            ctx->fpat.dxnr = f4;
+            ctx->fpat.dynr = f5;
+            ctx->fpat.dznr = f6;
+        }
+        else if (strcmp(code, "EK") == 0) {
+            // Extended thin-wire kernel
+            ctx->dataj.iexk = i1;
+        }
+        else if (strcmp(code, "KH") == 0) {
+            // Matrix integration limit
+            ctx->dataj.rkh = f1;
+        }
+        else if (strcmp(code, "WG") == 0) {
+            add_error(ctx, &ctx->errors, "WG CARD NOT SUPPORTED", FATAL);
+            return -1;
+        }
+    }
+    
+    // Return 1 if this was the final batch (EN/XT), 0 to continue
+    return is_final_batch ? 1 : 0;
 }
 
 /******************************************************************************
