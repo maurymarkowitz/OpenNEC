@@ -35,6 +35,7 @@ void write_frequency_data(FILE *file, nec_context_t *ctx);
 void write_loading_data(FILE *file, nec_context_t *ctx);
 void write_environment_data(FILE *file, nec_context_t *ctx);
 void write_matrix_timing(FILE *file, nec_context_t *ctx);
+void write_greens_matrix(FILE *file, nec_context_t *ctx, int nrow, complex double *cm);
 void write_network_data(FILE *file, nec_context_t *ctx);
 void write_matrix_asymmetry(FILE *file, nec_context_t *ctx);
 void write_network_excitation(FILE *file, nec_context_t *ctx);

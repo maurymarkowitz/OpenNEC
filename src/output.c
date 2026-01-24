@@ -302,6 +302,62 @@ void write_nec_output(nec_context_t *ctx, deck_t *deck, FILE *file)
 }
 
 /******************************************************************************
+ * write_greens_matrix()
+ *
+ * Writes a simple Greens Function file (NGF v1) containing the interaction
+ * matrix (cm) as computed prior to factorization, along with basic metadata
+ * and segment center coordinates. Format is human-readable text.
+ *
+ * Header:
+ *   # OpenNEC NGF v1
+ *   frequency_mhz: <fmhz>
+ *   wave_number_k: <2*pi/wavelength>
+ *   segments: <ctx->geometry.n>
+ *   equations: <nrow>
+ *
+ * Segment centers:
+ *   SEG i x y z len radius
+ *
+ * Matrix entries:
+ *   CM i j re im
+ */
+void write_greens_matrix(FILE *file, nec_context_t *ctx, int nrow, complex double *cm)
+{
+  if (!file || !cm || nrow <= 0) return;
+
+  double fmhz = ctx->save.fmhz;
+  double wlam = ctx->geometry.wlam; // wavelength in meters
+  double k = (wlam > 0.0) ? (2.0 * PI / wlam) : 0.0;
+
+  fprintf(file, "# OpenNEC NGF v1\n");
+  fprintf(file, "frequency_mhz: %.6f\n", fmhz);
+  fprintf(file, "wave_number_k: %.9f\n", k);
+  fprintf(file, "segments: %d\n", ctx->geometry.n);
+  fprintf(file, "equations: %d\n", nrow);
+
+  // Segment centers (if available)
+  int nseg = ctx->geometry.n;
+  if (nseg > 0 && ctx->geometry.x && ctx->geometry.y && ctx->geometry.z) {
+    for (int i = 0; i < nseg; i++) {
+      double x = ctx->geometry.x[i];
+      double y = ctx->geometry.y[i];
+      double z = ctx->geometry.z[i];
+      double len = (ctx->geometry.si) ? ctx->geometry.si[i] : 0.0;
+      double rad = (ctx->geometry.bi) ? ctx->geometry.bi[i] : 0.0;
+      fprintf(file, "SEG %d %.9g %.9g %.9g %.9g %.9g\n", i+1, x, y, z, len, rad);
+    }
+  }
+
+  // Matrix entries (row-major by (i,j) pairs)
+  for (int j = 0; j < nrow; j++) {
+    for (int i = 0; i < nrow; i++) {
+      complex double v = cm[i + j * nrow];
+      fprintf(file, "CM %d %d %.15g %.15g\n", i+1, j+1, creal(v), cimag(v));
+    }
+  }
+}
+
+/******************************************************************************
  * write_headers()
  *
  * Writes the header area and comment cards to the standard NEC output file.

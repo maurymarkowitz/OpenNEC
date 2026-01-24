@@ -1161,6 +1161,11 @@ int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq
         double tim1, tim2;
         secnds(ctx, &tim1);
         cmset(ctx, ctx->netcx.neq, cm, ctx->dataj.rkh, ctx->dataj.iexk);
+        // Export Greens matrix prior to factorization if requested
+        if (ctx->green_fp != NULL) {
+            write_greens_matrix(ctx->green_fp, ctx, ctx->netcx.neq, cm);
+            fflush(ctx->green_fp);
+        }
         secnds(ctx, &tim2);
         ctx->mat_fill_time = tim2 - tim1;
         

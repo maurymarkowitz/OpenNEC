@@ -289,7 +289,7 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     // card has at least three characters, which would assume something like !SY
     if(isCmt && line_len > 3) {
       // skip forward to find anything after the comment marker
-      int pos = 0;
+      size_t pos = 0;
       if(strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0)  {
         pos = 2;
       } else if (strcmp(type_buff, "!") == 0 || strcmp(type_buff, "#") == 0|| strcmp(type_buff, "'") == 0) {

@@ -42,8 +42,8 @@ static int jobs = 1; // number of parallel jobs (-j)
  * as the name implies, this simply prints the VERSION_STRING to stdout
  *
  */
-static void print_version();
-static void print_version()
+static void print_version(void);
+static void print_version(void)
 {
   puts("Onec " VERSION_STRING);
 }
@@ -237,6 +237,32 @@ static int process_single_file(const char *input_filename, const char *output_fi
     ctx.output_fp = stdout;
   }
 
+  // open greens output file if requested
+  if (run_greens) {
+    char ngfpath[512];
+    const char *path = NULL;
+    if (strlen(greens_file) > 0) {
+      path = greens_file;
+    } else if (strlen(input_filename) > 0) {
+      // derive from input filename by replacing extension with .ngf
+      strncpy(ngfpath, input_filename, sizeof(ngfpath) - 1);
+      ngfpath[sizeof(ngfpath) - 1] = '\0';
+      char *dot = strrchr(ngfpath, '.');
+      char *slash = strrchr(ngfpath, '/');
+      if (dot != NULL && (slash == NULL || dot > slash)) {
+        *dot = '\0';
+      }
+      strncat(ngfpath, ".ngf", sizeof(ngfpath) - strlen(ngfpath) - 1);
+      path = ngfpath;
+    } else {
+      path = "greens.ngf";
+    }
+    ctx.green_fp = fopen(path, "w");
+    if (!ctx.green_fp) {
+      fprintf(ctx.error_fp, "Warning: could not open greens file '%s' for writing; skipping.\n", path);
+    }
+  }
+
   // read input file into a deck
   read_deck(&ctx, &deck, input_fp);
 
@@ -299,6 +325,12 @@ static int process_single_file(const char *input_filename, const char *output_fi
     write_nec_output(&ctx, &deck, output_fp);
   } else if (run_simulation && ctx.save.nfrq == 0) {
     fprintf(ctx.error_fp, "Warning: No FR card found, skipping output generation\n");
+  }
+
+  // close greens file if open
+  if (ctx.green_fp) {
+    fclose(ctx.green_fp);
+    ctx.green_fp = NULL;
   }
 
   nec_context_cleanup(&ctx);

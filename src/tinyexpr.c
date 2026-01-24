@@ -41,6 +41,15 @@
 #include <stdio.h>
 #include <limits.h>
 
+/* Suppress pedantic warnings in this third-party file (function pointer casts, etc.). */
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpedantic"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 #ifndef NAN
 #define NAN (0.0/0.0)
 #endif
@@ -110,8 +119,8 @@ void te_free(te_expr *n) {
   free(n);
 }
 
-static double pi() {return 3.14159265358979323846;}
-static double e() {return 2.71828182845904523536;}
+static double pi(void) {return 3.14159265358979323846;}
+static double e(void) {return 2.71828182845904523536;}
 static double fac(double a) {/* simplest version of fac */
   if (a < 0.0)
     return NAN;
@@ -608,7 +617,7 @@ static void pn (const te_expr *n, int depth) {
   
   switch(TYPE_MASK(n->type)) {
     case TE_CONSTANT: printf("%f\n", n->value); break;
-    case TE_VARIABLE: printf("bound %p\n", n->bound); break;
+    case TE_VARIABLE: printf("bound %p\n", (void*)n->bound); break;
       
     case TE_FUNCTION0: case TE_FUNCTION1: case TE_FUNCTION2: case TE_FUNCTION3:
     case TE_FUNCTION4: case TE_FUNCTION5: case TE_FUNCTION6: case TE_FUNCTION7:
@@ -617,7 +626,7 @@ static void pn (const te_expr *n, int depth) {
       arity = ARITY(n->type);
       printf("f%d", arity);
       for(i = 0; i < arity; i++) {
-        printf(" %p", n->parameters[i]);
+        printf(" %p", (void*)n->parameters[i]);
       }
       printf("\n");
       for(i = 0; i < arity; i++) {
@@ -630,3 +639,9 @@ static void pn (const te_expr *n, int depth) {
 void te_print(const te_expr *n) {
   pn(n, 0);
 }
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif

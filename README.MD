@@ -3,6 +3,12 @@ OpenNEC
 
 **Copyright © 2026 Maury Markowitz**
 
+This software is released into the public domain under the CC0 1.0 Universal Public Domain Dedication.
+
+To the extent possible under law, the author has waived all copyright and related or neighboring rights to this work.
+
+https://creativecommons.org/publicdomain/zero/1.0/
+
 Introduction
 ------------
 
@@ -96,5 +102,3 @@ OpenNEC defines a number of constants used in the extensions that 3rd party soft
 Acknowledgements
 ----------------
 * OpenNEC is a fork of nec2c by Neoklis Kyriazis
-* OpenNEC's function parser is based on tinyexpr, written by Lewis Van Winkle
-* OpenNEC would not be possible without stackoverflow

@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -I. -Isrc -g -O2 -Wall
+CFLAGS = -I. -Isrc -g -O2 -Wall -Wno-unused-parameter
 LDFLAGS =
 
 # Matrix library backend selection
@@ -99,7 +99,7 @@ else ifeq ($(BACKEND),auto)
     ifeq ($(UNAME_S),Darwin)
         # macOS - use Accelerate
         LDFLAGS += -framework Accelerate
-        CFLAGS += -DHAVE_ACCELERATE
+        CFLAGS += -DHAVE_ACCELERATE -DACCELERATE_NEW_LAPACK
         $(info Auto-detected: Accelerate framework (macOS))
     else
         # Try OpenBLAS first
