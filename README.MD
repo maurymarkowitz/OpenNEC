@@ -36,6 +36,10 @@ If you wish to use onec to simply check syntax or reformat a file, use the `-n` 
 
 Short options with no parameters can be ganged, for instance, `-nt`.
 
+Build & Setup
+-------------
+For platform-specific build instructions, backend selection (Accelerate/OpenBLAS/MKL/BLAS), and regression timing, see [BUILD](BUILD).
+
 OpenNEC concept
 ---------------
 OpenNEC's code ultimately traces its history to the NEC-2 Fortran code released by Lawrence Livermore in the early 1980s. A port to C was made by Neoklis Kyriazis in the nec2c program which was first released on 20 August 2003. OpenNEC was forked from the 1.3 version of nec2c, released in 2014.
