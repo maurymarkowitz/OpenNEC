@@ -152,6 +152,100 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         add_error(ctx, errors, msg, 0);
       }
     }
+
+    // GE: optional I1 in {-1,0,1,2}; no floats expected
+    if(strcmp(code, "GE") == 0) {
+      if(deck->cards[i].ints_used > 1) {
+        sprintf(msg, "The card on line %d is a GE but has more than one integer input.", i);
+        add_error(ctx, errors, msg, 0);
+      }
+      int gei1 = deck->cards[i].i[1];
+      if(!(gei1 == -1 || gei1 == 0 || gei1 == 1 || gei1 == 2)) {
+        sprintf(msg, "The card on line %d is a GE with I1=%d, which is outside the typical range {-1,0,1,2}.", i, gei1);
+        add_error(ctx, errors, msg, 0);
+      }
+      if(deck->cards[i].flts_used > 0) {
+        sprintf(msg, "The card on line %d is a GE but has floating-point inputs, which are not expected.", i);
+        add_error(ctx, errors, msg, 0);
+      }
+    }
+
+    // TL: expects 4 integer locators (tags/segments) and Z0 in F1
+    if(strcmp(code, "TL") == 0) {
+      if(deck->cards[i].ints_used < 4) {
+        sprintf(msg, "The card on line %d is a TL but has fewer than 4 integer inputs (tag/segment locators).", i);
+        add_error(ctx, errors, msg, 0);
+      }
+      // basic sanity: locators positive
+      if(deck->cards[i].i[1] <= 0 || deck->cards[i].i[2] <= 0 || deck->cards[i].i[3] <= 0 || deck->cards[i].i[4] <= 0) {
+        sprintf(msg, "The card on line %d is a TL with non-positive tag/segment locator(s).", i);
+        add_error(ctx, errors, msg, 0);
+      }
+      if(deck->cards[i].flts_used < 1) {
+        sprintf(msg, "The card on line %d is a TL but has no characteristic impedance in F1.", i);
+        add_error(ctx, errors, msg, 0);
+      } else if(deck->cards[i].f[1] == 0.0) {
+        sprintf(msg, "The card on line %d is a TL with Z0 = 0 in F1, which is invalid.", i);
+        add_error(ctx, errors, msg, 0);
+      }
+    }
+
+    // EX: typical voltage source requires 4 integers and non-zero amplitude in F1
+    if(strcmp(code, "EX") == 0) {
+      if(deck->cards[i].ints_used < 4) {
+        sprintf(msg, "The card on line %d is an EX but has fewer than 4 integer inputs.", i);
+        add_error(ctx, errors, msg, 0);
+      }
+      if(deck->cards[i].flts_used < 1) {
+        sprintf(msg, "The card on line %d is an EX but has no amplitude in F1.", i);
+        add_error(ctx, errors, msg, 0);
+      } else if(deck->cards[i].f[1] == 0.0) {
+        sprintf(msg, "The card on line %d is an EX with zero amplitude in F1.", i);
+        add_error(ctx, errors, msg, 0);
+      }
+    }
+
+    // GN: minimal check — at least the ground type integer should be present
+    if(strcmp(code, "GN") == 0) {
+      if(deck->cards[i].ints_used < 1) {
+        sprintf(msg, "The card on line %d is a GN but has no integer ground type specified.", i);
+        add_error(ctx, errors, msg, 0);
+      }
+    }
+
+    // LD: loading — require type, tag, segment and at least one non-zero value
+    if(strcmp(code, "LD") == 0) {
+      // At minimum: I1 (type), I2 (tag), I3 (segment)
+      if(deck->cards[i].ints_used < 3) {
+        sprintf(msg, "The card on line %d is an LD but has fewer than 3 integer inputs (type, tag, segment).", i);
+        add_error(ctx, errors, msg, 0);
+      } else {
+        int type = deck->cards[i].i[1];
+        int tag  = deck->cards[i].i[2];
+        int seg1 = deck->cards[i].i[3];
+        int seg2 = deck->cards[i].i[4];
+        if(type < -1) {
+          sprintf(msg, "The card on line %d is an LD with unexpected type I1=%d.", i, type);
+          add_error(ctx, errors, msg, 0);
+        }
+        if(tag <= 0 || seg1 <= 0) {
+          sprintf(msg, "The card on line %d is an LD with non-positive tag or segment locator.", i);
+          add_error(ctx, errors, msg, 0);
+        }
+        if(seg2 != 0 && seg2 < seg1) {
+          sprintf(msg, "The card on line %d is an LD with end segment I4 < start segment I3.", i);
+          add_error(ctx, errors, msg, 0);
+        }
+      }
+      // Require at least one float and encourage non-zero values
+      if(deck->cards[i].flts_used < 1) {
+        sprintf(msg, "The card on line %d is an LD but has no floating-point load value (e.g., resistance).", i);
+        add_error(ctx, errors, msg, 0);
+      } else if(deck->cards[i].f[1] == 0.0 && deck->cards[i].f[2] == 0.0 && deck->cards[i].f[3] == 0.0) {
+        sprintf(msg, "The card on line %d is an LD with zero load values (F1..F3 all zero).", i);
+        add_error(ctx, errors, msg, 0);
+      }
+    }
     
     // along with some others we want to keep track of
     
@@ -322,17 +416,27 @@ void test_duplicate_tags(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
 {
   // we will also check to see if there are duplicate tags
   char *msg = calloc(1, MAX_ERROR_LEN);
- 
+  
+  // Only consider duplicates within the geometry section
+  int gstart = deck->geometry_start;
+  int gend = deck->geometry_end; // index of GE card
+  if (gstart < 0 || gend < 0 || gend <= gstart) {
+    // Fallback: search all cards but restrict to geometry types for both sides
+    gstart = 0;
+    gend = deck->num_cards;
+  }
+
   // now check if there are any duplicate tags in the geometry
   // NOTE: this doesn't test for new tags generated by GM or similar
-  // FIXME: we could do that by calculating geometry and then comparing
-  //        card and tag numbers
-  for(int i = 0; i < deck->num_cards; i++) {
+  for(int i = gstart; i < gend; i++) {
     if(is_geometry(&deck->cards[i]) && deck->cards[i].i[1] > 0) {
-      for(int j = i + 1; j < deck->num_cards; j++) {
-        if(deck->cards[j].i[1] == deck->cards[i].i[1]) {
-          sprintf(msg, "The tag number %d is found on card %d and card %d.", i, j, deck->cards[i].i[1]);
-          add_error(ctx, errors, msg, 1);
+      int tag_i = deck->cards[i].i[1];
+      for(int j = i + 1; j < gend; j++) {
+        if(is_geometry(&deck->cards[j]) && deck->cards[j].i[1] > 0) {
+          if(deck->cards[j].i[1] == tag_i) {
+            sprintf(msg, "The tag number %d is found on card %d and card %d.", tag_i, i + 1, j + 1);
+            add_error(ctx, errors, msg, 1);
+          }
         }
       }
     }
@@ -364,27 +468,22 @@ void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
   for(int i = 0; i < deck->num_cards; i++) {
     code = deck->cards[i].card_code;
 
-    // FRs come in two forms, I2=1 and I2>1
+    // FRs: allow single-frequency (I2=0) or stepped (I2>0)
     if(strcmp(code, "FR") == 0) {
       // there must be a value in F1
       if(deck->cards[i].f[1] == 0) {
         sprintf(msg, "The card on line %d is a FR but has no base frequency in F1.", i);
         add_error(ctx, errors, msg, 0);
       }
-      // I2 has to be >= 1
-      if(deck->cards[i].i[2] < 1) {
-        sprintf(msg, "The card on line %d is a FR with I2 < 1, which is illegal.", i);
+      // Single-frequency: I2==0 should have F2==0
+      if(deck->cards[i].i[2] == 0 && deck->cards[i].f[2] != 0) {
+        sprintf(msg, "The card on line %d is a FR with I2 = 0 (single frequency), but has a non-zero F2.", i);
         add_error(ctx, errors, msg, 0);
       }
-      // if I2=1, then F2 should be 0
-      else if(deck->cards[i].i[2] == 1 && deck->cards[i].f[2] != 0) {
-        sprintf(msg, "The card on line %d is a FR with I2 = 1 (no steps), but has a step value in F2.", i);
+      // Stepped: I2>0 requires positive step in F2
+      else if(deck->cards[i].i[2] > 0 && deck->cards[i].f[2] <= 0) {
+        sprintf(msg, "The card on line %d is a FR with I2 > 0 (stepped), but F2 is not a positive step.", i);
         add_error(ctx, errors, msg, 0);
-      }
-      // but if I2 > 1 then F2 has to be > 0
-      else if(deck->cards[i].i[2] > 1 && deck->cards[i].f[2] == 0) {
-          sprintf(msg, "The card on line %d is a FR with I2 > 1 (steps), but has no step value in F2.", i);
-          add_error(ctx, errors, msg, 0);
       }
     }
   }

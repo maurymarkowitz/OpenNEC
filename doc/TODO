@@ -13,3 +13,4 @@ Items still to be implemented:
 * add TIA-804-B (.adf) pattern output, which is simply a standard way of writing the NEC pattern
 
 * add a -f(ormat) flag to the CLI version to specify an output format so it can write NEC, 4nec2, etc.
+

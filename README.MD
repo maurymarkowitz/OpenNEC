@@ -3,11 +3,7 @@ OpenNEC
 
 **Copyright © 2026 Maury Markowitz**
 
-This software is released into the public domain under the CC0 1.0 Universal Public Domain Dedication.
-
-To the extent possible under law, the author has waived all copyright and related or neighboring rights to this work.
-
-https://creativecommons.org/publicdomain/zero/1.0/
+This software is released into the public domain under the CC0 1.0 Universal Public Domain Dedication. See [LICENSE](LICENSE) for details.
 
 Introduction
 ------------

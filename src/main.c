@@ -277,6 +277,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
   if(run_tests) {
     test_deck_structure(&ctx, &deck, &test_errors);
     test_duplicate_tags(&ctx, &deck, &test_errors);
+    test_card_inputs(&ctx, &deck, &test_errors);
   }
   // TESTING: print any structure errors
   for(int i = 0; i < test_errors.num_errors; i++) {
