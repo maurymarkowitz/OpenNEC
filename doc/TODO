@@ -1,7 +1,5 @@
 Items still to be implemented:
 
-* parallel file processing: process multiple input decks concurrently (bounded worker pool) while preserving deterministic per-file outputs; audit shared state and ensure thread-safe contexts
-
 * check that every required field got a number or formula during read (see test_card_inputs)
 
 * add SYmbols to a deck-wide list, not just the cards they're on
