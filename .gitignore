@@ -22,3 +22,7 @@ old/
 
 # task lists
 thread_safety_refactor_todo.md
+
+# simulation outputs (ignore generated artifacts)
+*.out
+*.ngf
