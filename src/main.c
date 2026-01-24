@@ -17,6 +17,12 @@
 #include <getopt.h>
 #endif
 
+#include <pthread.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+
+
 /** signal handler */
 //static void sig_handler(int signal);
 
@@ -28,6 +34,7 @@ static char *input_file = "";
 static char *output_file = "";
 static char *error_file = "";
 static char *greens_file = "";
+static int jobs = 1; // number of parallel jobs (-j)
 
 /******************************************************************************
  * print_version()
@@ -58,6 +65,7 @@ void print_usage(char *argv[])
   puts("  -o, --output-file: (path/)name of the output file (single file only)");
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -g, --greens: write a greens function file to *.ngf or provided filename");
+  puts("  -j, --jobs N: process up to N files in parallel (default 1)");
   puts("Multiple input files can be specified; each will generate a .out file.");
   puts("If no source_file is provided, input is read from stdin and output goes to stdout.");
 }
@@ -91,6 +99,7 @@ static struct option program_options[] =
   {"output-file", required_argument,  NULL, 'o'},
   {"error-file", required_argument,  NULL, 'e'},
   {"greens", required_argument, NULL, 'g'},
+  {"jobs", required_argument, NULL, 'j'},
   {0, 0, 0, 0}
 };
 
@@ -108,7 +117,7 @@ void parse_options(int argc, char *argv[])
   while(1) {
     // eat an option and exit if we're done
     /* portable short options: 'g' requires an argument */
-    int c = getopt_long(argc, argv, "hvnti:o:e:g:", program_options, &option_index); // should match the items above
+    int c = getopt_long(argc, argv, "hvnti:o:e:g:j:", program_options, &option_index); // should match the items above
     if(c == -1) break;
     
     switch(c) {
@@ -146,6 +155,10 @@ void parse_options(int argc, char *argv[])
       case 'g':
         run_greens = TRUE;
         greens_file = optarg;
+        break;
+      case 'j':
+        jobs = atoi(optarg);
+        if (jobs < 1) jobs = 1;
         break;
         
       default:
@@ -319,6 +332,60 @@ static void generate_output_filename(const char *input_filename, char *output_fi
   strncat(output_filename, ".out", size - strlen(output_filename) - 1);
 }
 
+typedef struct {
+  const char *input;
+  char output[512];
+  int index;
+  int status; // 0 ok, -1 failure
+  char *log_buf; // captured stderr
+  size_t log_size;
+} task_t;
+
+typedef struct {
+  task_t *tasks;
+  int task_count;
+  int next_index;
+  pthread_mutex_t lock;
+} work_queue_t;
+
+static void *worker_thread(void *arg)
+{
+  work_queue_t *q = (work_queue_t *)arg;
+  while (1) {
+    int idx = -1;
+    pthread_mutex_lock(&q->lock);
+    if (q->next_index < q->task_count) {
+      idx = q->next_index++;
+    }
+    pthread_mutex_unlock(&q->lock);
+
+    if (idx == -1) break;
+
+    task_t *t = &q->tasks[idx];
+
+    // capture logs using open_memstream
+    char *buf = NULL;
+    size_t sz = 0;
+    FILE *memfp = open_memstream(&buf, &sz);
+    if (!memfp) {
+      // fallback: use stderr (may interleave)
+      t->status = process_single_file(t->input, t->output, stderr);
+      t->log_buf = NULL;
+      t->log_size = 0;
+      continue;
+    }
+
+    // Emit the processing header into the captured stream for consistency
+    fprintf(memfp, "Processing %s -> %s\n", t->input, t->output);
+    t->status = process_single_file(t->input, t->output, memfp);
+    fflush(memfp);
+    fclose(memfp); // sets buf/sz
+    t->log_buf = buf;
+    t->log_size = sz;
+  }
+  return NULL;
+}
+
 /*-------------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
@@ -352,32 +419,83 @@ int main(int argc, char **argv)
       return EXIT_FAILURE;
     }
   } else {
-    // Process each input file
+    // Process files (possibly in parallel)
     int failed_count = 0;
-    for (int i = optind; i < argc; i++) {
-      const char *input = argv[i];
-      char output[512];
-      
-      // Generate output filename if not explicitly provided
-      if (strlen(output_file) > 0 && num_files == 1) {
-        // Single file with explicit output name
-        strncpy(output, output_file, sizeof(output) - 1);
-        output[sizeof(output) - 1] = '\0';
-      } else {
-        // Auto-generate output filename
-        generate_output_filename(input, output, sizeof(output));
+    if (jobs <= 1 || num_files == 1) {
+      // Serial path remains unchanged
+      for (int i = optind; i < argc; i++) {
+        const char *input = argv[i];
+        char output[512];
+        if (strlen(output_file) > 0 && num_files == 1) {
+          strncpy(output, output_file, sizeof(output) - 1);
+          output[sizeof(output) - 1] = '\0';
+        } else {
+          generate_output_filename(input, output, sizeof(output));
+        }
+        fprintf(error_fp, "Processing %s -> %s\n", input, output);
+        if (process_single_file(input, output, error_fp) != 0) {
+          fprintf(error_fp, "Error processing %s, continuing to next file...\n", input);
+          failed_count++;
+        }
       }
-      
-      fprintf(error_fp, "Processing %s -> %s\n", input, output);
-      
-      if (process_single_file(input, output, error_fp) != 0) {
-        fprintf(error_fp, "Error processing %s, continuing to next file...\n", input);
-        failed_count++;
+      if (failed_count > 0) {
+        fprintf(error_fp, "\nCompleted with %d error(s) out of %d file(s)\n", failed_count, num_files);
       }
-    }
-    
-    if (failed_count > 0) {
-      fprintf(error_fp, "\nCompleted with %d error(s) out of %d file(s)\n", failed_count, num_files);
+    } else {
+      // Parallel execution with deterministic log ordering
+      int count = num_files;
+      task_t *tasks = (task_t *)calloc((size_t)count, sizeof(task_t));
+      if (!tasks) {
+        fprintf(error_fp, "Error: Out of memory creating task list\n");
+        if (error_fp != stderr) fclose(error_fp);
+        return EXIT_FAILURE;
+      }
+      // Prepare tasks in argv order
+      for (int k = 0; k < count; k++) {
+        int i = optind + k;
+        tasks[k].input = argv[i];
+        tasks[k].index = k;
+        if (strlen(output_file) > 0 && count == 1) {
+          strncpy(tasks[k].output, output_file, sizeof(tasks[k].output) - 1);
+          tasks[k].output[sizeof(tasks[k].output) - 1] = '\0';
+        } else {
+          generate_output_filename(tasks[k].input, tasks[k].output, sizeof(tasks[k].output));
+        }
+      }
+      // Start worker pool
+      int nthreads = jobs;
+      if (nthreads > count) nthreads = count;
+      pthread_t *threads = (pthread_t *)calloc((size_t)nthreads, sizeof(pthread_t));
+      work_queue_t queue;
+      queue.tasks = tasks;
+      queue.task_count = count;
+      queue.next_index = 0;
+      pthread_mutex_init(&queue.lock, NULL);
+      for (int t = 0; t < nthreads; t++) {
+        pthread_create(&threads[t], NULL, worker_thread, &queue);
+      }
+      for (int t = 0; t < nthreads; t++) {
+        pthread_join(threads[t], NULL);
+      }
+      pthread_mutex_destroy(&queue.lock);
+      free(threads);
+
+      // Emit logs and summarize in argv order
+      for (int k = 0; k < count; k++) {
+        if (tasks[k].log_buf && tasks[k].log_size > 0) {
+          fwrite(tasks[k].log_buf, 1, tasks[k].log_size, error_fp);
+          free(tasks[k].log_buf);
+          tasks[k].log_buf = NULL;
+        } else {
+          // if no captured log, at least show a line
+          fprintf(error_fp, "Processing %s -> %s\n", tasks[k].input, tasks[k].output);
+        }
+        if (tasks[k].status != 0) failed_count++;
+      }
+      free(tasks);
+      if (failed_count > 0) {
+        fprintf(error_fp, "\nCompleted with %d error(s) out of %d file(s)\n", failed_count, num_files);
+      }
     }
   }
 

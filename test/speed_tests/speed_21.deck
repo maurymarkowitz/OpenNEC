@@ -1,0 +1,8 @@
+CM Speed test: small dipole (21 segments)
+CE
+GW 1 21 0 0 0 0 1 0 0.005
+GE 0
+FR 0 1 0 0 14.0 0
+EX 0 1 11 0 1
+RP 0 10 1 1110 0 0 10 0
+EN

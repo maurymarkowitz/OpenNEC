@@ -1,0 +1,11 @@
+deck,segments,backend,real_seconds
+test/speed_tests/speed_21.deck,21,accelerate,0.15
+test/speed_tests/speed_101.deck,101,accelerate,0.00
+test/speed_tests/speed_401.deck,401,accelerate,0.02
+test/speed_tests/speed_1001.deck,1001,accelerate,0.12
+test/speed_tests/speed_4001.deck,4001,accelerate,2.97
+test/speed_tests/speed_21.deck,21,custom,0.13
+test/speed_tests/speed_101.deck,101,custom,0.00
+test/speed_tests/speed_401.deck,401,custom,0.04
+test/speed_tests/speed_1001.deck,1001,custom,0.39
+test/speed_tests/speed_4001.deck,4001,custom,21.31
