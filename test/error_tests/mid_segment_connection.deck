@@ -1,0 +1,8 @@
+CM Connection test: endpoint connects near middle of another wire
+CE
+GW 10 10 0 0 0 1 0 0 0.001
+GW 11 1 0.55 0 0 0.65 0 0 0.001
+GE
+FR 0 0 0 0 30 0
+LD 5 10 3 4 50 0 0
+EN

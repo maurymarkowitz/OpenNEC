@@ -1,0 +1,7 @@
+CM Wire crossing ground plane when ground enabled
+CE
+GW 10 5 0 0 0.5 0 0 -0.5 0.001
+GE 1
+FR 0 0 0 0 30 0
+EX 0 10 3 1 1
+EN

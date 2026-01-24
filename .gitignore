@@ -20,6 +20,14 @@ xcshareddata/
 # old code
 old/
 
+# legacy header (not used)
+nec2c.h
+
+# autoconf leftovers (not used)
+config.h
+config.status
+config.log
+
 # task lists
 thread_safety_refactor_todo.md
 

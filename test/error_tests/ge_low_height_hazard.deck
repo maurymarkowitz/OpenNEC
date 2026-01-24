@@ -1,0 +1,7 @@
+CM GE low-height hazard: GE 1 with horizontal wire very close to ground
+CE
+GW 10 10 0 0 0.00005 1 0 0.00005 0.001
+GE 1
+FR 0 0 0 0 30 0
+EX 0 10 1 1 1
+EN

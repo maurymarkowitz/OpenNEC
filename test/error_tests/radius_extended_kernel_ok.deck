@@ -1,0 +1,8 @@
+CM Extended kernel: radius acceptable up to 2*len
+CE
+GW 10 20 0 0 0 10 0 0 0.9
+EK 1
+GE
+FR 0 0 0 0 30 0
+EX 0 10 10 1 1
+EN
