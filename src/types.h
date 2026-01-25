@@ -98,6 +98,18 @@ extern char *unit_codes[NUM_ONEC_UNIT_CODES];
 extern double unit_mult[NUM_ONEC_UNIT_CODES];
 #endif
 
+/* tinyexpr variable names for field bindings */
+#ifndef ONEC_FIELD_VAR_NAMES_DEF
+#define ONEC_FIELD_VAR_NAMES_DEF
+/*
+ * The first entry is an empty string to align with 1-based indexing
+ * used throughout the codebase for NEC fields (F1..F7, I1..I4).
+ * Index 0 is intentionally unused.
+ */
+extern const char *fnames[MAX_FLT_FIELDS + 1];
+extern const char *inames[MAX_INT_FIELDS + 1];
+#endif
+
 /*** Structs encapsulating global ("common") variables */
 
 /*** Error levels are used internally, external software should use negatives ***/

@@ -17,6 +17,7 @@
  *****************************************************************************/
 
 #include "opennec.h"
+#include "tinyexpr.h"
 
 /******************************************************************************
  * new_card
@@ -594,7 +595,7 @@ void update_deck_values(deck_t *deck)
  */
 void update_card_values(card_t *card)
 {
-  double ft, in, det;
+  double ft, det;
   
   // first, copy any original input values into the value fields
   for(int i = 1; i <= MAX_INT_FIELDS; i++) {
@@ -605,7 +606,67 @@ void update_card_values(card_t *card)
   }
 
   // now run any calculations on the fields and copy those in instead
-  // TODO: do this!
+  if(card->formulas != NULL) {
+    // Prepare variable bindings for tinyexpr: F1..F8 and I1..I4
+    const int fcount = MAX_FLT_FIELDS;    // number of float fields (NEC: 7)
+    const int icount = MAX_INT_FIELDS;    // 4
+    double fvals[MAX_FLT_FIELDS + 1];     // 1-based
+    double ivals[MAX_INT_FIELDS + 1];     // 1-based
+
+    for(int i = 1; i <= fcount; i++) fvals[i] = card->fv[i];
+    for(int i = 1; i <= icount; i++) ivals[i] = (double)card->iv[i];
+
+    te_variable vars[MAX_FLT_FIELDS + MAX_INT_FIELDS];
+    int v = 0;
+    for(int i = 1; i <= fcount; i++) {
+      vars[v].name = fnames[i];
+      vars[v].address = &fvals[i];
+      vars[v].type = TE_VARIABLE;
+      v++;
+    }
+    for(int i = 1; i <= icount; i++) {
+      vars[v].name = inames[i];
+      vars[v].address = &ivals[i];
+      vars[v].type = TE_VARIABLE;
+      v++;
+    }
+
+    // Iterate formulas and evaluate each assignment (float targets only)
+    key_value_t *kv = card->formulas;
+    while(kv != NULL) {
+      const char *key = kv->key;
+      const char *expr_str = kv->value;
+      if(key != NULL && expr_str != NULL && key[0] != '\0') {
+        char kind = key[0];
+        int idx = atoi(key + 1);
+        if(kind == 'F' && idx >= 1 && idx <= MAX_FLT_FIELDS) {
+          int err = 0;
+          te_expr *expr = te_compile(expr_str, vars, v, &err);
+          if(expr != NULL) {
+            double val = te_eval(expr);
+            te_free(expr);
+            card->fv[idx] = val;
+            fvals[idx] = val; // keep variables in sync for subsequent formulas
+          } else {
+            // if compile fails, leave original value in place
+          }
+        } else if(kind == 'I' && idx >= 1 && idx <= MAX_INT_FIELDS) {
+          int err = 0;
+          te_expr *expr = te_compile(expr_str, vars, v, &err);
+          if(expr != NULL) {
+            double val = te_eval(expr);
+            te_free(expr);
+            int ival = (int)val; // truncate; can switch to rounding if desired
+            card->iv[idx] = ival;
+            ivals[idx] = (double)ival; // keep variables in sync for subsequent formulas
+          } else {
+            // if compile fails, leave original value in place
+          }
+        }
+      }
+      kv = kv->next;
+    }
+  }
   
   // and finally, apply any unit conversions - which are only on the flts
   for(int i = 1; i <= MAX_FLT_FIELDS; i++) {
@@ -616,24 +677,35 @@ void update_card_values(card_t *card)
       } else {
         // units 6 through 8 are zeros and have to be converted case-by-case
         switch(card->units[i]) {
-          case 6:  //ftin
-            // the fraction part is inches, not decimal feet
+          case 6:  // ftin: feet + inches (two-digit inches)
             ft = floor(card->fv[i]);
-            in = card->fv[i] - ft;
-            card->fv[i] = ft + (in / 12.0);
-            
-            // now convert resulting feet to meters
-            card->fv[i] = card->fv[i] * unit_mult[card->units[4]];
+            {
+              double frac = card->fv[i] - ft;
+              int inches_code = (int)lround(frac * 100.0);
+              if(inches_code >= 0 && inches_code <= 11) {
+                // Interpret as inches digits (0..11)
+                card->fv[i] = ft + (inches_code / 12.0);
+              } else {
+                // Fallback: treat fractional part as decimal feet (legacy behavior)
+                card->fv[i] = ft + frac;
+              }
+            }
+            // convert resulting feet to meters
+            card->fv[i] = card->fv[i] * unit_mult[4];
             break;
-            
+
           case 7:
-          case 8: // AWG
-            // the formula for AWG is weird...
-            det = (36 - card->fv[i]) / 39;
-            card->fv[i] = 0.127 * pow(92, det);
-            // AWG is in mm *diameter*, convert to m radius
-            card->fv[i] = card->fv[i] / 200;
+          case 8: { // AWG
+            // Allow non-integer gauges via formulas; round and clamp to valid range
+            int gauge = (int)lround(card->fv[i]);
+            if(gauge < -3) gauge = -3; // 4/0 -> -3
+            if(gauge > 40) gauge = 40;
+            det = (36.0 - (double)gauge) / 39.0;
+            double mm_diam = 0.127 * pow(92.0, det); // diameter in mm
+            // Convert to meters radius: mm -> m (÷1000), then /2
+            card->fv[i] = (mm_diam * 0.001) * 0.5; // meters radius
             break;
+          }
         } // switch
       } // if can be directly converted
   } // for

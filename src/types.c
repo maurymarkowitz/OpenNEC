@@ -17,7 +17,6 @@ char *field_names[NUM_FIELD_NAMES] = {
   "I1", "I2", "I3", "I4", "F1", "F2", "F3", "F4", "F5", "F6", "F7"
 };
 
-// MSM 2022-02-12 "#" turning off hash for now until we actually find it somehere
 char *comment_codes[NUM_COMMENT_CODES] = {
   "CM", "CE", "!", "'", "#"
 };
@@ -61,6 +60,19 @@ char *unit_codes[NUM_ONEC_UNIT_CODES] = {
 // and are indicated by the zeros
 double unit_mult[NUM_ONEC_UNIT_CODES] = {
   0, 1.0, 0.01, 0.001, 0.30480, 0.0254, 0, 0, 0
+};
+
+/*
+ * tinyexpr variable names for NEC field bindings.
+ * The first element is a blank string so these arrays are 1-based,
+ * matching how field indices are used throughout (F1..F7, I1..I4).
+ * Index 0 is intentionally unused.
+ */
+const char *fnames[MAX_FLT_FIELDS + 1] = {
+  "", "F1", "F2", "F3", "F4", "F5", "F6", "F7"
+};
+const char *inames[MAX_INT_FIELDS + 1] = {
+  "", "I1", "I2", "I3", "I4"
 };
 
 void nec_context_init(nec_context_t *ctx)
