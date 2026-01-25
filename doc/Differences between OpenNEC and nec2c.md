@@ -1,7 +1,7 @@
 Differences between OpenNEC, NEC-2 and nec2c
 ============================================
 
-OpenNEC is a re-implementation of the nec2c code, which is a reimplementation of the original Fortran NEC-2 code. OpenNEC is a reimplementaion of nec2c. The differences between onec and nec2c are much greater than those between nec2c and NEC-2.
+OpenNEC is a re-implementation of the nec2c code, which is a reimplementation of the original Fortran NEC-2 code. The differences between onec and nec2c are much greater than those between nec2c and NEC-2.
 
 This document describes these changes, which include changes to the original nec2c, as well as the large number of additions and features not found in the original code.
 
