@@ -3,6 +3,8 @@ OpenNEC
 
 **Copyright © 2026 Maury Markowitz**
 
+[![CC0 license](https://img.shields.io/badge/license-CC0-brightgreen.svg)](https://creativecommons.org/public-domain/cc0/)
+
 This software is released under the CC0 license. See [LICENSE](LICENSE) for details.
 
 Introduction
