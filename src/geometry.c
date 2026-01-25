@@ -58,8 +58,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
   }
   
   // make sure all the formula-based values are up to date
-  // TODO: should this be done by the caller?
-  update_deck_values(deck);
+   update_deck_values(deck);
   
   // loop over the geometry section of the deck, which should be correct by this point
   for(int i = deck->geometry_start; i <= deck->geometry_end; i++) {

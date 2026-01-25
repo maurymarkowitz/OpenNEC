@@ -534,10 +534,12 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     // QUESTION: it appears GR cards have to follow some other sort of geometry card, but it's not clear what
     
     // FR cards have to have either one input or three
-
-    //TODO: modifiers have to follow normal geometry, not another modifier or some other card
-    //      if (["GM", "GR", "GX"] && !["GA", "GH", "GW", "SP", "CW"].contains(lastCard)) {
-
+    if(strcmp(code, "FR") == 0) {
+      if(!(deck->cards[i].ints_used == 1 || deck->cards[i].ints_used == 3)) {
+        sprintf(msg, "The card on line %d is an FR but does not have 1 or 3 integer inputs.", i + 1);
+        add_error(ctx, errors, msg, 0);
+      }
+    }
     // advance last_code to current card for next-iteration pair checks
     last_code = code;
 

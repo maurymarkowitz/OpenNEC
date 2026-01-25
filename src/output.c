@@ -30,8 +30,6 @@
  * TODO: need to calculate all float values and run any conversions
  *       to base units before exporting!
  *
- * TODO: move this to an export.c
- *
  */
 void write_deck_nec(nec_context_t *ctx, deck_t *deck, FILE *file, int remove_inline_comments)
 {
