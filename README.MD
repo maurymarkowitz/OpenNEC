@@ -1,11 +1,12 @@
 OpenNEC
 =======
 
+
 **Copyright © 2026 Maury Markowitz**
 
-[![CC0 license](https://img.shields.io/badge/license-CC0-brightgreen.svg)](https://creativecommons.org/public-domain/cc0/)
+[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-This software is released under the CC0 license. See [LICENSE](LICENSE) for details.
+This software is released under the MIT license. See [LICENSE](LICENSE) for details.
 
 Introduction
 ------------
