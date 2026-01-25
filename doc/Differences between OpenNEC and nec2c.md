@@ -8,7 +8,7 @@ This document describes these changes, which include changes to the original nec
 Changes in the code
 -------------------
 
-- nec2c is in the form of a stand-alone command-line program. Other programs wanting to use nec2c to perform calculations do so by running the program with a temporary deck file, and then parsing the resulting output file.
+- nec2c is in the form of a stand-alone command-line program. Other programs wanting to use nec2c to perform calculations by running the program with a temporary deck file, and then parsing the resulting output file.
 - onec is in the form of a library that can be directly included in other programs. Those programs can modify the deck and read the results directly without using files. A simple wrapper program is also included, which emulates the nec2c command-line interface.
 
 - nec2c parses the deck card-by-card from the input file
