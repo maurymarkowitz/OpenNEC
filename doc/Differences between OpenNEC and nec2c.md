@@ -21,7 +21,7 @@ Changes in the code
 - onec has been refactored so there is no global state and is completely thread-safe. Programs can use the library to work on multiple decks, and the command shell can run multiple input files at the same time.
 
 - nec2c uses the original Fortran matrix calculation code. A number of forks of nec2c support one matrix library or another.
-- onec supports a wide variety of well-known matrix libraries across multiple platforms. These offer major performance improvements on large files (3x on 1000 segments, 7x on 4000). You can compare the performance by running the script in the speed_tests folder.
+- onec supports a wide variety of well-known matrix libraries across multiple platforms. These offer major performance improvements on large files (3x on 1000 segments, 7x on 4000). You can compare the performance by running the script in the speed_tests folder. On Apple platforms, Accelerate will be linked by default as this is always available.
 
 Other basic changes
 -------------------
