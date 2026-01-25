@@ -16,6 +16,7 @@ void parse_comment_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
 void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
 void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
 void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors);
+void add_invisible_extension_for_special_tags(nec_context_t *ctx, deck_t *deck);
 /* control.c */
 int nec_run_simulation(nec_context_t *ctx, deck_t *deck);
 int nec_calculation_defaults(nec_context_t *ctx);

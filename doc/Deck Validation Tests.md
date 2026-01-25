@@ -1,10 +1,10 @@
-OpenNEC Deck Validation Tests
+OpenNEC deck validation tests
 =============================
 
-This document summarizes the validation and guidance checks implemented in OpenNEC to help authors catch common deck issues early. These checks run in the tests-only mode and during normal processing, and report advisory vs. error conditions with clear messages.
+This document summarizes the validation and guidance checks implemented in OpenNEC to help authors catch common deck issues early. These checks run in the tests-only mode and during normal processing, reporting warnings vs. error conditions with different severity codes.
 
 ## Severity levels
-- 0: Advisory/warning — calculation may proceed, but the condition is discouraged.
+- 0: Warning — calculation may proceed, but the condition is discouraged.
 - 1: Error — likely to cause calculation failure or incorrect results; fix strongly recommended.
 - 2: Critical — deck cannot be processed (e.g., missing required data).
 

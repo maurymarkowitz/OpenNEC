@@ -394,6 +394,9 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
       parse_key_values(ctx, card, errors);
     }
   } // foreach card
+
+  /* add invisible=true for special tag range on geometry cards */
+  add_invisible_extension_for_special_tags(ctx, deck);
 } /* end of parse_deck() */
 
 /******************************************************************************
@@ -821,3 +824,68 @@ void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors)
 } /* end of parse_key_values() */
 
 /* end of input.c */
+ 
+/**
+ * add_invisible_extension_for_special_tags()
+ *
+ * Called near the end of deck parsing. For each geometry card with a tag
+ * in the reserved "invisible" range, and without an existing "invisible"
+ * extension, add key/value pair invisible=true to the card's extensions.
+ *
+ * NOTE: Assumes the reserved range is [9800, 9900). If a different range
+ * is intended, adjust the bounds accordingly.
+ */
+void add_invisible_extension_for_special_tags(nec_context_t *ctx, deck_t *deck)
+{
+  if (!deck || deck->num_cards <= 0) return;
+  int start = deck->geometry_start >= 0 ? deck->geometry_start : 0;
+  int end = deck->geometry_end >= 0 ? deck->geometry_end : deck->num_cards - 1;
+  const int INV_MIN = 9800;
+  const int INV_MAX = 9900; /* exclusive upper bound */
+
+  for (int i = start; i <= end; i++) {
+    card_t *card = &deck->cards[i];
+    if (!is_geometry(card)) continue;
+
+    int tag = card->tag; /* populated during geometry build input parsing */
+    if (tag < INV_MIN || tag >= INV_MAX) continue;
+
+    /* Check if an "invisible" extension already exists */
+    bool has_invisible = false;
+    key_value_t *kv = card->extensns;
+    while (kv) {
+      if (kv->key && strcasecmp(kv->key, "invisible") == 0) {
+        has_invisible = true;
+        break;
+      }
+      kv = kv->next;
+    }
+    if (has_invisible) continue;
+
+    /* Append invisible=true to card->extensns */
+    key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
+    if (!pair) {
+      add_error(ctx, &ctx->errors, "Memory allocation failed for invisible key/value", PROBLEM);
+      continue;
+    }
+    pair->key = (char *)calloc(strlen("invisible") + 1, sizeof(char));
+    pair->value = (char *)calloc(strlen("true") + 1, sizeof(char));
+    if (!pair->key || !pair->value) {
+      free(pair->key); free(pair->value); free(pair);
+      add_error(ctx, &ctx->errors, "Memory allocation failed for invisible strings", PROBLEM);
+      continue;
+    }
+    strcpy(pair->key, "invisible");
+    strcpy(pair->value, "true");
+    pair->separator = ':'; /* default separator for extensions */
+    pair->next = NULL;
+
+    if (card->extensns == NULL) {
+      card->extensns = pair;
+    } else {
+      key_value_t *tail = card->extensns;
+      while (tail->next) tail = tail->next;
+      tail->next = pair;
+    }
+  }
+}

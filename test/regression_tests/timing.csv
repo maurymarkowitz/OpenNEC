@@ -1,0 +1,4 @@
+deck,backend,real,user,sys
+example5.deck,accelerate,0.23,0.00,0.00
+example5.deck,custom,0.12,0.00,0.00
+example5.deck,openblas,0.15,0.00,0.00

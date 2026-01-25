@@ -3,7 +3,7 @@ OpenNEC
 
 **Copyright © 2026 Maury Markowitz**
 
-This software is released into the public domain under the CC0 1.0 Universal Public Domain Dedication. See [LICENSE](LICENSE) for details.
+This software is released under the zLib license. See [LICENSE](LICENSE) for details.
 
 Introduction
 ------------
@@ -53,3 +53,4 @@ Programs that wish to use OpenNEC as their calculation engine can directly acces
 Acknowledgements
 ----------------
 * OpenNEC is a fork of nec2c by Neoklis Kyriazis
+* OpenNEC parses formulas using tinyexpr by Lewis Van Winkle 

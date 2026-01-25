@@ -1,0 +1,32 @@
+CM TESTEX5 (ftin coords, mm radius)
+CM 12 ELEMENT LOG PERIODIC ANTENNA IN FREE SPACE (ftin coords, mm radius)
+CM GW coordinates expressed in ftin (decimal feet); GW radius expressed in mm.
+CE TAU=0.93. SIGMA=0.70. BOOM IMPEDANCE=50. OHMS.
+GW 1 5 0.00000ftin -3.28084ftin 0.00000ftin 0.00000ftin 3.28084ftin 0.00000ftin 6.67mm
+GW 2 5 -2.46897ftin -3.52986ftin 0.00000ftin -2.46897ftin 3.52986ftin 0.00000ftin 7.17mm
+GW 3 5 -5.12336ftin -3.79462ftin 0.00000ftin -5.12336ftin 3.79462ftin 0.00000ftin 7.71mm
+GW 4 5 -7.97864ftin -4.07907ftin 0.00000ftin -7.97864ftin 4.07907ftin 0.00000ftin 8.29mm
+GW 5 5 -11.05643ftin -4.38453ftin 0.00000ftin -11.05643ftin 4.38453ftin 0.00000ftin 8.91mm
+GW 6 7 -14.35103ftin -4.71562ftin 0.00000ftin -14.35103ftin 4.71562ftin 0.00000ftin 9.58mm
+GW 7 7 -17.90059ftin -5.07218ftin 0.00000ftin -17.90059ftin 5.07218ftin 0.00000ftin 10.3mm
+GW 8 7 -21.72375ftin -5.45286ftin 0.00000ftin -21.72375ftin 5.45286ftin 0.00000ftin 11.08mm
+GW 9 7 -25.83400ftin -5.86401ftin 0.00000ftin -25.83400ftin 5.86401ftin 0.00000ftin 11.91mm
+GW 10 7 -30.24180ftin -6.30446ftin 0.00000ftin -30.24180ftin 6.30446ftin 0.00000ftin 12.81mm
+GW 11 9 -34.95771ftin -6.78151ftin 0.00000ftin -34.95771ftin 6.78151ftin 0.00000ftin 13.77mm
+GW 12 9 -39.99299ftin -7.29134ftin 0.00000ftin -39.99299ftin 7.29134ftin 0.00000ftin 14.81mm
+GE
+FR 0 0 0 0 46.29 0
+TL 1 3 2 3 -50
+TL 2 3 3 3 -50
+TL 3 3 4 3 -50
+TL 4 3 5 3 -50
+TL 5 3 6 4 -50
+TL 6 4 7 4 -50
+TL 7 4 8 4 -50
+TL 8 4 9 4 -50
+TL 9 4 10 4 -50
+TL 10 4 11 5 -50
+TL 11 5 12 5 -50 0 0 0 0.02
+EX 0 1 3 10 1
+RP 0 37 1 1110 90 0 -5 0
+EN

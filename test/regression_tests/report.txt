@@ -1,0 +1,3 @@
+
+OK: test/example5.deck (accelerate vs custom)
+OK: test/example5.deck (accelerate vs openblas)

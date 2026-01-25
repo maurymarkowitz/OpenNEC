@@ -2,15 +2,16 @@ Items still to be implemented:
 
 * check that every required field got a number or formula during read (see test_card_inputs)
 
+* look for comment rows that contain key/value pairs and see if they should be merged onto the previous row. this can occur if an external editor added a line feed at precisely the point where an inline comment started
+
 * add SYmbols to a deck-wide list, not just the cards they're on
 
 * warn if the same global SYmbol is defined multiple times, and/or overrides one of the built-in variables
 
 * add handlers for ITeration and OPtimization cards, which produce multiple output runs from a single deck. in onec these should be processed out into some sort of "run" or "simulate" object with any differences from the original definitions.
 
-* look for comment rows that contain key/value pairs and see if they should be merged onto the previous row. this can occur if an external editor added a line feed at precisely the point where an inline comment started
-
 * add TIA-804-B (.adf) pattern output, which is simply a standard way of writing the NEC pattern
 
 * add a -f(ormat) flag to the CLI version to specify an output format so it can write NEC, 4nec2, etc.
 
+* re-consider ignore: `ignore` tells the system to skip over that card when producing geometry or running calculations. This is useful during testing, as cards can be turned off without having to remove them from the deck or comment them out.

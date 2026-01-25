@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # Regression harness: builds selected backends and compares outputs across decks.
-# Outputs and report are stored under test/regression/.
+# Outputs and report are stored under test/regression_tests/.
 
-ROOT_DIR=$(cd "$(dirname "$0")"/.. && pwd)
-REG_DIR="$ROOT_DIR/test/regression"
+ROOT_DIR=$(cd "$(dirname "$0")"/../.. && pwd)
+REG_DIR="$ROOT_DIR/test/regression_tests"
 mkdir -p "$REG_DIR"
 
 # Timing setup
