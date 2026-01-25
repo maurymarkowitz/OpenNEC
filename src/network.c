@@ -1,3 +1,15 @@
+/******************************************************************************
+ * network.c
+ *
+ * Network solver and support routines for OpenNEC. This module solves for
+ * structure currents for a given excitation, including the effect of
+ * non-radiating networks if present. Provides core algorithms for network
+ * analysis and integration with the main calculation engine.
+ *
+ * Extracted and refactored from legacy NEC code.
+ *
+ *****************************************************************************/
+
 #include "opennec.h"
 
 /*-------------------------------------------------------------------*/

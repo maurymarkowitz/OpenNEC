@@ -1,6 +1,11 @@
-/*
- * Miscellaneous support functions for onec
- */
+/******************************************************************************
+ * misc.c
+ *
+ * Miscellaneous support functions for OpenNEC. This module provides utility
+ * and helper routines used throughout the codebase, including error handling
+ * and general-purpose helpers.
+ *
+ *****************************************************************************/
 
 #include "opennec.h"
 
