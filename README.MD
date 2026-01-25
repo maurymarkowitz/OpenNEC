@@ -50,6 +50,8 @@ The primary difference between OpenNEC and nec2c is its form; nec2c is a command
 
 Programs that wish to use OpenNEC as their calculation engine can directly access the various structures like the segment list and radiation patterns. They can also change the deck by modifying cards and re-running the calculations, or by directly changing the simulation parameters and re-running. Using the segment list is particularly useful during the antenna layout and design stage; programs can use the code to turn their geometry cards into segments which can then be sent to a 3D library.
 
+OpenNEC also improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. See [Differences between OpenNEC, NEC-2 and nec2c](/doc/Differences between OpenNEC, NEC-2 and nec2c.md) for details.
+
 Acknowledgements
 ----------------
 * OpenNEC is a fork of nec2c by Neoklis Kyriazis
