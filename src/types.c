@@ -1,8 +1,26 @@
+
 /******************************************************************************
  * types.c
  *
- * types.c defines the various enums
+ * types.c defines and initializes the global arrays, enums, and lookup tables
+ * used throughout OpenNEC for card parsing, unit handling, and symbolic field
+ * access. It provides the string-to-index mappings for card mnemonics, field
+ * names, control/geometry/extension codes, and measurement units, as well as
+ * the corresponding conversion factors and variable name arrays for formula
+ * evaluation.
  *
+ * Major responsibilities include:
+ * - Defining the string arrays for field names (I1..I4, F1..F7), card codes
+ *   (comment, control, geometry, extension), and measurement units.
+ * - Providing the unit conversion multipliers for SI normalization, including
+ *   special handling for feet+inches and AWG wire gauge.
+ * - Declaring and initializing the variable name arrays (fnames/inames) for
+ *   formula evaluation with tinyexpr, using 1-based indexing.
+ * - Implementing context initialization and cleanup routines for nec_context_t,
+ *   including allocation of ground grid arrays and error lists.
+ *
+ * These definitions are shared across the parser, deck, and calculation
+ * modules, ensuring consistent interpretation of card fields and units.
  *****************************************************************************/
 
 #include "types.h"

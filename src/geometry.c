@@ -1,7 +1,7 @@
 /******************************************************************************
- * ctx->geometry.c
+ * geometry.c
  *
- * ctx->geometry.c contains the code that parses the geometry section of
+ * geometry.c contains the code that parses the geometry section of
  * the deck and then generates a list of segments, patches, and
  * connections. These are collected into a geometry_t structure for
  * the deck.

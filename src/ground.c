@@ -1,3 +1,27 @@
+/******************************************************************************
+ * ground.c
+ *
+ * ground.c contains routines for computing the contribution of the ground
+ * (earth) to the electric field produced by wire segments. It implements
+ * numerical integration and reflection models to account for various ground
+ * configurations used in NEC, including perfect, Sommerfeld, and radial wire
+ * ground screen approximations.
+ *
+ * Major responsibilities include:
+ * - Integrating ground-influenced field components using variable-interval
+ *   Romberg integration (rom2()).
+ * - Computing field due to ground for a current element on the source segment
+ *   at position t relative to the segment center (sflds()).
+ * - Applying reflection coefficients and handling special cases like the
+ *   radial wire ground screen when enabled.
+ * - Producing the x, y, z components of the field for constant, sine, and
+ *   cosine current distributions.
+ *
+ * These routines operate on the shared nec_context_t state, reading geometry,
+ * ground parameters, and segment/source data from the common blocks to derive
+ * coefficients and accumulate results for near-field and radiation calculations.
+ *****************************************************************************/
+
 #include "opennec.h"
 
 /*-------------------------------------------------------------------*/

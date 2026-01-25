@@ -1,27 +1,25 @@
-/*** Translated to the C language by N. Kyriazis  20 Aug 2003 ***
-
-  Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
-  tape15,tape16,tape20,tape21)
-
-  Numerical Electromagnetics Code (NEC2)  developed at Lawrence
-  Livermore lab., Livermore, CA.  (contact G. Burke at 415-422-8414
-  for problems with the NEC code. For problems with the vax implem-
-  entation, contact J. Breakall at 415-422-8196 or E. Domning at 415
-  422-5936)
-  file created 4/11/80.
-
-				***********Notice**********
- This computer code material was prepared as an account of work
- sponsored by the United States government.  Neither the United
- States nor the United States Department Of Energy, nor any of
- their employees, nor any of their contractors, subcontractors,
- or their employees, makes any warranty, express or implied, or
- assumes any legal liability or responsibility for the accuracy,
- completeness or usefulness of any information, apparatus, product
- or process disclosed, or represents that its use would not infringe
- privately-owned rights.
-
- ******************************************************************/
+/******************************************************************************
+ * radiation.c
+ *
+ * radiation.c computes far-zone radiated electric fields from the current
+ * distribution on wires, optionally including ground reflections and cliff
+ * geometries. It assembles `E_theta` and `E_phi` components by integrating
+ * segment contributions with phase and orientation, applying reflection
+ * coefficients when ground models are active.
+ *
+ * Major responsibilities include:
+ * - ffld(): Calculate far-field `Eθ`/`Eφ` at observation angles `θ`, `φ`,
+ *   summing segment contributions with sine/cosine/current expansions and
+ *   appropriate phasing. Ground models adjust fields via reflection terms.
+ * - Handle perfect and planar ground, cliff, and radial wire ground screen
+ *   cases by computing reflection coefficients based on geometry and medium.
+ * - Support image contributions where applicable to account for ground/cliff
+ *   effects on the observed fields.
+ *
+ * Operates on `nec_context_t`, reading geometry (`geometry`), current
+ * expansions (`crnt`), and ground parameters (`gnd`) to assemble the far
+ * field at requested angles.
+ *****************************************************************************/
 
 #include "opennec.h"
 

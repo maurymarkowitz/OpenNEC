@@ -1,27 +1,28 @@
-/*** Translated to the C language by N. Kyriazis  20 Aug 2003 ***
-
- Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
- tape15,tape16,tape20,tape21)
-
- Numerical Electromagnetics Code (NEC2)  developed at Lawrence
- Livermore lab., Livermore, CA.  (contact G. Burke at 415-422-8414
- for problems with the NEC code. For problems with the vax implem-
- entation, contact J. Breakall at 415-422-8196 or E. Domning at 415
- 422-5936)
- file created 4/11/80.
-
-                ***********Notice**********
- This computer code material was prepared as an account of work
- sponsored by the United States government.  Neither the United
- States nor the United States Department Of Energy, nor any of
- their employees, nor any of their contractors, subcontractors,
- or their employees, makes any warranty, express or implied, or
- assumes any legal liability or responsibility for the accuracy,
- completeness or usefulness of any information, apparatus, product
- or process disclosed, or represents that its use would not infringe
- privately-owned rights.
-
-*******************************************************************/
+/****************************************************************************
+ * matrix.c
+ *
+ * matrix.c assembles and solves the complex interaction matrix used by NEC
+ * to relate currents on wires and patches to applied excitations and fields.
+ * It builds block structures for wire-wire, wire-surface, and surface-surface
+ * interactions, applies loading modifications, and combines symmetric modes
+ * when applicable. Factorization and solves are performed using platform
+ * backends (Accelerate, OpenBLAS, Netlib LAPACK, MKL) through LU routines.
+ *
+ * Major responsibilities include:
+ * - cmset(): Assemble the primary NGF matrix A for the problem, setting up
+ *   blocks, handling symmetry (n/p equations), and incorporating segment
+ *   kernel choices and loading corrections.
+ * - cmww()/cmws()/cmsw()/cmss(): Compute interaction submatrices for
+ *   wire-wire, wire-surface, surface-wire, and surface-surface terms.
+ * - trio(): Prepare segment current expansion data used by interaction
+ *   calculations.
+ * - Factorization and solve: Perform LU factorization (zgetrf) and solve
+ *   (zgetrs) on per-mode blocks with careful handling of storage layout and
+ *   pivots to ensure numerical stability across backends.
+ *
+ * These routines operate on `nec_context_t`, drawing geometry, material,
+ * ground, and matrix parameters to build and solve the system.
+ ****************************************************************************/
 
 #include "opennec.h"
 

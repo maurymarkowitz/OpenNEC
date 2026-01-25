@@ -1,21 +1,25 @@
-/* last change:  pgm   8 nov 2000    1:04 pm
- program somnec(input,output,tape21)
-
- program to generate nec interpolation grids for fields due to
- ground.  field components are computed by numerical evaluation
- of modified sommerfeld integrals.
-
- somnec2d is a double precision version of somnec for use with
- nec2d.  an alternate version (somnec2sd) is also provided in which
- computation is in single precision but the output file is written
- in double precision for use with nec2d.  somnec2sd runs about twic
- as fast as the full double precision somnec2d.  the difference
- between nec2d results using a for021 file from this code rather
- than from somnec2sd was insignficant in the cases tested.
-
- changes made by j bergervoet, 31-5-95:
- parameter 0. --> 0.d0 in calling of routine test
- status of output files set to 'unknown' */
+/******************************************************************************
+ * somnec.c
+ *
+ * somnec.c generates interpolation grids for ground-influenced field
+ * components using modified Sommerfeld integrals. These precomputed grids
+ * are used by NEC’s ground models to efficiently evaluate reflection and
+ * transmission effects for various observation geometries.
+ *
+ * Major responsibilities include:
+ * - somnec(): Compute and populate three interpolation grids (ar1/ar2/ar3)
+ *   spanning different (r, theta) regions. Each grid stores complex field
+ *   components (Erv, Ezv, Erh, Eph) derived from Sommerfeld integrals.
+ * - Initialize medium parameters (epscf) from `epr` (relative permittivity),
+ *   `sig` (conductivity), and `fmhz` (frequency) and set derived constants.
+ * - Loop over radius and angle to evaluate integrals via `evlua()`, apply
+ *   phasor scaling, and write results into the grid arrays in `ggrid`.
+ * - Handle the r=0 limit for the first grid using closed-form expressions.
+ *
+ * These routines operate on `nec_context_t`, primarily the `ggrid` common
+ * block for grid settings and output arrays, and rely on shared constants and
+ * helper evaluators to produce consistent data for ground calculations.
+ *****************************************************************************/
 
 #include "opennec.h"
 
