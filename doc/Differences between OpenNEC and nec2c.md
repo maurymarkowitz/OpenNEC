@@ -41,9 +41,9 @@ OpenNEC also includes a number of significant additions to the basic NEC-2 syste
 
   - Extension keys should always be compared in a case-insensitive manner. Keys should always be *written* in lower-case no matter how they were entered.
 
-  - Three extensions are known to the basic OpenNEC system: `name`, `group`, and `invisible`. `name` and `group` are free-form strings intended to allow GUI-based applications to provide richer information and/or group related sections of the deck together.  `invisible` is used to suppress the element in GUI displays of the geometry, while still using in calculations.
+  - Three extensions are known to the basic OpenNEC system: `name`, `group`, and `invisible`. `name` and `group` are free-form strings intended to allow GUI-based applications to provide richer information and/or group related sections of the deck together.  `invisible` is used to suppress the element in GUI displays of the geometry, while still being used in calculations.
 
-  - Additionally, 3rd party software using OpenNEC should be aware of these non-required GUI-related extensions: `invisible`, `material` and `shape`. `material` is a free-form field but a number of common materials are defined. `shape` is used to control the cross section in the display, for instance `shape=square` might be used when defining a boom on a Yagi antenna.
+  - Additionally, 3rd party software using OpenNEC should be aware of these non-required GUI-related extensions: `material` and `shape`. `material` is a free-form field but a number of common materials are defined. `shape` is used to control the cross section in the display, for instance `shape=square` might be used when defining a boom on a Yagi antenna.
 
 - The key/value entries can be entered in a variety of formats, see the "OpenNEC file format" document for details.
 
