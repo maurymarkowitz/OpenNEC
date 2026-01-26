@@ -48,10 +48,10 @@ char *control_codes[NUM_CONTROL_CODES] = {
 
 // this list is from the original nec2c but has been expanded with
 // some that nec2c left out. The original code didn't need something
-// like GC in this list because it only follow a GW, so instead of
+// like GC in this list because it only follows a GW, so instead of
 // decoding the GC code into a number and handling it, it triggered the
-// decode of the GC right in the GW handler. In this code, reading
-// and decoding are separate sections of the system, so we need every
+// decode of the GC right in the GW handler. In onec, reading and
+// decoding are separate sections of the system, so we need every
 // code in here somewhere.
 char *geometry_codes[NUM_GEOMETRY_CODES] = {
   "GW", "GX", "GR", "GS", "GE", "GM", \
