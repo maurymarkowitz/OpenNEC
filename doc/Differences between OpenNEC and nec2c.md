@@ -41,9 +41,9 @@ OpenNEC also includes a number of significant additions to the basic NEC-2 syste
 
   - Extension keys should always be compared in a case-insensitive manner. Keys should always be *written* in lower-case no matter how they were entered.
 
-  - Three extensions are known to the basic OpenNEC system: `name`, `group`, and `invisible`. `name` and `group` are free-form strings intended to allow GUI-based applications to provide richer information and/or group related sections of the deck together.  `invisible` is used to suppress the element in GUI displays of the geometry, while still using in calculations.
+  - Three extensions are known to the basic OpenNEC system: `name`, `group`, and `invisible`. `name` and `group` are free-form strings intended to allow GUI-based applications to provide richer information and/or group related sections of the deck together.  `invisible` is used to suppress the element in GUI displays of the geometry, while still being used in calculations.
 
-  - Additionally, 3rd party software using OpenNEC should be aware of these non-required GUI-related extensions: `invisible`, `material` and `shape`. `material` is a free-form field but a number of common materials are defined. `shape` is used to control the cross section in the display, for instance `shape=square` might be used when defining a boom on a Yagi antenna.
+  - Additionally, 3rd party software using OpenNEC should be aware of these non-required GUI-related extensions: `material` and `shape`. `material` is a free-form field but a number of common materials are defined. `shape` is used to control the cross section in the display, for instance `shape=square` might be used when defining a boom on a Yagi antenna.
 
 - The key/value entries can be entered in a variety of formats, see the "OpenNEC file format" document for details.
 
@@ -71,7 +71,7 @@ Defined constants
 
 OpenNEC defines a number of constants used in the extensions that 3rd party software should be aware of.
 
-- `ignore` is an example of a boolean value which is indicated using `true` and `false`. During reading, the values `yes` and `no` or `1` and `0` may also be used, but these will be converted to `true` and `false` on write. As always, these are all case insensitive.
+- `invisible` is an example of a boolean value which is indicated using `true` and `false`. During reading, the values `yes` and `no` or `1` and `0` may also be used, but these will be converted to `true` and `false` on write. As always, these are all case insensitive.
 
 - the `material` may be any value, but the following values should be expected; `silver`, `copper`, `aluminum`, `6061-T6`, `6063-T832`, `brass`, `phosphor bronze` and `steel`. This list was based on the materials from Yagi Optimizer.
 

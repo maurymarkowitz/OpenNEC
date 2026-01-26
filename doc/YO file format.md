@@ -4,7 +4,7 @@ Yagi Optimizer file format
 Introduction
 ------------
 
-Yagi Optimizer is an antenna design program introduced in 1994 by Brian Beezley. Files in YO have no consistent extension, but sometimes ".ant" or ".yo" may be found, as well as the semi-official ".yag". These files were common during the 1990s and 2000s, and examples are still found around the 'net today.
+Yagi Optimizer is an antenna design program introduced in 1994 by Brian Beezley. Files in YO have no consistent extension, but sometimes `.ant` or `.yo` may be found, as well as the semi-official `.yag`. These files were common during the 1990s and 2000s, and examples are still found around the 'net today.
 
 The application is solely for use with Yagi antennas, and uses the MININEC code to run its calculations. A key feature of MININEC is its ability to define explicit tapering dimensions, in contrast to NEC, which uses a formula to calculate a series of taper steps. YO makes extensive use of this MININEC feature and its files are structured to include this data in a way that requires conversion to use with NEC.
 
