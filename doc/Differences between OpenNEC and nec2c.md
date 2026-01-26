@@ -71,7 +71,7 @@ Defined constants
 
 OpenNEC defines a number of constants used in the extensions that 3rd party software should be aware of.
 
-- `ignore` is an example of a boolean value which is indicated using `true` and `false`. During reading, the values `yes` and `no` or `1` and `0` may also be used, but these will be converted to `true` and `false` on write. As always, these are all case insensitive.
+- `invisible` is an example of a boolean value which is indicated using `true` and `false`. During reading, the values `yes` and `no` or `1` and `0` may also be used, but these will be converted to `true` and `false` on write. As always, these are all case insensitive.
 
 - the `material` may be any value, but the following values should be expected; `silver`, `copper`, `aluminum`, `6061-T6`, `6063-T832`, `brass`, `phosphor bronze` and `steel`. This list was based on the materials from Yagi Optimizer.
 
