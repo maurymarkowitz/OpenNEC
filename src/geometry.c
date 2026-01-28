@@ -24,6 +24,7 @@
  * It's likely useful to create a new errors object for every geometry, but
  * it's equally usable by passing in a global errors.
  *
+ * @param ctx nec_context_t structure that will be modified
  * @param deck deck_t structure that has the geometry cards
  * @param errors a list of errors to add to
  *
@@ -67,7 +68,11 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
     // one of the few ways that onec modifies the original NEC code is by adding
     // a flag saying whether this card should be ignored. That makes it easy to
     // have a GUI with a switch to turn off a card during testing (for example)
-    // without having to physically remove it from the deck
+    // without having to physically remove it from the deck. this is not the same
+    // as commenting it out, because the card is still read and parsed, and the
+    // segments are in the geometry and can still be used in a GUI
+    //
+    // TODO: implement this!
     if(card->ignore) continue;
     
     // convert the code into its numeric value so we can switch on it
