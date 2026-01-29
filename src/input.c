@@ -397,6 +397,40 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 
   /* add invisible=true for special tag range on geometry cards */
   add_invisible_extension_for_special_tags(ctx, deck);
+
+  /* Ensure 'pi' and 'c' are defined as symbols if not already present */
+  const struct { const char *name; const char *value; } defaults[] = {
+    {"pi", "3.141592653589793"},
+    {"c",  "299792458"}
+  };
+  for (int d = 0; d < 2; ++d) {
+    key_value_t *sym = deck->symbols;
+    bool found = false;
+    while (sym) {
+      if (sym->key && strcasecmp(sym->key, defaults[d].name) == 0) {
+        found = true;
+        break;
+      }
+      sym = sym->next;
+    }
+    if (!found) {
+      key_value_t *def_sym = (key_value_t *)malloc(sizeof(key_value_t));
+      if (def_sym) {
+        def_sym->key = strdup(defaults[d].name);
+        def_sym->value = strdup(defaults[d].value);
+        def_sym->separator = '=';
+        def_sym->next = NULL;
+        // Add to the end of the symbols list
+        if (!deck->symbols) {
+          deck->symbols = def_sym;
+        } else {
+          key_value_t *tail = deck->symbols;
+          while (tail->next) tail = tail->next;
+          tail->next = def_sym;
+        }
+      }
+    }
+  }
 } /* end of parse_deck() */
 
 /******************************************************************************
