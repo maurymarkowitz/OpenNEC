@@ -387,33 +387,33 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
     switch( jump )
     {
       case 1:
-        prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-             zli[istepx], zlc[istepx],0.,0.,0.," SERIES ", 2);
+           prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+             zli[istepx], zlc[istepx],0.,0.,0.," SERIES ", 2); // TODO: prnt() should no longer be used
         break;
         
       case 2:
-        prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-             zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL",2);
+           prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+             zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL",2); // TODO: prnt() should no longer be used
         break;
         
       case 3:
-        prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-             zli[istepx], zlc[istepx],0.,0.,0., "SERIES (PER METER)", 5);
+           prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+             zli[istepx], zlc[istepx],0.,0.,0., "SERIES (PER METER)", 5); // TODO: prnt() should no longer be used
         break;
         
       case 4:
-        prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-             zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL (PER METER)",5);
+           prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
+             zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL (PER METER)",5); // TODO: prnt() should no longer be used
         break;
         
       case 5:
-        prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx],0.,0.,0.,
-             zlr[istepx], zli[istepx],0.,"FIXED IMPEDANCE ",4);
+           prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx],0.,0.,0.,
+             zlr[istepx], zli[istepx],0.,"FIXED IMPEDANCE ",4); // TODO: prnt() should no longer be used
         break;
         
       case 6:
-        prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx],
-             0.,0.,0.,0.,0., zlr[istepx],"  WIRE  ",2);
+           prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx],
+             0.,0.,0.,0.,0., zlr[istepx],"  WIRE  ",2); // TODO: prnt() should no longer be used
         
     } /* switch( jump ) */
   } /* while( TRUE ) */

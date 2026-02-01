@@ -1,0 +1,17 @@
+CM 
+CM forw: 71, 42 ; back: 71, 222
+CE
+SY freq=14.1
+SY wavelength=299.792458/freq
+SY vf=0.939366
+SY wirewavelength=wavelength*vf
+GW	1	101	-wirewavelength/4	0	10	wirewavelength/4	0	10	#12
+GE	1
+LD	5	0	0	0	58000000
+LD	7	0	0	0	4.5	#12+.001
+GN	2	0	0	0	17	0.007
+EK
+EX	0	1	51	0	1	0	0
+FR,0,1,0,0,14.1
+PQ -1
+PT -1

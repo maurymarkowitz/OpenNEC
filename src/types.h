@@ -113,7 +113,7 @@ extern const char *inames[MAX_INT_FIELDS + 1];
 /*** Structs encapsulating global ("common") variables */
 
 /*** Error levels are used internally, external software should use negatives ***/
-typedef enum { NONE, MINOR, PROBLEM, FATAL } error_level;    // 1 = warning, 2 = error, 3 = fatal, <0 informational
+typedef enum { NONE, WARNING, PROBLEM, FATAL } error_level;    // 1 = warning, 2 = error, 3 = fatal, <0 informational
 
 /*** error_t has information about a single error or warning */
 typedef struct
@@ -144,10 +144,12 @@ typedef struct
 /*** key_value_t is a key:value pair used to store an OpenNEC extension on a card */
 typedef struct key_value_t
 {
-  char *key;
-  char *value;
-  char separator; // what separator was used, a colon or an equals?
-  struct key_value_t* next;
+	unsigned int magic;
+	char *key;
+	char *value;
+	double fv; // new field for storing a float value
+	char separator; // what separator was used, a colon or an equals?
+	struct key_value_t* next;
 } key_value_t;
 
 /*** card_t encapsulates a single card ***/
@@ -221,10 +223,8 @@ typedef struct deck_t
   char cmt_code;      // the default marker to use for inline comments, !, $ or '
   int unit_val;       // if there is a single GS, this is the f1 value, otherwise 1
   int unit_typ;       // if there is a single GS, and we recognize the value, put our index here
-  key_value_t *symbols;  // any variables read in from SY cards, consisting of name/inital value pairs
-  
-  // calculated bits
-  //geometry_t geometry;  // a deck can have only one geometry, but it might change
+  key_value_t **symbols;  // array of pointers to key_value_t nodes in the cards (not owned)
+  int num_symbols;        // number of symbols in the array
 } deck_t;
 
 /* common  /crnt/ */

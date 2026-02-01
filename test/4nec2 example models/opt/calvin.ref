@@ -1,0 +1,17 @@
+CM 
+CM forw: 55, 90 ; back:-55, 90
+CE
+SY len=128.3616
+SY high=240
+SY wirerad=#12
+GW	1	125	-len/2	0	high	len/2	0	high	wirerad	'dipole wire
+GS	0	0	0.3048
+GE	1
+LD	5	1	1	127	58000000
+GN	2	0	0	0	17	0.007
+EK
+EX	0	1	63	0	1	0	0
+FR,0,1,0,0,3.75
+PQ -1
+PT -1
+RP,0,37,1,1000,-90,90,5

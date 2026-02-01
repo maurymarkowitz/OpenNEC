@@ -16,8 +16,16 @@
  *
  *****************************************************************************/
 
+
 #include "opennec.h"
+#include "proto.h"
 #include "tinyexpr.h"
+#include <string.h>
+
+void update_symbol_values(deck_t *deck);
+
+static bool references(const char *expr, const char *symname);
+static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated);
 
 /******************************************************************************
  * new_card
@@ -68,8 +76,7 @@ void free_card(card_t *card) {
     free(temp);
   }
   
-  // and finally, the card itself
-  free(card);
+  // Do NOT free(card) here; cards are part of an array and freed in free_deck
 }
 
 /******************************************************************************
@@ -123,7 +130,6 @@ void recalculate_sections(deck_t *deck)
   } /* for loop over cards */
 }
 
-
 /******************************************************************************
  * new_deck
  *
@@ -144,18 +150,22 @@ deck_t* new_deck(void) {
  *
  */
 void free_deck(deck_t *deck) {
-  // free all of the cards
+  if(deck == NULL) return;
+
+  // free all of the cards first
   for(int i = 0; i < deck->num_cards; i++) {
     free_card(&deck->cards[i]);
   }
-  // now the list of symbols/formulas
-  key_value_t *head, *temp;
-  head = deck->symbols;
-  while(head != NULL) {
-    temp = head;
-    head = head->next;
-    free(temp);
-  } /* while loop over cards */
+
+  // then free the cards array itself
+  if (deck->cards) free(deck->cards);
+
+  // Only free the symbols array (array of pointers), not the nodes themselves
+  // INVARIANT: All key_value_t nodes referenced by deck->symbols are owned and
+  //            freed by the cards, this is a list of them for easy access.
+  if (deck->symbols) {
+    free(deck->symbols);
+  }
 }
 
 /******************************************************************************
@@ -272,39 +282,75 @@ int remove_card(deck_t *deck, int location) {
  *
  * adds a key/value pair at the end of a card's formula or extensions list
  *
- * @param card the deck_t to delete the card from
+ * @param card the card to add the key/value pair to
  * @param list which list we're adding it to
  * @param key a string for the key
  * @param value a string for the value
  * @param separator the char to use as a separator when writing the deck
  *
  */
-void add_key_value(const card_t *card, key_value_t *list, char *key, char *value, char separator)
+void add_key_value(const card_t *card, key_value_t **list, char *key, char *value, char separator)
 {
+  // ...removed add_key_value copied key debug print...
   key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
   if(pair != NULL) {
-    // calloc the strings and store them...
     pair->key = (char *)calloc(strlen(key) + 1, sizeof(char));
     strcpy(pair->key, key);
     pair->value = (char *)calloc(strlen(value) + 1, sizeof(char));
     strcpy(pair->value, value);
-    // now store the separator based on the list
     if(separator != '\n') {
       pair->separator = separator;
-    } else if(list == card->formulas) {
+    } else if(*list == card->formulas) {
       pair->separator = '=';
     } else {
       pair->separator = ':';
     }
-    // and then add it to the end of the list
-    key_value_t *tail = list;
-    if(tail == NULL) {
-      list = pair;
+    pair->next = NULL;
+    if(*list == NULL) {
+      *list = pair;
     } else {
+      key_value_t *tail = *list;
       while(tail->next != NULL) tail = tail->next;
       tail->next = pair;
     }
-  } // there should be else's for all the mallocs and callocs!
+  }
+}
+
+/******************************************************************************
+ * add_symbol/remove_symbol
+ *
+ * Add or remove a symbol from the deck's symbol list and update num_symbols.
+ * 
+ */
+void add_symbol(deck_t *deck, key_value_t *new_sym) {
+  if (!deck || !new_sym) return;
+  // INVARIANT: Only add pointers to key_value_t nodes owned by cards (e.g., from card->formulas)
+  // Never add separately allocated nodes (e.g., from add_default_symbols) to deck->symbols.
+  deck->symbols = realloc(deck->symbols, sizeof(key_value_t*) * (deck->num_symbols + 1));
+  deck->symbols[deck->num_symbols] = new_sym;
+  deck->num_symbols++;
+}
+
+void remove_symbol(deck_t *deck, const char *key) {
+  if (!deck || !deck->symbols || !key) return;
+  for (int i = 0; i < deck->num_symbols; ++i) {
+    key_value_t *cur = deck->symbols[i];
+    if (cur && cur->key && strcmp(cur->key, key) == 0) {
+      // Shift the rest of the array down
+      for (int j = i; j < deck->num_symbols - 1; ++j) {
+        deck->symbols[j] = deck->symbols[j + 1];
+      }
+      deck->num_symbols--;
+      // Optionally shrink the array
+      if (deck->num_symbols > 0) {
+        deck->symbols = realloc(deck->symbols, sizeof(key_value_t*) * deck->num_symbols);
+      } else {
+        free(deck->symbols);
+        deck->symbols = NULL;
+      }
+      return;
+    }
+  }
 }
 
 /******************************************************************************
@@ -576,13 +622,150 @@ double convert_awg_to_meters(double awg_value)
  * update_card_values on any card that has a formula or unit. Normally called
  * after making a change to any of the SY cards, or just before any deck-wide
  * actions like saving it out or running a calculation.
- * 
  */
 void update_deck_values(deck_t *deck)
 {
+  update_symbol_list(deck, NULL);
+  add_default_symbols(deck); // TEMP: Disabled to test double free
+  update_symbol_values(deck);
+
+  // and now the formulas on each of the cards
   for(int i = 0; i < deck->num_cards; i++) {
     update_card_values(&deck->cards[i]);
   }
+}
+
+/******************************************************************************
+ * update_symbol_list
+ *
+ * update_symbol_list looks for any SY cards in the deck and adds their
+ * key/value pairs to the deck's symbol list. It also checks for redeclarations
+ * of symbols and adds a warning to the errors list if found.
+ */
+void update_symbol_list(deck_t *deck, errors_list_t *errors) {
+    if (deck->symbols) { free(deck->symbols); deck->symbols = NULL; }
+    deck->num_symbols = 0; // Initialize num_symbols
+    // INVARIANT: Only add pointers to key_value_t nodes owned by cards (e.g., from card->formulas)
+  for (int i = 0; i < deck->num_cards; i++) {
+    card_t *card = &deck->cards[i];
+    if (strcmp(card->card_code, "SY") == 0 && card->formulas) {
+      key_value_t *kv = card->formulas;
+      while (kv) {
+        // Check for redeclaration
+        bool found = false;
+        for (int s = 0; s < deck->num_symbols; ++s) {
+          key_value_t *existing = deck->symbols[s];
+          if (existing && existing->key && strcmp(existing->key, kv->key) == 0) {
+            found = true;
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Symbol '%s' redeclared in deck.", kv->key);
+            add_error(NULL, errors, msg, WARNING);
+            break;
+          }
+        }
+        if (!found) {
+          add_symbol(deck, kv);
+        }
+        kv = kv->next;
+      }
+    }
+  }
+}
+
+/******************************************************************************
+ * add_default_symbols
+ *
+ * After adding the user-defined symbols from SY cards, this looks to see if
+ * pi and c are defined, and if not, adds them with default values.
+ */
+void add_default_symbols(deck_t *deck)
+{
+  /* Ensure 'pi' and 'c' are defined as symbols if not already present */
+  const struct
+  {
+    const char *name;
+    const char *value;
+  } defaults[] = {
+      {"pi", "3.141592653589793"},
+      {"c", "299792458"}};
+  for (int d = 0; d < 2; ++d)
+  {
+    bool found = false;
+    for (int s = 0; s < deck->num_symbols; ++s) {
+      key_value_t *sym = deck->symbols[s];
+      if (sym && sym->key && strcasecmp(sym->key, defaults[d].name) == 0) {
+        found = true;
+        break;
+      }
+    }
+    if (!found)
+    {
+      key_value_t *def_sym = (key_value_t *)malloc(sizeof(key_value_t));
+      def_sym->key = strdup(defaults[d].name);
+      def_sym->value = strdup(defaults[d].value);
+      def_sym->separator = '=';
+      def_sym->next = NULL;
+       add_symbol(deck, def_sym);
+    }
+  }
+} 
+
+/******************************************************************************
+ * update_symbol_values
+ *
+ * Evaluates formulas for each symbol in the deck and stores the result in fv.
+ * Symbols are calculated in dependency order: if a symbol's formula references
+ * other symbols, those referenced symbols are evaluated first.
+ */
+void update_symbol_values(deck_t *deck) 
+{
+  key_value_t **syms = deck->symbols;
+  bool *evaluated = calloc(deck->num_symbols, sizeof(bool));
+  for (int i = 0; i < deck->num_symbols; i++) eval_symbol(i, deck->num_symbols, syms, evaluated);
+  free(evaluated);
+}
+
+// helper: check if formula references a symbol
+static bool references(const char *expr, const char *symname) {
+    if (!expr || !symname) return false;
+    size_t len = strlen(symname);
+    const char *p = expr;
+    while ((p = strstr(p, symname))) {
+        if ((p == expr || !isalnum((unsigned char)p[-1])) && (!isalnum((unsigned char)p[len]))) {
+            return true;
+        }
+        p += len;
+    }
+    return false;
+}
+
+// Recursive evaluation for symbol dependencies
+static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated) {
+    if (evaluated[i]) return;
+    key_value_t *sym = syms[i];
+    for (int j = 0; j < sym_count; j++) {
+        if (i == j) continue;
+        if (references(sym->value, syms[j]->key)) {
+            eval_symbol(j, sym_count, syms, evaluated);
+        }
+    }
+    sym->fv = 0.0;
+    if (sym->value && sym->value[0] != '\0') {
+        te_variable *vars = calloc(sym_count, sizeof(te_variable));
+        for (int k = 0; k < sym_count; k++) {
+            vars[k].name = syms[k]->key;
+            vars[k].address = &syms[k]->fv;
+            vars[k].type = TE_VARIABLE;
+        }
+        int err = 0;
+        te_expr *expr = te_compile(sym->value, vars, sym_count, &err);
+        if (expr) {
+            sym->fv = te_eval(expr);
+            te_free(expr);
+        }
+        free(vars);
+    }
+    evaluated[i] = true;
 }
 
 /******************************************************************************
@@ -607,16 +790,22 @@ void update_card_values(card_t *card)
 
   // now run any calculations on the fields and copy those in instead
   if(card->formulas != NULL) {
-    // Prepare variable bindings for tinyexpr: F1..F8 and I1..I4
+    // Prepare variable bindings for tinyexpr: F1..F8, I1..I4, and all deck symbols
     const int fcount = MAX_FLT_FIELDS;    // number of float fields (NEC: 7)
     const int icount = MAX_INT_FIELDS;    // 4
     double fvals[MAX_FLT_FIELDS + 1];     // 1-based
     double ivals[MAX_INT_FIELDS + 1];     // 1-based
-
     for(int i = 1; i <= fcount; i++) fvals[i] = card->fv[i];
     for(int i = 1; i <= icount; i++) ivals[i] = (double)card->iv[i];
 
-    te_variable vars[MAX_FLT_FIELDS + MAX_INT_FIELDS];
+    // Get deck pointer from card (assume card is part of deck->cards[])
+    extern deck_t *current_deck_for_card;
+    deck_t *deck = current_deck_for_card;
+    int num_syms = deck ? deck->num_symbols : 0;
+
+    // Allocate enough space for all variables
+    int max_vars = MAX_FLT_FIELDS + MAX_INT_FIELDS + num_syms;
+    te_variable *vars = calloc(max_vars, sizeof(te_variable));
     int v = 0;
     for(int i = 1; i <= fcount; i++) {
       vars[v].name = fnames[i];
@@ -630,8 +819,18 @@ void update_card_values(card_t *card)
       vars[v].type = TE_VARIABLE;
       v++;
     }
+    // Add all deck symbols as variables
+    for(int s = 0; s < num_syms; s++) {
+      key_value_t *sym = deck->symbols[s];
+      if(sym && sym->key && sym->key[0] != '\0') {
+        vars[v].name = sym->key;
+        vars[v].address = &sym->fv;
+        vars[v].type = TE_VARIABLE;
+        v++;
+      }
+    }
 
-    // Iterate formulas and evaluate each assignment (float targets only)
+    // Iterate formulas and evaluate each assignment (float/int targets)
     key_value_t *kv = card->formulas;
     while(kv != NULL) {
       const char *key = kv->key;
@@ -647,8 +846,6 @@ void update_card_values(card_t *card)
             te_free(expr);
             card->fv[idx] = val;
             fvals[idx] = val; // keep variables in sync for subsequent formulas
-          } else {
-            // if compile fails, leave original value in place
           }
         } else if(kind == 'I' && idx >= 1 && idx <= MAX_INT_FIELDS) {
           int err = 0;
@@ -659,13 +856,12 @@ void update_card_values(card_t *card)
             int ival = (int)val; // truncate; can switch to rounding if desired
             card->iv[idx] = ival;
             ivals[idx] = (double)ival; // keep variables in sync for subsequent formulas
-          } else {
-            // if compile fails, leave original value in place
           }
         }
       }
       kv = kv->next;
     }
+    free(vars);
   }
   
   // and finally, apply any unit conversions - which are only on the flts
@@ -710,5 +906,3 @@ void update_card_values(card_t *card)
       } // if can be directly converted
   } // for
 } /* update_card_values() */
-
-/* end of deck.c */

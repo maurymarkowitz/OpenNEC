@@ -41,7 +41,9 @@ Short options with no parameters can be ganged, for instance, `-nt`.
 
 Build & Setup
 -------------
-For platform-specific build instructions, backend selection (Accelerate/OpenBLAS/MKL/BLAS), and regression timing, see [BUILD](BUILD).
+OpenNEC is a makefile project that does not require `make config` or other steps. A simple `make` should produce a working executable on practically any unix-like system.
+
+For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](BUILD).
 
 OpenNEC concept
 ---------------
@@ -52,6 +54,13 @@ The primary difference between OpenNEC and nec2c is its form; nec2c is a command
 Programs that wish to use OpenNEC as their calculation engine can directly access the various structures like the segment list and radiation patterns. They can also change the deck by modifying cards and re-running the calculations, or by directly changing the simulation parameters and re-running. Using the segment list is particularly useful during the antenna layout and design stage; programs can use the code to turn their geometry cards into segments which can then be sent to a 3D library.
 
 OpenNEC also improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. See [Differences between OpenNEC, NEC-2 and nec2c](/doc/Differences%20between%20OpenNEC,%20NEC-2%20and%20nec2c.md) for details.
+
+Known limitations
+-----------------
+
+* OpenNEC does not currently implement the IT and OP cards from 4nec2, although this is high on the list for implementation.
+* OpenNEC implements measurements differently than 4nec2, but this may be change to use their solution in the future.
+* NEC-4 cards like CW are not currently supported.
 
 Acknowledgements
 ----------------

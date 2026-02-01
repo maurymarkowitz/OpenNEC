@@ -59,7 +59,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
   }
   
   // make sure all the formula-based values are up to date
-   update_deck_values(deck);
+  update_deck_values(deck);
   
   // loop over the geometry section of the deck, which should be correct by this point
   for(int i = deck->geometry_start; i <= deck->geometry_end; i++) {
@@ -108,13 +108,13 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           // make sure the next card is a GC, although we should have already done that
           if(strcmp(deck->cards[i + 1].card_code, "GC") != 0) {
             sprintf(msg, "The card on line %d is a GW with a zero radius, but the next card is not a GC with the tapering info.", i + 1);
-            add_error(ctx, errors, msg, 1);
+            add_error(ctx, errors, msg, WARNING);
             continue;
           }
           // and also that the values in it are valid
           if((deck->cards[i + 1].fv[2] == 0.0) || (deck->cards[i + 1].fv[3] == 0.0)) {
             sprintf(msg, "The card on line %d is a GC with tapering info for GW in card %d, but there is a zero in Y1 or Z1.", i + 2, i + 1);
-            add_error(ctx,errors, msg, 1);
+            add_error(ctx,errors, msg, WARNING);
             continue;
           }
           // override the original inputs with the ones from the GC
@@ -200,7 +200,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         // SP cards have to have a blank in I1, but is this really an error?
         if (tag != 0) {
           sprintf(msg, "card_t %d is a SP, but it has data in I1.", i);
-          add_error(ctx,errors, msg, 1);
+          add_error(ctx,errors, msg, WARNING);
         }
         
         // start with the simple case of a simple, single patch, no set shape
@@ -215,7 +215,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           // TODO: we should test the sanity of the inputs based on the ns
           if(strcmp(deck->cards[i + 1].card_code, "SC") != 0) {
             sprintf(msg, "The card on line %d is a SP with type %d, but the next card is not an SC, which it needs.", i + 1, segs);
-            add_error(ctx, errors, msg, 1);
+            add_error(ctx, errors, msg, WARNING);
             continue;
           }
           // if it's a triangle we just read one more point from the new card and go...
@@ -1621,11 +1621,11 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
         ctx->geometry.px[nx]= ctx->geometry.px[i];
         ctx->geometry.py[nx]= -ctx->geometry.py[i];
         ctx->geometry.pz[nx]= ctx->geometry.pz[i];
-        ctx->geometry.t1x[nx]= ctx->geometry.t1x[i];
-        ctx->geometry.t1y[nx]= -ctx->geometry.t1y[i];
+        ctx->geometry.t1x[nx]= -ctx->geometry.t1x[i];
+        ctx->geometry.t1y[nx]= ctx->geometry.t1y[i];
         ctx->geometry.t1z[nx]= ctx->geometry.t1z[i];
-        ctx->geometry.t2x[nx]= ctx->geometry.t2x[i];
-        ctx->geometry.t2y[nx]= -ctx->geometry.t2y[i];
+        ctx->geometry.t2x[nx]= -ctx->geometry.t2x[i];
+        ctx->geometry.t2y[nx]= ctx->geometry.t2y[i];
         ctx->geometry.t2z[nx]= ctx->geometry.t2z[i];
         ctx->geometry.psalp[nx]= -ctx->geometry.psalp[i];
         ctx->geometry.pbi[nx]= ctx->geometry.pbi[i];

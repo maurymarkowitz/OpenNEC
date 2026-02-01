@@ -16,7 +16,7 @@ void parse_comment_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
 void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
 void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
 void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors);
-void add_invisible_extension_for_special_tags(nec_context_t *ctx, deck_t *deck);
+void mark_4nec2_cards_invisible(nec_context_t *ctx, deck_t *deck);
 /* control.c */
 int nec_run_simulation(nec_context_t *ctx, deck_t *deck);
 int nec_calculation_defaults(nec_context_t *ctx);
@@ -52,7 +52,11 @@ void write_footer(FILE *file, nec_context_t *ctx, deck_t *deck);
 // these methods work on updating the processed values in the deck and cards
 void update_deck_values(deck_t *deck);
 void update_card_values(card_t *card);
-void add_key_value(const card_t *card, key_value_t *list, char *key, char *value, char separator);
+void add_key_value(const card_t *card, key_value_t **list, char *key, char *value, char separator);
+void add_symbol(deck_t *deck, key_value_t *new_sym);
+void remove_symbol(deck_t *deck, const char *key);
+void update_symbol_list(deck_t *deck, errors_list_t *errors);
+void add_default_symbols(deck_t *deck);
 // these methods work on identifying card types and their field counts,
 // they are read-only and do not need to be thread safe
 int is_comment(const card_t *card);

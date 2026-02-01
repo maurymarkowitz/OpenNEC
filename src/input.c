@@ -4,7 +4,7 @@
  * input.c contains the routines needed to read and parse a card deck file,
  * normally ".nec" or ".deck". The process starts with read_deck(), which uses
  * read_line() to get the data from one line in the file and then turns it
- * it into a Card. When all the lines are read into Cards, read_deck()
+ * it into a card. When all the lines are read into cards, read_deck()
  * then calls a series of functions to parse the deck into parts, using
  * the logic found in parse_command_card(), parse_geometry_card(), etc.
  *
@@ -24,10 +24,16 @@
  * a line, and splits that data out to a separate buffer for processing out
  * the (potential) OpenNEC extensions. It keeps track of what the original
  * comment marker was so it can save it back out in the same format.
+ * 
+ * NOTE: due the the # also being used as the marker for AWG wire gauges,
+ *       the # character is only treated as a comment marker if it is the first
+ *       non-whitespace character on the line. Elsewhere in the line it is treated as normal
+ *       text.
  *
  *****************************************************************************/
 
 #include "opennec.h"
+#include "proto.h"
 
 /******************************************************************************
  * read_deck()
@@ -52,39 +58,79 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
     
   // set the card count to 0, it might have !=0 default
   deck->num_cards = 0;
+
+  // and the symbols...
+  deck->num_symbols = 0;
   
   // and set the default comment marker to empty
   deck->cmt_code = 0;
 
   // loop and read lines one-by-one until we hit the EOF
-  while(TRUE) {
-    // read a line from input file and exit if it's the end of the stack
-    if(read_line(ctx, line_buf, pfile) == EOF) break;
-    
-    // store the line length because we do lots of comparisons against it
+  int line_num = 0;
+  int last_line_nonempty = 0;
+  do {
+    int read_result = read_line(ctx, line_buf, pfile);
+    if(read_result == EOF) {
+      if (strlen(line_buf) > 0) {
+        last_line_nonempty = 1;
+      } else {
+        break;
+      }
+    }
+    line_num++;
     line_len = strlen(line_buf);
-    
-    // make a new card and copy in the line
-    // we save every line to a card, even blank lines
-    card = calloc(1, sizeof(card_t));
-    card->orig_str = calloc(line_len + 1, sizeof(char));
-    card->edited = FALSE;
-    card->ignore = FALSE; // should apply to geometery and commands?
-    strcpy(card->orig_str, line_buf);
-    
-    // calloc/realloc the deck and add this card to it
+    if (line_len >= MAX_LINE_LEN - 1) {
+      char *msg = calloc(1, MAX_ERROR_LEN);
+      snprintf(msg, MAX_ERROR_LEN, "[read_deck][WARNING] Line %d is at or exceeds MAX_LINE_LEN (%d): length=%zu", line_num, MAX_LINE_LEN, line_len);
+      add_error(ctx, &ctx->errors, msg, WARNING);
+      free(msg);
+    }
+    if (line_len > MAX_LINE_LEN - 1) {
+      line_len = MAX_LINE_LEN - 1;
+      line_buf[line_len] = '\0';
+    }
     if(deck->num_cards == 0) {
       deck->num_cards++;
       deck->cards = calloc(1, sizeof(card_t));
+      if (!deck->cards) {
+        char *msg = calloc(1, MAX_ERROR_LEN);
+        snprintf(msg, MAX_ERROR_LEN, "[read_deck] ERROR: calloc failed for deck->cards at line %d", line_num);
+        add_error(ctx, &ctx->errors, msg, FATAL);
+        free(msg);
+        return;
+      }
     } else {
       deck->num_cards++;
-      deck->cards = realloc(deck->cards, deck->num_cards * sizeof(card_t));
+      card_t *new_cards = realloc(deck->cards, deck->num_cards * sizeof(card_t));
+      if (!new_cards) {
+        char *msg = calloc(1, MAX_ERROR_LEN);
+        snprintf(msg, MAX_ERROR_LEN, "[read_deck] ERROR: realloc failed for deck->cards at line %d", line_num);
+        add_error(ctx, &ctx->errors, msg, FATAL);
+        free(msg);
+        return;
+      }
+      deck->cards = new_cards;
     }
-    deck->cards[deck->num_cards - 1] = *card;
-  }
-
-  // card is temp, free it
-  free(card);
+    card_t *dest = &deck->cards[deck->num_cards - 1];
+    memset(dest, 0, sizeof(card_t));
+    dest->orig_str = calloc(line_len + 1, sizeof(char));
+    if (!dest->orig_str) {
+      char *msg = calloc(1, MAX_ERROR_LEN);
+      snprintf(msg, MAX_ERROR_LEN, "[read_deck] ERROR: calloc failed for card->orig_str at line %d", line_num);
+      add_error(ctx, &ctx->errors, msg, FATAL);
+      free(msg);
+      return;
+    }
+    dest->edited = FALSE;
+    dest->ignore = FALSE;
+    strncpy(dest->orig_str, line_buf, line_len);
+    dest->orig_str[line_len] = '\0';
+    if (read_result == EOF && !last_line_nonempty) {
+      break;
+    }
+    last_line_nonempty = 0;
+  } while(TRUE);
+  // Do not free(card) here; its contents are now owned by deck->cards[]
 }
 
 /******************************************************************************
@@ -159,7 +205,7 @@ int read_line(nec_context_t *ctx, char *buff, FILE *pfile)
   } /* end of while( (chr == CR) || ... */
 
   // read the line until you pick up any trailing cr's or lfs.
-  while(num_chr < MAX_LINE_LEN) {
+  while(num_chr < MAX_LINE_LEN - 1) {
     // if lf/cr reached before filling buffer, exit
     if((chr == CR) || (chr == LF))
       break;
@@ -170,11 +216,19 @@ int read_line(nec_context_t *ctx, char *buff, FILE *pfile)
     // if we get the EOF, end the string at that point by replacing it
     // with a null and then setting the flag that we're done
     if((chr = getc(pfile)) == EOF) {
-      buff[num_chr] = '\0'; // FIXME: do we need this? it happens below
+      buff[num_chr] = '\0';
       eof = EOF;
+      break;
     }
-  } /* end of while( num_chr < MAX_LINE_LEN ) */
-
+  } /* end of while( num_chr < MAX_LINE_LEN - 1 ) */
+  
+  // warn if we hit the max line length
+    if (num_chr >= MAX_LINE_LEN - 1) {
+      char *msg = calloc(1, MAX_ERROR_LEN);
+      snprintf(msg, MAX_ERROR_LEN, "A card is longer than %d characters and will be truncated.", MAX_LINE_LEN);
+      add_error(ctx, &ctx->errors, msg, PROBLEM);
+      free(msg);
+    }
   // terminate buffer as a string
   buff[num_chr] = '\0';
   
@@ -208,32 +262,39 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 
   for(int i = 0; i < deck->num_cards; i++) {
     card = &deck->cards[i];
-
     // get the card and the original string length
     line_len = strlen(card->orig_str);
     
-    // copy out the card code for easy future reference
-    // onec comment markers can be one char, so we have a special case here
-    if(line_len == 1) {
-      strncpy(type_buff, card->orig_str, 1);
+    // Skip leading whitespace
+    size_t first = 0;
+    while (first < line_len && isspace((unsigned char)card->orig_str[first])) first++;
+    
+    // Check for comment markers (CM, CE, !, #, ')
+    if (toupper(card->orig_str[first]) == 'C' && toupper(card->orig_str[first+1]) == 'M') {
+      strcpy(type_buff, "CM");
+    } else if (toupper(card->orig_str[first]) == 'C' && toupper(card->orig_str[first+1]) == 'E') {
+      strcpy(type_buff, "CE");
+    } else if (card->orig_str[first] == '!') {
+      strcpy(type_buff, "!");
+    } else if (card->orig_str[first] == '#') {
+      strcpy(type_buff, "#");
+    } else if (card->orig_str[first] == '\'') {
+      strcpy(type_buff, "'");
     } else {
-      strncpy(type_buff, card->orig_str, 2);
+      // not a comment marker, extract up to 2 chars for card code
+      if (line_len - first == 1) {
+        type_buff[0] = toupper(card->orig_str[first]);
+        type_buff[1] = '\0';
+      } else {
+        type_buff[0] = toupper(card->orig_str[first]);
+        type_buff[1] = toupper(card->orig_str[first+1]);
+        type_buff[2] = '\0';
+        if (isspace(type_buff[1])) type_buff[1] = '\0';
+      }
     }
-    // capitalize it
-    type_buff[0] = toupper(type_buff[0]);
-    type_buff[1] = toupper(type_buff[1]);
-    // null the end
-    type_buff[2] = '\0';
-	
-    // the code might only be one char, but if there's a comment
-    // following it then strlen>1, so...
-    if(isspace(type_buff[1])) {
-      type_buff[1] = '\0';
-    }
-    // and copy it over
     strncpy(card->card_code, type_buff, 2);
     
-    /* see if we can find out what sort of card it is */
+    // see if we can find out what sort of card it is
     isCmt = is_comment(card);
     isGeo = is_geometry(card);
     isCtl = is_control(card);
@@ -335,8 +396,8 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     // an error
     if (!sawEN && !isCmt && !isCtl && !isGeo && !isExt) {
       char *msg = calloc(1, MAX_ERROR_LEN);
-      sprintf(msg, "Unknown card type '%s' encountered on card %d. card_t will not be processed.", type_buff, i);
-      add_error(ctx, errors, msg, 0);
+      snprintf(msg, MAX_ERROR_LEN, "Unknown card type '%s' encountered on card %d. Card skipped.", type_buff, i+1);
+      add_error(ctx, errors, msg, PROBLEM);
       free(msg);
     }
     
@@ -351,13 +412,13 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
         // no comment was found, put everything into the string
         len = strlen(card->orig_str);
       } else {
-        // comment was found at location sep
         len = sep - card->orig_str;
       }
       // malloc room for the card part, copy that in, and close the string
       card->card_str = (char *)malloc((len * sizeof(char)) + 1);
       strncpy(card->card_str, card->orig_str, len);
       card->card_str[len] = '\0';
+
       // and if there was any leftover, copy it into the extension, otherwise make sure its empty
       if(sep == NULL) {
         card->extn_str = NULL;
@@ -395,42 +456,8 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     }
   } // foreach card
 
-  /* add invisible=true for special tag range on geometry cards */
-  add_invisible_extension_for_special_tags(ctx, deck);
-
-  /* Ensure 'pi' and 'c' are defined as symbols if not already present */
-  const struct { const char *name; const char *value; } defaults[] = {
-    {"pi", "3.141592653589793"},
-    {"c",  "299792458"}
-  };
-  for (int d = 0; d < 2; ++d) {
-    key_value_t *sym = deck->symbols;
-    bool found = false;
-    while (sym) {
-      if (sym->key && strcasecmp(sym->key, defaults[d].name) == 0) {
-        found = true;
-        break;
-      }
-      sym = sym->next;
-    }
-    if (!found) {
-      key_value_t *def_sym = (key_value_t *)malloc(sizeof(key_value_t));
-      if (def_sym) {
-        def_sym->key = strdup(defaults[d].name);
-        def_sym->value = strdup(defaults[d].value);
-        def_sym->separator = '=';
-        def_sym->next = NULL;
-        // Add to the end of the symbols list
-        if (!deck->symbols) {
-          deck->symbols = def_sym;
-        } else {
-          key_value_t *tail = deck->symbols;
-          while (tail->next) tail = tail->next;
-          tail->next = def_sym;
-        }
-      }
-    }
-  }
+   // add invisible=true for geometry cards with tag >9000, from 4nec2
+  mark_4nec2_cards_invisible(ctx, deck);
 } /* end of parse_deck() */
 
 /******************************************************************************
@@ -461,8 +488,11 @@ void parse_comment_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
   } else {
     code_end = 0; // error case, shouldn't be able to happen
   }
-  card->comment = (char *)calloc(strlen(card->orig_str) - code_end, sizeof(char));
-  strcpy(card->comment, &card->card_str[code_end]);
+  size_t comment_len = strlen(&card->card_str[code_end]);
+  card->comment = (char *)calloc(comment_len + 1, sizeof(char));
+  if (card->comment) {
+    strcpy(card->comment, &card->card_str[code_end]);
+  }
 }
 
 /******************************************************************************
@@ -539,10 +569,12 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
       // if there was a formula, save it
       if(isFormula) {
         card->int_form_inline[ints_processed] = TRUE;  // indicate that we did have a formula inline
-        char fld_name[2];
+        char fld_name[3];
         fld_name[0] = 'I';
-        fld_name[1] = ints_processed + '0';
-        add_key_value(card, card->formulas, fld_name, token, '=');
+        fld_name[1] = ints_processed +'0';
+        fld_name[2] = '\0';
+        // ...removed pre-add_key_value debug print...
+        add_key_value(card, &card->formulas, fld_name, token, '=');
       }
     } // end integer part
     
@@ -631,10 +663,12 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
       } else {
         // it is a formula, copy the entire token into the right formula field
         card->flt_form_inline[flts_processed] = TRUE;  // indicate that we did have a formula inline
-        char fld_name[2];
+        char fld_name[3];
         fld_name[0] = 'F';
-        fld_name[1] = flts_processed + '0';
-        add_key_value(card, card->formulas, fld_name, token, '=');
+        fld_name[1] = flts_processed +'0';
+        fld_name[2] = '\0';
+        // ...removed pre-add_key_value debug print...
+        add_key_value(card, &card->formulas, fld_name, token, '=');
 
       } // isFormula = true
     } // dbls_processed < MAX_FLOATS
@@ -667,43 +701,43 @@ void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
   // see if this is an SY card, otherwise exit
   // TODO: add all onec_codes here, we currently only do SY
   if(strcmp(card->card_code, "SY") == 0) {
-    // make a copy of the string so we can mangle it in strtok
+    // make a copy of the string so we can mangle it
     char str[MAX_LINE_LEN];
     strcpy(str, card->card_str + 2);
 
-    // SY allows only a comma as a delimeter
-    char *token, *split, sep = '=';
-    token = strtok(str, " ,");
+    // Accept both comma and whitespace as delimiters, but also handle single key=value with no comma
+    char *token, *split;
+    // First, try to split by comma. If no comma, treat as single token
+    token = strtok(str, ",");
     while(token != NULL) {
-      // make sure there's a equals in it
-      split = strpbrk(token, "=");
+      // Now trim leading whitespace
+      while(isspace((unsigned char)*token)) token++;
+
+      // if token is empty, skip
+      if(strlen(token) == 0) {
+        token = strtok(NULL, ",");
+        continue;
+      }
+
+      // now split on '='
+      split = strchr(token, '=');
       if(split != NULL) {
-        // remove any whitespace off the front, which might be trailing the comma
-        while(isspace((unsigned char)*token)) token++;
-        //TODO: do the same on the end of the string, if they put space comma
-
-        // if the split was successful, meaning we found the = somewhere,
-        // the = is still on the front so let's kill it
-        if (split[0] == '=') {
-          sep = split[0];
-          split++;
-        }
-
-        // now check that both sides are >0 len
-        if(strlen(token) > 0 && strlen(split) > 0) {
-          // if so, make a new keyvalue pair and add it to the card's collection
+        // separate key and value
+        *split = '\0';
+        char *key = token;
+        char *value = split + 1;
+        // trim whitespace
+        while(isspace((unsigned char)*key)) key++;
+        while(isspace((unsigned char)*value)) value++;
+        // parse it if there's anything left
+        if(strlen(key) > 0 && strlen(value) > 0) {
           key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
           if(pair != NULL) {
-            // calloc the strings and store them...
-            pair->key = (char *)calloc(split - token, sizeof(char));
-            strncpy(pair->key, token, split - token - 1);
-            pair->value = (char *)calloc(strlen(split) + 1, sizeof(char)); // add one for a trailing null
-            strcpy(pair->value, split);
-            // and store the original separator so we can recreate it on output
-            pair->separator = sep;
-            // and null this out, as its going on the end
+            pair->key = strdup(key);
+            pair->value = strdup(value);
+            pair->separator = '=';
             pair->next = NULL;
-            // and then add it to the end of the list
+            // add to end of formulas list
             key_value_t *tail = card->formulas;
             if(tail == NULL) {
               card->formulas = pair;
@@ -711,11 +745,11 @@ void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
               while(tail->next != NULL) tail = tail->next;
               tail->next = pair;
             }
-          } // there should be else's for all the mallocs and callocs!
+          }
         }
-      } // split != NULL
-      // and get the next token
-      token = strtok(NULL, ONEC_WHITESPACE ONEC_SEPARATORS);
+      }
+      // next token
+      token = strtok(NULL, ",");
     }
   }
 } /* end of parse_onec_card() */
@@ -786,9 +820,12 @@ void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors)
       // generate more tokens which are just bits of the comment
       if(strcasecmp(key, "comment") == 0) {
         char *leftover = strstr(card->extn_str, "comment");
-        leftover += 8; // 7 chars for comment and 1 for the delimiter
-        card->comment = (char *)malloc(strlen(leftover));
-        strcpy(card->comment, leftover);
+        leftover += 8; // 7 chars for 'comment' and 1 for the delimiter
+        size_t len = strlen(leftover);
+        card->comment = (char *)calloc(len + 1, sizeof(char));
+        if (card->comment) {
+          strcpy(card->comment, leftover);
+        }
         return;
       }
       
@@ -852,30 +889,36 @@ void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors)
   // that might have been in there. if there were none, then the
   // entire comment section was a comment text, so save that out
   if(!hasExtensions) {
-    card->comment = (char *)malloc(strlen(card->extn_str));
-    card->comment = card->extn_str;
+    if (card->extn_str) {
+
+
+//       size_t len = strlen(card->extn_str);
+//       card->comment = (char *)calloc(len + 1, sizeof(char));
+//       if (card->comment) {
+//         strcpy(card->comment, card->extn_str);
+//       }
+//     } else {
+//       card->comment = NULL;
+     }
   }
 } /* end of parse_key_values() */
 
-/* end of input.c */
- 
-/**
- * add_invisible_extension_for_special_tags()
+/******************************************************************************
+ * mark_4nec2_cards_invisible
  *
- * Called near the end of deck parsing. For each geometry card with a tag
- * in the reserved "invisible" range, and without an existing "invisible"
- * extension, add key/value pair invisible=true to the card's extensions.
- *
- * NOTE: Assumes the reserved range is [9800, 9900). If a different range
- * is intended, adjust the bounds accordingly.
+ * Called near the end of deck parsing to look for geometry cards with a tag
+ * number >=9800 <=9900, which 4nec2 uses to indicate invisible geometry.
+ * If such a card is found, and it does not already have an "invisible"
+ * extension, one is added with the value "true".
  */
-void add_invisible_extension_for_special_tags(nec_context_t *ctx, deck_t *deck)
+void mark_4nec2_cards_invisible(nec_context_t *ctx, deck_t *deck)
 {
+  const int INV_MIN = 9800;
+  const int INV_MAX = 9900; // 9900 and up are current sources
+
   if (!deck || deck->num_cards <= 0) return;
   int start = deck->geometry_start >= 0 ? deck->geometry_start : 0;
   int end = deck->geometry_end >= 0 ? deck->geometry_end : deck->num_cards - 1;
-  const int INV_MIN = 9800;
-  const int INV_MAX = 9900; /* exclusive upper bound */
 
   for (int i = start; i <= end; i++) {
     card_t *card = &deck->cards[i];
@@ -884,7 +927,7 @@ void add_invisible_extension_for_special_tags(nec_context_t *ctx, deck_t *deck)
     int tag = card->tag; /* populated during geometry build input parsing */
     if (tag < INV_MIN || tag >= INV_MAX) continue;
 
-    /* Check if an "invisible" extension already exists */
+    // check if an "invisible" extension already exists
     bool has_invisible = false;
     key_value_t *kv = card->extensns;
     while (kv) {
@@ -896,22 +939,22 @@ void add_invisible_extension_for_special_tags(nec_context_t *ctx, deck_t *deck)
     }
     if (has_invisible) continue;
 
-    /* Append invisible=true to card->extensns */
+    // append invisible=true to card->extensns
     key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
     if (!pair) {
-      add_error(ctx, &ctx->errors, "Memory allocation failed for invisible key/value", PROBLEM);
-      continue;
+      add_error(ctx, &ctx->errors, "Memory allocation failed for 'invisible' key/value", FATAL);
+      return;
     }
     pair->key = (char *)calloc(strlen("invisible") + 1, sizeof(char));
     pair->value = (char *)calloc(strlen("true") + 1, sizeof(char));
     if (!pair->key || !pair->value) {
       free(pair->key); free(pair->value); free(pair);
-      add_error(ctx, &ctx->errors, "Memory allocation failed for invisible strings", PROBLEM);
-      continue;
+      add_error(ctx, &ctx->errors, "Memory allocation failed for 'invisible' strings", FATAL);
+      return;
     }
     strcpy(pair->key, "invisible");
     strcpy(pair->value, "true");
-    pair->separator = ':'; /* default separator for extensions */
+    pair->separator = ':'; // default separator for extensions
     pair->next = NULL;
 
     if (card->extensns == NULL) {
@@ -922,4 +965,4 @@ void add_invisible_extension_for_special_tags(nec_context_t *ctx, deck_t *deck)
       tail->next = pair;
     }
   }
-}
+} /* end of input.c */

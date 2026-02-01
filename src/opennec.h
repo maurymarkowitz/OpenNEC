@@ -1,3 +1,4 @@
+
 /*******************************************************************
  *
  * opennec.h
@@ -58,6 +59,8 @@ Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
 //#endif
 
 #include "types.h"
+
+void free_deck(deck_t *deck);
 #include "proto.h"
 
 #ifndef	TRUE

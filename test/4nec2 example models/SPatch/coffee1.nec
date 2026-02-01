@@ -1,0 +1,46 @@
+CE
+SY rad=7.5cm
+SY len=2cm
+SY d = 3cm
+SY l = 30cm
+SY ang=10
+SY x1 = rad*sin(0)
+SY z1 = rad*cos(0)
+SY x2 = rad*sin(ang)
+SY z2 = rad*cos(ang)
+
+sy s = 1cm
+sy n = (int((2*d/s)/2)) * 2 + 1
+
+SM	1	n	x2	0	z2	x1	0	z1
+SC	0	0	x1	2*d	z1
+
+sy n = (int(((l-2*d)/s)/2)) * 2 + 1
+SM	1	n	x2	2*d	z2	x1	2*d	z1
+SC	0	0	x1	l	z1
+
+SP	0	3	x1	0	z1	x2	0	z2
+SY f = .8
+SC	0	-1	x2*f	0	z2*f	x1*f	0	z1*f
+SY f = .6
+SC	0	3	x2*f	0	z2*f	x1*f	0	z1*f
+SY f = 0.4
+SC	0	3	x2*f	0	z2*f	x1*f	0	z1*f
+SY f = 0.2
+SC	0	3	x2*f	0	z2*f	x1*f	0	z1*f
+SY f = 0.01
+SC	0	3	x2*f	0	z2*f	x1*f	0	z1*f
+
+sy x3 = (x1+x2)/2
+sy z3 = (z1+z2)/2
+sy x4 = (rad-len)*sin(ang/2)
+sy z4 = (rad-len)*cos(ang/2)
+GM	0	35	0	ang	0
+GW 1 20 x3, d, z3, x4, d, z4, 1e-3
+GE	0
+LD	5	0	0	0	37700000
+GN	-1
+EK
+EX	0	1	1	0	1.0	0	0
+FR	0	0	0	0	2400.0	0
+EN
