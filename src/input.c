@@ -49,10 +49,6 @@
  */
 void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
 {
-  // the card we're working on, have to null it or the Free()
-  // below may fail when this contains garbage
-  card_t *card = NULL;
-
   char line_buf[MAX_LINE_LEN];  // make it large enough to hold any line
   size_t line_len;              // actual length of the current card being read
     

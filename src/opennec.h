@@ -58,9 +58,8 @@ Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
 //#ifdef _COMPLEX_DEFINED
 //#endif
 
-#include "types.h"
 
-void free_deck(deck_t *deck);
+#include "types.h"
 #include "proto.h"
 
 #ifndef	TRUE

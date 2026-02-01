@@ -629,10 +629,8 @@ void update_deck_values(deck_t *deck)
   add_default_symbols(deck); // TEMP: Disabled to test double free
   update_symbol_values(deck);
 
-  // and now the formulas on each of the cards
-  for(int i = 0; i < deck->num_cards; i++) {
-    update_card_values(&deck->cards[i]);
-  }
+  // update all card values, passing deck pointer
+  update_card_values(deck);
 }
 
 /******************************************************************************
@@ -743,28 +741,36 @@ static bool references(const char *expr, const char *symname) {
 static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated) {
     if (evaluated[i]) return;
     key_value_t *sym = syms[i];
+    // Recursively evaluate all referenced symbols first
     for (int j = 0; j < sym_count; j++) {
-        if (i == j) continue;
-        if (references(sym->value, syms[j]->key)) {
-            eval_symbol(j, sym_count, syms, evaluated);
-        }
+      if (i == j) continue;
+      if (references(sym->value, syms[j]->key)) {
+        eval_symbol(j, sym_count, syms, evaluated);
+      }
     }
-    sym->fv = 0.0;
+    // Now evaluate this symbol
+    printf("[SY-EVAL] Evaluating symbol '%s' with formula '%s'\n", sym->key ? sym->key : "(null)", sym->value ? sym->value : "(null)");
+    printf("[SY-EVAL] Current symbol values before: ");
+    for (int k = 0; k < sym_count; k++) {
+      printf("%s=%.6f ", syms[k]->key ? syms[k]->key : "(null)", syms[k]->fv);
+    }
+    printf("\n");
     if (sym->value && sym->value[0] != '\0') {
-        te_variable *vars = calloc(sym_count, sizeof(te_variable));
-        for (int k = 0; k < sym_count; k++) {
-            vars[k].name = syms[k]->key;
-            vars[k].address = &syms[k]->fv;
-            vars[k].type = TE_VARIABLE;
-        }
-        int err = 0;
-        te_expr *expr = te_compile(sym->value, vars, sym_count, &err);
-        if (expr) {
-            sym->fv = te_eval(expr);
-            te_free(expr);
-        }
-        free(vars);
+      te_variable *vars = calloc(sym_count, sizeof(te_variable));
+      for (int k = 0; k < sym_count; k++) {
+        vars[k].name = syms[k]->key;
+        vars[k].address = &syms[k]->fv;
+        vars[k].type = TE_VARIABLE;
+      }
+      int err = 0;
+      te_expr *expr = te_compile(sym->value, vars, sym_count, &err);
+      if (expr) {
+        sym->fv = te_eval(expr);
+        te_free(expr);
+      }
+      free(vars);
     }
+    printf("[SY-EVAL] Symbol '%s' value after evaluation: %.6f\n", sym->key ? sym->key : "(null)", sym->fv);
     evaluated[i] = true;
 }
 
@@ -776,133 +782,131 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
  * of update_deck_values
  *
  */
-void update_card_values(card_t *card)
+void update_card_values(deck_t *deck)
 {
   double ft, det;
-  
-  // first, copy any original input values into the value fields
-  for(int i = 1; i <= MAX_INT_FIELDS; i++) {
-    card->iv[i] = card->i[i];
-  }
-  for(int i = 1; i <= MAX_FLT_FIELDS; i++) {
-    card->fv[i] = card->f[i];
-  }
-
-  // now run any calculations on the fields and copy those in instead
-  if(card->formulas != NULL) {
-    // Prepare variable bindings for tinyexpr: F1..F8, I1..I4, and all deck symbols
-    const int fcount = MAX_FLT_FIELDS;    // number of float fields (NEC: 7)
-    const int icount = MAX_INT_FIELDS;    // 4
-    double fvals[MAX_FLT_FIELDS + 1];     // 1-based
-    double ivals[MAX_INT_FIELDS + 1];     // 1-based
-    for(int i = 1; i <= fcount; i++) fvals[i] = card->fv[i];
-    for(int i = 1; i <= icount; i++) ivals[i] = (double)card->iv[i];
-
-    // Get deck pointer from card (assume card is part of deck->cards[])
-    extern deck_t *current_deck_for_card;
-    deck_t *deck = current_deck_for_card;
-    int num_syms = deck ? deck->num_symbols : 0;
-
-    // Allocate enough space for all variables
-    int max_vars = MAX_FLT_FIELDS + MAX_INT_FIELDS + num_syms;
-    te_variable *vars = calloc(max_vars, sizeof(te_variable));
-    int v = 0;
-    for(int i = 1; i <= fcount; i++) {
-      vars[v].name = fnames[i];
-      vars[v].address = &fvals[i];
-      vars[v].type = TE_VARIABLE;
-      v++;
+  for(int c = 0; c < deck->num_cards; c++) {
+    card_t *card = &deck->cards[c];
+    // first, copy any original input values into the value fields
+    for(int i = 1; i <= MAX_INT_FIELDS; i++) {
+      card->iv[i] = card->i[i];
     }
-    for(int i = 1; i <= icount; i++) {
-      vars[v].name = inames[i];
-      vars[v].address = &ivals[i];
-      vars[v].type = TE_VARIABLE;
-      v++;
+    for(int i = 1; i <= MAX_FLT_FIELDS; i++) {
+      card->fv[i] = card->f[i];
     }
-    // Add all deck symbols as variables
-    for(int s = 0; s < num_syms; s++) {
-      key_value_t *sym = deck->symbols[s];
-      if(sym && sym->key && sym->key[0] != '\0') {
-        vars[v].name = sym->key;
-        vars[v].address = &sym->fv;
+
+    // now run any calculations on the fields and copy those in instead
+    if(card->formulas != NULL) {
+      // Prepare variable bindings for tinyexpr: F1..F8, I1..I4, and all deck symbols
+      const int fcount = MAX_FLT_FIELDS;    // number of float fields (NEC: 7)
+      const int icount = MAX_INT_FIELDS;    // 4
+      double fvals[MAX_FLT_FIELDS + 1];     // 1-based
+      double ivals[MAX_INT_FIELDS + 1];     // 1-based
+      for(int i = 1; i <= fcount; i++) fvals[i] = card->fv[i];
+      for(int i = 1; i <= icount; i++) ivals[i] = (double)card->iv[i];
+
+      int num_syms = deck ? deck->num_symbols : 0;
+
+      // Allocate enough space for all variables
+      int max_vars = MAX_FLT_FIELDS + MAX_INT_FIELDS + num_syms;
+      te_variable *vars = calloc(max_vars, sizeof(te_variable));
+      int v = 0;
+      for(int i = 1; i <= fcount; i++) {
+        vars[v].name = fnames[i];
+        vars[v].address = &fvals[i];
         vars[v].type = TE_VARIABLE;
         v++;
       }
-    }
-
-    // Iterate formulas and evaluate each assignment (float/int targets)
-    key_value_t *kv = card->formulas;
-    while(kv != NULL) {
-      const char *key = kv->key;
-      const char *expr_str = kv->value;
-      if(key != NULL && expr_str != NULL && key[0] != '\0') {
-        char kind = key[0];
-        int idx = atoi(key + 1);
-        if(kind == 'F' && idx >= 1 && idx <= MAX_FLT_FIELDS) {
-          int err = 0;
-          te_expr *expr = te_compile(expr_str, vars, v, &err);
-          if(expr != NULL) {
-            double val = te_eval(expr);
-            te_free(expr);
-            card->fv[idx] = val;
-            fvals[idx] = val; // keep variables in sync for subsequent formulas
-          }
-        } else if(kind == 'I' && idx >= 1 && idx <= MAX_INT_FIELDS) {
-          int err = 0;
-          te_expr *expr = te_compile(expr_str, vars, v, &err);
-          if(expr != NULL) {
-            double val = te_eval(expr);
-            te_free(expr);
-            int ival = (int)val; // truncate; can switch to rounding if desired
-            card->iv[idx] = ival;
-            ivals[idx] = (double)ival; // keep variables in sync for subsequent formulas
-          }
+      for(int i = 1; i <= icount; i++) {
+        vars[v].name = inames[i];
+        vars[v].address = &ivals[i];
+        vars[v].type = TE_VARIABLE;
+        v++;
+      }
+      // Add all deck symbols as variables
+      for(int s = 0; s < num_syms; s++) {
+        key_value_t *sym = deck->symbols[s];
+        if(sym && sym->key && sym->key[0] != '\0') {
+          vars[v].name = sym->key;
+          vars[v].address = &sym->fv;
+          vars[v].type = TE_VARIABLE;
+          v++;
         }
       }
-      kv = kv->next;
-    }
-    free(vars);
-  }
-  
-  // and finally, apply any unit conversions - which are only on the flts
-  for(int i = 1; i <= MAX_FLT_FIELDS; i++) {
-    if(card->units[i] == 0) continue;  // 0 means "no units", so skip it
-    
-      if(unit_mult[card->units[i]] != 0) {
-        card->fv[i] = card->fv[i] * unit_mult[card->units[i]];
-      } else {
-        // units 6 through 8 are zeros and have to be converted case-by-case
-        switch(card->units[i]) {
-          case 6:  // ftin: feet + inches (two-digit inches)
-            ft = floor(card->fv[i]);
-            {
-              double frac = card->fv[i] - ft;
-              int inches_code = (int)lround(frac * 100.0);
-              if(inches_code >= 0 && inches_code <= 11) {
-                // Interpret as inches digits (0..11)
-                card->fv[i] = ft + (inches_code / 12.0);
-              } else {
-                // Fallback: treat fractional part as decimal feet (legacy behavior)
-                card->fv[i] = ft + frac;
-              }
-            }
-            // convert resulting feet to meters
-            card->fv[i] = card->fv[i] * unit_mult[4];
-            break;
 
-          case 7:
-          case 8: { // AWG
-            // Allow non-integer gauges via formulas; round and clamp to valid range
-            int gauge = (int)lround(card->fv[i]);
-            if(gauge < -3) gauge = -3; // 4/0 -> -3
-            if(gauge > 40) gauge = 40;
-            det = (36.0 - (double)gauge) / 39.0;
-            double mm_diam = 0.127 * pow(92.0, det); // diameter in mm
-            // Convert to meters radius: mm -> m (÷1000), then /2
-            card->fv[i] = (mm_diam * 0.001) * 0.5; // meters radius
-            break;
+      // Iterate formulas and evaluate each assignment (float/int targets)
+      key_value_t *kv = card->formulas;
+      while(kv != NULL) {
+        const char *key = kv->key;
+        const char *expr_str = kv->value;
+        if(key != NULL && expr_str != NULL && key[0] != '\0') {
+          char kind = key[0];
+          int idx = atoi(key + 1);
+          if(kind == 'F' && idx >= 1 && idx <= MAX_FLT_FIELDS) {
+            int err = 0;
+            te_expr *expr = te_compile(expr_str, vars, v, &err);
+            if(expr != NULL) {
+              double val = te_eval(expr);
+              te_free(expr);
+              card->fv[idx] = val;
+              fvals[idx] = val; // keep variables in sync for subsequent formulas
+            }
+          } else if(kind == 'I' && idx >= 1 && idx <= MAX_INT_FIELDS) {
+            int err = 0;
+            te_expr *expr = te_compile(expr_str, vars, v, &err);
+            if(expr != NULL) {
+              double val = te_eval(expr);
+              te_free(expr);
+              int ival = (int)val; // truncate; can switch to rounding if desired
+              card->iv[idx] = ival;
+              ivals[idx] = (double)ival; // keep variables in sync for subsequent formulas
+            }
           }
-        } // switch
-      } // if can be directly converted
-  } // for
+        }
+        kv = kv->next;
+      }
+      free(vars);
+    }
+    
+    // and finally, apply any unit conversions - which are only on the flts
+    for(int i = 1; i <= MAX_FLT_FIELDS; i++) {
+      if(card->units[i] == 0) continue;  // 0 means "no units", so skip it
+        if(unit_mult[card->units[i]] != 0) {
+          card->fv[i] = card->fv[i] * unit_mult[card->units[i]];
+        } else {
+          // units 6 through 8 are zeros and have to be converted case-by-case
+          switch(card->units[i]) {
+            case 6:  // ftin: feet + inches (two-digit inches)
+              ft = floor(card->fv[i]);
+              {
+                double frac = card->fv[i] - ft;
+                int inches_code = (int)lround(frac * 100.0);
+                if(inches_code >= 0 && inches_code <= 11) {
+                  // Interpret as inches digits (0..11)
+                  card->fv[i] = ft + (inches_code / 12.0);
+                } else {
+                  // Fallback: treat fractional part as decimal feet (legacy behavior)
+                  card->fv[i] = ft + frac;
+                }
+              }
+              // convert resulting feet to meters
+              card->fv[i] = card->fv[i] * unit_mult[4];
+              break;
+
+            case 7:
+            case 8: { // AWG
+              // Allow non-integer gauges via formulas; round and clamp to valid range
+              int gauge = (int)lround(card->fv[i]);
+              if(gauge < -3) gauge = -3; // 4/0 -> -3
+              if(gauge > 40) gauge = 40;
+              det = (36.0 - (double)gauge) / 39.0;
+              double mm_diam = 0.127 * pow(92.0, det); // diameter in mm
+              // Convert to meters radius: mm -> m (÷1000), then /2
+              card->fv[i] = (mm_diam * 0.001) * 0.5; // meters radius
+              break;
+            }
+          } // switch
+        } // if can be directly converted
+    } // for
+  }
 } /* update_card_values() */
