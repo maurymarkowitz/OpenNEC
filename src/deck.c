@@ -749,35 +749,41 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
       }
     }
     // Now evaluate this symbol
-    printf("[SY-EVAL] Evaluating symbol '%s' with formula '%s'\n", sym->key ? sym->key : "(null)", sym->value ? sym->value : "(null)");
-    printf("[SY-EVAL] Current symbol values before: ");
-    for (int k = 0; k < sym_count; k++) {
-      printf("%s=%.6f ", syms[k]->key ? syms[k]->key : "(null)", syms[k]->fv);
-    }
-    printf("\n");
     if (sym->value && sym->value[0] != '\0') {
+      // Convert to lowercase for tinyexpr (tinyexpr only accepts lowercase variable names)
       te_variable *vars = calloc(sym_count, sizeof(te_variable));
+      char **lowercase_names = calloc(sym_count, sizeof(char*));
       for (int k = 0; k < sym_count; k++) {
-        vars[k].name = syms[k]->key;
+        lowercase_names[k] = strdup(syms[k]->key);
+        for (char *p = lowercase_names[k]; *p; p++) *p = tolower((unsigned char)*p);
+        vars[k].name = lowercase_names[k];
         vars[k].address = &syms[k]->fv;
         vars[k].type = TE_VARIABLE;
+        vars[k].context = NULL;
       }
+      // Convert formula to lowercase for tinyexpr
+      char *lowercase_formula = strdup(sym->value);
+      for (char *p = lowercase_formula; *p; p++) *p = tolower((unsigned char)*p);
       int err = 0;
-      te_expr *expr = te_compile(sym->value, vars, sym_count, &err);
+      te_expr *expr = te_compile(lowercase_formula, vars, sym_count, &err);
       if (expr) {
         sym->fv = te_eval(expr);
         te_free(expr);
       }
+      free(lowercase_formula);
+      for (int k = 0; k < sym_count; k++) {
+        free(lowercase_names[k]);
+      }
+      free(lowercase_names);
       free(vars);
     }
-    printf("[SY-EVAL] Symbol '%s' value after evaluation: %.6f\n", sym->key ? sym->key : "(null)", sym->fv);
     evaluated[i] = true;
 }
 
 /******************************************************************************
  * update_card_values
  *
- * update_card_values looks for any formulas or units in the card and updates
+ * update_card_values looks for any formulas or units on the cards and updates
  * their values. Generally called after any changes to the card or as part
  * of update_deck_values
  *
@@ -787,6 +793,13 @@ void update_card_values(deck_t *deck)
   double ft, det;
   for(int c = 0; c < deck->num_cards; c++) {
     card_t *card = &deck->cards[c];
+    
+    // Skip SY cards - their formulas define symbols, not field values
+    // Symbol formulas are evaluated separately in update_symbol_values
+    if(strcmp(card->card_code, "SY") == 0) {
+      continue;
+    }
+    
     // first, copy any original input values into the value fields
     for(int i = 1; i <= MAX_INT_FIELDS; i++) {
       card->iv[i] = card->i[i];
@@ -798,8 +811,8 @@ void update_card_values(deck_t *deck)
     // now run any calculations on the fields and copy those in instead
     if(card->formulas != NULL) {
       // Prepare variable bindings for tinyexpr: F1..F8, I1..I4, and all deck symbols
-      const int fcount = MAX_FLT_FIELDS;    // number of float fields (NEC: 7)
       const int icount = MAX_INT_FIELDS;    // 4
+      const int fcount = MAX_FLT_FIELDS;    // number of float fields (NEC: 7)
       double fvals[MAX_FLT_FIELDS + 1];     // 1-based
       double ivals[MAX_INT_FIELDS + 1];     // 1-based
       for(int i = 1; i <= fcount; i++) fvals[i] = card->fv[i];
@@ -823,7 +836,7 @@ void update_card_values(deck_t *deck)
         vars[v].type = TE_VARIABLE;
         v++;
       }
-      // Add all deck symbols as variables
+      // add all deck symbols as variables
       for(int s = 0; s < num_syms; s++) {
         key_value_t *sym = deck->symbols[s];
         if(sym && sym->key && sym->key[0] != '\0') {
@@ -842,24 +855,18 @@ void update_card_values(deck_t *deck)
         if(key != NULL && expr_str != NULL && key[0] != '\0') {
           char kind = key[0];
           int idx = atoi(key + 1);
-          if(kind == 'F' && idx >= 1 && idx <= MAX_FLT_FIELDS) {
-            int err = 0;
-            te_expr *expr = te_compile(expr_str, vars, v, &err);
-            if(expr != NULL) {
-              double val = te_eval(expr);
-              te_free(expr);
+          int err = 0;
+          te_expr *expr = te_compile(expr_str, vars, v, &err);
+          if(expr != NULL) {
+            double val = te_eval(expr);
+            te_free(expr);
+            if(kind == 'F' && idx >= 1 && idx <= MAX_FLT_FIELDS) {
               card->fv[idx] = val;
               fvals[idx] = val; // keep variables in sync for subsequent formulas
-            }
-          } else if(kind == 'I' && idx >= 1 && idx <= MAX_INT_FIELDS) {
-            int err = 0;
-            te_expr *expr = te_compile(expr_str, vars, v, &err);
-            if(expr != NULL) {
-              double val = te_eval(expr);
-              te_free(expr);
+            } else if(kind == 'I' && idx >= 1 && idx <= MAX_INT_FIELDS) {
               int ival = (int)val; // truncate; can switch to rounding if desired
               card->iv[idx] = ival;
-              ivals[idx] = (double)ival; // keep variables in sync for subsequent formulas
+              ivals[idx] = (double)ival;
             }
           }
         }

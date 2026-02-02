@@ -1,0 +1,16 @@
+    Parsed: wlen = 40 = 40.000000
+    Parsed: hgh = 20.6 = 20.600000
+    Parsed: wa = 160 = 160.000000
+    Parsed: xylen = wlen*sin(wa/2) = -39.755546
+    Parsed: Z = wlen*cos(wa/2) = -4.415490
+    Parsed: hleft = hgh-Z = 25.015490
+    Parsed: hrght = hgh-Z = 25.015490
+    Parsed: aa = 90+55 = 145.000000
+    Parsed: angle = 90+deg-north = 0.000000
+    Parsed: X = xylen*cos(aa) = -35.138471
+    Parsed: Y = xylen*sin(aa) = -18.595464
+    Parsed: ra = 360/16 = 22.500000
+    Parsed: radl = 20 = 20.000000
+    Parsed: radh = 0.05 = 0.050000
+    Parsed: cu = 5.8e7 = 58000000.000000
+    Parsed: fe = 1.39e6 = 1390000.000000

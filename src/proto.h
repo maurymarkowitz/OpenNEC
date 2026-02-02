@@ -76,12 +76,16 @@ void test_duplicate_tags(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
 void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors);
 /* misc.c */
 // all sorts of bits and pieces
+char *ltrim(char *s);
+char *rtrim(char *s);
+char *trim(char *s);
 void add_error(nec_context_t *ctx, errors_list_t *errors, char *message, int severity);
 void add_message(nec_context_t *ctx, outputs_list_t *outputs, char *message);
 int str_ends_with(nec_context_t *ctx, const char *str, const char *suffix);
 char* substr(nec_context_t *ctx, char* dest, char *src, int start, int len);
-char* trim_start(nec_context_t *ctx, char* dest);
-char* trim_end(nec_context_t *ctx, char* dest);
+char* trim_start(char* dest);
+char* trim_end(char* dest);
+char* trim(char* dest);
 void abort_on_error(nec_context_t *ctx, int why);
 void secnds(nec_context_t *ctx, double *x);
 int stop(nec_context_t *ctx, int flag);  // Only called from main.c - errors centralized to ctx->errors

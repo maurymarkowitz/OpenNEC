@@ -112,8 +112,7 @@ void test_nec_file(const char *filepath, void *userdata) {
                 {
                     continue; // skip default symbols
                 }
-                printf("    Parsed: %s = %s = %f\n", sym && sym->key ? sym->key : "(null)", sym && sym->value ? sym->value : "(null)", sym ? sym->fv : 0.0);
-                fprintf(sy_out, "    Parsed: %s = %s = %f\n", sym && sym->key ? sym->key : "(null)", sym && sym->value ? sym->value : "(null)", sym ? sym->fv : 0.0);
+                 fprintf(sy_out, "    Parsed: %s = %s = %f\n", sym && sym->key ? sym->key : "(null)", sym && sym->value ? sym->value : "(null)", sym ? sym->fv : 0.0);
                 fflush(sy_out);
             }
             fflush(sy_out);

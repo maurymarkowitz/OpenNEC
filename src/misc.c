@@ -68,31 +68,31 @@ char* substr(nec_context_t *ctx, char* dest, char *src, int start, int len)
   return dest;
 }
 
-/*-------------------------------------------------------------------*/
-char* trim(nec_context_t *ctx, char* str)
-{
-  trim_start(ctx, str);
-  trim_end(ctx, str);
-  return str;
-}
 
 /*-------------------------------------------------------------------*/
-char* trim_start(nec_context_t *ctx, char* dest)
+char* trim_start(char* dest)
 {
   while(isspace((unsigned char)*dest)) dest++;
   return dest;
 }
 
-/*-------------------------------------------------------------------*/
-char* trim_end(nec_context_t *ctx, char* dest)
+char* trim_end(char* dest)
 {
-  char *end;
-  end = dest + strlen(dest) - 1;
+  char *end = dest + strlen(dest) - 1;
   while(end > dest && isspace((unsigned char)*end)) end--;
   *(end+1) = '\0'; // new trailing nul
   return dest;
 }
 
+/*-------------------------------------------------------------------*/
+char* trim(char* str)
+{
+  char *start = trim_start(str);
+  char *end = start + strlen(start) - 1;
+  while(end > start && isspace((unsigned char)*end)) end--;
+  *(end+1) = '\0';
+  return start;
+}
 /***  Various system/app utils ***/
 
 /*------------------------------------------------------------------------*/

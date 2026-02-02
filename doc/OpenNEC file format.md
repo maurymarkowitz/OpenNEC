@@ -154,9 +154,11 @@ onec comment cards can be placed anywhere in the deck. They can be marked with t
 
 <function> = "sin" | "cos" | "tan" | "atn" | "sqr"
            | "exp"| "log" | "log10" | "abs" | "sgn"
-           | "fix" | "int" | "mod" ;
+           | "int" | "mod" ;
 ```
 An onec variable card contains one or more variable definitions consisting of name=formula pairs. Variable names and formulas may not contain spaces or other whitespace characters. Variable names must start with a leading letter character followed by zero or more characters including digits and underscores. Formulas consist of one or more visible characters including numbers and mathematical symbols.
+
+NOTE: formula names are case insensitive, p and P refer to the same variable, as does r1 and R1.
 
 If more than one definition is supplied on a single line, they are comma separated. onec variables may be "hidden" by adding an onec comment marker to the front. Hiding of this sort, if present, should be preserved when the file is written.
 

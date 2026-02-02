@@ -52,19 +52,22 @@ Additions from other systems
 
 A number of features commonly found in other popular NEC-based programs have been added:
 
+* OpenNEC notices cards using the 4nec2 convention with tag numbers >= 9800 < 9900 and sets `invisible=true` on those cards. 
+
+* OpenNEC supports the `SY` card type from 4nec2. This is used to define variables, or SYmbols, which can be used in place of numbers in the rest of the deck. These are useful for defining the radius of wires and similar tasks, as well as making the deck more self-documented. A common example is to use something like `SY rad=0.01` to define a 1 cm radius, and then use the variable `rad` instead of typing `0.01` everywhere. The advantage is that you can experiment with changing the radius by editing a single card.
+
+* OpenNEC supports in-line formulas, also found in 4nec2 decks. These allow you to define a symbol and then perform basic math operations on it, like "height+5". This has many uses, especially during optimizations. OpenNEC adds the additional ability to define these formulas in the extensions instead of directly in the card fields. OpenNEC can save files in 4nec2 format with these items directly in the fields, or in OpenNEC format with them hidden in comments so that the resulting deck is NEC-2 compatible. In the latter case, the calculated value is placed in the field.
+
+* OpenNEC supports the `XT` card type from nec2c, which stops processing at that point. In contrast to nec2c, which simply exits the program when an `XT` is encountered, OpenNEC will still read the entire deck, but will only process up to the point of the XT. This effectively treats any following cards as comments.
+
+* OpenNEC supports the `#` comment marker from nec2c. This was used to insert whole-line comments at any point in the deck, a system that does not appear to be widely used in other systems. Note that the `#` comment marker can only appear at the start of a line and cannot be used to insert end-of-line comments. At any other location in the line, # is used as it is in 4nec2, to indicate a field is using AWG measurements. The leading-`#` is included only for compatibility, it is not considered to be part of the OpenNEC standard and should not be used except to produce nec2c compatible files. The modern replacement is `!`.
+
+Other additions
+---------------
+
 * OpenNEC includes a whole-deck sanity check system that looks for common errors, like overlapping wires or wires touching ground. It also reports on more minor issues like missing CE or EN cards that can cause problems with some NEC-2 implementations. This allows OpenNEC to be used as a stand-alone syntax checker. The list of issues is in an exposed structure, Errors, which allows further tests to be implemented in external software and then added to existing errors lists to keep everything in one place.
 
   - Note: Many validations are emitted as warnings (non-fatal) to preserve compatibility with existing decks while highlighting potential issues.
-
-* OpenNEC notices cards using the 4nec2 convention with tag numbers >= 9800 < 9900 and sets `invisible=true` on those cards. 
-
-* OpenNEC supports the `SY` card type from 4nec2. This is used to define variables, or SYmbols, which are parsed out in the deck. These are useful for defining the radius of wires and similar tasks, as well as making the deck more self-documented.
-
-* OpenNEC supports in-line formulas, also found in 4nec2 decks. These allow you to define a symbol and then perform basic math operations on it, like "height+5". This has many uses, especially during optimizations. OpenNEC adds the ability to define these formulas in the extensions instead of directly in the card fields. OpenNEC can save files in 4nec2 format with these items "exposed", or in OpenNEC format with them hidden in comments so that the resulting deck is NEC-2 compatible.
-
-* OpenNEC supports the `XT` card type from nec2c, which stops processing at that point. In contrast to nec2c, which simply exits the program when an `XT` is encountered, OpenNEC will still read the remaining cards but will not process them, effectively treating them as comments.
-
-* OpenNEC supports the `#` comment marker from nec2c. This was used to insert whole-line comments at any point in the deck, a system that does not appear to be widely used. Note that the `#` comment marker can only appear at the start of a line and cannot be used to insert end-of-line comments. At any other location in the line, # is used as it is in 4nec2, to indicate a field is using AWG measurements. The leading-`#` is included only for compatibility, it is not considered to be part of the OpenNEC standard and should not be used except to produce nec2c compatible files. The modern replacement is `!`.
 
 Defined constants
 -----------------

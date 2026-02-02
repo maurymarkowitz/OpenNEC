@@ -528,7 +528,7 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
   // can't be a single-char comment market, which was handled above
   // we'll use this as the pointer to the current start location
   char str[MAX_LINE_LEN];
-  strcpy(str, trim_start(ctx, card->card_str + 2)); // skip the card code and remove whitespace
+  strcpy(str, trim_start(card->card_str + 2)); // skip the card code and remove whitespace
   
   // tokenize the rest of the line on the remaining whitespace
   token = strtok(str, ONEC_WHITESPACE);
@@ -722,9 +722,9 @@ void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
         *split = '\0';
         char *key = token;
         char *value = split + 1;
-        // trim whitespace
-        while(isspace((unsigned char)*key)) key++;
-        while(isspace((unsigned char)*value)) value++;
+        // trim whitespace from key and value
+        key = trim(key);
+        value = trim(value);
         // parse it if there's anything left
         if(strlen(key) > 0 && strlen(value) > 0) {
           key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
