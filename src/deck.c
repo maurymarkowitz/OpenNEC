@@ -25,6 +25,7 @@
 static void update_symbol_values(deck_t *deck);
 static void update_card_values(deck_t *deck);
 static void add_default_symbols(deck_t *deck);
+static void update_symbol_list(deck_t *deck, errors_list_t *errors);
 
 static bool references(const char *expr, const char *symname);
 static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated);
@@ -642,7 +643,7 @@ void update_deck_values(deck_t *deck)
  * key/value pairs to the deck's symbol list. It also checks for redeclarations
  * of symbols and adds a warning to the errors list if found.
  */
-void update_symbol_list(deck_t *deck, errors_list_t *errors) {
+static void update_symbol_list(deck_t *deck, errors_list_t *errors) {
     if (deck->symbols) { free(deck->symbols); deck->symbols = NULL; }
     deck->num_symbols = 0; // Initialize num_symbols
     // INVARIANT: Only add pointers to key_value_t nodes owned by cards (e.g., from card->formulas)

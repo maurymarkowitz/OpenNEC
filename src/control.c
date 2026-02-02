@@ -21,6 +21,9 @@
 #include "output.h"
 
 // Forward declarations for static functions
+static int nec_calculation_defaults(nec_context_t *ctx);
+static int process_control_cards(nec_context_t *ctx, deck_t *deck);
+static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq);
 static void reset_loading_buffers(nec_context_t *ctx);
 static void reset_network_buffers(nec_context_t *ctx);
 static void reset_coupling_buffers(nec_context_t *ctx);
@@ -126,7 +129,7 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
  * @param ctx     The NEC context to initialize
  * @return        0 on success, -1 on error (no geometry)
  */
-int nec_calculation_defaults(nec_context_t *ctx)
+static int nec_calculation_defaults(nec_context_t *ctx)
 {
     // Validate that geometry has been calculated
     if (ctx->geometry.np <= 0) {
@@ -629,7 +632,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
  * @param deck    The deck containing the control cards
  * @return        0 on success, -1 on error
  */
-int process_control_cards(nec_context_t *ctx, deck_t *deck)
+static int process_control_cards(nec_context_t *ctx, deck_t *deck)
 {
     // Validate inputs
     if (ctx == NULL || deck == NULL) {
@@ -1001,7 +1004,7 @@ int process_control_cards(nec_context_t *ctx, deck_t *deck)
  * @param delfrq  Frequency step size
  * @return        0 on success, -1 on error
  */
-int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq)
+static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq)
 {
     if (ctx == NULL) {
         return -1;
