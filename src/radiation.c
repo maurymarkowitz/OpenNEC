@@ -22,6 +22,13 @@
  *****************************************************************************/
 
 #include "opennec.h"
+#include "radiation.h"
+#include "fields.h"
+
+/* Forward declarations for internal functions */
+static void ffld(nec_context_t *ctx, double thet, double phi, complex double *eth, complex double *eph);
+static void fflds(nec_context_t *ctx, double rox, double roy, double roz, complex double *scur, complex double *ex, complex double *ey, complex double *ez);
+static void gfld(nec_context_t *ctx, double rho, double phi, double rz, complex double *eth, complex double *epi, complex double *erd, complex double ux, int ksymp);
 
 /*-----------------------------------------------------------------------*/
 

@@ -25,6 +25,16 @@
  ****************************************************************************/
 
 #include "opennec.h"
+#include "matrix.h"
+#include "fields.h"
+#include "calculations.h"
+
+/* Forward declarations for internal functions */
+static void cmss(nec_context_t *ctx, int j1, int j2, int im1, int im2, complex double *cm, int nrow, int itrp);
+static void cmsw(nec_context_t *ctx, int j1, int j2, int i1, int i2, complex double *cm, complex double *cw, int ncw, int nrow, int itrp);
+static void cmws(nec_context_t *ctx, int j, int i1, int i2, complex double *cm, int nr, complex double *cw, int itrp);
+static void cmww(nec_context_t *ctx, int j, int i1, int i2, complex double *cm, int nr, complex double *cw, int nw, int itrp);
+static void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e);
 
 #ifdef HAVE_ACCELERATE
 #include <Accelerate/Accelerate.h>

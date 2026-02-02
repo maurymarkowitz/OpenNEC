@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <stdbool.h>
 #include "opennec.h"
+#include "input.h"
+#include "tests.h"
 
 // Structure to hold error info for a file
 #define MAX_PATH 4096

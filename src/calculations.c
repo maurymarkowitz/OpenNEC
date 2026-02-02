@@ -9,6 +9,15 @@
  *******************************************************************/
 
 #include "opennec.h"
+#include "calculations.h"
+#include "geometry.h"
+
+/* Legacy output function - TODO: should be deprecated */
+void prnt(nec_context_t *ctx, int in1, int in2, int in3, double fl1, double fl2, double fl3, double fl4, double fl5, double fl6, char *ia, int ichar);
+
+/* Forward declarations for internal functions */
+static void gf(nec_context_t *ctx, double zk, double *co, double *si);
+static int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc);
 
 /*-----------------------------------------------------------------------*/
 

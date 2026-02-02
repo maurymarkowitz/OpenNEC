@@ -26,6 +26,19 @@
  *****************************************************************************/
 
 #include "opennec.h"
+#include "fields.h"
+#include "ground.h"
+#include "calculations.h"
+#include "somnec.h"
+
+/* Forward declarations for internal functions */
+static void eksc(nec_context_t *ctx, double s, double z, double rh, double xk, int ij, complex double *ezs, complex double *ers, complex double *ezc, complex double *erc, complex double *ezk, complex double *erk);
+static void ekscx(nec_context_t *ctx, double bx, double s, double z, double rhx, double xk, int ij, int inx1, int inx2, complex double *ezs, complex double *ers, complex double *ezc, complex double *erc, complex double *ezk, complex double *erk);
+static void gh(nec_context_t *ctx, double zk, double *hr, double *hi);
+static void gx(nec_context_t *ctx, double zz, double rh, double xk, complex double *gz, complex double *gzp);
+static void gxx(nec_context_t *ctx, double zz, double rh, double a, double a2, double xk, int ira, complex double *g1, complex double *g1p, complex double *g2, complex double *g2p, complex double *g3, complex double *gzp);
+static void hfk(nec_context_t *ctx, double el1, double el2, double rhk, double zpkx, double *sgr, double *sgi);
+static void hsflx(nec_context_t *ctx, double s, double rh, double zpx, complex double *hpk, complex double *hps, complex double *hpc);
 
 /*common  /tmh/ */
 static tmh_t tmh;

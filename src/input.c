@@ -33,7 +33,14 @@
  *****************************************************************************/
 
 #include "opennec.h"
-#include "proto.h"
+#include "input.h"
+
+/* Forward declarations for internal functions */
+static int read_line(nec_context_t *ctx, char *buff, FILE *pfile);
+static void parse_comment_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
+static void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
+static void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
+static void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors);
 
 /******************************************************************************
  * read_deck()

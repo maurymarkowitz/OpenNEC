@@ -12,6 +12,10 @@
 #endif
 
 #include "opennec.h"
+#include "input.h"
+#include "control.h"
+#include "output.h"
+#include "tests.h"
 
 #ifndef _GETOPT_H
 #include <getopt.h>

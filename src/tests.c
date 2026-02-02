@@ -23,6 +23,7 @@
  *****************************************************************************/
 
 #include "opennec.h"
+#include "tests.h"
 
 // Local structs for structural geometry validations
 typedef struct { int tag; int segs; int line; double x1,y1,z1,x2,y2,z2; double radius; } wire_info_t;

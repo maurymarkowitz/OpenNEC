@@ -10,6 +10,15 @@
  *****************************************************************************/
 
 #include "opennec.h"
+#include "control.h"
+#include "geometry.h"
+#include "matrix.h"
+#include "network.h"
+#include "somnec.h"
+#include "fields.h"
+#include "radiation.h"
+#include "calculations.h"
+#include "output.h"
 
 // Forward declarations for static functions
 static void reset_loading_buffers(nec_context_t *ctx);

@@ -18,10 +18,13 @@
 
 
 #include "opennec.h"
-#include "proto.h"
+#include "deck.h"
 #include "tinyexpr.h"
 
-void update_symbol_values(deck_t *deck);
+/* Forward declarations for internal functions */
+static void update_symbol_values(deck_t *deck);
+static void update_card_values(deck_t *deck);
+static void add_default_symbols(deck_t *deck);
 
 static bool references(const char *expr, const char *symname);
 static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated);

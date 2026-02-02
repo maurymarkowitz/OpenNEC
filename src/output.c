@@ -15,6 +15,29 @@
  *****************************************************************************/
 
 #include "opennec.h"
+#include "output.h"
+
+/* Forward declarations for internal write functions */
+static void write_header(nec_context_t *ctx, deck_t *deck, FILE *pfile);
+static int write_structure(nec_context_t *ctx, deck_t *deck, FILE *pfile);
+static int write_segments(nec_context_t *ctx, deck_t *deck, FILE *pfile);
+static void write_patches(nec_context_t *ctx, deck_t * deck, FILE *pfile);
+static void write_input_cards(FILE *file, deck_t *deck, int batch_start, int batch_end, int card_number_offset);
+static void write_frequency_data(FILE *file, nec_context_t *ctx);
+static void write_loading_data(FILE *file, nec_context_t *ctx);
+static void write_environment_data(FILE *file, nec_context_t *ctx);
+static void write_matrix_timing(FILE *file, nec_context_t *ctx);
+static void write_network_data(FILE *file, nec_context_t *ctx);
+static void write_matrix_asymmetry(FILE *file, nec_context_t *ctx);
+static void write_network_excitation(FILE *file, nec_context_t *ctx);
+static void write_antenna_input_parameters(FILE *file, nec_context_t *ctx);
+static void write_currents(FILE *file, nec_context_t *ctx);
+static void write_power_budget(FILE *file, nec_context_t *ctx);
+static void write_radiation_pattern_header(FILE *file, nec_context_t *ctx);
+static void write_radiation_pattern_data(FILE *file, nec_context_t *ctx);
+static void write_average_power_gain(FILE *file, nec_context_t *ctx);
+static void write_normalized_gain(FILE *file, nec_context_t *ctx);
+static void write_footer(FILE *file, nec_context_t *ctx, deck_t *deck);
 
 /******************************************************************************
  * write_deck_nec

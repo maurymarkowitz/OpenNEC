@@ -22,6 +22,17 @@
  *****************************************************************************/
 
 #include "opennec.h"
+#include "somnec.h"
+#include "calculations.h"
+
+/* Forward declarations for internal functions */
+static void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex double *j0p);
+static void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv, complex double *erh, complex double *eph);
+static int gshank(nec_context_t *ctx, complex double start, complex double dela, complex double *sum, int nans, complex double *seed, int ibk, complex double bk, complex double delb);
+static int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex double *h0p);
+static void lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam);
+static void rom1(nec_context_t *ctx, int n, complex double *sum, int nx);
+static void saoa(nec_context_t *ctx, double t, complex double *ans);
 
 /* common /evlcom/ */
 static int jh;

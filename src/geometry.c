@@ -9,6 +9,20 @@
  ******************************************************************************/
 
 #include "opennec.h"
+#include "geometry.h"
+
+/* Forward declarations for internal functions */
+static void wire(nec_context_t *ctx, int card_num, int tag_num, int segs, double xw1, double yw1, double zw1, double xw2, double yw2, double zsw2, double rad, double rdel, double rrad);
+static void arc(nec_context_t *ctx, int card_num, int tag_num, int segs, double rada, double ang1, double ang2, double rad);
+static void helix(nec_context_t *ctx, int card_num, int tag_num, int segs, double s, double hl, double a1, double b1, double a2, double b2, double rad, outputs_list_t *outputs);
+static void patch(nec_context_t *ctx, int card_num, int nx, int ny, double ax1, double ay1, double az1, double ax2, double ay2, double az2, double ax3, double ay3, double az3, double ax4, double ay4, double az4);
+static void calculate_patch(nec_context_t *ctx, int nx, int ny);
+static void reproduce(nec_context_t *ctx, double rox, double roy, double roz, double xs, double ys, double zs, int its, int nrpt, int itgi);
+static void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy, int iz);
+static void rotate(nec_context_t *ctx, int card_num, int tag_increment, int num_copies);
+static void scale(nec_context_t *ctx, double xw1);
+static int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs);
+static void finish_geometry(nec_context_t *ctx);
 
 /******************************************************************************
  * calculate_geometry
