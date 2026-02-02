@@ -96,8 +96,10 @@ void test_nec_file(const char *filepath, void *userdata) {
         fclose(fp);
 
         parse_deck(&ctx, &deck, &errors);
-        // Removed incorrect linked-list symbol print loop. Use array-based loop below.
-        update_deck_values(&deck);
+        
+        // Initialize symbol table: collect all SY symbols, add defaults (pi, c),
+        // and evaluate symbols in comment section for initial values
+        initialize_symbol_table(&deck, &errors);
 
         // --- SY card reporting ---
         extern char sy_report_path[MAX_PATH];

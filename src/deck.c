@@ -619,6 +619,29 @@ double convert_awg_to_meters(double awg_value)
 }
 
 /******************************************************************************
+ * initialize_symbol_table
+ *
+ * Collects all SY symbols from the deck, adds default symbols (pi, c),
+ * and evaluates symbols in the comment section sequentially.
+ * This should be called after parse_deck() to prepare the symbol table
+ * for sequential evaluation during geometry and control processing.
+ *
+ * @param deck     The deck to initialize
+ * @param errors   Error list for reporting evaluation errors
+ */
+void initialize_symbol_table(deck_t *deck, errors_list_t *errors)
+{
+  // Step 1: Collect all SY symbols into deck->symbols[]
+  update_symbol_list(deck, errors);
+  
+  // Step 2: Add default symbols (pi, c)
+  add_default_symbols(deck);
+  
+  // Step 3: Evaluate symbols in comment section sequentially
+  evaluate_symbols_in_comments(deck, errors);
+}
+
+/******************************************************************************
  * update_deck_values
  *
  * update_deck_values loops through the entire deck and calls
@@ -644,29 +667,21 @@ void update_deck_values(deck_t *deck)
  * of symbols and adds a warning to the errors list if found.
  */
 static void update_symbol_list(deck_t *deck, errors_list_t *errors) {
-    if (deck->symbols) { free(deck->symbols); deck->symbols = NULL; }
-    deck->num_symbols = 0; // Initialize num_symbols
-    // INVARIANT: Only add pointers to key_value_t nodes owned by cards (e.g., from card->formulas)
+  //re-initialize the symbols
+  if (deck->symbols) { 
+    free(deck->symbols); 
+    deck->symbols = NULL; 
+  }
+  deck->num_symbols = 0;
+  // INVARIANT: only add pointers to key_value_t nodes owned by cards (e.g., from card->formulas)
   for (int i = 0; i < deck->num_cards; i++) {
     card_t *card = &deck->cards[i];
     if (strcmp(card->card_code, "SY") == 0 && card->formulas) {
       key_value_t *kv = card->formulas;
       while (kv) {
-        // Check for redeclaration
-        bool found = false;
-        for (int s = 0; s < deck->num_symbols; ++s) {
-          key_value_t *existing = deck->symbols[s];
-          if (existing && existing->key && strcmp(existing->key, kv->key) == 0) {
-            found = true;
-            char msg[256];
-            snprintf(msg, sizeof(msg), "Symbol '%s' redeclared in deck.", kv->key);
-            add_error(NULL, errors, msg, WARNING);
-            break;
-          }
-        }
-        if (!found) {
-          add_symbol(deck, kv);
-        }
+        // Add symbol without checking for redeclaration
+        // (redeclaration is now valid for sequential scope)
+        add_symbol(deck, kv);
         kv = kv->next;
       }
     }
@@ -920,3 +935,93 @@ void update_card_values(deck_t *deck)
     } // for
   }
 } /* update_card_values() */
+
+/******************************************************************************
+ * evaluate_formula
+ *
+ * Evaluates a single formula (key_value_t) using currently-defined symbols
+ * in deck->symbols[]. Updates the key_value_t->fv field with the result.
+ * Reports errors if symbols are undefined or if there are syntax errors.
+ *
+ * @param formula  The formula to evaluate (its value string will be compiled)
+ * @param deck     The deck containing the symbol table
+ * @param errors   Error list for reporting undefined symbols or syntax errors
+ */
+void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors)
+{
+  if (!formula || !formula->value || formula->value[0] == '\0') {
+    return;
+  }
+  
+  // Prepare variables for tinyexpr - bind all current symbols
+  int num_syms = deck ? deck->num_symbols : 0;
+  te_variable *vars = calloc(num_syms, sizeof(te_variable));
+  char **lowercase_names = calloc(num_syms, sizeof(char*));
+  
+  for (int k = 0; k < num_syms; k++) {
+    lowercase_names[k] = strdup(deck->symbols[k]->key);
+    for (char *p = lowercase_names[k]; *p; p++) *p = tolower((unsigned char)*p);
+    vars[k].name = lowercase_names[k];
+    vars[k].address = &deck->symbols[k]->fv;
+    vars[k].type = TE_VARIABLE;
+    vars[k].context = NULL;
+  }
+  
+  // Convert formula to lowercase for tinyexpr
+  char *lowercase_formula = strdup(formula->value);
+  for (char *p = lowercase_formula; *p; p++) *p = tolower((unsigned char)*p);
+  
+  // Compile and evaluate
+  int err = 0;
+  te_expr *expr = te_compile(lowercase_formula, vars, num_syms, &err);
+  if (expr) {
+    formula->fv = te_eval(expr);
+    te_free(expr);
+  } else {
+    // Report error if compilation failed
+    if (errors) {
+      char msg[256];
+      snprintf(msg, sizeof(msg), "Error evaluating formula '%s = %s' at position %d", 
+               formula->key, formula->value, err);
+      add_error(NULL, errors, msg, WARNING);
+    }
+  }
+  
+  free(lowercase_formula);
+  for (int k = 0; k < num_syms; k++) {
+    free(lowercase_names[k]);
+  }
+  free(lowercase_names);
+  free(vars);
+}
+
+/******************************************************************************
+ * evaluate_symbols_in_comments
+ *
+ * Evaluates all SY card formulas in the comment/header section sequentially.
+ * This establishes initial symbol values before geometry processing begins.
+ *
+ * @param deck     The deck containing cards and symbols
+ * @param errors   Error list for reporting evaluation errors
+ */
+void evaluate_symbols_in_comments(deck_t *deck, errors_list_t *errors)
+{
+  if (!deck || deck->comment_start < 0 || deck->comment_end < 0) {
+    return;
+  }
+  
+  // Iterate through comment section
+  for (int i = deck->comment_start; i <= deck->comment_end; i++) {
+    card_t *card = &deck->cards[i];
+    
+    // Check if this is a SY card
+    if (strcmp(card->card_code, "SY") == 0 && card->formulas) {
+      // Evaluate each formula in this SY card sequentially
+      key_value_t *kv = card->formulas;
+      while (kv) {
+        evaluate_formula(kv, deck, errors);
+        kv = kv->next;
+      }
+    }
+  }
+}

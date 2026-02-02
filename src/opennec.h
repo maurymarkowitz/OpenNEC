@@ -57,7 +57,7 @@ Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
 #include "types.h"
 #include "misc.h"
 #include "deck.h"
-#include "calculations_util.h"
+
 
 #ifndef	TRUE
 #define	TRUE	1

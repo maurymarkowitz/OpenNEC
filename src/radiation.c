@@ -21,9 +21,11 @@
  * field at requested angles.
  *****************************************************************************/
 
+
 #include "opennec.h"
 #include "radiation.h"
 #include "fields.h"
+#include "calculations.h"
 
 /* Forward declarations for internal functions */
 static void ffld(nec_context_t *ctx, double thet, double phi, complex double *eth, complex double *eph);

@@ -1,29 +1,29 @@
-    Parsed: h1 = 295 = 295.000000
-    Parsed: h2 = 270 = 270.000000
-    Parsed: h3 = 230 = 230.000000
-    Parsed: r_out = 935.74 = 935.740000
-    Parsed: r_in = 556.56 = 556.560000
-    Parsed: s_ins1 = 4 = 4.000000
-    Parsed: s_ins2 = 4 = 4.000000
-    Parsed: r_tower = 2 = 2.000000
-    Parsed: r_towline = 0.2/2 = 0.100000
-    Parsed: angle_center = 10 = 10.000000
-    Parsed: angle_in = -35 = -35.000000
+    Parsed: h1 = 295 = 0.000000
+    Parsed: h2 = 270 = 0.000000
+    Parsed: h3 = 230 = 0.000000
+    Parsed: r_out = 935.74 = 0.000000
+    Parsed: r_in = 556.56 = 0.000000
+    Parsed: s_ins1 = 4 = 0.000000
+    Parsed: s_ins2 = 4 = 0.000000
+    Parsed: r_tower = 2 = 0.000000
+    Parsed: r_towline = 0.2/2 = 0.000000
+    Parsed: angle_center = 10 = 0.000000
+    Parsed: angle_in = -35 = 0.000000
     Parsed: angle_out = 0 = 0.000000
-    Parsed: r_towerwire = 0.15/2 = 0.075000
-    Parsed: s_center = 65.84 = 65.840000
-    Parsed: s_in = 38.45 = 38.450000
-    Parsed: s_out = 38.45 = 38.450000
+    Parsed: r_towerwire = 0.15/2 = 0.000000
+    Parsed: s_center = 65.84 = 0.000000
+    Parsed: s_in = 38.45 = 0.000000
+    Parsed: s_out = 38.45 = 0.000000
     Parsed: sv_center = 0 = 0.000000
     Parsed: sv_in = 0 = 0.000000
     Parsed: sv_out = 0 = 0.000000
-    Parsed: d1 = 20.46 = 20.460000
-    Parsed: d2 = 72.98 = 72.980000
-    Parsed: d3 = 96.16 = 96.160000
-    Parsed: tao = 0.05 = 0.050000
-    Parsed: s_tao = 448*tao = 22.400000
-    Parsed: r_downwire = 0.3 = 0.300000
-    Parsed: radius_downwire = 78 = 78.000000
-    Parsed: h_downwire = 56 = 56.000000
-    Parsed: radius_downwire1 = 20 = 20.000000
-    Parsed: h_downwire1 = 20 = 20.000000
+    Parsed: d1 = 20.46 = 0.000000
+    Parsed: d2 = 72.98 = 0.000000
+    Parsed: d3 = 96.16 = 0.000000
+    Parsed: tao = 0.05 = 0.000000
+    Parsed: s_tao = 448*tao = 0.000000
+    Parsed: r_downwire = 0.3 = 0.000000
+    Parsed: radius_downwire = 78 = 0.000000
+    Parsed: h_downwire = 56 = 0.000000
+    Parsed: radius_downwire1 = 20 = 0.000000
+    Parsed: h_downwire1 = 20 = 0.000000

@@ -1,2 +1,3 @@
-    Parsed: dl = 6.21476 = 6.214760
-    Parsed: cap = 60pF = 0.000000
+    Parsed: hgh = 14.8 = 0.000000
+    Parsed: len = 10.4 = 0.000000
+    Parsed: L = 11.88uH = 0.000000

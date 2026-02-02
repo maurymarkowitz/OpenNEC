@@ -272,6 +272,11 @@ static int process_single_file(const char *input_filename, const char *output_fi
 
   // and then parse what we read into the card
   parse_deck(&ctx, &deck, &import_errors);
+  
+  // Initialize symbol table: collect all SY symbols, add defaults (pi, c),
+  // and evaluate symbols in comment section for initial values
+  initialize_symbol_table(&deck, &import_errors);
+  
   // TESTING: print any file errors
   for(int i = 0; i < import_errors.num_errors; i++) {
     fprintf(ctx.error_fp, "%s\n", import_errors.errors[i].message);

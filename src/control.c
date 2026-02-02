@@ -324,6 +324,63 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
         
         char *code = card->card_code;
         
+        // Check if this is a SY card - if so, evaluate its formulas and continue to next card
+        if (strcmp(code, "SY") == 0) {
+            if (card->formulas) {
+                key_value_t *kv = card->formulas;
+                while (kv) {
+                    evaluate_formula(kv, deck, &ctx->errors);
+                    kv = kv->next;
+                }
+            }
+            continue; // Skip to next card, SY cards don't configure anything
+        }
+        
+        // For non-SY cards, evaluate any formulas on the card before processing
+        if (card->formulas) {
+            // Copy original values to working arrays
+            for (int j = 1; j <= MAX_INT_FIELDS; j++) card->iv[j] = card->i[j];
+            for (int j = 1; j <= MAX_FLT_FIELDS; j++) card->fv[j] = card->f[j];
+            
+            // Evaluate formulas for this card
+            key_value_t *kv = card->formulas;
+            while (kv) {
+                // Determine if this is an integer or float field formula
+                if (kv->key && kv->key[0] == 'I' && strlen(kv->key) == 2) {
+                    int idx = kv->key[1] - '0';
+                    if (idx >= 1 && idx <= MAX_INT_FIELDS) {
+                        evaluate_formula(kv, deck, &ctx->errors);
+                        card->iv[idx] = (int)kv->fv;
+                    }
+                } else if (kv->key && kv->key[0] == 'F' && strlen(kv->key) == 2) {
+                    int idx = kv->key[1] - '0';
+                    if (idx >= 1 && idx <= MAX_FLT_FIELDS) {
+                        evaluate_formula(kv, deck, &ctx->errors);
+                        card->fv[idx] = kv->fv;
+                    }
+                }
+                kv = kv->next;
+            }
+            
+            // Apply unit conversions to fv[] array
+            for (int j = 1; j <= MAX_FLT_FIELDS; j++) {
+                if (card->units[j] != 0 && unit_mult[card->units[j]] != 0) {
+                    card->fv[j] = card->fv[j] * unit_mult[card->units[j]];
+                }
+            }
+        } else {
+            // No formulas - just copy original values
+            for (int j = 1; j <= MAX_INT_FIELDS; j++) card->iv[j] = card->i[j];
+            for (int j = 1; j <= MAX_FLT_FIELDS; j++) card->fv[j] = card->f[j];
+            
+            // Still need to apply unit conversions
+            for (int j = 1; j <= MAX_FLT_FIELDS; j++) {
+                if (card->units[j] != 0 && unit_mult[card->units[j]] != 0) {
+                    card->fv[j] = card->fv[j] * unit_mult[card->units[j]];
+                }
+            }
+        }
+        
         // Skip XQ, EN, XT cards (they don't configure anything)
         if (strcmp(code, "XQ") == 0 || strcmp(code, "EN") == 0 || strcmp(code, "XT") == 0) {
             continue;

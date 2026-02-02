@@ -19,6 +19,17 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt, d
 void intrp(nec_context_t *ctx, double x, double y, complex double *f1, complex double *f2, complex double *f3, complex double *f4);
 void intx(nec_context_t *ctx, double el1, double el2, double b, int ij, double *sgr, double *sgi);
 
+
+/* dB conversion utilities */
+double db10(nec_context_t *ctx, double x);
+double db20(nec_context_t *ctx, double x);
+
+/* Complex number utilities */
+double cang(nec_context_t *ctx, complex double z);
+
+/* Simple utilities */
+int min(nec_context_t *ctx, int a, int b);
+
 /* Internal calculation functions used within calculations.c and by other modules */
 void zint(nec_context_t *ctx, double sigl, double rolam, complex double *zt);
 int tbf(nec_context_t *ctx, int i, int icap);

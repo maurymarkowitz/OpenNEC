@@ -72,12 +72,69 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
     return;
   }
   
-  // make sure all the formula-based values are up to date
-  update_deck_values(deck);
+  // Symbol table and defaults were already initialized after parse_deck
+  // Now we evaluate card formulas sequentially as we encounter cards
   
   // loop over the geometry section of the deck, which should be correct by this point
   for(int i = deck->geometry_start; i <= deck->geometry_end; i++) {
     card = &deck->cards[i];
+    
+    // Check if this is a SY card - if so, evaluate its formulas and continue to next card
+    if(strcmp(card->card_code, "SY") == 0) {
+      if(card->formulas) {
+        key_value_t *kv = card->formulas;
+        while (kv) {
+          evaluate_formula(kv, deck, errors);
+          kv = kv->next;
+        }
+      }
+      continue; // Skip to next card, SY cards don't generate geometry
+    }
+    
+    // For non-SY cards, evaluate any formulas on the card before processing
+    if(card->formulas) {
+      // Copy original values to working arrays
+      for(int j = 1; j <= MAX_INT_FIELDS; j++) card->iv[j] = card->i[j];
+      for(int j = 1; j <= MAX_FLT_FIELDS; j++) card->fv[j] = card->f[j];
+      
+      // Evaluate formulas for this card
+      key_value_t *kv = card->formulas;
+      while (kv) {
+        // Determine if this is an integer or float field formula
+        if(kv->key && kv->key[0] == 'I' && strlen(kv->key) == 2) {
+          int idx = kv->key[1] - '0';
+          if(idx >= 1 && idx <= MAX_INT_FIELDS) {
+            evaluate_formula(kv, deck, errors);
+            card->iv[idx] = (int)kv->fv;
+          }
+        } else if(kv->key && kv->key[0] == 'F' && strlen(kv->key) == 2) {
+          int idx = kv->key[1] - '0';
+          if(idx >= 1 && idx <= MAX_FLT_FIELDS) {
+            evaluate_formula(kv, deck, errors);
+            card->fv[idx] = kv->fv;
+          }
+        }
+        kv = kv->next;
+      }
+      
+      // Apply unit conversions to fv[] array
+      for(int j = 1; j <= MAX_FLT_FIELDS; j++) {
+        if(card->units[j] != 0 && unit_mult[card->units[j]] != 0) {
+          card->fv[j] = card->fv[j] * unit_mult[card->units[j]];
+        }
+      }
+    } else {
+      // No formulas - just copy original values
+      for(int j = 1; j <= MAX_INT_FIELDS; j++) card->iv[j] = card->i[j];
+      for(int j = 1; j <= MAX_FLT_FIELDS; j++) card->fv[j] = card->f[j];
+      
+      // Still need to apply unit conversions
+      for(int j = 1; j <= MAX_FLT_FIELDS; j++) {
+        if(card->units[j] != 0 && unit_mult[card->units[j]] != 0) {
+          card->fv[j] = card->fv[j] * unit_mult[card->units[j]];
+        }
+      }
+    }
     
     // one of the few ways that onec modifies the original NEC code is by adding
     // a flag saying whether this card should be ignored. That makes it easy to
