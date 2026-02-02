@@ -78,6 +78,7 @@ char* trim_start(char* dest)
   return dest;
 }
 
+/*-------------------------------------------------------------------*/
 char* trim_end(char* dest)
 {
   char *end = dest + strlen(dest) - 1;
@@ -95,6 +96,7 @@ char* trim(char* str)
   *(end+1) = '\0';
   return start;
 }
+
 /***  Various system/app utils ***/
 
 /*------------------------------------------------------------------------*/

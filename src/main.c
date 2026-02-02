@@ -25,6 +25,9 @@
 #include <signal.h>
 #include <errno.h>
 #include <sys/times.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <unistd.h>
 
 
 /** signal handler */
@@ -34,6 +37,7 @@
 static int run_simulation = TRUE;
 static int run_tests = FALSE;
 static int run_greens = FALSE;
+static int recursive = FALSE;
 static char *input_file = "";
 static char *output_file = "";
 static char *error_file = "";
@@ -60,7 +64,7 @@ static void print_version(void)
  */
 void print_usage(char *argv[])
 {
-  printf("Usage: %s [-hvntg] [-o output_file] [-e error_file] [source_file...]\n", argv[0]);
+  printf("Usage: %s [-hvntgr] [-o output_file] [-e error_file] [source_file...]\n", argv[0]);
   puts("Options:");
   puts("  -h, --help: print this description");
   puts("  -v, --version: print version info");
@@ -70,6 +74,7 @@ void print_usage(char *argv[])
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -g, --greens: write a greens function file to *.ngf or provided filename");
   puts("  -j, --jobs N: process up to N files in parallel (default 1)");
+  puts("  -r, --recursive: process directories recursively");
   puts("Multiple input files can be specified; each will generate a .out file.");
   puts("If no source_file is provided, input is read from stdin and output goes to stdout.");
 }
@@ -99,6 +104,7 @@ static struct option program_options[] =
   {"version", no_argument, NULL, 'v'},
   {"no-run", no_argument, NULL, 'n'},
   {"test-deck", no_argument, NULL, 't'},
+  {"recursive", no_argument, NULL, 'r'},
   {"input-file", required_argument, NULL, 'i'},
   {"output-file", required_argument,  NULL, 'o'},
   {"error-file", required_argument,  NULL, 'e'},
@@ -121,7 +127,7 @@ void parse_options(int argc, char *argv[])
   while(1) {
     // eat an option and exit if we're done
     /* portable short options: 'g' requires an argument */
-    int c = getopt_long(argc, argv, "hvnti:o:e:g:j:", program_options, &option_index); // should match the items above
+    int c = getopt_long(argc, argv, "hvntri:o:e:g:j:", program_options, &option_index); // should match the items above
     if(c == -1) break;
     
     switch(c) {
@@ -138,6 +144,10 @@ void parse_options(int argc, char *argv[])
       case 'v':
         print_version();
         /* printed_help =  TRUE; */
+        break;
+        
+      case 'r':
+        recursive = TRUE;
         break;
         
       case 'o':
@@ -187,11 +197,18 @@ void parse_options(int argc, char *argv[])
  */
 static int process_single_file(const char *input_filename, const char *output_filename, FILE *error_fp)
 {
+  if (strlen(input_filename) > 0) {
+    fprintf(error_fp, "[DEBUG] Working on file: %s\n", input_filename);
+  } else {
+    fprintf(error_fp, "[DEBUG] Working on stdin\n");
+  }
+
   nec_context_t ctx;
   nec_context_init(&ctx);
 
   // main variables
   deck_t deck;              // the deck we're processing, we'll make it local as it disappears on exit
+  memset(&deck, 0, sizeof(deck_t));
   errors_list_t import_errors;   // a list of errors that occured during import
   errors_list_t test_errors;     // a list of errors and warnings about the deck's format
   errors_list_t geometry_errors; // a list of errors and warnings during the conversion to segments
@@ -428,6 +445,24 @@ static void *worker_thread(void *arg)
   return NULL;
 }
 
+static void add_to_string_list(char ***list, int *count, int *cap, const char *str) {
+  if (*count >= *cap) {
+    *cap = (*cap == 0) ? 16 : (*cap * 2);
+    char **new_list = realloc(*list, *cap * sizeof(char *));
+    if (!new_list) abort();
+    *list = new_list;
+  }
+  (*list)[(*count)++] = strdup(str);
+}
+
+static int has_nec_extension(const char *filename) {
+  const char *ext = strrchr(filename, '.');
+  if (!ext) return FALSE;
+  return (strcasecmp(ext, ".nec") == 0 ||
+          strcasecmp(ext, ".deck") == 0 ||
+          strcasecmp(ext, ".onec") == 0);
+}
+
 /*-------------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
@@ -449,10 +484,12 @@ int main(int argc, char **argv)
     error_fp = stderr;
   }
 
-  // Collect input files from command line arguments
-  int num_files = argc - optind;
-  
-  if (num_files == 0) {
+  // Collect input files and folders
+  char **file_list = NULL;
+  int num_files = 0;
+  int file_cap = 0;
+
+  if (optind >= argc) {
     // No input files specified - use stdin/stdout
     const char *out = (strlen(output_file) > 0) ? output_file : "";
     if (process_single_file("", out, error_fp) != 0) {
@@ -461,12 +498,89 @@ int main(int argc, char **argv)
       return EXIT_FAILURE;
     }
   } else {
+    // Collect all files, including from directories
+    char **dir_queue = NULL;
+    int dir_count = 0;
+    int dir_cap = 0;
+    int dir_head = 0;
+
+    // Initial files/dirs from command line
+    for (int i = optind; i < argc; i++) {
+      struct stat st;
+      if (stat(argv[i], &st) == 0) {
+        if (S_ISDIR(st.st_mode)) {
+          add_to_string_list(&dir_queue, &dir_count, &dir_cap, argv[i]);
+        } else {
+          add_to_string_list(&file_list, &num_files, &file_cap, argv[i]);
+        }
+      } else {
+        fprintf(error_fp, "Warning: cannot access '%s': %s\n", argv[i], strerror(errno));
+      }
+    }
+
+    // BFS for directories
+    while (dir_head < dir_count) {
+      char *current_dir = dir_queue[dir_head++];
+      DIR *d = opendir(current_dir);
+      if (!d) {
+        fprintf(error_fp, "Warning: cannot open directory '%s': %s\n", current_dir, strerror(errno));
+        free(current_dir);
+        continue;
+      }
+
+      // To satisfy "files first", we'll collect subdirs separately and add them to the queue after processing files in this dir
+      char **subdirs_in_dir = NULL;
+      int subdir_count = 0;
+      int subdir_cap = 0;
+
+      struct dirent *entry;
+      while ((entry = readdir(d)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+          continue;
+
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/%s", current_dir, entry->d_name);
+
+        struct stat st;
+        if (lstat(path, &st) == 0) { // Use lstat to avoid following symloops if we want, or stat
+          if (S_ISDIR(st.st_mode)) {
+            if (recursive) {
+              add_to_string_list(&subdirs_in_dir, &subdir_count, &subdir_cap, path);
+            }
+          } else if (S_ISREG(st.st_mode)) {
+            if (has_nec_extension(entry->d_name)) {
+              add_to_string_list(&file_list, &num_files, &file_cap, path);
+            }
+          }
+        }
+      }
+      closedir(d);
+
+      // Add subdirs to our BFS queue
+      for (int i = 0; i < subdir_count; i++) {
+        add_to_string_list(&dir_queue, &dir_count, &dir_cap, subdirs_in_dir[i]);
+        free(subdirs_in_dir[i]);
+      }
+      free(subdirs_in_dir);
+      free(current_dir);
+    }
+    free(dir_queue);
+
+    if (num_files == 0) {
+      fprintf(error_fp, "No compatible files found to process.\n");
+      if (error_fp != stderr) fclose(error_fp);
+      return EXIT_FAILURE;
+    }
+
+    printf("[DEBUG] Found %d files to process.\n", num_files);
+    fflush(stdout);
+
     // Process files (possibly in parallel)
     int failed_count = 0;
     if (jobs <= 1 || num_files == 1) {
-      // Serial path remains unchanged
-      for (int i = optind; i < argc; i++) {
-        const char *input = argv[i];
+      // Serial path
+      for (int i = 0; i < num_files; i++) {
+        const char *input = file_list[i];
         char output[512];
         if (strlen(output_file) > 0 && num_files == 1) {
           strncpy(output, output_file, sizeof(output) - 1);
@@ -492,10 +606,9 @@ int main(int argc, char **argv)
         if (error_fp != stderr) fclose(error_fp);
         return EXIT_FAILURE;
       }
-      // Prepare tasks in argv order
+      // Prepare tasks 
       for (int k = 0; k < count; k++) {
-        int i = optind + k;
-        tasks[k].input = argv[i];
+        tasks[k].input = file_list[k];
         tasks[k].index = k;
         if (strlen(output_file) > 0 && count == 1) {
           strncpy(tasks[k].output, output_file, sizeof(tasks[k].output) - 1);
@@ -522,14 +635,13 @@ int main(int argc, char **argv)
       pthread_mutex_destroy(&queue.lock);
       free(threads);
 
-      // Emit logs and summarize in argv order
+      // Emit logs and summarize
       for (int k = 0; k < count; k++) {
         if (tasks[k].log_buf && tasks[k].log_size > 0) {
           fwrite(tasks[k].log_buf, 1, tasks[k].log_size, error_fp);
           free(tasks[k].log_buf);
           tasks[k].log_buf = NULL;
         } else {
-          // if no captured log, at least show a line
           fprintf(error_fp, "Processing %s -> %s\n", tasks[k].input, tasks[k].output);
         }
         if (tasks[k].status != 0) failed_count++;
@@ -539,6 +651,10 @@ int main(int argc, char **argv)
         fprintf(error_fp, "\nCompleted with %d error(s) out of %d file(s)\n", failed_count, num_files);
       }
     }
+    
+    // Clean up file list
+    for (int i = 0; i < num_files; i++) free(file_list[i]);
+    free(file_list);
   }
 
   if (error_fp != stderr) fclose(error_fp);

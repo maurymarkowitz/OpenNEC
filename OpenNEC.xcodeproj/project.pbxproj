@@ -58,7 +58,6 @@
 		55B274E0205ADE9C0064F9BF /* input.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = input.c; sourceTree = "<group>"; tabWidth = 2; };
 		55B274E1205ADE9C0064F9BF /* misc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = misc.c; sourceTree = "<group>"; };
 		55B274E2205ADE9C0064F9BF /* ground.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = ground.c; sourceTree = "<group>"; tabWidth = 2; };
-		55B274E3205ADE9C0064F9BF /* proto.h */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.h; path = proto.h; sourceTree = "<group>"; tabWidth = 2; };
 		55B274E4205ADE9C0064F9BF /* tinyexpr.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = tinyexpr.c; sourceTree = "<group>"; tabWidth = 2; };
 		55B274E5205ADE9C0064F9BF /* fields.c */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.c; path = fields.c; sourceTree = "<group>"; tabWidth = 2; };
 		55B274E6205ADE9D0064F9BF /* matrix.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = matrix.c; sourceTree = "<group>"; };
@@ -96,7 +95,6 @@
 			isa = PBXGroup;
 			children = (
 				55B274EB205ADE9D0064F9BF /* opennec.h */,
-				55B274E3205ADE9C0064F9BF /* proto.h */,
 				55B274DC205ADE9C0064F9BF /* types.h */,
 				55B274E9205ADE9D0064F9BF /* types.c */,
 				55B274D8205ADE9C0064F9BF /* shared.h */,

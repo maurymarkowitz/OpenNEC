@@ -1,3 +1,0 @@
-# Batch tester build
-nec_batch_tester: src/nec_batch_tester.c src/input.c src/deck.c src/misc.c src/types.c src/output.c src/fields.c src/geometry.c src/ground.c src/matrix.c src/network.c src/radiation.c src/somnec.c src/tinyexpr.c src/calculations.c src/prnt_stub.c
-	$(CC) $(CFLAGS) -o nec_batch_tester $^ -lm $(LDFLAGS)

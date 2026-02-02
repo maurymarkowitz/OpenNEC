@@ -131,4 +131,3 @@ Note: Input cards are available in `deck_t`, not `ctx`.
 
 - **Output functions to add:**
   - src/output.c: Implement functions 5-22 above
-  - src/proto.h: Add function prototypes

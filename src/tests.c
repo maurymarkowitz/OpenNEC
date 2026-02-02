@@ -1243,29 +1243,31 @@ void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
  */
 void test_bad_symbols(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
-  key_value_t *outer, *inner;
   char *msg = calloc(1, MAX_ERROR_LEN);
   
-  // first we'll check that they aren't overriding a measurement
-  outer = deck->symbols;
-  while(outer != NULL) {
-    for(int i = 0; i < NUM_ONEC_UNIT_CODES; i++) {
-      if(strcasecmp(outer->key, unit_codes[i]) == 0) {
-        sprintf(msg, "The symbol '%s' has been defined and overrides a system-wide symbol of the same name.", unit_codes[i]);
+  // Check that symbols aren't overriding measurement units
+  for (int i = 0; i < deck->num_symbols; i++) {
+    key_value_t *outer = deck->symbols[i];
+    if (outer == NULL) continue;
+    
+    for (int j = 0; j < NUM_ONEC_UNIT_CODES; j++) {
+      if (strcasecmp(outer->key, unit_codes[j]) == 0) {
+        sprintf(msg, "The symbol '%s' has been defined and overrides a system-wide symbol of the same name.", unit_codes[j]);
         add_error(ctx, errors, msg, 0);
       }
     }
-    // and now see if any other symbol has the same name
-    // TODO: need to see if this is actually used, should SY's only be at the top or can they be redefined in the body?
-    inner = outer->next;
-    while(inner != NULL) {
-      if(strcasecmp(outer->key, inner->key)  == 0) {
+    
+    // Check if any other symbol has the same name
+    for (int k = i + 1; k < deck->num_symbols; k++) {
+      key_value_t *inner = deck->symbols[k];
+      if (inner == NULL) continue;
+      
+      if (strcasecmp(outer->key, inner->key) == 0) {
         sprintf(msg, "The symbol '%s' has been defined more than once.", outer->key);
         add_error(ctx, errors, msg, 0);
       }
     }
-    outer = outer->next;
-  } /* while loop over cards */
+  }
   
   free(msg);
 } /* end of test_bad_symbols */

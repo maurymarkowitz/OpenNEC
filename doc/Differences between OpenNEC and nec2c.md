@@ -11,11 +11,11 @@ Changes in the code
 - nec2c is in the form of a stand-alone command-line program. Other programs wanting to use nec2c to perform calculations by running the program with a temporary deck file, and then parsing the resulting output file.
 - onec is in the form of a library that can be directly included in other programs. Those programs can modify the deck and read the results directly without using files. A simple wrapper program is also included, which emulates the nec2c command-line interface.
 
-- nec2c parses the deck card-by-card from the input file
-- onec parses the entire deck in one pass, which allows it to perform whole-deck checks, as well as allowing other programs to modify the deck by adding or removing cards without using a file.
+- nec2c parses the deck card-by-card from the input file.
+- onec parses the entire deck in one pass, which allows it to perform whole-deck checks.
 
 - nec2c can calculate only one file at a time.
-- onec's command line can process multiple files.
+- onec's command line can process multiple files, whole directories, and can recurse multiple directories.
 
 - nec2c has considerable global state inherited from the original Fortran code's COMMON sections. This makes it non-reentrant and it cannot be used in a threaded fashion.
 - onec has been refactored so there is no global state and is completely thread-safe. Programs can use the library to work on multiple decks, and the command shell can run multiple input files at the same time.
