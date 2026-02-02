@@ -28,7 +28,7 @@ Command-line options include:
 
 `-h`, `--help`: print usage notes  
 `-v`, `--version`: print version info  
-`-r`, `--recursive`: process directories recursively
+`-r`, `--recursive`: process directories recursively  
 `-n`, `--no-run`: parse the deck but skip calculation/simulation  
 `-t`, `--test-deck`: run deck sanity checks (often used with -n)  
 `-j` <N>, `--jobs` <N>: if multiple files are passed in, run them in parallel up to <N> at a time  
@@ -44,7 +44,7 @@ Build & Setup
 -------------
 OpenNEC is a makefile project that does not require `make config` or other steps. A simple `make` should produce a working executable on practically any unix-like system.
 
-For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](BUILD).
+For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](BUILD.md).
 
 OpenNEC concept
 ---------------
