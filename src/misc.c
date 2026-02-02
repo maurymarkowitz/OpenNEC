@@ -8,6 +8,8 @@
  *****************************************************************************/
 
 #include "opennec.h"
+#include <unistd.h>
+#include <sys/times.h>
 
 /***  ONEC utils ***/
 

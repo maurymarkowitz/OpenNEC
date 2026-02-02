@@ -42,16 +42,11 @@ Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
 #include <math.h>
 #include <complex.h>    // MS's impementation of C99's complex is broken
 #include <stdio.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <ctype.h>      // has isspace, perhaps could be macroed out
-#include <unistd.h>     // this has getopt, but MS doesn't support it
 #include <string.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <time.h>
 #include <sys/types.h>
-#include <sys/times.h>  // and MS doesn't support this either
 
 //#define complex _complex
 

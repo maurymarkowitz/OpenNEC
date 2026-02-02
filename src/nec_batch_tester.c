@@ -1,5 +1,4 @@
 #include <libgen.h>
-#include <stdio.h>
 // nec_batch_tester.c
 // Standalone tool to recursively parse all .nec files in a directory tree and output a markdown summary of issues.
 // Usage: ./nec_batch_tester <root_directory> <output_report.md>
@@ -11,8 +10,6 @@
 #include <sys/stat.h>
 #include <stdbool.h>
 #include "opennec.h"
-
-#include <unistd.h>
 
 // Structure to hold error info for a file
 #define MAX_PATH 4096

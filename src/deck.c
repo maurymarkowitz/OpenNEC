@@ -20,7 +20,6 @@
 #include "opennec.h"
 #include "proto.h"
 #include "tinyexpr.h"
-#include <string.h>
 
 void update_symbol_values(deck_t *deck);
 

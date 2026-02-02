@@ -25,7 +25,6 @@
 
 #include "types.h"
 #include "opennec.h"
-#include <string.h>
 
 // NOTE: ordering of these lists is important! they are used in
 //       various places to convert the code back to a number for
