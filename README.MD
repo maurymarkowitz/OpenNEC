@@ -1,7 +1,6 @@
 OpenNEC
 =======
 
-
 **Copyright © 2026 Maury Markowitz**
 
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
