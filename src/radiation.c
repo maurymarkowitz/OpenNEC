@@ -39,7 +39,8 @@ static void gfld(nec_context_t *ctx, double rho, double phi, double rz, complex 
 void ffld(nec_context_t *ctx, double thet, double phi,
 	complex double *eth, complex double *eph )
 {
-  int k, i, ip, jump;
+  int k, i, ip;
+  bool jump;
   double phx, phy, roz, rozs, thx, thy, thz, rox, roy;
   double tthet=0., darg=0., omega, el, sill, top, bot, a;
   double too, boo, b, c, d, rr, ri, arg, dr, rfl, rrz;

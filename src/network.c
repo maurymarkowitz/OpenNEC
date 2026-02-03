@@ -220,7 +220,8 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
 
       for( j = 0; j < ctx->netcx.nonet; j++ )
       {
-        int jump1, jump2, isc2=0, nseg2;
+        bool jump1, jump2;
+        int isc2=0, nseg2;
         double y11r, y11i, y12r, y12i, y22r, y22i;
         int nseg1;
 

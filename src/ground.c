@@ -36,7 +36,8 @@
 /* sine, and cosine current distributions. */
 int rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmin)
 {
-  int i, ns, nt, flag=true;
+  int i, ns, nt;
+  bool flag=true;
   int nts = 4, nx = 1, n = 9;
   double ze, ep, zend, dz=0., dzot=0., tmag1, tmag2, tr, ti;
   double z, s; /***also global***/

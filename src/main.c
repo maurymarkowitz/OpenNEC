@@ -34,10 +34,10 @@
 //static void sig_handler(int signal);
 
 // various switches for the command line arguments
-static int run_simulation = true;
-static int run_tests = false;
-static int run_greens = false;
-static int recursive = false;
+static bool run_simulation = true;
+static bool run_tests = false;
+static bool run_greens = false;
+static bool recursive = false;
 static char *input_file = "";
 static char *output_file = "";
 static char *error_file = "";

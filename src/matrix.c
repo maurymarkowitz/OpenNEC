@@ -1137,7 +1137,8 @@ void factr(nec_context_t *ctx, int n, complex double *a, int *ip, int ndim)
 
 #else
   /* Custom implementation */
-  int r, rm1, rp1, pj, pr, iflg, k, j, jp1, i;
+  int r, rm1, rp1, pj, pr, k, j, jp1, i;
+  bool iflg;
   double dmax, elmag;
   complex double arj, *scm = NULL;
 

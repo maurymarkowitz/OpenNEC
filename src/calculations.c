@@ -236,7 +236,8 @@ void couple(nec_context_t *ctx, double complex *cur, double wlam )
 int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
           double *zlr, double *zli, double *zlc )
 {
-  int i, iwarn, istep, istepx, l1, l2, ldtags, jump, ichk;
+  int i, istep, istepx, l1, l2, ldtags, jump, ichk;
+  bool iwarn;
   double complex zt=CPLX_00, tpcj;
   size_t mreq;
   
@@ -489,7 +490,7 @@ void intrp(nec_context_t *ctx, double x, double y, double complex *f1,
   static int ix, iy, ixs=-10, iys=-10, igrs=-10, ixeg=0, iyeg=0;
   static int nxm2, nym2, nxms, nyms, nd, ndp;
   int nda[3]={11,17,9}, ndpa[3]={110,85,72};
-  int jump;
+  bool jump;
   static double dx = 1., dy = 1., xs = 0., ys = 0., xz, yz;
   double xx, yy;
   static double complex a[4][4], b[4][4], c[4][4], d[4][4];
@@ -665,7 +666,7 @@ void intx(nec_context_t *ctx, double el1, double el2, double b,
 {
   int ns, nt;
   int nx = 1, nma = 65536, nts = 4;
-  int flag = true;
+  bool flag = true;
   double z, s, ze, fnm, ep, zend, fns, dz=0., zp, dzot=0., t00r, g1r, g5r=0.0, t00i;
   double g1i, g5i=0.0, t01r, g3r=0.0, t01i, g3i=0.0, t10r, t10i, te1i, te1r, t02r;
   double g2r, g4r, t02i, g2i, g4i, t11r, t11i, t20r, t20i, te2i, te2r;
