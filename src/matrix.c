@@ -1155,7 +1155,7 @@ void factr(nec_context_t *ctx, int n, complex double *a, int *ip, int ndim)
 	  a[j+i*ndim] = arj;
 	}
 
-  iflg=FALSE;
+  iflg=false;
   /* step 1 */
   for( r = 0; r < n; r++ )
   {
@@ -1200,7 +1200,7 @@ void factr(nec_context_t *ctx, int n, complex double *a, int *ip, int ndim)
 	} /* if( rp1 < n) */
 
 	if( dmax < 1.e-10)
-	  iflg=TRUE;
+	  iflg=true;
 
 	pr= ip[r]-1;
 	a[r+r*ndim]= scm[pr];
@@ -1215,11 +1215,11 @@ void factr(nec_context_t *ctx, int n, complex double *a, int *ip, int ndim)
 		a[i+r*ndim]= scm[i]* arj;
 	}
 
-	if( iflg == TRUE )
+	if( iflg == true )
 	{
 	  fprintf( ctx->output_fp,
 		  "\n  PIVOT(%d)= %16.8E", r, dmax );
-	  iflg=FALSE;
+	  iflg=false;
 	}
 
   } /* for( r=0; r < n; r++ ) */

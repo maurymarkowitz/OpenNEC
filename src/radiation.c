@@ -59,7 +59,7 @@ void ffld(nec_context_t *ctx, double thet, double phi,
   rox= -thz* phy;
   roy= thz* phx;
 
-  jump = FALSE;
+  jump = false;
   if( ctx->geometry.n != 0)
   {
 	/* loop for structure image if any */
@@ -266,7 +266,7 @@ void ffld(nec_context_t *ctx, double thet, double phi,
 	} /* for( k=0; k < gnd.ksymp; k++ ) */
 
 	if( ctx->geometry.m > 0)
-	  jump = TRUE;
+	  jump = true;
 	else
 	{
 	  *eth=( cix* thx+ ciy* thy+ ciz* thz)* CONST3;

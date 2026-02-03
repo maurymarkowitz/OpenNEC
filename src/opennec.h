@@ -48,24 +48,18 @@ Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
 #include <time.h>
 #include <sys/types.h>
 
-//#define complex _complex
-
-//#ifdef _COMPLEX_DEFINED
-//#endif
-
-
 #include "types.h"
 #include "misc.h"
 #include "deck.h"
 
-
-#ifndef	TRUE
-#define	TRUE	1
-#endif
-
-#ifndef	FALSE
-#define	FALSE	0
-#endif
+/* max length of a line read from input file */
+#define	MAX_LINE_LEN 255
+/* max length of a path/filename */
+#define MAX_PATH_LEN 255
+/* max length of a single error message */
+#define MAX_ERROR_LEN 255
+/* max length of a unit code in a geometry card */
+#define MAX_UNIT_LEN 5
 
 /* commonly used complex constants */
 #define	CPLX_00	(0.0+I*0.0)
@@ -124,14 +118,5 @@ Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
 /* carriage return and line feed */
 #define	CR	0x0d
 #define	LF	0x0a
-
-/* max length of a line read from input file */
-#define	MAX_LINE_LEN 255
-/* max length of a path/filename */
-#define MAX_PATH_LEN 255
-/* max length of a single error message */
-#define MAX_ERROR_LEN 255
-/* max length of a unit code in a geometry card */
-#define MAX_UNIT_LEN 5
 
 #endif

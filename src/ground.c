@@ -36,7 +36,7 @@
 /* sine, and cosine current distributions. */
 int rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmin)
 {
-  int i, ns, nt, flag=TRUE;
+  int i, ns, nt, flag=true;
   int nts = 4, nx = 1, n = 9;
   double ze, ep, zend, dz=0., dzot=0., tmag1, tmag2, tr, ti;
   double z, s; /***also global***/
@@ -64,7 +64,7 @@ int rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmi
   nt=0;
   sflds(ctx, z, g1);
   
-  while( TRUE )
+  while( true )
   {
     if( flag )
     {
@@ -125,7 +125,7 @@ int rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmi
         ns= ns/2;
         nt=1;
       }
-      flag = TRUE;
+      flag = true;
       continue;
       
     } /* if( tr <= rx) */
@@ -172,7 +172,7 @@ int rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmi
           g3[i]= g2[i];
         }
         
-        flag=FALSE;
+        flag=false;
         continue;
         
       } /* if( ns < npm) */
@@ -193,13 +193,13 @@ int rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmi
     for( i = 0; i < n; i++ )
       g1[i]= g5[i];
     
-    flag = TRUE;
+    flag = true;
     if( (nt < nts) || (ns <= nx) )
       continue;
     
     ns= ns/2;
     nt=1;
-  } /* while( TRUE ) */
+  } /* while( true ) */
   
 }
 

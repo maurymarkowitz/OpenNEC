@@ -184,7 +184,7 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
 void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex double *j0p )
 {
   int k, ib;
-  static int m[101], init = FALSE;
+  static int m[101], init = false;
   static double a1[25], a2[25];
   double zms;
   complex double p0z, p1z, q0z, q1z, zi, zi2, zk, cz, sz, j0x=CPLX_00, j0px=CPLX_00;
@@ -214,7 +214,7 @@ void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex do
 	  m[i-1] = init+1;
 	} /* for( i = 1; i<= 101; i++ ) */
 
-	init = TRUE;
+	init = true;
   } /* if(init == 0) */
 
   zms=creal(z*conj(z));
@@ -358,7 +358,7 @@ void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
   gshank(ctx,cp1,delta,ans,6,sum,0,bk,bk);
   rmis=rho*(creal(ck1)-ck2);
 
-  jump = FALSE;
+  jump = false;
   if( (rmis >= 2.*ck2) && (rho >= 1.e-10) )
   {
 	if(zph >= 1.e-10)
@@ -366,7 +366,7 @@ void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
 	  bk=cmplx(-zph,rho)*(ck1-cp3);
 	  rmis=-creal(bk)/fabs(cimag(bk));
 	  if(rmis > 4.*rho/zph)
-		jump = TRUE;
+		jump = true;
 	}
 
 	if( ! jump )
@@ -386,11 +386,11 @@ void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
 	  gshank(ctx,cp2,delta2,ans,6,sum,0,bk,bk);
 	}
 
-	jump = TRUE;
+	jump = true;
 
   } /* if( (rmis >= 2.*ck2) || (rho >= 1.e-10) ) */
   else
-	jump = FALSE;
+	jump = false;
 
   if( ! jump )
   {
@@ -595,7 +595,7 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
 
 	for( j = jm-1; j < intx; j++ )
 	{
-	  brk = FALSE;
+	  brk = false;
 	  for( i = 0; i < nans; i++ )
 	  {
 		a1=q2[i][j];
@@ -606,7 +606,7 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
 		amg=fabs(creal(a1)+fabs(cimag(a1)));
 		if(amg > den)
 		{
-		  brk = TRUE;
+		  brk = true;
 		  break;
 		}
 
@@ -637,7 +637,7 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
 int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex double *h0p )
 {
   int k, ib;
-  static int m[101], init = FALSE;
+  static int m[101], init = false;
   static double a1[25], a2[25], a3[25], a4[25], psi, tst, zms;
   complex double clogz, j0, j0p, p0z, p1z, q0z, q1z, y0=CPLX_00, y0p=CPLX_00, zi, zi2, zk;
 
@@ -669,7 +669,7 @@ int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex dou
 	  m[i-1]=init+1;
 	}
 
-	init = TRUE;
+	init = true;
 
   } /* if( ! init ) */
 
@@ -773,8 +773,8 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
   nt=0;
   saoa(ctx, z, g1);
 
-  jump = FALSE;
-  while( TRUE )
+  jump = false;
+  while( true )
   {
     if( ! jump )
     {
@@ -792,7 +792,7 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
 
     } /* if( ! jump ) */
 
-    nogo=FALSE;
+    nogo=false;
     for( i = 0; i < n; i++ )
     {
       t00=(g1[i]+g5[i])*dzot;
@@ -802,7 +802,7 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
       /* test convergence of 3 point romberg result */
       test(ctx, creal(t01[i]), creal(t10[i]), &tr, cimag(t01[i]), cimag(t10[i]), &ti, 0. );
       if( (tr > CRIT) || (ti > CRIT) )
-        nogo = TRUE;
+        nogo = true;
     }
 
     if( ! nogo )
@@ -824,14 +824,14 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
         nt=1;
       }
 
-      jump = FALSE;
+      jump = false;
       continue;
 
     } /* if( ! nogo ) */
 
     saoa(ctx, z+dz*.25, g2);
     saoa(ctx, z+dz*.75, g4);
-    nogo=FALSE;
+    nogo=false;
     for( i = 0; i < n; i++ )
     {
       t02=(t01[i]+dzot*(g2[i]+g4[i]))*.5;
@@ -841,7 +841,7 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
       /* test convergence of 5 point romberg result */
       test(ctx, creal(t11), creal(t20[i]), &tr, cimag(t11), cimag(t20[i]), &ti, 0. );
       if( (tr > CRIT) || (ti > CRIT) )
-        nogo = TRUE;
+        nogo = true;
     }
 
     if( ! nogo )
@@ -863,7 +863,7 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
         nt=1;
       }
 
-      jump = FALSE;
+      jump = false;
       continue;
 
     } /* if( ! nogo ) */
@@ -881,14 +881,14 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
         g3[i]=g2[i];
       }
 
-      jump = TRUE;
+      jump = true;
       continue;
 
     } /* if(ns < nm) */
 
     if( ! lstep )
     {
-      lstep = TRUE;
+      lstep = true;
       lambda(ctx, z, &t00, &t11 );
     }
 
@@ -903,9 +903,9 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
     for( i = 0; i < n; i++ )
       g1[i]=g5[i];
 
-    jump = FALSE;
+    jump = false;
 
-  } /* while( TRUE ) */
+  } /* while( true ) */
 
 }
 

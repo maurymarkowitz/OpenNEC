@@ -34,10 +34,10 @@
 //static void sig_handler(int signal);
 
 // various switches for the command line arguments
-static int run_simulation = TRUE;
-static int run_tests = FALSE;
-static int run_greens = FALSE;
-static int recursive = FALSE;
+static int run_simulation = true;
+static int run_tests = false;
+static int run_greens = false;
+static int recursive = false;
 static char *input_file = "";
 static char *output_file = "";
 static char *error_file = "";
@@ -122,7 +122,7 @@ static struct option program_options[] =
 void parse_options(int argc, char *argv[])
 {
   int option_index = 0;
-  /* int printed_help = FALSE; */
+  /* int printed_help = false; */
   
   while(1) {
     // eat an option and exit if we're done
@@ -138,16 +138,16 @@ void parse_options(int argc, char *argv[])
         
       case 'h':
         print_usage(argv);
-        /* printed_help = TRUE; */
+        /* printed_help = true; */
         break;
         
       case 'v':
         print_version();
-        /* printed_help =  TRUE; */
+        /* printed_help =  true; */
         break;
         
       case 'r':
-        recursive = TRUE;
+        recursive = true;
         break;
         
       case 'o':
@@ -159,15 +159,15 @@ void parse_options(int argc, char *argv[])
         break;
         
       case 'n':
-        run_simulation = FALSE;
+        run_simulation = false;
         break;
         
       case 't':
-        run_tests = TRUE;
+        run_tests = true;
         break;
         
       case 'g':
-        run_greens = TRUE;
+        run_greens = true;
         greens_file = optarg;
         break;
       case 'j':
@@ -197,12 +197,6 @@ void parse_options(int argc, char *argv[])
  */
 static int process_single_file(const char *input_filename, const char *output_filename, FILE *error_fp)
 {
-  if (strlen(input_filename) > 0) {
-    fprintf(error_fp, "[DEBUG] Working on file: %s\n", input_filename);
-  } else {
-    fprintf(error_fp, "[DEBUG] Working on stdin\n");
-  }
-
   nec_context_t ctx;
   nec_context_init(&ctx);
 
@@ -294,9 +288,16 @@ static int process_single_file(const char *input_filename, const char *output_fi
   // and evaluate symbols in comment section for initial values
   initialize_symbol_table(&deck, &import_errors);
   
+  // Evaluate all formulas in the deck
+  update_deck_values(&deck);
+  
   // TESTING: print any file errors
-  for(int i = 0; i < import_errors.num_errors; i++) {
-    fprintf(ctx.error_fp, "%s\n", import_errors.errors[i].message);
+  if (import_errors.num_errors > 0) {
+    const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
+    fprintf(ctx.error_fp, "\n=== Import Errors for %s ===\n", display_name);
+    for(int i = 0; i < import_errors.num_errors; i++) {
+      fprintf(ctx.error_fp, "%s\n", import_errors.errors[i].message);
+    }
   }
 
   // run basic sanity checks on the structure
@@ -306,20 +307,29 @@ static int process_single_file(const char *input_filename, const char *output_fi
     test_card_inputs(&ctx, &deck, &test_errors);
   }
   // TESTING: print any structure errors
-  for(int i = 0; i < test_errors.num_errors; i++) {
-    fprintf(ctx.error_fp, "%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
+  if (test_errors.num_errors > 0) {
+    const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
+    fprintf(ctx.error_fp, "\n=== Test Errors for %s ===\n", display_name);
+    for(int i = 0; i < test_errors.num_errors; i++) {
+      fprintf(ctx.error_fp, "%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
+    }
   }
 
   // run it if we've been asked to
   if(run_simulation) {
     // Run complete simulation with batch processing
-    if (nec_run_simulation(&ctx, &deck) != 0) {
-      fprintf(ctx.error_fp, "Error: Failed to run simulation for %s.\n", 
-              strlen(input_filename) > 0 ? input_filename : "stdin");
+    int sim_result = nec_run_simulation(&ctx, &deck);
+    
+    // Check for any errors that occurred during calculation (whether simulation failed or succeeded)
+    if (ctx.errors.num_errors > 0 || sim_result != 0) {
+      if (sim_result != 0) {
+        fprintf(ctx.error_fp, "Error: Failed to run simulation for %s.\n", 
+                strlen(input_filename) > 0 ? input_filename : "stdin");
+      }
       
-      // Display any accumulated errors
       if (ctx.errors.num_errors > 0) {
-        fprintf(ctx.error_fp, "\n=== Calculation Errors ===\n");
+        const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
+        fprintf(ctx.error_fp, "\n=== Calculation Errors for %s ===\n", display_name);
         for (int i = 0; i < ctx.errors.num_errors; i++) {
           fprintf(ctx.error_fp, "%s\n", ctx.errors.errors[i].message);
         }
@@ -330,21 +340,13 @@ static int process_single_file(const char *input_filename, const char *output_fi
       if (output_fp != stdout) fclose(output_fp);
       return -1;
     }
-    
-    // Check for any errors that occurred during calculation
-    if (ctx.errors.num_errors > 0) {
-      fprintf(ctx.error_fp, "\n=== Calculation Errors ===\n");
-      for (int i = 0; i < ctx.errors.num_errors; i++) {
-        fprintf(ctx.error_fp, "%s\n", ctx.errors.errors[i].message);
-      }
-      nec_context_cleanup(&ctx);
-      if (input_fp != stdin) fclose(input_fp);
-      if (output_fp != stdout) fclose(output_fp);
-      return -1;
-    }
   }
-  for(int i = 0; i < geometry_errors.num_errors; i++) {
-    fprintf(ctx.error_fp, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
+  if (geometry_errors.num_errors > 0) {
+    const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
+    fprintf(ctx.error_fp, "\n=== Geometry Errors for %s ===\n", display_name);
+    for(int i = 0; i < geometry_errors.num_errors; i++) {
+      fprintf(ctx.error_fp, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
+    }
   }
 
   // write out the results (only if simulation was configured and ran)
@@ -360,6 +362,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
     ctx.green_fp = NULL;
   }
 
+  // free_deck(&deck);
   nec_context_cleanup(&ctx);
   if (input_fp != stdin) fclose(input_fp);
   if (output_fp != stdout) fclose(output_fp);
@@ -422,12 +425,18 @@ static void *worker_thread(void *arg)
 
     task_t *t = &q->tasks[idx];
 
+    // Print progress for parallel processing
+    fprintf(stderr, "Processing %s...\n", t->input);
+    fflush(stderr);
+
     // capture logs using open_memstream
     char *buf = NULL;
     size_t sz = 0;
     FILE *memfp = open_memstream(&buf, &sz);
     if (!memfp) {
       // fallback: use stderr (may interleave)
+      fprintf(stderr, "Processing %s...\n", t->input);
+      fflush(stderr);
       t->status = process_single_file(t->input, t->output, stderr);
       t->log_buf = NULL;
       t->log_size = 0;
@@ -435,7 +444,6 @@ static void *worker_thread(void *arg)
     }
 
     // Emit the processing header into the captured stream for consistency
-    fprintf(memfp, "Processing %s -> %s\n", t->input, t->output);
     t->status = process_single_file(t->input, t->output, memfp);
     fflush(memfp);
     fclose(memfp); // sets buf/sz
@@ -457,7 +465,7 @@ static void add_to_string_list(char ***list, int *count, int *cap, const char *s
 
 static int has_nec_extension(const char *filename) {
   const char *ext = strrchr(filename, '.');
-  if (!ext) return FALSE;
+  if (!ext) return false;
   return (strcasecmp(ext, ".nec") == 0 ||
           strcasecmp(ext, ".deck") == 0 ||
           strcasecmp(ext, ".onec") == 0);
@@ -572,9 +580,6 @@ int main(int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-    printf("[DEBUG] Found %d files to process.\n", num_files);
-    fflush(stdout);
-
     // Process files (possibly in parallel)
     int failed_count = 0;
     if (jobs <= 1 || num_files == 1) {
@@ -588,7 +593,10 @@ int main(int argc, char **argv)
         } else {
           generate_output_filename(input, output, sizeof(output));
         }
-        fprintf(error_fp, "Processing %s -> %s\n", input, output);
+        if (num_files > 1) {
+          fprintf(error_fp, "Processing %s...\n", input);
+          fflush(error_fp);
+        }
         if (process_single_file(input, output, error_fp) != 0) {
           fprintf(error_fp, "Error processing %s, continuing to next file...\n", input);
           failed_count++;
@@ -641,8 +649,6 @@ int main(int argc, char **argv)
           fwrite(tasks[k].log_buf, 1, tasks[k].log_size, error_fp);
           free(tasks[k].log_buf);
           tasks[k].log_buf = NULL;
-        } else {
-          fprintf(error_fp, "Processing %s -> %s\n", tasks[k].input, tasks[k].output);
         }
         if (tasks[k].status != 0) failed_count++;
       }

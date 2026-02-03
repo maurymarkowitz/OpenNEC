@@ -255,19 +255,19 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
 
         } /* if( ctx->netcx.ntyp[j] <= 1) */
 
-        jump1 = FALSE;
+        jump1 = false;
         if( ctx->vsorc.nsant != 0)
         {
           for( i = 0; i < ctx->vsorc.nsant; i++ )
             if( nseg1 == ctx->vsorc.isant[i])
             {
               isc1 = i;
-              jump1 = TRUE;
+              jump1 = true;
               break;
             }
         } /* if( ctx->vsorc.nsant != 0) */
 
-        jump2 = FALSE;
+        jump2 = false;
         if( ! jump1 )
         {
           isc1=-1;
@@ -278,7 +278,7 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
               if( nseg1 == nteqa[i])
               {
                 irow1 = i;
-                jump2 = TRUE;
+                jump2 = true;
                 break;
               }
 
@@ -301,7 +301,7 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
               if( nseg1 == ntsca[i])
               {
                 irow1 = ndimn- (i+1);
-                jump2 = TRUE;
+                jump2 = true;
                 break;
               }
             }
@@ -318,7 +318,7 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
 
         } /* if( ! jump1 ) */
 
-        jump1 = FALSE;
+        jump1 = false;
         if( ctx->vsorc.nsant != 0)
         {
           for( i = 0; i < ctx->vsorc.nsant; i++ )
@@ -326,14 +326,14 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
             if( nseg2 == ctx->vsorc.isant[i])
             {
               isc2= i;
-              jump1 = TRUE;
+              jump1 = true;
               break;
             }
           }
 
         } /* if( ctx->vsorc.nsant != 0) */
 
-        jump2 = FALSE;
+        jump2 = false;
         if( ! jump1 )
         {
           isc2=-1;
@@ -344,7 +344,7 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
               if( nseg2 == nteqa[i])
               {
                 irow2= i;
-                jump2 = TRUE;
+                jump2 = true;
                 break;
               }
 
@@ -366,7 +366,7 @@ void network(nec_context_t *ctx, complex double *cm, int *ip, complex double *ei
               if( nseg2 == ntsca[i])
               {
                 irow2 = ndimn- (i+1);
-                jump2 = TRUE;
+                jump2 = true;
                 break;
               }
 

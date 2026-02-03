@@ -255,18 +255,18 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
   for( i = 0; i < ctx->geometry.n; i++ )
     ctx->zload.zarray[i]=CPLX_00;
   
-  iwarn=FALSE;
+  iwarn=false;
   istep=0;
   
   /* cycle over loading cards */
-  while( TRUE )
+  while( true )
   {
     istepx = istep;
     istep++;
     
     if( istep > ctx->zload.nload)
     {
-      if( iwarn == TRUE )
+      if( iwarn == true )
         fprintf( ctx->output_fp,
                 "\n  NOTE, SOME OF THE ABOVE SEGMENTS "
                 "HAVE BEEN LOADED TWICE - IMPEDANCES ADDED" );
@@ -378,7 +378,7 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
       } /* switch( jump ) */
       
       if(( fabs( creal( ctx->zload.zarray[i]))+ fabs( cimag( ctx->zload.zarray[i]))) > 1.0e-20)
-        iwarn=TRUE;
+        iwarn=true;
       ctx->zload.zarray[i] += zt;
       
     } /* for( i = l1-1; i < l2; i++ ) */
@@ -425,8 +425,8 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
              0.,0.,0.,0.,0., zlr[istepx],"  WIRE  ",2); // TODO: prnt() should no longer be used
         
     } /* switch( jump ) */
-  } /* while( TRUE ) */
-} /* while( TRUE ) */
+  } /* while( true ) */
+} /* while( true ) */
 
 /*-----------------------------------------------------------------------*/
 
@@ -496,9 +496,9 @@ void intrp(nec_context_t *ctx, double x, double y, double complex *f1,
   double complex p1=CPLX_00, p2=CPLX_00, p3=CPLX_00, p4=CPLX_00;
   double complex fx1, fx2, fx3, fx4;
   
-  jump = FALSE;
+  jump = false;
   if( (x < xs) || (y < ys) )
-    jump = TRUE;
+    jump = true;
   else
   {
     ix= (int)(( x- xs)/ dx)+1;
@@ -665,7 +665,7 @@ void intx(nec_context_t *ctx, double el1, double el2, double b,
 {
   int ns, nt;
   int nx = 1, nma = 65536, nts = 4;
-  int flag = TRUE;
+  int flag = true;
   double z, s, ze, fnm, ep, zend, fns, dz=0., zp, dzot=0., t00r, g1r, g5r=0.0, t00i;
   double g1i, g5i=0.0, t01r, g3r=0.0, t01i, g3i=0.0, t10r, t10i, te1i, te1r, t02r;
   double g2r, g4r, t02i, g2i, g4i, t11r, t11i, t20r, t20i, te2i, te2r;
@@ -685,7 +685,7 @@ void intx(nec_context_t *ctx, double el1, double el2, double b,
   nt=0;
   gf(ctx,  z, &g1r, &g1i);
   
-  while( TRUE )
+  while( true )
   {
     if( flag )
     {
@@ -753,7 +753,7 @@ void intx(nec_context_t *ctx, double el1, double el2, double b,
           ns= ns/2;
           nt=1;
         }
-      flag = TRUE;
+      flag = true;
       continue;
       
     } /* if( (te1i <= rx) && (te1r <= rx) ) */
@@ -788,7 +788,7 @@ void intx(nec_context_t *ctx, double el1, double el2, double b,
         g3r= g2r;
         g3i= g2i;
         
-        flag = FALSE;
+        flag = false;
         continue;
       }
       
@@ -819,9 +819,9 @@ void intx(nec_context_t *ctx, double el1, double el2, double b,
         ns= ns/2;
         nt=1;
       }
-    flag = TRUE;
+    flag = true;
     
-  } /* while( TRUE ) */
+  } /* while( true ) */
   
 }
 

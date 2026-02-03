@@ -1,5 +1,11 @@
 Items still to be implemented:
 
+* finish removal of prnt
+
+* in NEC-4, a CM or CE in the body will be printed to the output
+
+* does anything in card.c really need ctx?
+
 * ensure that the logic for optional placing the formulas in the onec comment is implemented, and that if it is used and the deck is written in nec-2 format, that the value is copied into the corresponding field
 
 * remember to run clang static analyzer at some point

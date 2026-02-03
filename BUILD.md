@@ -1,9 +1,9 @@
 OpenNEC Build Notes
 ===================
 
-OpenNEC is designed to build on any system with a working makefile system. It uses standard ANSI-C, and has no *required* external dependencies. A simple `make` should produce a runnable binary. If it does not, please file bug reports and/or pull requests.
+OpenNEC is designed to build on any system with a working makefile system. It uses standard ANSI-C, and has no *required* external dependencies.  It does not require a `make configure`, a simple `make` should produce a runnable binary. If it does not, please file bug reports and/or pull requests.
 
-The original NEC-2 code used internal code to perform various matrix calculations. OpenNEC does allow optional use of a number of math libraries that can dramatically improve performance on large models, especially those over 1000 segments. These optional components can be specified during `make` using the `BACKEND` directive on the command line.
+The original NEC-2 used internal code to perform various matrix calculations. OpenNEC allows the optional use of a number of math libraries that can dramatically improve performance on large models, especially those over 1000 segments. These optional components can be specified during `make` using the `BACKEND` directive on the command line.
 
 The following sections describe the backends that OpenNEC supports on different platforms, and how to install and configure them if they are not included by default.
 

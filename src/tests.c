@@ -134,7 +134,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     
     // it's legal to have multiple GS cards, but that might be confusing
     if(strcmp(code, "GS") == 0) {
-      if(sawGS == FALSE) {
+      if(sawGS == false) {
         sawGS = i;
       } else {
         sprintf(msg, "The card on line %d is a GS, but we already saw one on card %d. No single measurement type can be defined.", i, sawGS + 1);
@@ -143,7 +143,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     }
     // NOTE: nec4 does not require a CE or CM, but we'll demand them here for compatibility
     if(strcmp(code, "CE") == 0) {
-      if(sawCE == FALSE) {
+      if(sawCE == false) {
         sawCE = i;
       } else {
         sprintf(msg, "The card on line %d is a CE, but we already saw one on card %d.", i, sawCE + 1);
@@ -151,11 +151,11 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       }
     }
     if(strcmp(code, "GE") == 0) {
-      if(sawGE == FALSE) {
+      if(sawGE == false) {
         sawGE = i;
         GEType = deck->cards[i].i[1];
         // GE should typically follow at least one geometry card
-        if(sawGx == FALSE) {
+        if(sawGx == false) {
           sprintf(msg, "The card on line %d is a GE, but no geometry cards were seen before it.", i + 1);
           add_error(ctx, errors, msg, 0);
         }
@@ -165,7 +165,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       }
     }
     if(strcmp(code, "EN") == 0) {
-      if(sawEN == FALSE) {
+      if(sawEN == false) {
         sawEN = i;
       } else {
         sprintf(msg, "The card on line %d is an EN, but we already saw one on card %d.", i, sawEN + 1);
@@ -177,7 +177,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     
     // and also look for other cards where there can only be one
     if(strcmp(code, "GF") == 0) {
-      if(sawGF == FALSE) {
+      if(sawGF == false) {
         sawGF = i;
       } else {
         sprintf(msg, "The card on line %d is a GF, but we already saw one on card %d.", i, sawGF + 1);
@@ -185,7 +185,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       }
     }
     if(strcmp(code, "FR") == 0) {
-      if(sawFR == FALSE) {
+      if(sawFR == false) {
         sawFR = i;
         if(freq_mhz == 0.0) {
           freq_mhz = deck->cards[i].f[1];
@@ -203,7 +203,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     }
 
     // Warn if control cards appear before GE (except CE and cards with specific messages below)
-    if(sawGE == FALSE) {
+    if(sawGE == false) {
       if(is_control(&deck->cards[i]) && strcmp(code, "CE") != 0 &&
          strcmp(code, "EX") != 0 && strcmp(code, "TL") != 0 && strcmp(code, "LD") != 0 &&
          strcmp(code, "FR") != 0 && strcmp(code, "RP") != 0 && strcmp(code, "GN") != 0 && strcmp(code, "GD") != 0 && strcmp(code, "EK") != 0) {
@@ -213,7 +213,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     }
 
     // Specific placement warnings for common control cards
-    if(sawGE == FALSE) {
+    if(sawGE == false) {
       if(strcmp(code, "EX") == 0) {
         sprintf(msg, "The card on line %d is an EX, but it appears before the GE; excitations should follow geometry.", i + 1);
         add_error(ctx, errors, msg, 0);
@@ -376,43 +376,43 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     
     // we want to see if there are any SY's at all
     if(strcmp(code, "SY") == 0) {
-      sawSY = TRUE;
+      sawSY = true;
     }
     // you can have multiple GN cards, but only the last one is used for a given execution
     if(strcmp(code, "GN") == 0) {
-      if(sawGN == FALSE) sawGN = i;
+      if(sawGN == false) sawGN = i;
     }
     // you can have multiple GC cards, but there has to be a GN somewhere
     if(strcmp(code, "GD") == 0) {
-      if(sawGD == FALSE) {
+      if(sawGD == false) {
         sawGD = i;
       }
     }
     // you can have multiple SCs, but they have to follow a SP or SM
     if(strcmp(code, "SC") == 0) {
-      if(sawSC == FALSE) sawSC = i;
+      if(sawSC == false) sawSC = i;
     }
     if(strcmp(code, "RP") == 0) {
       // RP should generally follow FR; warn if FR not yet seen
-      if(sawFR == FALSE) {
+      if(sawFR == false) {
         sprintf(msg, "The card on line %d is an RP, but no FR has been seen earlier.", i + 1);
         add_error(ctx, errors, msg, 0);
       }
-      if(sawSP == FALSE) sawSP = i;
+      if(sawSP == false) sawSP = i;
     }
     // you need an EX or LD
     if(strcmp(code, "EX") == 0) {
-      if(sawEX == FALSE) sawEX = i;
+      if(sawEX == false) sawEX = i;
     }
     // you should have an EX?
     if(strcmp(code, "LD") == 0) {
-      if(sawLD == FALSE) sawLD = i;
+      if(sawLD == false) sawLD = i;
     }
 
     // geometry cards are a little harder because there are many of them
     for(int j = 0; j < NUM_GEOMETRY_CODES; j++) {
       if(strcmp(code, geometry_codes[j]) == 0 && strcmp(code, "GE") != 0) {
-        if(sawGx == FALSE) {
+        if(sawGx == false) {
           sawGx = i;
         }
         // there's no else in this case, multiple Gx cards are fine, however
@@ -450,7 +450,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     // unique one here - it's possible to have any number of GS cards, but
     // it appears you can have multiple GS's, although why you would ever do that is unclear
     if(strcmp(code, "GS") == 0) {
-      if(sawGS == FALSE) sawGS = i;
+      if(sawGS == false) sawGS = i;
     }
 
     // now we look for card pairs, where one card has to follow another

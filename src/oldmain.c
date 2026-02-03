@@ -186,7 +186,7 @@
 //  /* l_1: */
 //  /* main execution loop, exits at various points */
 //  /* depending on error conditions or end of jobs */
-//  while( TRUE )
+//  while( true )
 //  {
 //  ifrtmw=0;
 //  ifrtmp=0;
@@ -325,10 +325,10 @@
 //
 //  /* main input section, exits at various points */
 //  /* depending on error conditions or end of job */
-//  next_job = FALSE;
+//  next_job = false;
 //  while( ! next_job )
 //  {
-//    jmp_iloop = FALSE;
+//    jmp_iloop = false;
 //
 //    /* main input section - standard read statement - jumps */
 //    /* to appropriate section for specific parameter set up */
@@ -728,7 +728,7 @@
 //      break;
 //
 //    case 9: /* "nx" card, do next job */
-//      next_job = TRUE;
+//      next_job = true;
 //      continue; /* continue card input loop */
 //
 //    case 10: /* "pt" card, print control for current */
@@ -988,7 +988,7 @@
 //      /* frequency do loop */
 //      do
 //      {
-//      jmp_floop = FALSE;
+//      jmp_floop = false;
 //
 //      if( mhz != 1)
 //      {
@@ -1596,12 +1596,12 @@
 //
 //        if( nfrq != 1)
 //        {
-//          jmp_floop = TRUE;
+//          jmp_floop = true;
 //          break; /* continue the freq loop */
 //        }
 //
 //        fprintf( output_fp, "\n\n\n" );
-//        jmp_iloop = TRUE;
+//        jmp_iloop = true;
 //
 //        break; /* continue card input loop */
 //
@@ -1624,7 +1624,7 @@
 //        if( nfrq == 1)
 //        {
 //          fprintf( output_fp, "\n\n\n" );
-//          jmp_iloop = TRUE;
+//          jmp_iloop = true;
 //          break; /* continue card input loop */
 //        }
 //
@@ -1648,12 +1648,12 @@
 //
 //        if( nfrq != 1)
 //        {
-//          jmp_floop = TRUE;
+//          jmp_floop = true;
 //          break;
 //        }
 //
 //        fprintf( output_fp, "\n\n\n" );
-//        jmp_iloop = TRUE;
+//        jmp_iloop = true;
 //        break;
 //
 //        } /* if( (fpat.ixtyp == 0) || (fpat.ixtyp >= 4) ) */
@@ -1674,7 +1674,7 @@
 //        break;
 //
 //      } /* do (l_54) */
-//      while( TRUE );
+//      while( true );
 //
 //      /* jump to freq. or input loop */
 //      if( jmp_iloop )
@@ -1750,7 +1750,7 @@
 //      if( nfrq == 1)
 //      {
 //        fprintf( output_fp, "\n\n\n" );
-//        jmp_iloop = TRUE;
+//        jmp_iloop = true;
 //        break; /* continue card input loop */
 //      }
 //
@@ -1825,6 +1825,6 @@
 //
 //  } /* while( ! next_job ): Main input section (l_14) */
 //
-//  } /* while(TRUE): Main execution loop (l_1) */
+//  } /* while(true): Main execution loop (l_1) */
 //
 //} /* end of main() */

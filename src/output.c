@@ -384,7 +384,7 @@ void write_greens_matrix(FILE *file, nec_context_t *ctx, int nrow, complex doubl
  */
 void write_header(nec_context_t *ctx, deck_t *deck, FILE *file)
 {
-  fprintf( ctx->output_fp,  "\n\n\n"
+  fprintf( file,  "\n\n\n"
           "                              "
           " __________________________________________\n"
           "                              "
@@ -1323,7 +1323,7 @@ void write_radiation_pattern_data(FILE *file, nec_context_t *ctx)
                 " %7.2f %9.2f  %8.2f %8.2f %8.2f %11.4f"
                 " %9.2f %6s %11.4E %9.2f %11.4E %9.2f",
                 pt->theta, pt->phi, tmp5, tmp6, pt->gtot, pt->axrat,
-                pt->tilta, hpol[pt->pol_sense],
+                pt->tilta, hpol[pt->pol_sense >= 0 && pt->pol_sense <= 2 ? pt->pol_sense : 0],
                 pt->ethm, pt->etha, pt->ephm, pt->epha);
         }
     }

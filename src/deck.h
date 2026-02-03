@@ -11,10 +11,10 @@
 #include "types.h"
 
 /* Card type checking - heavily used across modules */
-int is_comment(const card_t *card);
-int is_geometry(const card_t *card);
-int is_control(const card_t *card);
-int is_extension(const card_t *card);
+bool is_comment(const card_t *card);
+bool is_geometry(const card_t *card);
+bool is_control(const card_t *card);
+bool is_extension(const card_t *card);
 
 /* Card field counts */
 int min_int_fields(const card_t *card);

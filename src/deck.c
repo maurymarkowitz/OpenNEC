@@ -29,6 +29,7 @@ static void update_symbol_list(deck_t *deck, errors_list_t *errors);
 
 static bool references(const char *expr, const char *symname);
 static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated);
+static char *preprocess_awg(const char *formula);
 
 /******************************************************************************
  * new_card
@@ -41,8 +42,8 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
  */
 card_t* new_card(void) {
   card_t *card = calloc(1, sizeof(card_t));
-  card->edited = FALSE;     // new cards are not edited, by default. this only applies to USER edits!
-  card->ignore = FALSE;     // cards should not be ignored by default. should apply to geometry and commands?
+  card->edited = false;     // new cards are not edited, by default. this only applies to USER edits!
+  card->ignore = false;     // cards should not be ignored by default. should apply to geometry and commands?
   card->extn_code[0] = 0;   // this will be applied if there is a code found on the line or the user adds one
   return card;
 }
@@ -194,7 +195,7 @@ int append_card(deck_t *deck, card_t *card) {
   
   // appending a card changes the deck and requires a recalc of that section
   // so we need to make the card edited so this will be noticed
-  card->edited = TRUE;
+  card->edited = true;
 
   // refresh the deck layout
   recalculate_sections(deck);
@@ -237,7 +238,7 @@ int insert_card(deck_t *deck, card_t *card, int location) {
   
   // appending a card changes the deck and requires a recalc of that section
   // so we need to make the card edited so this will be noticed
-  card->edited = TRUE;
+  card->edited = true;
 
   // refresh the deck layout
   recalculate_sections(deck);
@@ -360,52 +361,52 @@ void remove_symbol(deck_t *deck, const char *key) {
  * is_comment/is_geometry/is_control/is_extension
  *
  * The series of "is" functions test a card code against the mnemonic
- * lists and return boolean TRUE if the card belongs to that class,
- * like "isComment" which returns TRUE for any comment card.
+ * lists and return boolean true if the card belongs to that class,
+ * like "isComment" which returns true for any comment card.
  *
  */
-int is_comment(const card_t *card)
+bool is_comment(const card_t *card)
 {
-  int isCmt = FALSE;
+  bool isCmt = false;
   for(int i = 0; i < NUM_COMMENT_CODES; i++) {
     if(strcmp(card->card_code, comment_codes[i]) == 0) {
-      isCmt = TRUE;
+      isCmt = true;
       break;
     }
   }
   return isCmt;
 }
 
-int is_geometry(const card_t *card)
+bool is_geometry(const card_t *card)
 {
-  int isGeo = FALSE;
+  bool isGeo = false;
   for(int i = 0; i < NUM_GEOMETRY_CODES; i++) {
     if(strcmp(card->card_code, geometry_codes[i]) == 0) {
-      isGeo = TRUE;
+      isGeo = true;
       break;
     }
   }
   return isGeo;
 }
 
-int is_control(const card_t *card)
+bool is_control(const card_t *card)
 {
-  int isCtl = FALSE;
+  bool isCtl = false;
   for(int i = 0; i < NUM_CONTROL_CODES; i++) {
     if(strcmp(card->card_code, control_codes[i]) == 0) {
-      isCtl = TRUE;
+      isCtl = true;
       break;
     }
   }
   return isCtl;
 }
 
-int is_extension(const card_t *card)
+bool is_extension(const card_t *card)
 {
-  int isExt = FALSE;
+  bool isExt = false;
   for(int i = 0; i < NUM_ONEC_CODES; i++) {
     if(strcmp(card->card_code, onec_codes[i]) == 0) {
-      isExt = TRUE;
+      isExt = true;
       break;
     }
   }
@@ -450,7 +451,7 @@ int min_int_fields(const card_t* card)
 int max_int_fields(const card_t* card)
 {
   if(strcmp(card->card_code, "GF") == 0) return 1; // there is an option to print extra data
-  if(strcmp(card->card_code, "GC") == 0) return 0; // tapers use I's from previous GW
+  if(strcmp(card->card_code, "GC") == 0) return 2; // tapers use I's from previous GW
   // SP/SC uses only one int or none, but it's in position 2, so nothing to do here
 
   if(strcmp(card->card_code, "EK") == 0) return 1; // flag for on or off
@@ -474,7 +475,7 @@ int min_flt_fields(const card_t* card)
   if(strcmp(card->card_code, "GE") == 0) return 0; // no floats
   if(strcmp(card->card_code, "GR") == 0) return 0; // no floats
   if(strcmp(card->card_code, "GS") == 0) return 1; // scale
-  if(strcmp(card->card_code, "GC") == 0) return 0; // tapers have three inputs
+  if(strcmp(card->card_code, "GC") == 0) return 3; // tapers have three inputs
   if(strcmp(card->card_code, "GX") == 0) return 0; // uses only the ints
   if(strcmp(card->card_code, "SP") == 0) return 6; // last field unused
   if(strcmp(card->card_code, "SM") == 0) return 6; // last field unused
@@ -506,7 +507,7 @@ int max_flt_fields(const card_t* card)
   if(strcmp(card->card_code, "GE") == 0) return 0; // no floats
   if(strcmp(card->card_code, "GR") == 0) return 0; // no floats
   if(strcmp(card->card_code, "GS") == 0) return 1; // scale
-  if(strcmp(card->card_code, "GC") == 0) return 0; // tapers have three inputs
+  if(strcmp(card->card_code, "GC") == 0) return 3; // tapers have three inputs
   if(strcmp(card->card_code, "GX") == 0) return 0; // uses only the ints
   if(strcmp(card->card_code, "SP") == 0) return 6; // last field unused
   if(strcmp(card->card_code, "SC") == 0) return 6; // even in the three-input case, zeros are used
@@ -543,10 +544,10 @@ int max_flt_fields(const card_t* card)
  */
 bool isGeometryEdited(deck_t *deck)
 {
-  bool isEdited = FALSE;
+  bool isEdited = false;
   for(int i = deck->geometry_start; i < deck->geometry_end; i++) {
     if(deck->cards[i].edited) {
-      isEdited = TRUE;
+      isEdited = true;
       break;
     }
   }
@@ -652,7 +653,7 @@ void initialize_symbol_table(deck_t *deck, errors_list_t *errors)
 void update_deck_values(deck_t *deck)
 {
   update_symbol_list(deck, NULL);
-  add_default_symbols(deck); // TEMP: Disabled to test double free
+  add_default_symbols(deck);
   update_symbol_values(deck);
 
   // update all card values, passing deck pointer
@@ -768,6 +769,30 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
     }
     // Now evaluate this symbol
     if (sym->value && sym->value[0] != '\0') {
+      // Parse for trailing unit
+      int unit = 0;
+      bool has_unit = false;
+      char *formula_to_eval = NULL;
+      for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
+        const char *unit_str = unit_codes[u];
+        size_t len = strlen(sym->value);
+        size_t ulen = strlen(unit_str);
+        if(ulen > 0 && len >= ulen && strcmp(sym->value + len - ulen, unit_str) == 0) {
+          unit = u;
+          has_unit = true;
+          formula_to_eval = strdup(sym->value);
+          formula_to_eval[len - ulen] = '\0';
+          // trim trailing space
+          while(strlen(formula_to_eval) > 0 && formula_to_eval[strlen(formula_to_eval)-1] == ' ') {
+            formula_to_eval[strlen(formula_to_eval)-1] = '\0';
+          }
+          break;
+        }
+      }
+      if(!formula_to_eval) {
+        formula_to_eval = sym->value;
+      }
+      
       // Convert to lowercase for tinyexpr (tinyexpr only accepts lowercase variable names)
       te_variable *vars = calloc(sym_count, sizeof(te_variable));
       char **lowercase_names = calloc(sym_count, sizeof(char*));
@@ -780,22 +805,85 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
         vars[k].context = NULL;
       }
       // Convert formula to lowercase for tinyexpr
-      char *lowercase_formula = strdup(sym->value);
+      char *lowercase_formula = strdup(formula_to_eval);
       for (char *p = lowercase_formula; *p; p++) *p = tolower((unsigned char)*p);
+      
+      // Preprocess AWG syntax (#14 -> awg value)
+      char *processed_formula = preprocess_awg(lowercase_formula);
+      free(lowercase_formula);
+      
       int err = 0;
-      te_expr *expr = te_compile(lowercase_formula, vars, sym_count, &err);
+      te_expr *expr = te_compile(processed_formula, vars, sym_count, &err);
       if (expr) {
         sym->fv = te_eval(expr);
         te_free(expr);
+        // Apply unit conversion if present
+        if(has_unit) {
+          if(unit_mult[unit] != 0) {
+            sym->fv *= unit_mult[unit];
+          }
+          // Special cases for ftin and awg are handled elsewhere or not needed for SY
+        }
+      } else {
+        fprintf(stderr, "Error evaluating formula '%s' at position %d\n", processed_formula, err);
       }
-      free(lowercase_formula);
+      free(processed_formula);
       for (int k = 0; k < sym_count; k++) {
         free(lowercase_names[k]);
       }
       free(lowercase_names);
       free(vars);
+      if(formula_to_eval != sym->value) free(formula_to_eval);
     }
     evaluated[i] = true;
+}
+
+/******************************************************************************
+ * preprocess_awg
+ *
+ * Preprocesses AWG syntax in formulas, converting #14 to the appropriate numerical value.
+ */
+static char *preprocess_awg(const char *formula) {
+  char *result = strdup(formula);
+  char *p = result;
+  
+  while (*p) {
+    if (*p == '#') {
+      // Found #, check if followed by digits
+      char *endptr;
+      long gauge = strtol(p + 1, &endptr, 10);
+      if (endptr > p + 1 && gauge >= 0 && gauge <= 40) {
+        // Valid AWG gauge, convert to radius in meters
+        double diameter = convert_awg_to_meters(gauge);
+        double radius = diameter / 2.0;
+        
+        // Replace #NN with the numerical value
+        char replacement[32];
+        snprintf(replacement, sizeof(replacement), "%.10f", radius);
+        
+        // Calculate lengths
+        size_t prefix_len = p - result;
+        size_t replacement_len = strlen(replacement);
+        size_t suffix_len = strlen(endptr);
+        
+        // Allocate new string
+        char *new_result = malloc(prefix_len + replacement_len + suffix_len + 1);
+        memcpy(new_result, result, prefix_len);
+        memcpy(new_result + prefix_len, replacement, replacement_len);
+        memcpy(new_result + prefix_len + replacement_len, endptr, suffix_len + 1);
+        
+        free(result);
+        result = new_result;
+        p = result + prefix_len + replacement_len;
+      } else {
+        p++;
+      }
+    } else {
+      p++;
+    }
+  }
+  
+  return result;
 }
 
 /******************************************************************************
@@ -874,7 +962,13 @@ void update_card_values(deck_t *deck)
           char kind = key[0];
           int idx = atoi(key + 1);
           int err = 0;
-          te_expr *expr = te_compile(expr_str, vars, v, &err);
+          
+          // Preprocess AWG syntax in the expression
+          char *processed_expr = preprocess_awg(expr_str);
+          
+          te_expr *expr = te_compile(processed_expr, vars, v, &err);
+          free(processed_expr);
+          
           if(expr != NULL) {
             double val = te_eval(expr);
             te_free(expr);
@@ -971,9 +1065,15 @@ void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors)
   char *lowercase_formula = strdup(formula->value);
   for (char *p = lowercase_formula; *p; p++) *p = tolower((unsigned char)*p);
   
+  // Preprocess AWG syntax (#14 -> awg value)
+  char *processed_formula = preprocess_awg(lowercase_formula);
+  free(lowercase_formula);
+  
   // Compile and evaluate
   int err = 0;
-  te_expr *expr = te_compile(lowercase_formula, vars, num_syms, &err);
+  te_expr *expr = te_compile(processed_formula, vars, num_syms, &err);
+  free(processed_formula);
+  
   if (expr) {
     formula->fv = te_eval(expr);
     te_free(expr);
@@ -987,7 +1087,6 @@ void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors)
     }
   }
   
-  free(lowercase_formula);
   for (int k = 0; k < num_syms; k++) {
     free(lowercase_names[k]);
   }
@@ -1006,22 +1105,10 @@ void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors)
  */
 void evaluate_symbols_in_comments(deck_t *deck, errors_list_t *errors)
 {
-  if (!deck || deck->comment_start < 0 || deck->comment_end < 0) {
+  if (!deck || deck->num_cards == 0) {
     return;
   }
   
-  // Iterate through comment section
-  for (int i = deck->comment_start; i <= deck->comment_end; i++) {
-    card_t *card = &deck->cards[i];
-    
-    // Check if this is a SY card
-    if (strcmp(card->card_code, "SY") == 0 && card->formulas) {
-      // Evaluate each formula in this SY card sequentially
-      key_value_t *kv = card->formulas;
-      while (kv) {
-        evaluate_formula(kv, deck, errors);
-        kv = kv->next;
-      }
-    }
-  }
+  // SY symbols are evaluated separately in update_symbol_values
+  // No need to evaluate them here
 }

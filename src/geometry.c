@@ -63,7 +63,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
   ctx->geometry.m = 0;
   ctx->geometry.mp = 0;
   //isct = 0;     // this is "I am looking for an SC card", which we no longer need
-  //iphd = FALSE;	// this is "I printed the header", also not used
+  //iphd = false;	// this is "I printed the header", also not used
   
   // make sure there's cards to process
   // TODO: should this be an error/warning? or just in test?
@@ -183,9 +183,21 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
             continue;
           }
           // and also that the values in it are valid
-          if((deck->cards[i + 1].fv[2] == 0.0) || (deck->cards[i + 1].fv[3] == 0.0)) {
+          // First, ensure the GC card's fv are set from f (since it may not be processed)
+          card_t *gc_card = &deck->cards[i + 1];
+          for(int j = 1; j <= MAX_FLT_FIELDS; j++) gc_card->fv[j] = gc_card->f[j];
+          for(int j = 1; j <= MAX_INT_FIELDS; j++) gc_card->iv[j] = gc_card->i[j];
+          // Apply unit conversions if any
+          for(int j = 1; j <= MAX_FLT_FIELDS; j++) {
+            if(gc_card->units[j] != 0 && unit_mult[gc_card->units[j]] != 0) {
+              gc_card->fv[j] = gc_card->fv[j] * unit_mult[gc_card->units[j]];
+            }
+          }
+          
+          if((gc_card->fv[2] == 0.0) || (gc_card->fv[3] == 0.0)) {
             sprintf(msg, "The card on line %d is a GC with tapering info for GW in card %d, but there is a zero in Y1 or Z1.", i + 2, i + 1);
             add_error(ctx,errors, msg, WARNING);
+            i++; // skip the invalid GC card
             continue;
           }
           // override the original inputs with the ones from the GC
@@ -377,6 +389,11 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         add_error(ctx, errors, "GF card not supported", FATAL);
         return;
         
+      case 12: // GC, geometry continuation - should only appear after GW
+        sprintf(msg, "GC card on line %d found outside of GW tapering context.", i + 1);
+        add_error(ctx, errors, msg, WARNING);
+        continue;
+        
       default: // error message if this isn't a comment
         if(!is_comment(card)) {
           sprintf(msg, "Geometry card on line %d has an unknown mnemonic, '%s'.", i + 1, card->card_code);
@@ -515,7 +532,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
                   (yi2- yi1) + (zi2- zi1)*(zi2- zi1) ) * SMIN;
       
       // determine connection data for end 1 of segment
-      jump = FALSE;
+      jump = false;
       if(ignd > 0) {
         if(zi1 <= -slen) {
           char *msg = calloc(MAX_ERROR_LEN, sizeof(char));
@@ -528,7 +545,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
         if( zi1 <= slen) {
           ctx->geometry.icon1[i]= iz;
           ctx->geometry.z1[i]=0.;
-          jump = TRUE;
+          jump = true;
         } /* if( zi1 <= slen) */
       } /* if( ignd > 0) */
       
@@ -655,7 +672,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
   /* adjust connected segment ends to exactly coincide.  print junctions */
   /* of 3 or more seg.  also find old seg. connecting to new seg. */
   iseg = 0;
-  ipf = FALSE;
+  ipf = false;
   for(j = 0; j < ctx->geometry.n; j++) {
     jx = j + 1;
     iend = -1;
@@ -674,7 +691,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
      stop(ctx, -1);
      } */
     
-    while(TRUE) {
+    while(true) {
       if((ix != 0) && (ix != (j+1)) && (ix <= PCHCON)) {
         do {
           if(ix < 0)
@@ -682,13 +699,13 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
           else
             jend = -jend;
           
-          jump = FALSE;
+          jump = false;
           
           if(ix == jx)
             break;
           
           if(ix < jx) {
-            jump = TRUE;
+            jump = true;
             break;
           }
           
@@ -760,7 +777,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
           if(!ipf) {
             sprintf(msg, "\n\n    ---------- MULTIPLE WIRE JUNCTIONS ----------\n    JUNCTION  SEGMENTS (- FOR END 1, + FOR END 2)");
             add_message(ctx, outputs, msg);
-            ipf = TRUE;
+            ipf = true;
           }
 
           iseg++;
@@ -788,7 +805,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
       ya = ctx->geometry.y2[j];
       za = ctx->geometry.z2[j];
       
-    } /* while( TRUE ) */
+    } /* while( true ) */
   } /* for( j = 0; j < data.n; j++ ) */
   
   mreq = (size_t)ctx->segj.maxcon;

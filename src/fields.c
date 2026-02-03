@@ -652,7 +652,7 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
 {
   int nx = 1, nma = 65536, nts = 4;
   int ns, nt;
-  int flag = TRUE;
+  int flag = true;
   double rx = 1.0e-4;
   double z, ze, s, ep, zend, dz=0., zp, dzot=0., t00r, g1r, g5r=0, t00i;
   double g1i, g5i=0., t01r, g3r=0, t01i, g3i=0, t10r, t10i, te1i, te1r, t02r;
@@ -671,7 +671,7 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
   nt=0;
   gh(ctx, z, &g1r, &g1i);
   
-  while( TRUE )
+  while( true )
   {
     if( flag )
     {
@@ -727,7 +727,7 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
           ns= ns/2;
           nt=1;
         }
-      flag = TRUE;
+      flag = true;
       continue;
       
     } /* if( (te1i <= rx) && (te1r <= rx) ) */
@@ -759,7 +759,7 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
         g3r= g2r;
         g3i= g2i;
         
-        flag = FALSE;
+        flag = false;
         continue;
       }
       
@@ -785,9 +785,9 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
         ns= ns/2;
         nt=1;
       }
-    flag = TRUE;
+    flag = true;
     
-  } /* while( TRUE ) */
+  } /* while( true ) */
   
 }
 

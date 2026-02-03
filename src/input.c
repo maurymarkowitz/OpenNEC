@@ -124,15 +124,15 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
       free(msg);
       return;
     }
-    dest->edited = FALSE;
-    dest->ignore = FALSE;
+    dest->edited = false;
+    dest->ignore = false;
     strncpy(dest->orig_str, line_buf, line_len);
     dest->orig_str[line_len] = '\0';
     if (read_result == EOF && !last_line_nonempty) {
       break;
     }
     last_line_nonempty = 0;
-  } while(TRUE);
+  } while(true);
   // Do not free(card) here; its contents are now owned by deck->cards[]
 }
 
@@ -261,7 +261,7 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
   char type_buff[3];
   char hidden_type_buff[3];
   bool isCmt, isGeo, isCtl, isExt; // cache these so we can do the string compare only once
-  bool sawCM = FALSE, sawCE = FALSE, sawGx = FALSE, sawGE = FALSE, sawEN = FALSE; // keep track of where we are
+  bool sawCM = false, sawCE = false, sawGx = false, sawGE = false, sawEN = false; // keep track of where we are
 
   for(int i = 0; i < deck->num_cards; i++) {
     card = &deck->cards[i];
@@ -322,27 +322,27 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     // just a comment in the deck and not part of the header.
     if(strcmp(type_buff, "CM") == 0 && !sawCM && !sawCE && !sawGx && !sawGE && !sawEN) {
       deck->comment_start = i;
-      sawCM = TRUE;
+      sawCM = true;
     }
     // the CE case is similar, it has to be above any geometry
     if(strcmp(type_buff, "CE") == 0 && !sawCE && !sawGx && !sawGE && !sawEN) {
       deck->comment_end = i;
-      sawCE = TRUE;
+      sawCE = true;
     }
     // if this is the first geo card, including GE...
     if(isGeo && !sawGx && !sawEN) {
       deck->geometry_start = i;
-      sawGx = TRUE;
+      sawGx = true;
     }
     // the GE only has to be above the end of the deck
     if(strcmp(type_buff, "GE") == 0 && !sawGE && !sawEN) {
       deck->geometry_end = i;
-      sawGE = TRUE;
+      sawGE = true;
     }
     // and finally, the first EN that we see
     if(strcmp(type_buff, "EN") == 0) {
       deck->deck_end = i;
-      sawEN = TRUE;
+      sawEN = true;
     }
     
     // another special case: if this is a comment card but the next two characters
@@ -379,16 +379,16 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
         strcpy(hidden_type_buff, "");
       }
       // now we see if those two characters are one of the extensions
-      bool isHidden = FALSE;
+      bool isHidden = false;
       for(int i = 0; i < NUM_ONEC_CODES; i++) {
         if(strcmp(hidden_type_buff, onec_codes[i]) == 0) { // was card->card_code in the front?
-          isHidden = TRUE;
+          isHidden = true;
           break;
         }
       }
       if(isHidden) {
-        isCmt = FALSE;
-        isExt = TRUE;
+        isCmt = false;
+        isExt = true;
         card->extn_code[0] = '!';
       }
     } // checking for hidden info
@@ -540,8 +540,8 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
   // tokenize the rest of the line on the remaining whitespace
   token = strtok(str, ONEC_WHITESPACE);
   while(token != NULL) {
-    isFormula = FALSE;  // assume it's a number until proven otherwise
-    isUnit = FALSE;     // assume no units
+    isFormula = false;  // assume it's a number until proven otherwise
+    isUnit = false;     // assume no units
     unit = 0;           // if we don't find a unit code, this will ensure it is set to "default"
 
     // we have a non-zero length token, which might be an int
@@ -561,17 +561,17 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
         // no units in these fields, so it would have to be a formula
         char *leftover = end_ptr;
         if(strlen(leftover) > 0) {
-          isFormula = TRUE;
+          isFormula = true;
         }
       }
       // if end_ptr = token, then we didn't find any number at the start
       else {
-        isFormula = TRUE;
+        isFormula = true;
       }
       
       // if there was a formula, save it
       if(isFormula) {
-        card->int_form_inline[ints_processed] = TRUE;  // indicate that we did have a formula inline
+        card->int_form_inline[ints_processed] = true;  // indicate that we did have a formula inline
         char fld_name[3];
         fld_name[0] = 'I';
         fld_name[1] = ints_processed +'0';
@@ -595,13 +595,13 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
       
       // look for a leading # indicating an awg measurement from 4nec2
       if(token[0] == '#') {
-        isUnit = TRUE;
+        isUnit = true;
         unit = 8;
         token += 1; // move forward to skip the symbol
       }
       // or the onec indicator at the end
       if(str_ends_with(ctx, token, "awg") == 0) {
-        isUnit = TRUE;
+        isUnit = true;
         unit = 7;
         token[strlen(token) - 3] = '\0'; // cut the awg off the end
       }
@@ -643,19 +643,19 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
           for(int i = 0; i < NUM_ONEC_UNIT_CODES; i++) {
             if(strcasecmp(leftover, unit_codes[i]) == 0) {
               unit = i;
-              isUnit = TRUE;
+              isUnit = true;
               break;
             }
           }
           // if it was not a unit, and it wasn't zero length, we have to
           // assume the entire thing was a formula with a leading number
           if(!isUnit) {
-            isFormula = TRUE;
+            isFormula = true;
           }
         }
       } else {
         // we did not get a number at the front, so it must be a formula one way or the other
-        isFormula = TRUE;
+        isFormula = true;
       }
             
       // now we decide where to put it all...
@@ -665,7 +665,7 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
         card->units[flts_processed] = unit;
       } else {
         // it is a formula, copy the entire token into the right formula field
-        card->flt_form_inline[flts_processed] = TRUE;  // indicate that we did have a formula inline
+        card->flt_form_inline[flts_processed] = true;  // indicate that we did have a formula inline
         char fld_name[3];
         fld_name[0] = 'F';
         fld_name[1] = flts_processed +'0';
