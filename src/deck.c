@@ -28,7 +28,7 @@ static void add_default_symbols(deck_t *deck);
 static void update_symbol_list(deck_t *deck, errors_list_t *errors);
 
 static bool references(const char *expr, const char *symname);
-static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated);
+static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck);
 static char *preprocess_awg(const char *formula);
 
 /******************************************************************************
@@ -655,8 +655,6 @@ void update_deck_values(deck_t *deck)
   update_symbol_list(deck, NULL);
   add_default_symbols(deck);
   update_symbol_values(deck);
-
-  // update all card values, passing deck pointer
   update_card_values(deck);
 }
 
@@ -738,7 +736,7 @@ void update_symbol_values(deck_t *deck)
 {
   key_value_t **syms = deck->symbols;
   bool *evaluated = calloc(deck->num_symbols, sizeof(bool));
-  for (int i = 0; i < deck->num_symbols; i++) eval_symbol(i, deck->num_symbols, syms, evaluated);
+  for (int i = 0; i < deck->num_symbols; i++) eval_symbol(i, deck->num_symbols, syms, evaluated, deck);
   free(evaluated);
 }
 
@@ -757,14 +755,19 @@ static bool references(const char *expr, const char *symname) {
 }
 
 // Recursive evaluation for symbol dependencies
-static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated) {
+static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck) {
     if (evaluated[i]) return;
+    
+    // Mark as evaluated immediately to prevent infinite recursion on circular dependencies
+    evaluated[i] = true;
+    
     key_value_t *sym = syms[i];
+    
     // Recursively evaluate all referenced symbols first
     for (int j = 0; j < sym_count; j++) {
       if (i == j) continue;
       if (references(sym->value, syms[j]->key)) {
-        eval_symbol(j, sym_count, syms, evaluated);
+        eval_symbol(j, sym_count, syms, evaluated, deck);
       }
     }
     // Now evaluate this symbol
@@ -825,7 +828,27 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
           // Special cases for ftin and awg are handled elsewhere or not needed for SY
         }
       } else {
-        fprintf(stderr, "Error evaluating formula '%s' at position %d\n", processed_formula, err);
+        // Find which card this symbol belongs to
+        int card_num = -1;
+        for (int c = 0; c < deck->num_cards; c++) {
+          card_t *card = &deck->cards[c];
+          if (strcmp(card->card_code, "SY") == 0 && card->formulas) {
+            key_value_t *kv = card->formulas;
+            while (kv) {
+              if (kv == sym) {
+                card_num = c + 1;
+                break;
+              }
+              kv = kv->next;
+            }
+            if (card_num > 0) break;
+          }
+        }
+        if (card_num > 0) {
+          fprintf(stderr, "Error evaluating formula '%s' at position %d on card %d\n", processed_formula, err, card_num);
+        } else {
+          fprintf(stderr, "Error evaluating formula '%s' at position %d\n", processed_formula, err);
+        }
       }
       free(processed_formula);
       for (int k = 0; k < sym_count; k++) {
@@ -835,7 +858,6 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
       free(vars);
       if(formula_to_eval != sym->value) free(formula_to_eval);
     }
-    evaluated[i] = true;
 }
 
 /******************************************************************************

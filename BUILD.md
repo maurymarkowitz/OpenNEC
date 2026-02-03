@@ -128,7 +128,7 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openblas/lib/pkgconfig:${PKG_CONFIG_PATH}"
 ```
 
-- Intel Homebrew on Apple Silicon: builds are strictly blocked if OpenBLAS resides under `/usr/local/opt/openblas`. Install OpenBLAS with Apple Silicon Homebrew in `/opt/homebrew`.
+- Intel Homebrew on Apple Silicon: builds are blocked if OpenBLAS resides under `/usr/local/opt/openblas`, which is the Intel install path. For these machines, install OpenBLAS with Apple Silicon Homebrew in `/opt/homebrew`. If you use Homebrew to install OpenBALS, and it does not install it in `/opt/homebrew`, you are running the Intel version and need to re-install Homebrew.
 
 - pkg-config missing:
   - macOS (Homebrew): `brew install pkg-config`

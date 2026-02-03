@@ -37,7 +37,7 @@ Program NEC(input,tape5=input,output,tape11,tape12,tape13,tape14,
 #ifndef	OPENNEC_H
 #define	OPENNEC_H 1
 
-#define VERSION_STRING "2.0"
+#define VERSION_STRING "1.1"
 
 #include <math.h>
 #include <complex.h>    // MS's impementation of C99's complex is broken

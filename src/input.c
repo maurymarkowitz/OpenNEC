@@ -454,7 +454,8 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     
     // process inline comments to look for key/value pairs
     // this can apply to any card, even comments
-    if(card->extn_code[0] != '\0') {
+    // EXCEPT for SY cards where formulas only appear in the main card part
+    if(card->extn_code[0] != '\0' && strcmp(card->card_code, "SY") != 0) {
       parse_key_values(ctx, card, errors);
     }
   } // foreach card

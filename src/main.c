@@ -2,7 +2,7 @@
  *
  * main.c is the entry point for the command-line version of OpenNEC
  * It works along with input.c and output.c. Together they parse the
- * command line, read an input file if provided, run the commands in
+ * command line, read input files if provided, run the commands in
  * the deck, and then print the output to more files.
  *
  *****************************************************************************/
@@ -328,8 +328,6 @@ static int process_single_file(const char *input_filename, const char *output_fi
       }
       
       if (ctx.errors.num_errors > 0) {
-        const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
-        fprintf(ctx.error_fp, "\n=== Calculation Errors for %s ===\n", display_name);
         for (int i = 0; i < ctx.errors.num_errors; i++) {
           fprintf(ctx.error_fp, "%s\n", ctx.errors.errors[i].message);
         }
@@ -454,8 +452,8 @@ static void *worker_thread(void *arg)
 }
 
 static void add_to_string_list(char ***list, int *count, int *cap, const char *str) {
-  if (*count >= *cap) {
-    *cap = (*cap == 0) ? 16 : (*cap * 2);
+  if (*list == NULL || *count >= *cap) {
+    if (*cap == 0) *cap = 16;
     char **new_list = realloc(*list, *cap * sizeof(char *));
     if (!new_list) abort();
     *list = new_list;
@@ -495,7 +493,7 @@ int main(int argc, char **argv)
   // Collect input files and folders
   char **file_list = NULL;
   int num_files = 0;
-  int file_cap = 0;
+  int file_cap = 4096;
 
   if (optind >= argc) {
     // No input files specified - use stdin/stdout
@@ -509,7 +507,7 @@ int main(int argc, char **argv)
     // Collect all files, including from directories
     char **dir_queue = NULL;
     int dir_count = 0;
-    int dir_cap = 0;
+    int dir_cap = 4096;
     int dir_head = 0;
 
     // Initial files/dirs from command line
@@ -532,37 +530,40 @@ int main(int argc, char **argv)
       DIR *d = opendir(current_dir);
       if (!d) {
         fprintf(error_fp, "Warning: cannot open directory '%s': %s\n", current_dir, strerror(errno));
-        free(current_dir);
         continue;
       }
 
       // To satisfy "files first", we'll collect subdirs separately and add them to the queue after processing files in this dir
       char **subdirs_in_dir = NULL;
       int subdir_count = 0;
-      int subdir_cap = 0;
+      int subdir_cap = 128;
 
       struct dirent *entry;
       while ((entry = readdir(d)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
           continue;
 
+        char entry_name[256];
+        strncpy(entry_name, entry->d_name, sizeof(entry_name) - 1);
+        entry_name[sizeof(entry_name) - 1] = '\0';
+
         char path[1024];
-        snprintf(path, sizeof(path), "%s/%s", current_dir, entry->d_name);
+        snprintf(path, sizeof(path), "%s/%s", current_dir, entry_name);
 
         struct stat st;
-        if (lstat(path, &st) == 0) { // Use lstat to avoid following symloops if we want, or stat
-          if (S_ISDIR(st.st_mode)) {
-            if (recursive) {
-              add_to_string_list(&subdirs_in_dir, &subdir_count, &subdir_cap, path);
-            }
-          } else if (S_ISREG(st.st_mode)) {
-            if (has_nec_extension(entry->d_name)) {
+        // For directories, check with stat
+        if (stat(path, &st) == 0 && S_ISDIR(st.st_mode)) {
+          if (recursive) {
+            add_to_string_list(&subdirs_in_dir, &subdir_count, &subdir_cap, path);
+          }
+          } else {
+            // For files, just check extension
+            if (has_nec_extension(entry_name)) {
               add_to_string_list(&file_list, &num_files, &file_cap, path);
             }
           }
-        }
       }
-      closedir(d);
+      // closedir(d);
 
       // Add subdirs to our BFS queue
       for (int i = 0; i < subdir_count; i++) {
@@ -570,7 +571,10 @@ int main(int argc, char **argv)
         free(subdirs_in_dir[i]);
       }
       free(subdirs_in_dir);
-      free(current_dir);
+    }
+    // Free all directory paths
+    for (int i = 0; i < dir_count; i++) {
+      free(dir_queue[i]);
     }
     free(dir_queue);
 
@@ -584,6 +588,9 @@ int main(int argc, char **argv)
     int failed_count = 0;
     if (jobs <= 1 || num_files == 1) {
       // Serial path
+      if (num_files > 1) {
+        fprintf(error_fp, "Found %d files to process\n", num_files);
+      }
       for (int i = 0; i < num_files; i++) {
         const char *input = file_list[i];
         char output[512];
@@ -601,6 +608,8 @@ int main(int argc, char **argv)
           fprintf(error_fp, "Error processing %s, continuing to next file...\n", input);
           failed_count++;
         }
+        free(file_list[i]);
+        file_list[i] = NULL;
       }
       if (failed_count > 0) {
         fprintf(error_fp, "\nCompleted with %d error(s) out of %d file(s)\n", failed_count, num_files);
@@ -659,7 +668,9 @@ int main(int argc, char **argv)
     }
     
     // Clean up file list
-    for (int i = 0; i < num_files; i++) free(file_list[i]);
+    for (int i = 0; i < num_files; i++) {
+      if (file_list[i]) free(file_list[i]);
+    }
     free(file_list);
   }
 
