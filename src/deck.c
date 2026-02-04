@@ -22,13 +22,13 @@
 #include "tinyexpr.h"
 
 /* Forward declarations for internal functions */
-static void update_symbol_values(deck_t *deck);
+static void update_symbol_values(deck_t *deck, errors_list_t *errors);
 static void update_card_values(deck_t *deck);
 static void add_default_symbols(deck_t *deck);
 static void update_symbol_list(deck_t *deck, errors_list_t *errors);
 
 static bool references(const char *expr, const char *symname);
-static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck);
+static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, errors_list_t *errors);
 static char *preprocess_awg(const char *formula);
 
 /******************************************************************************
@@ -650,11 +650,11 @@ void initialize_symbol_table(deck_t *deck, errors_list_t *errors)
  * after making a change to any of the SY cards, or just before any deck-wide
  * actions like saving it out or running a calculation.
  */
-void update_deck_values(deck_t *deck)
+void update_deck_values(nec_context_t *ctx, deck_t *deck)
 {
-  update_symbol_list(deck, NULL);
+  update_symbol_list(deck, &ctx->errors);
   add_default_symbols(deck);
-  update_symbol_values(deck);
+  update_symbol_values(deck, &ctx->errors);
   update_card_values(deck);
 }
 
@@ -732,11 +732,13 @@ void add_default_symbols(deck_t *deck)
  * Symbols are calculated in dependency order: if a symbol's formula references
  * other symbols, those referenced symbols are evaluated first.
  */
-void update_symbol_values(deck_t *deck) 
+void update_symbol_values(deck_t *deck, errors_list_t *errors) 
 {
   key_value_t **syms = deck->symbols;
   bool *evaluated = calloc(deck->num_symbols, sizeof(bool));
-  for (int i = 0; i < deck->num_symbols; i++) eval_symbol(i, deck->num_symbols, syms, evaluated, deck);
+  for (int i = 0; i < deck->num_symbols; i++) if (eval_symbol(i, deck->num_symbols, syms, evaluated, deck, errors) != 0) {
+    // error already added
+  }
   free(evaluated);
 }
 
@@ -755,19 +757,30 @@ static bool references(const char *expr, const char *symname) {
 }
 
 // Recursive evaluation for symbol dependencies
-static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck) {
-    if (evaluated[i]) return;
+static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, errors_list_t *errors) {
+    fprintf(stderr, "eval_symbol called: i=%d key=%s value=%s\n", i, syms[i]->key, syms[i]->value);
+    // Check if already evaluated to prevent infinite recursion
+    if (evaluated[i]) {
+      return 0;
+    }
     
     // Mark as evaluated immediately to prevent infinite recursion on circular dependencies
     evaluated[i] = true;
     
     key_value_t *sym = syms[i];
     
-    // Early check: if the value exactly matches a unit name, set multiplier directly
-    for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
-      if (strcmp(sym->value, unit_codes[u]) == 0) {
-        sym->fv = unit_mult[u];
-        return;
+    if (strcmp(sym->key, "Inp") == 0) {
+      fprintf(stderr, "eval_symbol: Inp value='%s' len=%zu\n", sym->value, strlen(sym->value));
+    }
+    
+    // Early check: if the value is just a unit name, set it directly and return
+    if (sym->value && sym->value[0] != '\0') {
+      for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
+        if (strcmp(sym->value, unit_codes[u]) == 0) {
+          fprintf(stderr, "Matched '%s' = '%s' exactly, setting fv=%.6f\n", sym->key, sym->value, unit_mult[u]);
+          sym->fv = unit_mult[u];
+          return 0;
+        }
       }
     }
     
@@ -775,11 +788,20 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
     for (int j = 0; j < sym_count; j++) {
       if (i == j) continue;
       if (references(sym->value, syms[j]->key)) {
-        eval_symbol(j, sym_count, syms, evaluated, deck);
+        if (eval_symbol(j, sym_count, syms, evaluated, deck, errors) != 0)
+          return -1;
       }
     }
     // Now evaluate this symbol
     if (sym->value && sym->value[0] != '\0') {
+      // Early check: if the value exactly matches a unit name, set multiplier directly
+      for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
+        if (strcmp(sym->value, unit_codes[u]) == 0) {
+          sym->fv = unit_mult[u];
+          return;
+        }
+      }
+      
       // Parse for trailing unit
       int unit = 0;
       bool has_unit = false;
@@ -789,24 +811,51 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
         size_t len = strlen(sym->value);
         size_t ulen = strlen(unit_str);
         if(ulen > 0 && len >= ulen && strcmp(sym->value + len - ulen, unit_str) == 0) {
-          unit = u;
-          has_unit = true;
-          formula_to_eval = strdup(sym->value);
-          formula_to_eval[len - ulen] = '\0';
-          // trim trailing space
-          while(strlen(formula_to_eval) > 0 && formula_to_eval[strlen(formula_to_eval)-1] == ' ') {
-            formula_to_eval[strlen(formula_to_eval)-1] = '\0';
+          // Check if this is a complex formula containing operators/variables
+          // If so, don't treat the trailing unit string as an actual unit
+          // This handles rare cases in 4nec2 files where symbol names end with unit abbreviations
+          // like in TL_test.nec where they used "10*m" instead of "10m"
+          bool is_complex_formula = false;
+          for(size_t i = 0; i < len - ulen; i++) {
+            char c = sym->value[i];
+            if(!isdigit((unsigned char)c) && c != '.' && c != '+' && c != '-' && c != ' ') {
+              is_complex_formula = true;
+              break;
+            }
           }
-          // If formula is now empty, this was a pure unit value (e.g., "mm")
-          if (strlen(formula_to_eval) == 0) {
-            free(formula_to_eval);
-            formula_to_eval = strdup("1");
+          if(!is_complex_formula) {
+            unit = u;
+            has_unit = true;
+            formula_to_eval = strdup(sym->value);
+            formula_to_eval[len - ulen] = '\0';
+            // trim trailing space
+            while(strlen(formula_to_eval) > 0 && formula_to_eval[strlen(formula_to_eval)-1] == ' ') {
+              formula_to_eval[strlen(formula_to_eval)-1] = '\0';
+            }
+            // If formula is now empty, this was a pure unit value (e.g., "mm")
+            if (strlen(formula_to_eval) == 0) {
+              free(formula_to_eval);
+              formula_to_eval = strdup("1");
+            }
+            break;
           }
-          break;
         }
       }
       if(!formula_to_eval) {
         formula_to_eval = sym->value;
+      }
+      
+      // Check if the value is just a unit name
+      if (!has_unit) {
+        for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
+          const char *unit_str = unit_codes[u];
+          if (strcmp(sym->value, unit_str) == 0) {
+            unit = u;
+            has_unit = true;
+            // formula_to_eval remains sym->value, but we'll handle it specially
+            break;
+          }
+        }
       }
       
       // Convert to lowercase for tinyexpr (tinyexpr only accepts lowercase variable names)
@@ -830,7 +879,10 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
       
       int err = 0;
       te_expr *expr = te_compile(processed_formula, vars, sym_count, &err);
-      if (expr) {
+      if (has_unit && strcmp(formula_to_eval, unit_codes[unit]) == 0) {
+        // The formula is just the unit name, set to unit multiplier
+        sym->fv = unit_mult[unit];
+      } else if (expr) {
         sym->fv = te_eval(expr);
         te_free(expr);
         // Apply unit conversion if present
@@ -857,11 +909,21 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
             if (card_num > 0) break;
           }
         }
+        char err_msg[256];
         if (card_num > 0) {
-          fprintf(stderr, "Error evaluating formula '%s' at position %d on card %d\n", processed_formula, err, card_num);
+          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d on card %d", processed_formula, err, card_num);
         } else {
-          fprintf(stderr, "Error evaluating formula '%s' at position %d\n", processed_formula, err);
+          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d", processed_formula, err);
         }
+        add_error(errors, err_msg, FATAL);
+        free(processed_formula);
+        for (int k = 0; k < sym_count; k++) {
+          free(lowercase_names[k]);
+        }
+        free(lowercase_names);
+        free(vars);
+        if(formula_to_eval != sym->value) free(formula_to_eval);
+        return -1;
       }
       free(processed_formula);
       for (int k = 0; k < sym_count; k++) {
@@ -871,6 +933,7 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
       free(vars);
       if(formula_to_eval != sym->value) free(formula_to_eval);
     }
+    return 0;
 }
 
 /******************************************************************************
