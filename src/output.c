@@ -528,7 +528,7 @@ int write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
         /* num_patches++; */
         fprintf( ctx->output_fp, "\n"
                 " %5d%c %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f",
-                card.iv[1], card.iv[i-1], card.fv[1], card.fv[2], card.fv[3], card.fv[4], card.fv[5], card.fv[6]);
+                card.iv[1], 'R', card.fv[1], card.fv[2], card.fv[3], card.fv[4], card.fv[5], card.fv[6]);
         break;
         
       case 7: // SM card, multiple-patch surface
