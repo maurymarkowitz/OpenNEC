@@ -29,3 +29,7 @@ Items still to be implemented:
 * re-consider ignore: `ignore` tells the system to skip over that card when producing geometry or running calculations. This is useful during testing, as cards can be turned off without having to remove them from the deck or comment them out.
 
 * at some point, handle 4nec2 current sources
+
+* revisit % handling in formulas and parsing - some files use % for percentages, like example3.nec
+
+* add support for LD type 7 from 4nec2

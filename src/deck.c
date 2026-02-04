@@ -901,6 +901,7 @@ static char *preprocess_awg(const char *formula) {
         p++;
       }
     } else {
+      // TODO: Handle % in formulas for percentages
       p++;
     }
   }

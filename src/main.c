@@ -362,7 +362,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
     ctx.green_fp = NULL;
   }
 
-  // free_deck(&deck);
+  free_deck(&deck);
   nec_context_cleanup(&ctx);
   if (input_fp != stdin) fclose(input_fp);
   if (output_fp != stdout) fclose(output_fp);
@@ -498,10 +498,17 @@ int main(int argc, char **argv)
   int file_cap = 4096;
 
   if (optind >= argc) {
-    // No input files specified - use stdin/stdout
-    const char *out = (strlen(output_file) > 0) ? output_file : "";
-    if (process_single_file("", out, error_fp) != 0) {
-      fprintf(error_fp, "Error processing stdin\n");
+    if (!isatty(STDIN_FILENO)) {
+      // Stdin is redirected, process it
+      const char *out = (strlen(output_file) > 0) ? output_file : "";
+      if (process_single_file("", out, error_fp) != 0) {
+        fprintf(error_fp, "Error processing stdin\n");
+        if (error_fp != stderr) fclose(error_fp);
+        return EXIT_FAILURE;
+      }
+    } else {
+      // No input files specified and stdin not redirected
+      fprintf(error_fp, "onec: missing file operand\nTry 'onec --help' for more information.\n");
       if (error_fp != stderr) fclose(error_fp);
       return EXIT_FAILURE;
     }

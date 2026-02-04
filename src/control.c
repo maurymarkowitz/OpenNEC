@@ -505,7 +505,14 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     mem_realloc(ctx, (void **)&ctx->vsorc.vqds, mreq);
                     
                     int idx = ctx->vsorc.nvqd - 1;
-                    ctx->vsorc.ivqd[idx] = segment_number(ctx, i2, i3);
+                    int seg_num = segment_number(ctx, i2, i3);
+                    if (seg_num == 0) {
+                        char msg[256];
+                        snprintf(msg, sizeof(msg), "EX card references invalid segment: tag %d, segment %d", i2, i3);
+                        add_error(ctx, &ctx->errors, msg, FATAL);
+                        return -1;
+                    }
+                    ctx->vsorc.ivqd[idx] = seg_num;
                     ctx->vsorc.vqd[idx] = f1 + I * f2;
                     if (cabs(ctx->vsorc.vqd[idx]) < 1.e-20) {
                         ctx->vsorc.vqd[idx] = CPLX_10;
@@ -520,7 +527,14 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     mem_realloc(ctx, (void **)&ctx->vsorc.vsant, mreq);
                     
                     int idx = ctx->vsorc.nsant - 1;
-                    ctx->vsorc.isant[idx] = segment_number(ctx, i2, i3);
+                    int seg_num = segment_number(ctx, i2, i3);
+                    if (seg_num == 0) {
+                        char msg[256];
+                        snprintf(msg, sizeof(msg), "EX card references invalid segment: tag %d, segment %d", i2, i3);
+                        add_error(ctx, &ctx->errors, msg, FATAL);
+                        return -1;
+                    }
+                    ctx->vsorc.isant[idx] = seg_num;
                     ctx->vsorc.vsant[idx] = f1 + I * f2;
                     if (cabs(ctx->vsorc.vsant[idx]) < 1.e-20) {
                         ctx->vsorc.vsant[idx] = CPLX_10;

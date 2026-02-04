@@ -17,7 +17,7 @@ In short, the onec file format is a clearly defined, human readable, compatible,
 Background
 ----------
 
-The NEC code traces its history to BRACT, written in Fortran in the 1960s. As was the case for most programs of that era, BRACT was a single large program that parsed user input from a card reader, ran the calculations, and then output the results to a line printer. The code mixed these functions together, processing the data piece-by-piece in order to reduce temporary memory requirements. Because paper cards were expensive, the input format contains a number of features intended to reduce the total card count. This results in a number of "variant" formats for cards, where the number and meaning of fields on the cards changed depending on values in other fields, or values on earlier cards in the deck. The system is highly modal.
+The NEC code traces its history to BRACT, written in Fortran in the 1960s. As was the case for most programs of that era, BRACT was a single large program that parsed user input from a card reader, ran the calculations, and then output the results to a line printer. The code mixed these functions together, processing the data piece-by-piece in order to reduce temporary memory requirements. Because paper cards were expensive, the input format contains a number of features intended to reduce the total card count. This results in a number of variant formats for cards, where the number and meaning of fields on the cards changed depending on values in other fields, or values on earlier cards in the deck. The system is highly modal.
 
 Starting in the 1970s the original BRACT code was updated several times, becoming NEC. As part of these modifications, the input was changed to text files by recording each 80-character card into a single line of text in a file. The resulting file was known as a deck, in keeping with it's origins as a deck of cards. The Fortran code for the NEC-2 version was released into the public domain in the early 1980s. A number of ports of this code have been made, most recently in the C or C++ languages. The format of a deck was not formally defined when these ports were being made, and as a result there are a profusion of slightly different versions. Matters were not helped when the original NEC code was updated, introducing still more variations as part of NEC-4.
 
@@ -43,7 +43,7 @@ None of these inline comment systems are compatible with software supporting the
 
 Another decision was whether or not to directly support the `SY` card type. This card was introduced in the 4nec2 program, allowing the user to define a SYmbol, a variable. The name of the symbol can then be used in places where numbers would normally appear, the height of the antenna over the ground for instance. It would be possible to include the `SY` cards using the commented-out format, starting the line with `!SY` for example, but this alone would not make the resulting deck compatible with NEC because the *references* to the symbols in the card fields would still cause errors. One could place those references in a trailing comment, but they would still have to be calculated and copied into the appropriate field before sending it to NEC. For that reason, the decision was made to promote `SY` to a formally supported card type in onec. 
 
-NEC was designed to measure everything in meters, but this is not convenient for many antenna designs, like those in a cell phone that are only a few cm long. Most GUI-based NEC programs allow values to be input using other units, and then convert them on entry to meters. Some add the ability to choose a default measurement type, and convert that to meters using NEC's scaling factor card (SC). All of these have the disadvantage that the original measurement type is lost on input. For instance, if the user selects "#14" for the wire radius in a GUI program, this would be converted to 0.000814 meters in the NEC deck. While this is technically sufficient, it loses the original intent of the user and reduces the readability of the deck. The inclusion of measurement markers, like `cm`, is one of the few extensions to onec that is not already widely supported by most NEC software.
+NEC was designed to measure everything in meters, but this is not convenient for many antenna designs, like those in a cell phone that are only a few cm long. Most GUI-based NEC programs allow values to be input using other units, and then convert them on entry to meters. Some add the ability to choose a default measurement type, and convert that to meters using NEC's scaling factor card (SC). All of these have the disadvantage that the original measurement type is lost on input. For instance, if the user selects `#14` for the wire radius in a GUI program, this would be converted to 0.000814 meters in the NEC deck. While this is technically sufficient, it loses the original intent of the user and reduces the readability of the deck. The inclusion of measurement markers, like `cm`, is one of the few extensions to onec that is not already widely supported by most NEC software.
 
 NOTE: The short-form symbols for feet, ', and AWG, #, are both used for comment markers in common NEC software like nec2c. For this reason, onec stores these as `ft`, `in` and `awg` in the file. User-facing software should convert this *only in the display*, if desired by the user, and should *never save these symbols to the file*.
 
@@ -55,9 +55,9 @@ Defined extensions
 ------------------
 The onec extension system is intended to be largely free-form, edited by the user or applications calling the onec library. There are a small number of defined extensions all 3rd party software should support:
 
-- `name` allows an element to be given a name. This is typically used in the geometry section and might have values like "reflector" or "boom".
+- `name` allows an element to be given a name. This is typically used in the geometry section and might have values like `reflector` or `boom`.
 
-- `group` is used to collect multiple elements together. In a GUI application, this might be used with a disclosure widget to allow sections to be collapsed down to the group name, like "upper reflector".
+- `group` is used to collect multiple elements together. In a GUI application, this might be used with a disclosure widget to allow sections to be collapsed down to the group name, like `upper reflector`.
 
 - `ignore` indicates whether or not the card should take part in the calculations. Setting this to `true` causes that card to be ignored during processing. This is useful during the development or testing of a deck, as a card can be ignored in the calculations without having to physically remove it or mark it as a comment card. 4nec2 has a similar feature that ignores all cards with tag values >=9700, and onec also follows this rule this as well, but the explicit `ignore` tag is more obvious and doesn't lose the original tag number.
 
@@ -85,7 +85,7 @@ SY's are a simple "replacement" system in which any entry of an SY name in a dat
 ### parse and replace measurement units
 onec adds the ability to define units on a field-by-field basis, so you can have elements that are 10ft long and 1cm in radius. These need to be converted to a common unit, and the unit markers removed:
 
-1) scan the geometry cards for any unit indicators, like "cm" or "in", replace those values with ones converted to meters
+1) scan the geometry cards for any unit indicators, like `cm` or `in`, replace those values with ones converted to meters
 
 ### remove inline comments and unused cards
 NEC does not allow empty cards in the deck, but other formats allow this or some variation on the theme. These should all be removed during the conversion to NEC-compatible format. There are several cases:
@@ -135,7 +135,7 @@ Comment cards do not require comment text, and are often found with no text as a
 <onec comment card> = <onec comment marker>, [ <freeform text> ], <EOL> ;
 <onec comment marker> = "CM" | "!" | "'" | "#" ;
 ```
-onec comment cards can be placed anywhere in the deck. They can be marked with the NEC-style "CM" or any of the newer comment markers - "!", "'" and "#". All text after the marker should be preserved, including any whitespace between the marker and the comment, if present. *Generally*, onec comments are not placed in the normal NEC comment area at the top of the file, but may be found immediately following it or anywhere else in the deck.
+onec comment cards can be placed anywhere in the deck. They can be marked with the NEC-style `CM` or any of the newer comment markers - `!`, `'` and `#`. All text after the marker should be preserved, including any whitespace between the marker and the comment, if present. *Generally*, onec comments are not placed in the normal NEC comment area at the top of the file, but may be found immediately following it or anywhere else in the deck.
 
 ### variable area
 ```

@@ -416,7 +416,12 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
         // no comment was found, put everything into the string
         len = strlen(card->orig_str);
       } else {
-        len = sep - card->orig_str;
+        if (isCmt && sep == card->orig_str) {
+          // for comment cards that start with comment marker, include the whole line
+          len = strlen(card->orig_str);
+        } else {
+          len = sep - card->orig_str;
+        }
       }
       // malloc room for the card part, copy that in, and close the string
       card->card_str = (char *)malloc((len * sizeof(char)) + 1);
@@ -424,7 +429,7 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
       card->card_str[len] = '\0';
 
       // and if there was any leftover, copy it into the extension, otherwise make sure its empty
-      if(sep == NULL) {
+      if(sep == NULL || (isCmt && sep == card->orig_str)) {
         card->extn_str = NULL;
         card->extn_code[0] = '\0';
       } else {
@@ -565,6 +570,7 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
         if(strlen(leftover) > 0) {
           isFormula = true;
         }
+        card->i[ints_processed] = (int)int_value;
       }
       // if end_ptr = token, then we didn't find any number at the start
       else {
@@ -649,6 +655,7 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
               break;
             }
           }
+          // TODO: Handle % for percentages in float fields
           // if it was not a unit, and it wasn't zero length, we have to
           // assume the entire thing was a formula with a leading number
           if(!isUnit) {
