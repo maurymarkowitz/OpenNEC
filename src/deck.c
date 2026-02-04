@@ -763,6 +763,14 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
     
     key_value_t *sym = syms[i];
     
+    // Early check: if the value exactly matches a unit name, set multiplier directly
+    for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
+      if (strcmp(sym->value, unit_codes[u]) == 0) {
+        sym->fv = unit_mult[u];
+        return;
+      }
+    }
+    
     // Recursively evaluate all referenced symbols first
     for (int j = 0; j < sym_count; j++) {
       if (i == j) continue;
@@ -788,6 +796,11 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
           // trim trailing space
           while(strlen(formula_to_eval) > 0 && formula_to_eval[strlen(formula_to_eval)-1] == ' ') {
             formula_to_eval[strlen(formula_to_eval)-1] = '\0';
+          }
+          // If formula is now empty, this was a pure unit value (e.g., "mm")
+          if (strlen(formula_to_eval) == 0) {
+            free(formula_to_eval);
+            formula_to_eval = strdup("1");
           }
           break;
         }
