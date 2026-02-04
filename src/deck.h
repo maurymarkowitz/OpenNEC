@@ -24,7 +24,7 @@ int max_flt_fields(const card_t *card);
 
 /* Deck lifecycle */
 void free_deck(deck_t *deck);
-void update_deck_values(deck_t *deck);
+void update_deck_values(nec_context_t *ctx, deck_t *deck);
 void initialize_symbol_table(deck_t *deck, errors_list_t *errors);
 void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors);
 void evaluate_symbols_in_comments(deck_t *deck, errors_list_t *errors);

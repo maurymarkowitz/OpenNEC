@@ -716,10 +716,6 @@ void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
     // make a copy of the string so we can mangle it
     char str[MAX_LINE_LEN];
     strcpy(str, card->card_str + 2);
-    
-    // Strip comments starting with '
-    char *comment = strchr(str, '\'');
-    if (comment) *comment = '\0';
 
     // Accept both comma and whitespace as delimiters, but also handle single key=value with no comma
     char *token, *split;

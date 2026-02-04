@@ -1,0 +1,29 @@
+--- a/src/deck.c
++++ b/src/deck.c
+@@ -774,6 +774,13 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
+     }
+     // Now evaluate this symbol
+     if (sym->value && sym->value[0] != '\0') {
++      // Early check: if the value exactly matches a unit name, set multiplier directly
++      for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
++        if (strcmp(sym->value, unit_codes[u]) == 0) {
++          sym->fv = unit_mult[u];
++          return;
++        }
++      }
++      
+       // Parse for trailing unit
+       int unit = 0;
+       bool has_unit = false;
+@@ -788,6 +795,11 @@ static void eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluate
+           while(strlen(formula_to_eval) > 0 && formula_to_eval[strlen(formula_to_eval)-1] == ' ') {
+             formula_to_eval[strlen(formula_to_eval)-1] = '\0';
+           }
++          // If formula is now empty, this was a pure unit value (e.g., "mm")
++          if (strlen(formula_to_eval) == 0) {
++            free(formula_to_eval);
++            formula_to_eval = strdup("1");
++          }
+           break;
+         }
+       }

@@ -291,7 +291,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
   initialize_symbol_table(&deck, &import_errors);
   
   // Evaluate all formulas in the deck
-  update_deck_values(&deck);
+  update_deck_values(&ctx, &deck);
   
   // TESTING: print any file errors
   if (import_errors.num_errors > 0) {
