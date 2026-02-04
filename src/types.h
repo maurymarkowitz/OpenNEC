@@ -163,7 +163,7 @@ typedef struct card_t
   char *card_str;     // the "card part" of the string, everything in front of the inline comment (if one exists)
   
   // processed NEC2 data
-  char card_code[2];  // the two-letter code for this card, or one letter for some comment formats
+  char card_code[3];  // the two-letter code for this card, or one letter for some comment formats
   
   // NEC uses i1 through i1 and f1 through f7. We'll put these in an
   // array to ease access when we're looping: f[i]. This could lead

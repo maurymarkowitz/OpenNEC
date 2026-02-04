@@ -2,16 +2,25 @@ CC = gcc
 CFLAGS = -I. -Isrc -g -O2 -Wall -Wno-unused-parameter
 LDFLAGS =
 
-# Matrix library backend selection
-# Usage: make BACKEND=<backend>
-# Valid backends: auto, accelerate, openblas, mkl, atlas, blas, custom
-BACKEND ?= auto
+# Debug build with AddressSanitizer
+# Usage: make DEBUG=1
+DEBUG ?= 0
+
+ifeq ($(DEBUG),1)
+    CFLAGS += -fsanitize=address -fno-omit-frame-pointer
+    LDFLAGS += -fsanitize=address
+    $(info Building with AddressSanitizer (DEBUG=1))
+endif
 
 # Detect platform
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
 
-# Backend configuration
+# Matrix library backend selection
+# Usage: make BACKEND=<backend>
+# Valid backends: auto, accelerate, openblas, mkl, atlas, blas, original
+BACKEND ?= auto
+
 ifeq ($(BACKEND),accelerate)
     # Accelerate framework (macOS only)
     ifneq ($(UNAME_S),Darwin)
@@ -90,10 +99,10 @@ else ifeq ($(BACKEND),blas)
     LDFLAGS += $(shell pkg-config --libs blas lapack)
     CFLAGS += $(shell pkg-config --cflags blas lapack) -DHAVE_BLAS
     $(info Building with reference BLAS/LAPACK)
-else ifeq ($(BACKEND),custom)
-    # Use custom matrix implementation only
-    CFLAGS += -DUSE_CUSTOM_MATRIX
-    $(info Building with custom matrix implementation)
+else ifeq ($(BACKEND),original)
+    # Use original matrix implementation only
+    CFLAGS += -DUSE_ORIGINAL_MATRIX
+    $(info Building with original matrix implementation)
 else ifeq ($(BACKEND),auto)
     # Auto-detect best available library
     ifeq ($(UNAME_S),Darwin)
@@ -124,15 +133,15 @@ else ifeq ($(BACKEND),auto)
                     CFLAGS += $(shell pkg-config --cflags blas lapack) -DHAVE_BLAS
                     $(info Auto-detected: reference BLAS/LAPACK)
                 else
-                    # Fallback to custom implementation
-                    CFLAGS += -DUSE_CUSTOM_MATRIX
-                    $(info Auto-detected: No optimized libraries found, using custom matrix implementation)
+                    # Fallback to original implementation
+                    CFLAGS += -DUSE_ORIGINAL_MATRIX
+                    $(info Auto-detected: No optimized libraries found, using original matrix implementation)
                 endif
             endif
         endif
     endif
 else
-    $(error ERROR: Unknown BACKEND=$(BACKEND). Valid options: auto, accelerate, openblas, mkl, atlas, blas, custom)
+    $(error ERROR: Unknown BACKEND=$(BACKEND). Valid options: auto, accelerate, openblas, mkl, atlas, blas, original)
 endif
 
 SOURCES = src/main.c src/input.c src/output.c src/deck.c src/tests.c src/geometry.c src/calculations.c src/fields.c src/ground.c src/matrix.c src/network.c src/radiation.c src/somnec.c src/misc.c src/types.c src/tinyexpr.c src/control.c
@@ -161,7 +170,10 @@ help:
 	@echo "OpenNEC Build System"
 	@echo "===================="
 	@echo ""
-	@echo "Usage: make [BACKEND=<backend>] [target]"
+	@echo "Usage: make [BACKEND=<backend>] [DEBUG=<0|1>] [target]"
+	@echo ""
+	@echo "Options:"
+	@echo "  DEBUG=1     - Enable AddressSanitizer for memory debugging"
 	@echo ""
 	@echo "Backends:"
 	@echo "  auto        - Auto-detect best available library (default)"
@@ -170,12 +182,14 @@ help:
 	@echo "  mkl         - Intel Math Kernel Library"
 	@echo "  atlas       - ATLAS BLAS library"
 	@echo "  blas        - Reference BLAS/LAPACK"
-	@echo "  custom      - Custom implementation (no external dependencies)"
+	@echo "  original    - Original NEC-2 verson (no external dependencies)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make                      # Build with auto-detection"
 	@echo "  make BACKEND=accelerate   # Require Accelerate (fails if unavailable)"
-	@echo "  make BACKEND=custom       # Use custom implementation"
+	@echo "  make BACKEND=original     # Use original implementation"
+	@echo "  make DEBUG=1              # Build with AddressSanitizer"
+	@echo "  make debug                # Same as make DEBUG=1"
 	@echo "  make clean                # Remove build artifacts"
 	@echo ""
 	@echo "Current platform: $(UNAME_S)"
@@ -186,5 +200,9 @@ help:
 regression:
 	@echo "Running regression harness..."
 	@bash test/regression_harness.sh
+
+.PHONY: debug
+debug:
+	$(MAKE) DEBUG=1
 
 .PHONY: all clean help

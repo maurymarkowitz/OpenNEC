@@ -72,6 +72,10 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
     
     // Step 3: Initialize batch processing state
     ctx->current_card_idx = deck->geometry_end + 1;  // Start after GE card
+    if (ctx->current_card_idx >= deck->num_cards) {
+        // No control cards after GE - deck is complete
+        return 0;
+    }
     ctx->card_number_offset = 0;  // Card numbering starts at 0
     ctx->iflow = 0;  // Initial state
     
@@ -247,6 +251,11 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
     // Validate inputs
     if (ctx == NULL || deck == NULL || batch_start == NULL || batch_end == NULL) {
         return -1;
+    }
+    
+    // Check if we've reached the end of the deck
+    if (ctx->current_card_idx >= deck->num_cards) {
+        return 1;  // End of deck reached
     }
     
     // Set batch start from current position

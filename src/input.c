@@ -296,6 +296,7 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
       }
     }
     strncpy(card->card_code, type_buff, 2);
+    card->card_code[2] = '\0';  // Ensure null termination
     
     // see if we can find out what sort of card it is
     isCmt = is_comment(card);
@@ -503,7 +504,7 @@ void parse_comment_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
  * parse_geometry_or_command_card()
  *
  * parses the contents of one geometry card. formerly ???()
- * *or*
+ *  *or*
  * parses the contents of one command card. formerly readem()
  *
  * The main difference between this code and the original nec2c code is
@@ -778,7 +779,13 @@ void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors)
   bool hasExtensions = false;
   
   // make a copy of the string so we can mangle it
-  strcpy(str, card->extn_str);
+  size_t extn_len = strlen(card->extn_str);
+  if (extn_len >= MAX_LINE_LEN) {
+    // Truncate if too long, but this is a rare case
+    extn_len = MAX_LINE_LEN - 1;
+  }
+  strncpy(str, card->extn_str, extn_len);
+  str[extn_len] = '\0';
   
   // strtok should be perfect for this one because we don't want the delimiters
   // to be handed back ...but this will split up comments on their whitespace,

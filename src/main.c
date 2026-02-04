@@ -53,7 +53,8 @@ static int jobs = 1; // number of parallel jobs (-j)
 static void print_version(void);
 static void print_version(void)
 {
-  puts("Onec " VERSION_STRING);
+  puts("onec " VERSION_STRING);
+  exit(0);
 }
 
 /******************************************************************************
@@ -77,6 +78,7 @@ void print_usage(char *argv[])
   puts("  -r, --recursive: process directories recursively");
   puts("Multiple input files can be specified; each will generate a .out file.");
   puts("If no source_file is provided, input is read from stdin and output goes to stdout.");
+  exit(0);
 }
 
 /******************************************************************************
