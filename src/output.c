@@ -391,18 +391,20 @@ void write_header(nec_context_t *ctx, deck_t *deck, FILE *file)
           "|                                          |\n"
           "                              "
           "|  NUMERICAL ELECTROMAGNETICS CODE (onec)  |\n"
-          "                              "
-          "|   Translated to 'C' in Double Precision  |\n"
-          "                              "
+           "                              "
           "|__________________________________________|\n" );
   
   fprintf( ctx->output_fp, "\n\n\n"
           "                               "
           "---------------- COMMENTS ----------------\n" );
   
-  // write comments to output file
-  for(int i = deck->comment_start; i <= deck->comment_end; i++) {
-    fprintf(ctx->output_fp, "                              %s\n", deck->cards[i].comment);
+  // write header comments to output file (only CM/CE cards before geometry)
+  for(int i = 0; i < deck->num_cards; i++) {
+    card_t *card = &deck->cards[i];
+    if ((strcmp(card->card_code, "CM") == 0 || strcmp(card->card_code, "CE") == 0) && 
+        i < deck->geometry_start && card->comment) {
+      fprintf(ctx->output_fp, "                              %s\n", card->comment);
+    }
   }
 }
 
@@ -798,6 +800,17 @@ void write_input_cards(FILE *file, deck_t *deck, int batch_start, int batch_end,
             }
             
             fprintf(file, "\n");
+        }
+
+        // print CM and CE comments inline as they are encountered (NEC-4 behavior) 
+        // TODO: test to see if this is correct placement for NEC-4, or if it has to be
+        //       output after the *output* for the control cards, or as it is here, during
+        //       the input card echoing.
+        // TODO: make this configurable behavior?
+        else if (strncmp(card->card_code, "CM", 2) == 0 || strncmp(card->card_code, "CE", 2) == 0) {
+            if (card->comment) {
+                fprintf(file, "                              %s\n", card->comment);
+            }
         }
     }
 

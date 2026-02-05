@@ -1,7 +1,5 @@
 Items still to be implemented:
 
-* in NEC-4, a CM or CE in the body will be printed to the output
-
 * does anything in card.c really need ctx?
 
 * ensure that the logic for optional placing the formulas in the onec comment is implemented, and that if it is used and the deck is written in nec-2 format, that the value is copied into the corresponding field
@@ -20,9 +18,9 @@ Items still to be implemented:
 
 * at some point, handle 4nec2 current sources, EX 6 and 7
 
-* revisit % handling in formulas and parsing - some files use % for percentages, like example3.nec
-
 * add support for LD type 7 from 4nec2
+
+* revisit % handling in formulas and parsing - some files use % for percentages, like example3.nec
 
 * files to examine:
 - Nec-Ex9.nec, - no geometry
