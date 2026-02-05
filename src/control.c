@@ -489,6 +489,13 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             ctx->fpat.ixtyp = i1;
             ctx->netcx.masym = i4 / 10;
             
+            // Warn about unsupported EX types
+            if (i1 == 6 || i1 == 7) {
+                char msg[256];
+                snprintf(msg, sizeof(msg), "EX card with type %d is not supported by OpenNEC and will be treated as a receiving pattern.", i1);
+                add_error(ctx, &ctx->errors, msg, WARNING);
+            }
+            
             // For voltage source types (0 and 5)
             if (i1 == 0 || i1 == 5) {
                 ctx->netcx.ntsol = 0;

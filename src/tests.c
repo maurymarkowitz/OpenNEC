@@ -314,6 +314,14 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
           add_error(ctx, errors, msg, 0);
         }
       }
+      // Check for unsupported EX types
+      if(deck->cards[i].ints_used >= 1) {
+        int ex_type = deck->cards[i].i[1];
+        if(ex_type == 6 || ex_type == 7) {
+          sprintf(msg, "The card on line %d is an EX with type %d, which is not supported by OpenNEC.", i, ex_type);
+          add_error(ctx, errors, msg, 0);
+        }
+      }
       // Record for open-end placement validation later
       if(deck->cards[i].ints_used >= 3) {
         ref_info_t r = { i + 1, deck->cards[i].i[2], deck->cards[i].i[3], 0 };
