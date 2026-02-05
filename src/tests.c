@@ -552,6 +552,25 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     // advance last_code to current card for next-iteration pair checks
     last_code = code;
 
+    // Warn about unsupported cards
+    if(strcmp(code, "WG") == 0) {
+      sprintf(msg, "The card on line %d is a WG (Wire Grid), which is not supported by OpenNEC.", i + 1);
+      add_error(ctx, errors, msg, 0);
+    }
+    if(strcmp(code, "IT") == 0) {
+      sprintf(msg, "The card on line %d is an IT (Iteration), which is not supported by OpenNEC.", i + 1);
+      add_error(ctx, errors, msg, 0);
+    }
+    if(strcmp(code, "OP") == 0) {
+      sprintf(msg, "The card on line %d is an OP (Optimization), which is not supported by OpenNEC.", i + 1);
+      add_error(ctx, errors, msg, 0);
+    }
+    // Also warn for any other extension cards that are not supported
+    if(is_extension(&deck->cards[i]) && strcmp(code, "SY") != 0 && strcmp(code, "XT") != 0) {
+      sprintf(msg, "The card on line %d is a %s, which is not supported by OpenNEC.", i + 1, code);
+      add_error(ctx, errors, msg, 0);
+    }
+
     // After recording last_code, validate that certain control cards reference existing geometry tags seen so far
     if(strcmp(code, "EX") == 0 && deck->cards[i].ints_used >= 3) {
       int tag = deck->cards[i].i[2];
