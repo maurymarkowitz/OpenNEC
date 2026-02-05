@@ -426,7 +426,7 @@ static void *worker_thread(void *arg)
     task_t *t = &q->tasks[idx];
 
     // Print progress for parallel processing
-    fprintf(stderr, "Processing %s...\n", t->input);
+    fprintf(stderr, "Processing %d of %d: %s...\n", idx + 1, q->task_count, t->input);
     fflush(stderr);
 
     // capture logs using open_memstream
@@ -435,7 +435,7 @@ static void *worker_thread(void *arg)
     FILE *memfp = open_memstream(&buf, &sz);
     if (!memfp) {
       // fallback: use stderr (may interleave)
-      fprintf(stderr, "Processing %s...\n", t->input);
+      fprintf(stderr, "Processing %d of %d: %s...\n", idx + 1, q->task_count, t->input);
       fflush(stderr);
       t->status = process_single_file(t->input, t->output, stderr);
       t->log_buf = NULL;
@@ -610,7 +610,7 @@ int main(int argc, char **argv)
           generate_output_filename(input, output, sizeof(output));
         }
         if (num_files > 1) {
-          fprintf(error_fp, "Processing %s...\n", input);
+          fprintf(error_fp, "Processing %d of %d: %s...\n", i + 1, num_files, input);
           fflush(error_fp);
         }
         if (process_single_file(input, output, error_fp) != 0) {

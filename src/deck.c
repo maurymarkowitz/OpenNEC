@@ -22,13 +22,13 @@
 #include "tinyexpr.h"
 
 /* Forward declarations for internal functions */
-static void update_symbol_values(deck_t *deck, errors_list_t *errors);
+static void update_symbol_values(nec_context_t *ctx, deck_t *deck, errors_list_t *errors);
 static void update_card_values(deck_t *deck);
 static void add_default_symbols(deck_t *deck);
 static void update_symbol_list(deck_t *deck, errors_list_t *errors);
 
 static bool references(const char *expr, const char *symname);
-static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, errors_list_t *errors);
+static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, nec_context_t *ctx, errors_list_t *errors);
 static char *preprocess_awg(const char *formula);
 
 /******************************************************************************
@@ -654,7 +654,7 @@ void update_deck_values(nec_context_t *ctx, deck_t *deck)
 {
   update_symbol_list(deck, &ctx->errors);
   add_default_symbols(deck);
-  update_symbol_values(deck, &ctx->errors);
+  update_symbol_values(ctx, deck, &ctx->errors);
   update_card_values(deck);
 }
 
@@ -732,11 +732,11 @@ void add_default_symbols(deck_t *deck)
  * Symbols are calculated in dependency order: if a symbol's formula references
  * other symbols, those referenced symbols are evaluated first.
  */
-void update_symbol_values(deck_t *deck, errors_list_t *errors) 
+void update_symbol_values(nec_context_t *ctx, deck_t *deck, errors_list_t *errors) 
 {
   key_value_t **syms = deck->symbols;
   bool *evaluated = calloc(deck->num_symbols, sizeof(bool));
-  for (int i = 0; i < deck->num_symbols; i++) if (eval_symbol(i, deck->num_symbols, syms, evaluated, deck, errors) != 0) {
+  for (int i = 0; i < deck->num_symbols; i++) if (eval_symbol(i, deck->num_symbols, syms, evaluated, deck, ctx, errors) != 0) {
     // error already added
   }
   free(evaluated);
@@ -757,8 +757,7 @@ static bool references(const char *expr, const char *symname) {
 }
 
 // Recursive evaluation for symbol dependencies
-static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, errors_list_t *errors) {
-    fprintf(stderr, "eval_symbol called: i=%d key=%s value=%s\n", i, syms[i]->key, syms[i]->value);
+static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, nec_context_t *ctx, errors_list_t *errors) {
     // Check if already evaluated to prevent infinite recursion
     if (evaluated[i]) {
       return 0;
@@ -769,15 +768,10 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
     
     key_value_t *sym = syms[i];
     
-    if (strcmp(sym->key, "Inp") == 0) {
-      fprintf(stderr, "eval_symbol: Inp value='%s' len=%zu\n", sym->value, strlen(sym->value));
-    }
-    
     // Early check: if the value is just a unit name, set it directly and return
     if (sym->value && sym->value[0] != '\0') {
       for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
         if (strcmp(sym->value, unit_codes[u]) == 0) {
-          fprintf(stderr, "Matched '%s' = '%s' exactly, setting fv=%.6f\n", sym->key, sym->value, unit_mult[u]);
           sym->fv = unit_mult[u];
           return 0;
         }
@@ -788,7 +782,7 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
     for (int j = 0; j < sym_count; j++) {
       if (i == j) continue;
       if (references(sym->value, syms[j]->key)) {
-        if (eval_symbol(j, sym_count, syms, evaluated, deck, errors) != 0)
+        if (eval_symbol(j, sym_count, syms, evaluated, deck, ctx, errors) != 0)
           return -1;
       }
     }
@@ -798,7 +792,7 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
       for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
         if (strcmp(sym->value, unit_codes[u]) == 0) {
           sym->fv = unit_mult[u];
-          return;
+          return 0;
         }
       }
       
@@ -915,7 +909,7 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
         } else {
           snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d", processed_formula, err);
         }
-        add_error(errors, err_msg, FATAL);
+        add_error(ctx, errors, err_msg, FATAL);
         free(processed_formula);
         for (int k = 0; k < sym_count; k++) {
           free(lowercase_names[k]);

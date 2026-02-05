@@ -36,7 +36,7 @@
 #include "input.h"
 
 /* Forward declarations for internal functions */
-static int read_line(nec_context_t *ctx, char *buff, FILE *pfile);
+static int read_line(nec_context_t *ctx, char *buff, FILE *pfile, int line_num);
 static void parse_comment_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
 static void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
 static void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
@@ -56,7 +56,7 @@ static void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *er
  */
 void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
 {
-  char line_buf[MAX_LINE_LEN];  // make it large enough to hold any line
+  char line_buf[1024];  // make it large enough to hold any line
   size_t line_len;              // actual length of the current card being read
     
   // set the card count to 0, it might have !=0 default
@@ -72,7 +72,8 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
   int line_num = 0;
   int last_line_nonempty = 0;
   do {
-    int read_result = read_line(ctx, line_buf, pfile);
+    line_num++;
+    int read_result = read_line(ctx, line_buf, pfile, line_num);
     if(read_result == EOF) {
       if (strlen(line_buf) > 0) {
         last_line_nonempty = 1;
@@ -80,18 +81,7 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
         break;
       }
     }
-    line_num++;
     line_len = strlen(line_buf);
-    if (line_len >= MAX_LINE_LEN - 1) {
-      char *msg = calloc(1, MAX_ERROR_LEN);
-      snprintf(msg, MAX_ERROR_LEN, "[read_deck][WARNING] Line %d is at or exceeds MAX_LINE_LEN (%d): length=%zu", line_num, MAX_LINE_LEN, line_len);
-      add_error(ctx, &ctx->errors, msg, WARNING);
-      free(msg);
-    }
-    if (line_len > MAX_LINE_LEN - 1) {
-      line_len = MAX_LINE_LEN - 1;
-      line_buf[line_len] = '\0';
-    }
     if(deck->num_cards == 0) {
       deck->num_cards++;
       deck->cards = calloc(1, sizeof(card_t));
@@ -172,7 +162,7 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
  *  to have been opened previous to this call
  * 
 */
-int read_line(nec_context_t *ctx, char *buff, FILE *pfile)
+int read_line(nec_context_t *ctx, char *buff, FILE *pfile, int line_num)
 {
   int
     num_chr = 0,  // number of characters read, excluding lf/cr
@@ -225,13 +215,27 @@ int read_line(nec_context_t *ctx, char *buff, FILE *pfile)
     }
   } /* end of while( num_chr < MAX_LINE_LEN - 1 ) */
   
-  // warn if we hit the max line length
-    if (num_chr >= MAX_LINE_LEN - 1) {
+  // If we exited the loop because the buffer is full (not because of CR/LF or EOF),
+  // we need to consume any remaining characters on this line so they don't become
+  // part of the next line. Also check if any are non-whitespace.
+  if(num_chr >= MAX_LINE_LEN - 1 && chr != CR && chr != LF && eof != EOF) {
+    bool found_nonws = false;
+    // Continue reading to end of line, checking for non-whitespace
+    while((chr = getc(pfile)) != EOF && chr != CR && chr != LF) {
+      if(!isspace((unsigned char)chr)) {
+        found_nonws = true;
+      }
+    }
+    // Report if we found non-whitespace beyond the limit
+    if(found_nonws) {
       char *msg = calloc(1, MAX_ERROR_LEN);
-      snprintf(msg, MAX_ERROR_LEN, "A card is longer than %d characters and will be truncated.", MAX_LINE_LEN);
-      add_error(ctx, &ctx->errors, msg, PROBLEM);
+      snprintf(msg, MAX_ERROR_LEN, "The card on line %d has non-whitespace characters beyond %d characters, these have been removed.", 
+               line_num, MAX_LINE_LEN);
+      add_error(ctx, &ctx->errors, msg, WARNING);
       free(msg);
     }
+  }
+  
   // terminate buffer as a string
   buff[num_chr] = '\0';
   
