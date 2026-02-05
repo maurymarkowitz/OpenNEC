@@ -1,7 +1,5 @@
 Items still to be implemented:
 
-* finish removal of prnt
-
 * in NEC-4, a CM or CE in the body will be printed to the output
 
 * does anything in card.c really need ctx?

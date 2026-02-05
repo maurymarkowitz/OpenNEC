@@ -852,6 +852,29 @@ void write_loading_data(FILE *file, nec_context_t *ctx)
         fprintf(file, "\n"
             "                                 "
             "THIS STRUCTURE IS NOT LOADED");
+        return;
+    }
+
+    // Print the loading data header (from load() function)
+    fprintf(file, "\n"
+        "  LOCATION        RESISTANCE  INDUCTANCE  CAPACITANCE   "
+        "  IMPEDANCE (OHMS)   CONDUCTIVITY  CIRCUIT\n"
+        "  ITAG FROM THRU     OHMS       HENRYS      FARADS     "
+        "  REAL     IMAGINARY   MHOS/METER      TYPE");
+    
+    // Print the stored loading entries
+    for (int i = 0; i < ctx->loading_outputs.count; i++) {
+        loading_output_t *entry = &ctx->loading_outputs.entries[i];
+        if (strcmp(entry->type, "WIRE") == 0) {
+            // Special format for WIRE entries to match prnt output exactly
+            fprintf(file, "\n%5d%72s%11.4E     WIRE  ", 
+                entry->tag, "", entry->conductivity);
+        } else {
+            // General format for other loading types
+            fprintf(file, "\n%6d%6d%6d%44.4E%12s",
+                entry->tag, entry->tagf, entry->tagt, 
+                entry->conductivity, entry->type);
+        }
     }
 }
 

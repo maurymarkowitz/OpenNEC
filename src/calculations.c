@@ -12,8 +12,22 @@
 #include "calculations.h"
 #include "geometry.h"
 
-/* Legacy output function - TODO: should be deprecated */
-void prnt(nec_context_t *ctx, int in1, int in2, int in3, double fl1, double fl2, double fl3, double fl4, double fl5, double fl6, char *ia, int ichar);
+/* Helper function to add loading output entries */
+static void add_loading_output(nec_context_t *ctx, int tag, int tagf, int tagt, double conductivity, const char *type)
+{
+    if (ctx->loading_outputs.count >= ctx->loading_outputs.capacity) {
+        ctx->loading_outputs.capacity = ctx->loading_outputs.capacity == 0 ? 16 : ctx->loading_outputs.capacity * 2;
+        mem_realloc(ctx, (void **)&ctx->loading_outputs.entries, 
+                   ctx->loading_outputs.capacity * sizeof(loading_output_t));
+    }
+    loading_output_t *entry = &ctx->loading_outputs.entries[ctx->loading_outputs.count++];
+    entry->tag = tag;
+    entry->tagf = tagf;
+    entry->tagt = tagt;
+    entry->conductivity = conductivity;
+    strncpy(entry->type, type, sizeof(entry->type) - 1);
+    entry->type[sizeof(entry->type) - 1] = '\0';
+}
 
 /* Forward declarations for internal functions */
 static void gf(nec_context_t *ctx, double zk, double *co, double *si);
@@ -242,11 +256,6 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
   size_t mreq;
   
   tpcj = (0.0+I*1.883698955e+9);
-  fprintf( ctx->output_fp, "\n"
-          "  LOCATION        RESISTANCE  INDUCTANCE  CAPACITANCE   "
-          "  IMPEDANCE (OHMS)   CONDUCTIVITY  CIRCUIT\n"
-          "  ITAG FROM THRU     OHMS       HENRYS      FARADS     "
-          "  REAL     IMAGINARY   MHOS/METER      TYPE" );
   
   /* initialize d array, used for temporary */
   /* storage of loading information. */
@@ -393,37 +402,31 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
       return -1;
     }
     
-    /* printing the segment loading data, jump to proper print */
+    /* Store the segment loading data for output */
     switch( jump )
     {
       case 1:
-           prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-             zli[istepx], zlc[istepx],0.,0.,0.," SERIES ", 2); // TODO: prnt() should no longer be used
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, "SERIES");
         break;
         
       case 2:
-           prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-             zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL",2); // TODO: prnt() should no longer be used
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, "PARALLEL");
         break;
         
       case 3:
-           prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-             zli[istepx], zlc[istepx],0.,0.,0., "SERIES (PER METER)", 5); // TODO: prnt() should no longer be used
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, "SERIES (PER METER)");
         break;
         
       case 4:
-           prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx],
-             zli[istepx], zlc[istepx],0.,0.,0.,"PARALLEL (PER METER)",5); // TODO: prnt() should no longer be used
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, "PARALLEL (PER METER)");
         break;
         
       case 5:
-           prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx],0.,0.,0.,
-             zlr[istepx], zli[istepx],0.,"FIXED IMPEDANCE ",4); // TODO: prnt() should no longer be used
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, "FIXED IMPEDANCE");
         break;
         
       case 6:
-           prnt(ctx,  ldtags, ldtagf[istepx], ldtagt[istepx],
-             0.,0.,0.,0.,0., zlr[istepx],"  WIRE  ",2); // TODO: prnt() should no longer be used
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx], "WIRE");
         
     } /* switch( jump ) */
   } /* while( true ) */

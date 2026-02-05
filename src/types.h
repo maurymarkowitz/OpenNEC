@@ -682,6 +682,21 @@ typedef struct
 	complex double *zarray;	/* = Zi/(Di/lambda) */
 } zload_t;
 
+/* Structure for storing loading output data */
+typedef struct loading_output_t {
+    int tag;           /* Tag number */
+    int tagf;          /* Segment start */
+    int tagt;          /* Segment end */
+    double conductivity; /* Conductivity value */
+    char type[20];     /* Loading type description */
+} loading_output_t;
+
+typedef struct loading_outputs_t {
+    int count;
+    int capacity;
+    loading_output_t *entries;
+} loading_outputs_t;
+
 /* nec_context_t structure containing all context variables */
 typedef struct nec_context_t
 {
@@ -708,6 +723,7 @@ typedef struct nec_context_t
 	vsorc_t vsorc;
 	yparm_t yparm;
 	zload_t zload;
+	loading_outputs_t loading_outputs;
 	
 	/* Radiation pattern results */
 	rpat_results_t rpat;

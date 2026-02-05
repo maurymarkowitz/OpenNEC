@@ -153,6 +153,9 @@ static int nec_calculation_defaults(nec_context_t *ctx)
     ctx->fpat.ixtyp = 0;
     ctx->fpat.near = -1;
     ctx->zload.nload = 0;
+    ctx->loading_outputs.count = 0;
+    ctx->loading_outputs.capacity = 0;
+    ctx->loading_outputs.entries = NULL;
     ctx->netcx.nonet = 0;
     ctx->plot.iplp1 = 0;
     ctx->plot.iplp2 = 0;
@@ -196,6 +199,11 @@ static void reset_loading_buffers(nec_context_t *ctx)
         mem_free(ctx, (void **)&ctx->zload.zli);
         mem_free(ctx, (void **)&ctx->zload.zlc);
         ctx->zload.nload = 0;
+    }
+    if (ctx->loading_outputs.entries != NULL) {
+        mem_free(ctx, (void **)&ctx->loading_outputs.entries);
+        ctx->loading_outputs.count = 0;
+        ctx->loading_outputs.capacity = 0;
     }
 }
 

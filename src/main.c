@@ -688,68 +688,6 @@ int main(int argc, char **argv)
 } /* main */
 
 /*-----------------------------------------------------------------------*/
-
-/* prnt sets up the print formats for impedance loading */
-void prnt(nec_context_t *ctx, int in1, int in2, int in3, double fl1, double fl2,
-          double fl3, double fl4, double fl5,
-          double fl6, char *ia, int ichar )
-{
-  /* record to be output and buffer used to make it */
-  char record[101+ichar*4], buff[16];
-  int in[3], i1, i;
-  double fl[6];
-
-  in[0]= in1;
-  in[1]= in2;
-  in[2]= in3;
-  fl[0]= fl1;
-  fl[1]= fl2;
-  fl[2]= fl3;
-  fl[3]= fl4;
-  fl[4]= fl5;
-  fl[5]= fl6;
-
-  /* integer format */
-  i1=0;
-  strcpy( record, "\n " );
-
-  if( (in1 == 0) && (in2 == 0) && (in3 == 0) )
-  {
-    strcat( record, " ALL" );
-    i1=1;
-  }
-
-  for( i = i1; i < 3; i++ )
-  {
-    if( in[i] == 0)
-      strcat( record, "     " );
-    else
-    {
-      snprintf( buff, 6, "%5d", in[i] );
-      strcat( record, buff );
-    }
-  }
-
-  /* floating point format */
-  for( i = 0; i < 6; i++ )
-  {
-    if( fabs( fl[i]) >= 1.0e-20 )
-    {
-      snprintf( buff, 15, " %11.4E", fl[i] );
-      strcat( record, buff );
-    }
-    else
-      strcat( record, "            " );
-  }
-
-  strcat( record, "   " );
-  strcat( record, ia );
-  fprintf( ctx->output_fp, "%s", record );
-
-  return;
-}
-
-/*-----------------------------------------------------------------------*/
 #if __WIN32__
 static void sig_handler( int signal )
 {
