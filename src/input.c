@@ -269,6 +269,104 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
   bool isCmt, isGeo, isCtl, isExt; // cache these so we can do the string compare only once
   bool sawCM = false, sawCE = false, sawGx = false, sawGE = false, sawEN = false; // keep track of where we are
 
+  // First pass: merge comment-only lines with onec extensions into the previous non-comment line
+  for(int i = 1; i < deck->num_cards; i++) {
+    card_t *prev_card = &deck->cards[i-1];
+    card_t *curr_card = &deck->cards[i];
+    
+    // Check if current card is entirely a comment
+    line_len = strlen(curr_card->orig_str);
+    size_t first = 0;
+    while (first < line_len && isspace((unsigned char)curr_card->orig_str[first])) first++;
+    
+    bool curr_is_comment = false;
+    if (first < line_len) {
+      if ((toupper(curr_card->orig_str[first]) == 'C' && toupper(curr_card->orig_str[first+1]) == 'M') ||
+          (toupper(curr_card->orig_str[first]) == 'C' && toupper(curr_card->orig_str[first+1]) == 'E') ||
+          curr_card->orig_str[first] == '!' ||
+          curr_card->orig_str[first] == '#' ||
+          curr_card->orig_str[first] == '\'') {
+        curr_is_comment = true;
+      }
+    }
+    
+    // Check if previous card is not a comment and doesn't have a trailing comment
+    line_len = strlen(prev_card->orig_str);
+    first = 0;
+    while (first < line_len && isspace((unsigned char)prev_card->orig_str[first])) first++;
+    
+    bool prev_is_comment = false;
+    if (first < line_len) {
+      if ((toupper(prev_card->orig_str[first]) == 'C' && toupper(prev_card->orig_str[first+1]) == 'M') ||
+          (toupper(prev_card->orig_str[first]) == 'C' && toupper(prev_card->orig_str[first+1]) == 'E') ||
+          prev_card->orig_str[first] == '!' ||
+          prev_card->orig_str[first] == '#' ||
+          prev_card->orig_str[first] == '\'') {
+        prev_is_comment = true;
+      }
+    }
+    
+    // Check if current comment line has onec key/values
+    bool has_onec_extensions = false;
+    if (curr_is_comment) {
+      // Parse the comment to see if it has extensions
+      char temp_str[MAX_LINE_LEN];
+      size_t orig_len = strlen(curr_card->orig_str);
+      if (orig_len >= MAX_LINE_LEN) orig_len = MAX_LINE_LEN - 1;
+      strncpy(temp_str, curr_card->orig_str, orig_len);
+      temp_str[orig_len] = '\0';
+      
+      // Find the comment part (after the marker)
+      char *comment_start = NULL;
+      if (strstr(temp_str, "CM") == temp_str || strstr(temp_str, "CE") == temp_str) {
+        comment_start = temp_str + 2;
+      } else if (temp_str[0] == '!' || temp_str[0] == '#' || temp_str[0] == '\'') {
+        comment_start = temp_str + 1;
+      }
+      
+      if (comment_start && strstr(comment_start, "onec:")) {
+        has_onec_extensions = true;
+      }
+    }
+    
+    // If conditions are met, merge the comment
+    if (curr_is_comment && has_onec_extensions && !prev_is_comment && prev_card->comment == NULL) {
+      // Add error message
+      char msg[MAX_ERROR_LEN];
+      snprintf(msg, MAX_ERROR_LEN, "Comment line on card %d contains onec extensions and is being merged into line %d", i+1, i);
+      add_error(ctx, errors, msg, 0);
+      
+      // copy the comment from current card to previous card
+      if (curr_card->comment) {
+        prev_card->comment = strdup(curr_card->comment);
+      } else {
+        // Extract comment from the line
+        char *comment_start = NULL;
+        if (strstr(curr_card->orig_str, "CM") == curr_card->orig_str || 
+            strstr(curr_card->orig_str, "CE") == curr_card->orig_str) {
+          comment_start = curr_card->orig_str + 2;
+        } else if (curr_card->orig_str[0] == '!' || curr_card->orig_str[0] == '#' || 
+                   curr_card->orig_str[0] == '\'') {
+          comment_start = curr_card->orig_str + 1;
+        }
+        if (comment_start) {
+          // Skip leading whitespace
+          while (*comment_start && isspace((unsigned char)*comment_start)) comment_start++;
+          if (*comment_start) {
+            prev_card->comment = strdup(comment_start);
+          }
+        }
+      }
+      
+      // Remove the current card by shifting all subsequent cards
+      for (int j = i; j < deck->num_cards - 1; j++) {
+        deck->cards[j] = deck->cards[j + 1];
+      }
+      deck->num_cards--;
+      i--; // Adjust index since we removed a card
+    }
+  }
+
   for(int i = 0; i < deck->num_cards; i++) {
     card = &deck->cards[i];
     // get the card and the original string length
