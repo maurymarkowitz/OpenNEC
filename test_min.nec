@@ -1,8 +1,0 @@
-CM Test min symbol
-CE
-SY fr = 7.05
-SY wl = 299.8/fr
-SY min = wl/999
-SY max = 4.95*min
-GE
-EN

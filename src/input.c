@@ -57,7 +57,7 @@ static void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *er
 void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
 {
   char line_buf[1024];  // make it large enough to hold any line
-  size_t line_len;              // actual length of the current card being read
+  size_t line_len;      // actual length of the current card being read
     
   // set the card count to 0, it might have !=0 default
   deck->num_cards = 0;
@@ -123,8 +123,8 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
     }
     last_line_nonempty = 0;
   } while(true);
-  // Do not free(card) here; its contents are now owned by deck->cards[]
-}
+  // do not free(card) here; its contents are now owned by deck->cards[]
+} /* end read_deck */
 
 /******************************************************************************
  * read_line()
@@ -157,8 +157,10 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
  * This code also automatically capitalizes the first two characters
  * on the line, regardless of how they were entered originally.
  *
+ * @param ctx The current nec_context_t, used for error reporting
  * @param buff String containing the contents of one line
  * @param file file pointer to the file to be read, assumed
+ * @param line_num The current line number in the file, for error reporting
  *  to have been opened previous to this call
  * 
 */
@@ -404,7 +406,7 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     // an error
     if (!sawEN && !isCmt && !isCtl && !isGeo && !isExt) {
       char *msg = calloc(1, MAX_ERROR_LEN);
-      snprintf(msg, MAX_ERROR_LEN, "Unknown card type '%s' encountered on card %d. Card skipped.", type_buff, i+1);
+      snprintf(msg, MAX_ERROR_LEN, "The card on line %d has unknown type '%s'. Card skipped.", i+1, type_buff);
       add_error(ctx, errors, msg, PROBLEM);
       free(msg);
     }
