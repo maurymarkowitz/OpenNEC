@@ -16,11 +16,12 @@ Items still to be implemented:
 
 * re-consider ignore: `ignore` tells the system to skip over that card when producing geometry or running calculations. This is useful during testing, as cards can be turned off without having to remove them from the deck or comment them out.
 
-* at some point, handle 4nec2 current sources, EX 6 and 7
+* at some point, handle 4nec2 current sources, EX 6 and 7 (UA3SFH.nec, W2EEY.NEC, calvin.nec, class.NEC)
 
-* add support for LD type 7 from 4nec2
+* add support for LD type 7 from 4nec2 ()
 
 * files to examine:
+- n2pl_phased_dloop.nec - hangs? vehicle.nec too?
 - coffee1.nec, - formula problems
 - 2EL160H.nec, - has pf units
 - Nec-Ex4.nec, Tank.nec, Horn.nec - no FR
@@ -29,7 +30,5 @@ Items still to be implemented:
 - patch.c - why so many segments?
 - Example3.nec - has 50% in one of the fields
 - D2T.nec - what is "#0.4
-- UA3SFH.nec, W2EEY.NEC, etc. - IMPROPER LOAD TYPE CHOSEN, REQUESTED TYPE IS 6
-- calvin.nec, class.NEC - REQUESTED TYPE IS 7
 - why does hrs_441.nec overflow the buffer set up in network.c around line 290?
 - Gr_func.nec, NGF_radial4.nec - WG card

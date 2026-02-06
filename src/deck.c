@@ -714,7 +714,7 @@ static void update_symbol_list(deck_t *deck, errors_list_t *errors) {
       key_value_t *kv = card->formulas;
       while (kv) {
         // Check if this symbol name conflicts with any existing symbol (case-insensitive)
-        for (int j = 0; j < deck->num_symbols; j++) {
+        for (int j = 0; j < num_defaults; j++) {
           if (deck->symbols[j] && strcasecmp(deck->symbols[j]->key, kv->key) == 0) {
             if (errors) {
               char msg[256];
@@ -1014,10 +1014,9 @@ static char *preprocess_awg(const char *formula) {
 /******************************************************************************
  * preprocess_feet_inches
  *
- * Preprocesses feet/inches syntax in formulas, converting "N ft / M in" to "N*ft + M*in"
- * This handles the common notation for feet and inches measurements.
- * Examples: "10 ft / 2 in" -> "10*ft + 2*in"
- *           "5ft/6in" -> "5*ft+6*in"
+ * Preprocesses feet/inches syntax in formulas:
+ * - "N ft / M in" -> "N*ft + M*in" (feet and inches combined)
+ * - "Nft/in" -> "N*ft/in" (feet divided by inches for unit conversion)
  */
 static char *preprocess_feet_inches(const char *formula) {
   char *result = strdup(formula);
@@ -1033,8 +1032,46 @@ static char *preprocess_feet_inches(const char *formula) {
       // Skip whitespace after /
       while (*after_slash == ' ' || *after_slash == '\t') after_slash++;
       
-      // Check if there's a number followed by "in"
-      if ((isdigit(*after_slash) || (*after_slash == '-' && isdigit(*(after_slash+1))))) {
+      // Check what comes after the slash
+      if (strncasecmp(after_slash, "in", 2) == 0) {
+        // Pattern: Nft/in (without a number after slash)
+        // Find the feet number before "ft"
+        char *before_ft = ft_pos - 1;
+        while (before_ft >= result && (*before_ft == ' ' || *before_ft == '\t')) before_ft--;
+        
+        // Find start of feet number
+        char *feet_start = before_ft;
+        while (feet_start > result && (isdigit(*(feet_start-1)) || *(feet_start-1) == '.' || *(feet_start-1) == '-')) feet_start--;
+        
+        if (feet_start <= before_ft && (isdigit(*feet_start) || *feet_start == '-')) {
+          // Found a number before ft
+          // Replace: Nft/in -> N*ft/in
+          char *endptr;
+          double feet_value = strtod(feet_start, &endptr);
+          if (endptr >= ft_pos - 1) { // number extends to ft
+            char replacement[128];
+            snprintf(replacement, sizeof(replacement), "%.10f*ft/in", feet_value);
+            
+            // Calculate lengths
+            size_t prefix_len = feet_start - result;
+            size_t replacement_len = strlen(replacement);
+            char *suffix_start = after_slash + 2; // skip "in"
+            size_t suffix_len = strlen(suffix_start);
+            
+            // Allocate new string
+            char *new_result = malloc(prefix_len + replacement_len + suffix_len + 1);
+            memcpy(new_result, result, prefix_len);
+            memcpy(new_result + prefix_len, replacement, replacement_len);
+            memcpy(new_result + prefix_len + replacement_len, suffix_start, suffix_len + 1);
+            
+            free(result);
+            result = new_result;
+            p = result + prefix_len + replacement_len;
+            continue;
+          }
+        }
+      } else if ((isdigit(*after_slash) || (*after_slash == '-' && isdigit(*(after_slash+1))))) {
+        // Original pattern: N ft / M in
         char *inches_start = after_slash;
         char *endptr;
         
@@ -1094,49 +1131,64 @@ static char *preprocess_feet_inches(const char *formula) {
 /******************************************************************************
  * preprocess_implicit_multiplication
  *
- * Inserts '*' between digits and letters to handle implicit multiplication
- * like "7.5cm" -> "7.5*cm", but avoids function calls like "sin(30)"
+ * Inserts '*' between numbers and unit identifiers to handle implicit multiplication
+ * like "135 ft" -> "135*ft", but avoids function calls like "sin(30)".
+ * Only processes known unit names to avoid false matches.
  */
 static char *preprocess_implicit_multiplication(const char *formula) {
+  // Known unit suffixes
+  static const char *units[] = {
+    "m", "cm", "mm", "ft", "in",
+    "pF", "nF", "uF", "mF",
+    "pH", "nH", "uH", "mH",
+    NULL
+  };
+  
   char *result = strdup(formula);
   char *p = result;
   
   while (*p) {
-    // Look for digit followed by optional spaces, then letter (but not '(' after letter)
-    if (isdigit(*p) || (*p == '.' && p > result && isdigit(*(p-1))) || (*p == '-' && isdigit(*(p+1)))) {
+    // Look for digit (or end of number) followed by optional spaces, then a unit
+    if (isdigit(*p) || (*p == '.' && p > result && isdigit(*(p-1)))) {
       // Find the end of the number
       char *num_end = p;
-      while (*num_end && (isdigit(*num_end) || *num_end == '.' || *num_end == '-')) num_end++;
+      while (*num_end && (isdigit(*num_end) || *num_end == '.' || (*num_end == '-' && num_end == p))) num_end++;
       
       // Skip whitespace
       char *after_num = num_end;
       while (*after_num == ' ' || *after_num == '\t') after_num++;
       
-      // If next char is a letter, and not followed by '(', insert '*'
+      // Check if next chars match a known unit
       if (isalpha(*after_num)) {
-        char *after_letter = after_num + 1;
-        while (*after_letter && isalpha(*after_letter)) after_letter++;
-        
-        if (*after_letter != '(') {
-          // Insert '*' between number and unit
-          size_t prefix_len = p - result;
-          size_t num_len = num_end - p;
-          size_t unit_len = after_letter - after_num;
-          size_t suffix_len = strlen(after_letter);
-          
-          char *new_result = malloc(prefix_len + num_len + 1 + unit_len + suffix_len + 1); // +1 for '*'
-          memcpy(new_result, result, prefix_len + num_len);
-          new_result[prefix_len + num_len] = '*';
-          memcpy(new_result + prefix_len + num_len + 1, after_num, unit_len + suffix_len + 1);
-          
-          free(result);
-          result = new_result;
-          p = result + prefix_len + num_len + 1 + unit_len;
-          continue;
+        for (int i = 0; units[i] != NULL; i++) {
+          size_t unit_len = strlen(units[i]);
+          if (strncasecmp(after_num, units[i], unit_len) == 0) {
+            // Make sure unit is followed by non-alphanumeric (or end of string)
+            char after_unit = after_num[unit_len];
+            if (!isalnum(after_unit) && after_unit != '_') {
+              // Insert '*' between number and unit
+              size_t prefix_len = num_end - result;
+              size_t spaces_len = after_num - num_end;
+              size_t suffix_len = strlen(after_num);
+              
+              char *new_result = malloc(prefix_len + 1 + suffix_len + 1); // +1 for '*'
+              memcpy(new_result, result, prefix_len);
+              new_result[prefix_len] = '*';
+              memcpy(new_result + prefix_len + 1, after_num, suffix_len + 1);
+              
+              free(result);
+              result = new_result;
+              p = result + prefix_len + 1 + unit_len;
+              goto next_iteration;
+            }
+          }
         }
       }
+      p = num_end;
+      continue;
     }
-    p++;
+    next_iteration:
+    if (*p) p++;
   }
   
   return result;
@@ -1193,7 +1245,7 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
       char *temp_formula2 = preprocess_feet_inches(temp_formula);
       free(temp_formula);
       
-      // Preprocess implicit multiplication (7.5cm -> 7.5*cm)
+      // Preprocess implicit multiplication (135 ft -> 135*ft)
       char *processed_formula = preprocess_implicit_multiplication(temp_formula2);
       free(temp_formula2);
       
@@ -1386,7 +1438,7 @@ void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors)
   char *temp_formula2 = preprocess_feet_inches(temp_formula);
   free(temp_formula);
   
-  // Preprocess implicit multiplication (7.5cm -> 7.5*cm)
+  // Preprocess implicit multiplication (135 ft -> 135*ft)
   char *processed_formula = preprocess_implicit_multiplication(temp_formula2);
   free(temp_formula2);
   

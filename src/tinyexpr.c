@@ -166,6 +166,7 @@ static const te_variable functions[] = {
   {"exp", exp,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"fac", fac,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"floor", floor,  TE_FUNCTION1 | TE_FLAG_PURE, 0},
+  {"int", floor,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"ln", log,       TE_FUNCTION1 | TE_FLAG_PURE, 0},
 #ifdef TE_NAT_LOG
   {"log", log,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
