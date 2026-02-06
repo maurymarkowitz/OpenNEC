@@ -150,6 +150,7 @@ static double ncr(double n, double r) {
   return result;
 }
 static double npr(double n, double r) {return ncr(n, r) * fac(r);}
+static double sqr(double x) {return x * x;}
 
 static const te_variable functions[] = {
   /* must be in alphabetical order */
@@ -178,6 +179,7 @@ static const te_variable functions[] = {
   {"pow", pow,      TE_FUNCTION2 | TE_FLAG_PURE, 0},
   {"sin", sin,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"sinh", sinh,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
+  {"sqr", sqr,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"sqrt", sqrt,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"tan", tan,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"tanh", tanh,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
@@ -191,7 +193,7 @@ static const te_variable *find_builtin(const char *name, int len) {
   /*Binary search.*/
   while (imax >= imin) {
     const int i = (imin + ((imax-imin)/2));
-    int c = strncmp(name, functions[i].name, len);
+    int c = strncasecmp(name, functions[i].name, len);
     if (!c) c = '\0' - functions[i].name[len];
     if (c == 0) {
       return functions + i;
@@ -211,7 +213,7 @@ static const te_variable *find_lookup(const state *s, const char *name, int len)
   if (!s->lookup) return 0;
   
   for (var = s->lookup, iters = s->lookup_len; iters; ++var, --iters) {
-    if (strncmp(name, var->name, len) == 0 && var->name[len] == '\0') {
+    if (strncasecmp(name, var->name, len) == 0 && var->name[len] == '\0') {
       return var;
     }
   }
@@ -241,10 +243,10 @@ void next_token(state *s) {
       s->type = TOK_NUMBER;
     } else {
       /* Look for a variable or builtin function call. */
-      if (s->next[0] >= 'a' && s->next[0] <= 'z') {
+      if ((s->next[0] >= 'a' && s->next[0] <= 'z') || (s->next[0] >= 'A' && s->next[0] <= 'Z')) {
         const char *start;
         start = s->next;
-        while ((s->next[0] >= 'a' && s->next[0] <= 'z') || (s->next[0] >= '0' && s->next[0] <= '9') || (s->next[0] == '_')) s->next++;
+        while (((s->next[0] >= 'a' && s->next[0] <= 'z') || (s->next[0] >= 'A' && s->next[0] <= 'Z')) || (s->next[0] >= '0' && s->next[0] <= '9') || (s->next[0] == '_')) s->next++;
         
         const te_variable *var = find_lookup(s, start, (int)(s->next - start));
         if (!var) var = find_builtin(start, (int)(s->next - start));

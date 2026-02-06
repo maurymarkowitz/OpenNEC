@@ -11,8 +11,10 @@
  *
  *****************************************************************************/
 
-#ifndef types_h
-#define types_h
+#pragma once
+
+#ifndef TYPES_H
+#define TYPES_H
 
 #include <complex.h>
 #include <stdio.h>
@@ -39,8 +41,7 @@
 
 // these are the markers for *inline* comments
 // does not include #, which is used by nec2c, but that can only
-// appear at the start of the line and we do not allow it in OpenNEC
-// because we use that for AWG measurements
+// appear at the start of the line, not inline, because of AWG measurements
 #ifndef ONEC_COMMENTS_DEF
 #define ONEC_COMMENTS_DEF
 #define ONEC_COMMENTS "!'"
@@ -89,7 +90,6 @@ extern char *geometry_codes[NUM_GEOMETRY_CODES];
 #define ONEC_CODES_DEF
 #define NUM_ONEC_CODES 4
 extern char *onec_codes[NUM_ONEC_CODES];
-#endif
 #endif
 
 /* tinyexpr variable names for field bindings */
@@ -742,4 +742,4 @@ void nec_context_cleanup(nec_context_t *ctx);
 typedef card_t Card;
 typedef deck_t Deck;
 
-#endif /* end of types_h */
+#endif /* TYPES_H */

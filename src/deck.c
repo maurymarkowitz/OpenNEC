@@ -29,7 +29,8 @@ static void update_symbol_list(deck_t *deck, errors_list_t *errors);
 
 static bool references(const char *expr, const char *symname);
 static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, nec_context_t *ctx, errors_list_t *errors);
-static char *preprocess_awg(const char *formula);
+static char *preprocess_feet_inches(const char *formula);
+static char *preprocess_implicit_multiplication(const char *formula);
 
 /******************************************************************************
  * new_card
@@ -712,12 +713,12 @@ static void update_symbol_list(deck_t *deck, errors_list_t *errors) {
     if (strcmp(card->card_code, "SY") == 0 && card->formulas) {
       key_value_t *kv = card->formulas;
       while (kv) {
-        // Check if this symbol name conflicts with a default symbol
-        for (int j = 0; j < num_defaults; j++) {
+        // Check if this symbol name conflicts with any existing symbol (case-insensitive)
+        for (int j = 0; j < deck->num_symbols; j++) {
           if (deck->symbols[j] && strcasecmp(deck->symbols[j]->key, kv->key) == 0) {
             if (errors) {
               char msg[256];
-              snprintf(msg, sizeof(msg), "The symbol '%s' overrides a default symbol (pi, c, or unit constant). This may cause unexpected results.", kv->key);
+              snprintf(msg, sizeof(msg), "The symbol '%s' conflicts with existing symbol '%s'. The user symbol will take precedence.", kv->key, deck->symbols[j]->key);
               add_error(NULL, errors, msg, WARNING);
             }
             break;
@@ -891,93 +892,7 @@ static bool references(const char *expr, const char *symname) {
 }
 
 // Recursive evaluation for symbol dependencies
-static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, nec_context_t *ctx, errors_list_t *errors) {
-    // Check if already evaluated to prevent infinite recursion
-    if (evaluated[i]) {
-      return 0;
-    }
-    
-    // Mark as evaluated immediately to prevent infinite recursion on circular dependencies
-    evaluated[i] = true;
-    
-    key_value_t *sym = syms[i];
-    
-    // Recursively evaluate all referenced symbols first
-    for (int j = 0; j < sym_count; j++) {
-      if (i == j) continue;
-      if (references(sym->value, syms[j]->key)) {
-        if (eval_symbol(j, sym_count, syms, evaluated, deck, ctx, errors) != 0)
-          return -1;
-      }
-    }
-    
-    // Now evaluate this symbol's formula
-    if (sym->value && sym->value[0] != '\0') {
-      // Convert to lowercase for tinyexpr (tinyexpr only accepts lowercase variable names)
-      te_variable *vars = calloc(sym_count, sizeof(te_variable));
-      char **lowercase_names = calloc(sym_count, sizeof(char*));
-      for (int k = 0; k < sym_count; k++) {
-        lowercase_names[k] = strdup(syms[k]->key);
-        for (char *p = lowercase_names[k]; *p; p++) *p = tolower((unsigned char)*p);
-        vars[k].name = lowercase_names[k];
-        vars[k].address = &syms[k]->fv;
-        vars[k].type = TE_VARIABLE;
-        vars[k].context = NULL;
-      }
-      // Convert formula to lowercase for tinyexpr
-      char *lowercase_formula = strdup(sym->value);
-      for (char *p = lowercase_formula; *p; p++) *p = tolower((unsigned char)*p);
-      
-      // Preprocess AWG syntax (#14 -> awg value)
-      char *processed_formula = preprocess_awg(lowercase_formula);
-      free(lowercase_formula);
-      
-      int err = 0;
-      te_expr *expr = te_compile(processed_formula, vars, sym_count, &err);
-      if (expr) {
-        sym->fv = te_eval(expr);
-        te_free(expr);
-      } else {
-        // Find which card this symbol belongs to
-        int card_num = -1;
-        for (int c = 0; c < deck->num_cards; c++) {
-          card_t *card = &deck->cards[c];
-          if (strcmp(card->card_code, "SY") == 0 && card->formulas) {
-            key_value_t *kv = card->formulas;
-            while (kv) {
-              if (kv == sym) {
-                card_num = c + 1;
-                break;
-              }
-              kv = kv->next;
-            }
-            if (card_num > 0) break;
-          }
-        }
-        char err_msg[256];
-        if (card_num > 0) {
-          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d on card %d", processed_formula, err, card_num);
-        } else {
-          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d", processed_formula, err);
-        }
-        add_error(ctx, errors, err_msg, FATAL);
-        free(processed_formula);
-        for (int k = 0; k < sym_count; k++) {
-          free(lowercase_names[k]);
-        }
-        free(lowercase_names);
-        free(vars);
-        return -1;
-      }
-      free(processed_formula);
-      for (int k = 0; k < sym_count; k++) {
-        free(lowercase_names[k]);
-      }
-      free(lowercase_names);
-      free(vars);
-    }
-    return 0;
-}
+static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, nec_context_t *ctx, errors_list_t *errors);
 
 /******************************************************************************
  * preprocess_awg
@@ -1097,6 +1012,232 @@ static char *preprocess_awg(const char *formula) {
 }
 
 /******************************************************************************
+ * preprocess_feet_inches
+ *
+ * Preprocesses feet/inches syntax in formulas, converting "N ft / M in" to "N*ft + M*in"
+ * This handles the common notation for feet and inches measurements.
+ * Examples: "10 ft / 2 in" -> "10*ft + 2*in"
+ *           "5ft/6in" -> "5*ft+6*in"
+ */
+static char *preprocess_feet_inches(const char *formula) {
+  char *result = strdup(formula);
+  char *p = result;
+  
+  while (*p) {
+    // Look for "ft/" pattern
+    if (strncasecmp(p, "ft/", 3) == 0) {
+      char *ft_pos = p;
+      char *slash_pos = p + 2; // position of '/'
+      char *after_slash = slash_pos + 1;
+      
+      // Skip whitespace after /
+      while (*after_slash == ' ' || *after_slash == '\t') after_slash++;
+      
+      // Check if there's a number followed by "in"
+      if ((isdigit(*after_slash) || (*after_slash == '-' && isdigit(*(after_slash+1))))) {
+        char *inches_start = after_slash;
+        char *endptr;
+        
+        // Parse inches number
+        double inches_value = strtod(inches_start, &endptr);
+        if (endptr > inches_start) {
+          // Skip whitespace
+          char *after_inches_num = endptr;
+          while (*after_inches_num == ' ' || *after_inches_num == '\t') after_inches_num++;
+          
+          // Check for "in"
+          if (strncasecmp(after_inches_num, "in", 2) == 0) {
+            // Found "ft/ number in" pattern
+            // Now find the feet number before "ft"
+            char *before_ft = ft_pos - 1;
+            while (before_ft >= result && (*before_ft == ' ' || *before_ft == '\t')) before_ft--;
+            
+            // Find start of feet number
+            char *feet_start = before_ft;
+            while (feet_start >= result && (isdigit(*feet_start) || *feet_start == '.' || *feet_start == '-')) feet_start--;
+            feet_start++; // move past the non-digit
+            
+            // Parse feet number
+            double feet_value = strtod(feet_start, &endptr);
+            if (endptr == before_ft + 1) { // should end at the space before ft
+              // Replace the entire pattern: feet_number ft / inches_number in -> feet_value*ft + inches_value*in
+              char replacement[128];
+              snprintf(replacement, sizeof(replacement), "%.10f*ft+%.10f*in", feet_value, inches_value);
+              
+              // Calculate lengths
+              size_t prefix_len = feet_start - result;
+              size_t replacement_len = strlen(replacement);
+              char *suffix_start = after_inches_num + 2; // skip "in"
+              size_t suffix_len = strlen(suffix_start);
+              
+              // Allocate new string
+              char *new_result = malloc(prefix_len + replacement_len + suffix_len + 1);
+              memcpy(new_result, result, prefix_len);
+              memcpy(new_result + prefix_len, replacement, replacement_len);
+              memcpy(new_result + prefix_len + replacement_len, suffix_start, suffix_len + 1);
+              
+              free(result);
+              result = new_result;
+              p = result + prefix_len + replacement_len;
+              continue;
+            }
+          }
+        }
+      }
+    }
+    p++;
+  }
+  
+  return result;
+}
+
+/******************************************************************************
+ * preprocess_implicit_multiplication
+ *
+ * Inserts '*' between digits and letters to handle implicit multiplication
+ * like "7.5cm" -> "7.5*cm", but avoids function calls like "sin(30)"
+ */
+static char *preprocess_implicit_multiplication(const char *formula) {
+  char *result = strdup(formula);
+  char *p = result;
+  
+  while (*p) {
+    // Look for digit followed by optional spaces, then letter (but not '(' after letter)
+    if (isdigit(*p) || (*p == '.' && p > result && isdigit(*(p-1))) || (*p == '-' && isdigit(*(p+1)))) {
+      // Find the end of the number
+      char *num_end = p;
+      while (*num_end && (isdigit(*num_end) || *num_end == '.' || *num_end == '-')) num_end++;
+      
+      // Skip whitespace
+      char *after_num = num_end;
+      while (*after_num == ' ' || *after_num == '\t') after_num++;
+      
+      // If next char is a letter, and not followed by '(', insert '*'
+      if (isalpha(*after_num)) {
+        char *after_letter = after_num + 1;
+        while (*after_letter && isalpha(*after_letter)) after_letter++;
+        
+        if (*after_letter != '(') {
+          // Insert '*' between number and unit
+          size_t prefix_len = p - result;
+          size_t num_len = num_end - p;
+          size_t unit_len = after_letter - after_num;
+          size_t suffix_len = strlen(after_letter);
+          
+          char *new_result = malloc(prefix_len + num_len + 1 + unit_len + suffix_len + 1); // +1 for '*'
+          memcpy(new_result, result, prefix_len + num_len);
+          new_result[prefix_len + num_len] = '*';
+          memcpy(new_result + prefix_len + num_len + 1, after_num, unit_len + suffix_len + 1);
+          
+          free(result);
+          result = new_result;
+          p = result + prefix_len + num_len + 1 + unit_len;
+          continue;
+        }
+      }
+    }
+    p++;
+  }
+  
+  return result;
+}
+
+// Recursive evaluation for symbol dependencies
+static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, nec_context_t *ctx, errors_list_t *errors) {
+    // Check recursion depth to prevent infinite loops
+    static int depth = 0;
+    depth++;
+    if (depth > 100) {
+        char err_msg[256];
+        snprintf(err_msg, sizeof(err_msg), "Maximum recursion depth exceeded evaluating symbol '%s'", syms[i]->key);
+        add_error(ctx, errors, err_msg, FATAL);
+        depth--;
+        return -1;
+    }
+    
+    // Check if already evaluated to prevent infinite recursion
+    if (evaluated[i]) {
+      depth--;
+      return 0;
+    }
+    
+    // Mark as evaluated immediately to prevent infinite recursion on circular dependencies
+    evaluated[i] = true;
+    
+    key_value_t *sym = syms[i];
+    
+    // Recursively evaluate all referenced symbols first
+    for (int j = 0; j < sym_count; j++) {
+      if (i == j) continue;
+      if (references(sym->value, syms[j]->key)) {
+        if (eval_symbol(j, sym_count, syms, evaluated, deck, ctx, errors) != 0)
+          return -1;
+      }
+    }
+    
+    // Now evaluate this symbol's formula
+    if (sym->value && sym->value[0] != '\0') {
+      // Use original case for tinyexpr variables to avoid conflicts
+      te_variable *vars = calloc(sym_count, sizeof(te_variable));
+      for (int k = 0; k < sym_count; k++) {
+        vars[k].name = syms[k]->key;
+        vars[k].address = &syms[k]->fv;
+        vars[k].type = TE_VARIABLE;
+        vars[k].context = NULL;
+      }
+      
+      // Preprocess AWG syntax (#14 -> awg value)
+      char *temp_formula = preprocess_awg(sym->value);
+      
+      // Preprocess feet/inches syntax (10 ft / 2 in -> 10*ft + 2*in)
+      char *temp_formula2 = preprocess_feet_inches(temp_formula);
+      free(temp_formula);
+      
+      // Preprocess implicit multiplication (7.5cm -> 7.5*cm)
+      char *processed_formula = preprocess_implicit_multiplication(temp_formula2);
+      free(temp_formula2);
+      
+      int err = 0;
+      te_expr *expr = te_compile(processed_formula, vars, sym_count, &err);
+      if (expr) {
+        sym->fv = te_eval(expr);
+        te_free(expr);
+      } else {
+        // Find which card this symbol belongs to
+        int card_num = -1;
+        for (int c = 0; c < deck->num_cards; c++) {
+          card_t *card = &deck->cards[c];
+          if (strcmp(card->card_code, "SY") == 0 && card->formulas) {
+            key_value_t *kv = card->formulas;
+            while (kv) {
+              if (kv == sym) {
+                card_num = c + 1;
+                break;
+              }
+              kv = kv->next;
+            }
+            if (card_num > 0) break;
+          }
+        }
+        char err_msg[256];
+        if (card_num > 0) {
+          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d on card %d", processed_formula, err, card_num);
+        } else {
+          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d", processed_formula, err);
+        }
+        add_error(ctx, errors, err_msg, FATAL);
+        free(processed_formula);
+        free(vars);
+        depth--;
+        return -1;
+      }
+      free(vars);
+    }
+    depth--;
+    return 0;
+}
+
+/******************************************************************************
  * update_card_values
  *
  * update_card_values looks for any formulas or units on the cards and updates
@@ -1151,14 +1292,11 @@ void update_card_values(deck_t *deck)
         vars[v].type = TE_VARIABLE;
         v++;
       }
-      // add all deck symbols as variables (lowercase names for tinyexpr)
-      char **lowercase_names = calloc(num_syms, sizeof(char*));
+      // add all deck symbols as variables (original case for tinyexpr)
       for(int s = 0; s < num_syms; s++) {
         key_value_t *sym = deck->symbols[s];
         if(sym && sym->key && sym->key[0] != '\0') {
-          lowercase_names[s] = strdup(sym->key);
-          for (char *p = lowercase_names[s]; *p; p++) *p = tolower((unsigned char)*p);
-          vars[v].name = lowercase_names[s];
+          vars[v].name = sym->key;
           vars[v].address = &sym->fv;
           vars[v].type = TE_VARIABLE;
           v++;
@@ -1176,7 +1314,15 @@ void update_card_values(deck_t *deck)
           int err = 0;
           
           // Preprocess AWG syntax in the expression
-          char *processed_expr = preprocess_awg(expr_str);
+          char *temp_expr = preprocess_awg(expr_str);
+          
+          // Preprocess feet/inches syntax
+          char *temp_expr2 = preprocess_feet_inches(temp_expr);
+          free(temp_expr);
+          
+          // Preprocess implicit multiplication
+          char *processed_expr = preprocess_implicit_multiplication(temp_expr2);
+          free(temp_expr2);
           
           te_expr *expr = te_compile(processed_expr, vars, v, &err);
           free(processed_expr);
@@ -1196,10 +1342,6 @@ void update_card_values(deck_t *deck)
         }
         kv = kv->next;
       }
-      for(int s = 0; s < num_syms; s++) {
-        free(lowercase_names[s]);
-      }
-      free(lowercase_names);
       free(vars);
     }
     
@@ -1226,27 +1368,27 @@ void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors)
     return;
   }
   
-  // Prepare variables for tinyexpr - bind all current symbols
+  // Prepare variables for tinyexpr - bind all current symbols (original case)
   int num_syms = deck ? deck->num_symbols : 0;
   te_variable *vars = calloc(num_syms, sizeof(te_variable));
-  char **lowercase_names = calloc(num_syms, sizeof(char*));
   
   for (int k = 0; k < num_syms; k++) {
-    lowercase_names[k] = strdup(deck->symbols[k]->key);
-    for (char *p = lowercase_names[k]; *p; p++) *p = tolower((unsigned char)*p);
-    vars[k].name = lowercase_names[k];
+    vars[k].name = deck->symbols[k]->key;
     vars[k].address = &deck->symbols[k]->fv;
     vars[k].type = TE_VARIABLE;
     vars[k].context = NULL;
   }
   
-  // Convert formula to lowercase for tinyexpr
-  char *lowercase_formula = strdup(formula->value);
-  for (char *p = lowercase_formula; *p; p++) *p = tolower((unsigned char)*p);
-  
   // Preprocess AWG syntax (#14 -> awg value)
-  char *processed_formula = preprocess_awg(lowercase_formula);
-  free(lowercase_formula);
+  char *temp_formula = preprocess_awg(formula->value);
+  
+  // Preprocess feet/inches syntax (10 ft / 2 in -> 10*ft + 2*in)
+  char *temp_formula2 = preprocess_feet_inches(temp_formula);
+  free(temp_formula);
+  
+  // Preprocess implicit multiplication (7.5cm -> 7.5*cm)
+  char *processed_formula = preprocess_implicit_multiplication(temp_formula2);
+  free(temp_formula2);
   
   // Compile and evaluate
   int err = 0;
@@ -1266,10 +1408,6 @@ void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors)
     }
   }
   
-  for (int k = 0; k < num_syms; k++) {
-    free(lowercase_names[k]);
-  }
-  free(lowercase_names);
   free(vars);
 }
 

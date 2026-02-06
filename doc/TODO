@@ -21,7 +21,6 @@ Items still to be implemented:
 * add support for LD type 7 from 4nec2
 
 * files to examine:
-- Nec-Ex9.nec, - no geometry
 - coffee1.nec, - formula problems
 - 2EL160H.nec, - has pf units
 - Nec-Ex4.nec, Tank.nec, Horn.nec - no FR
