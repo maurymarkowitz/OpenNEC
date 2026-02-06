@@ -21,6 +21,7 @@ Items still to be implemented:
 * add support for LD type 7 from 4nec2 ()
 
 * files to examine:
+- moxon.nec has several issues, including re-defining C to be two very different things
 - n2pl_phased_dloop.nec - hangs? vehicle.nec too?
 - coffee1.nec, - formula problems
 - 2EL160H.nec, - has pf units

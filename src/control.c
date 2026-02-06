@@ -483,10 +483,10 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             ctx->fpat.ixtyp = i1;
             ctx->netcx.masym = i4 / 10;
             
-            // Warn about unsupported EX types
+            // warn about unsupported EX types
             if (i1 == 6 || i1 == 7) {
                 char msg[256];
-                snprintf(msg, sizeof(msg), "EX card with type %d is not supported by OpenNEC and will be treated as a receiving pattern.", i1);
+                snprintf(msg, sizeof(msg), "Card %d is an EX card with type %d, which is not supported by OpenNEC and will be treated as a receiving pattern.", card_idx + 1, i1);
                 add_error(ctx, &ctx->errors, msg, WARNING);
             }
             
@@ -509,7 +509,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     int seg_num = segment_number(ctx, i2, i3);
                     if (seg_num == 0) {
                         char msg[256];
-                        snprintf(msg, sizeof(msg), "EX card references invalid segment: tag %d, segment %d", i2, i3);
+                        snprintf(msg, sizeof(msg), "Card %d is an EX that references invalid tag %d, segment %d", card_idx + 1, i2, i3);
                         add_error(ctx, &ctx->errors, msg, FATAL);
                         return -1;
                     }
@@ -531,7 +531,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     int seg_num = segment_number(ctx, i2, i3);
                     if (seg_num == 0) {
                         char msg[256];
-                        snprintf(msg, sizeof(msg), "EX card references invalid segment: tag %d, segment %d", i2, i3);
+                        snprintf(msg, sizeof(msg), "Card %d is an EX that references invalid tag %d, segment %d", card_idx + 1, i2, i3);
                         add_error(ctx, &ctx->errors, msg, FATAL);
                         return -1;
                     }
@@ -689,7 +689,9 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             ctx->dataj.rkh = f1;
         }
         else if (strcmp(code, "WG") == 0) {
-            add_error(ctx, &ctx->errors, "WG CARD NOT SUPPORTED", FATAL);
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Card %d is a WG which is not supported.", card_idx + 1);
+            add_error(ctx, &ctx->errors, msg, FATAL);
             return -1;
         }
     }

@@ -150,7 +150,6 @@ static double ncr(double n, double r) {
   return result;
 }
 static double npr(double n, double r) {return ncr(n, r) * fac(r);}
-static double sqr(double x) {return x * x;}
 
 static const te_variable functions[] = {
   /* must be in alphabetical order */
@@ -180,7 +179,6 @@ static const te_variable functions[] = {
   {"pow", pow,      TE_FUNCTION2 | TE_FLAG_PURE, 0},
   {"sin", sin,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"sinh", sinh,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
-  {"sqr", sqr,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"sqrt", sqrt,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"tan", tan,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"tanh", tanh,    TE_FUNCTION1 | TE_FLAG_PURE, 0},

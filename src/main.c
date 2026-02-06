@@ -325,7 +325,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
     // Check for any errors that occurred during calculation (whether simulation failed or succeeded)
     if (ctx.errors.num_errors > 0 || sim_result != 0) {
       if (sim_result != 0) {
-        fprintf(ctx.error_fp, "Error: Failed to run simulation for %s.\n", 
+        fprintf(ctx.error_fp, "Failed to run simulation for %s.\n", 
                 strlen(input_filename) > 0 ? input_filename : "stdin");
       }
       
@@ -614,7 +614,6 @@ int main(int argc, char **argv)
           fflush(error_fp);
         }
         if (process_single_file(input, output, error_fp) != 0) {
-          fprintf(error_fp, "Error processing %s, continuing to next file...\n", input);
           failed_count++;
         }
         free(file_list[i]);
