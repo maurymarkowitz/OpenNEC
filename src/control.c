@@ -486,7 +486,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             // warn about unsupported EX types
             if (i1 == 6 || i1 == 7) {
                 char msg[256];
-                snprintf(msg, sizeof(msg), "Card %d is an EX card with type %d, which is not supported by OpenNEC and will be treated as a receiving pattern.", card_idx + 1, i1);
+                snprintf(msg, sizeof(msg), "Card %d is an EX card with type %d, which is not supported and will be treated as a receiving pattern.", card_idx + 1, i1);
                 add_error(ctx, &ctx->errors, msg, WARNING);
             }
             

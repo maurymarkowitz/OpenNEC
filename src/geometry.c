@@ -366,7 +366,8 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         
       case 11: // GF, not supported
         // TODO: support this!
-        add_error(ctx, errors, "GF card not supported", FATAL);
+            sprintf(msg, "The card on line %d is a GF card which is not supported.", i + 1);
+            add_error(ctx, errors, msg, FATAL);
         return;
         
       case 12: // GC, geometry continuation - should only appear after GW
