@@ -91,10 +91,28 @@ void write_deck_nec(nec_context_t *ctx, deck_t *deck, FILE *file, int remove_inl
     // int and float fields
     if(is_control(card) || is_geometry(card)) {
       for(int j = 0; j <= card->ints_used && j <= MAX_INTS; j++) {
-        fprintf(file, " %d", card->i[j]);
+        // Look up formula for this integer field
+        char key[8];
+        snprintf(key, sizeof(key), "I%d", j);
+        const char *formula = lookup_formula(card, key);
+        
+        if (formula != NULL) {
+          fprintf(file, " %s", formula);
+        } else {
+          fprintf(file, " %d", card->i[j]);
+        }
       }
       for(int j = 0; j <= card->flts_used && j <= MAX_FLTS; j++) {
-        fprintf(file, " %G", card->f[j]);
+        // Look up formula for this float field
+        char key[8];
+        snprintf(key, sizeof(key), "F%d", j);
+        const char *formula = lookup_formula(card, key);
+        
+        if (formula != NULL) {
+          fprintf(file, " %s", formula);
+        } else {
+          fprintf(file, " %G", card->f[j]);
+        }
       }
       // close the line
       fputc('\n', file);
@@ -191,13 +209,14 @@ void write_deck_onec(nec_context_t *ctx, deck_t *deck, FILE *file)
       // other cards might have a formula
       else {
         for(int j = 0; j <= card->ints_used && j <= MAX_INTS; j++) {
-          // if this field has an inline formula, write it
-          if(card->int_form_inline[j]) {
-            fputc(' ', file);
-            fputs(unit_codes[card->units[j]], file);
-          }
-          // otherwise write the number itself
-          else {
+          // Look up formula for this integer field
+          char key[8];
+          snprintf(key, sizeof(key), "I%d", j);
+          const char *formula = lookup_formula(card, key);
+          
+          if (formula != NULL) {
+            fprintf(file, " %s", formula);
+          } else {
             fprintf(file, " %d", card->i[j]);
           }
         }
@@ -205,24 +224,15 @@ void write_deck_onec(nec_context_t *ctx, deck_t *deck, FILE *file)
       
       // floats are a number or a formula
       for(int j = 0; j <= card->flts_used && j <= MAX_FLTS; j++) {
-        // if this field uses hash as the measurement type, write it first
-        if(card->units[j] == 8) {
-          fputc('#', file);
-        }
-
-        // if this field has an inline formula, write it
-        if(card->flt_form_inline[j]) {
-          fputc(' ', file);
-          fputs(unit_codes[card->units[j]], file);
-        }
-        // otherwise write the number itself
-        else {
-          fprintf(file, " %G", card->f[j]);
-        }
+        // Look up formula for this float field
+        char key[8];
+        snprintf(key, sizeof(key), "F%d", j);
+        const char *formula = lookup_formula(card, key);
         
-        // if there is any other measurment type, add it at the end
-        if(card->units[j] != 0 && card->units[j] != 8) {
-          fputs(unit_codes[card->units[j]], file);
+        if (formula != NULL) {
+          fprintf(file, " %s", formula);
+        } else {
+          fprintf(file, " %G", card->f[j]);
         }
       }
 

@@ -66,18 +66,6 @@ char *onec_codes[NUM_ONEC_CODES] = {
   "XT", "SY", "IT", "OP"
 };
 
-// the unit_codes and unit_mult are in the same order,
-// so if you change one, change the other!
-// type zero means "none", or default, instead of using
-// -1 or something so that it is set properly on calloc
-char *unit_codes[NUM_ONEC_UNIT_CODES] = {
-  "", "m", "cm", "mm", "ft", "in", "ftin", "awg", "#"
-};
-// the last three units, ftin and awg, require special conversions
-// and are indicated by the zeros
-double unit_mult[NUM_ONEC_UNIT_CODES] = {
-  0, 1.0, 0.01, 0.001, 0.30480, 0.0254, 0, 0, 0
-};
 
 /*
  * tinyexpr variable names for NEC field bindings.

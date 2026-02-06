@@ -321,6 +321,26 @@ void add_key_value(const card_t *card, key_value_t **list, char *key, char *valu
 }
 
 /******************************************************************************
+ * lookup_formula
+ *
+ * Look up a formula value in the card's formulas list by key (e.g., "F3")
+ * Returns the original formula string if found, NULL otherwise.
+ * 
+ */
+const char* lookup_formula(const card_t *card, const char *key) {
+  if (!card || !key) return NULL;
+  
+  key_value_t *formula = card->formulas;
+  while (formula != NULL) {
+    if (strcmp(formula->key, key) == 0) {
+      return formula->value;
+    }
+    formula = formula->next;
+  }
+  return NULL;
+}
+
+/******************************************************************************
  * add_symbol/remove_symbol
  *
  * Add or remove a symbol from the deck's symbol list and update num_symbols.
@@ -557,12 +577,12 @@ bool isGeometryEdited(deck_t *deck)
 /******************************************************************************
  * convert_awg_to_meters
  *
- * convert_awg_to_meters returns a value in meters for a given AWG value.
- *
+ * convert_awg_to_meters returns the radius in meters for a given AWG value.
+ * Supports standard gauges (0-40) and large wire gauges (4/0 through 1/0).
+ * Large wire gauges are represented as negative values: 4/0=-3, 3/0=-2, 2/0=-1, 1/0=0
  */
 double convert_awg_to_meters(double awg_value)
 {
-  // TODO: how are we going to handle "4/0" and/or "0000"?
   int awg_code = floor(awg_value);
 
   // any decimal part is bad!
@@ -571,10 +591,12 @@ double convert_awg_to_meters(double awg_value)
   }
 
   switch(awg_code) {
-//      0000 (4/0)  0.11684
- //     000 (3/0)  0.104049
-//      00 (2/0)  0.092658
-    case 0: return 0.082515;
+    // Large wire gauges (negative values represent N/0 format)
+    case -3: return 0.11684;   // 4/0 or 0000
+    case -2: return 0.104049;  // 3/0 or 000
+    case -1: return 0.092658;  // 2/0 or 00
+    case 0: return 0.082515;   // 1/0 or 0
+    // Standard AWG gauges
     case 1: return 0.073481;
     case 2: return 0.065437;
     case 3: return 0.058273;
@@ -632,11 +654,16 @@ double convert_awg_to_meters(double awg_value)
  */
 void initialize_symbol_table(deck_t *deck, errors_list_t *errors)
 {
-  // Step 1: Collect all SY symbols into deck->symbols[]
-  update_symbol_list(deck, errors);
-  
-  // Step 2: Add default symbols (pi, c)
+  // Step 1: Initialize symbols array and add default symbols (pi, c, units)
+  if (deck->symbols) { 
+    free(deck->symbols); 
+    deck->symbols = NULL; 
+  }
+  deck->num_symbols = 0;
   add_default_symbols(deck);
+  
+  // Step 2: Collect all SY symbols from deck (warns on override attempts)
+  update_symbol_list(deck, errors);
   
   // Step 3: Evaluate symbols in comment section sequentially
   evaluate_symbols_in_comments(deck, errors);
@@ -652,8 +679,18 @@ void initialize_symbol_table(deck_t *deck, errors_list_t *errors)
  */
 void update_deck_values(nec_context_t *ctx, deck_t *deck)
 {
-  update_symbol_list(deck, &ctx->errors);
+  // Reinitialize with defaults first
+  if (deck->symbols) { 
+    free(deck->symbols); 
+    deck->symbols = NULL; 
+  }
+  deck->num_symbols = 0;
   add_default_symbols(deck);
+  
+  // Then add user symbols
+  update_symbol_list(deck, &ctx->errors);
+  
+  // Evaluate and update
   update_symbol_values(ctx, deck, &ctx->errors);
   update_card_values(deck);
 }
@@ -662,26 +699,119 @@ void update_deck_values(nec_context_t *ctx, deck_t *deck)
  * update_symbol_list
  *
  * update_symbol_list looks for any SY cards in the deck and adds their
- * key/value pairs to the deck's symbol list. It also checks for redeclarations
- * of symbols and adds a warning to the errors list if found.
+ * key/value pairs to the deck's symbol list. Assumes default symbols have
+ * already been added, and warns if a deck symbol tries to override a default.
  */
 static void update_symbol_list(deck_t *deck, errors_list_t *errors) {
-  //re-initialize the symbols
-  if (deck->symbols) { 
-    free(deck->symbols); 
-    deck->symbols = NULL; 
-  }
-  deck->num_symbols = 0;
+  // Count how many default symbols exist before adding user symbols
+  int num_defaults = deck->num_symbols;
+  
   // INVARIANT: only add pointers to key_value_t nodes owned by cards (e.g., from card->formulas)
   for (int i = 0; i < deck->num_cards; i++) {
     card_t *card = &deck->cards[i];
     if (strcmp(card->card_code, "SY") == 0 && card->formulas) {
       key_value_t *kv = card->formulas;
       while (kv) {
-        // Add symbol without checking for redeclaration
-        // (redeclaration is now valid for sequential scope)
+        // Check if this symbol name conflicts with a default symbol
+        for (int j = 0; j < num_defaults; j++) {
+          if (deck->symbols[j] && strcasecmp(deck->symbols[j]->key, kv->key) == 0) {
+            if (errors) {
+              char msg[256];
+              snprintf(msg, sizeof(msg), "The symbol '%s' overrides a default symbol (pi, c, or unit constant). This may cause unexpected results.", kv->key);
+              add_error(NULL, errors, msg, WARNING);
+            }
+            break;
+          }
+        }
+        
         add_symbol(deck, kv);
         kv = kv->next;
+      }
+    }
+  }
+}
+
+/******************************************************************************
+ * add_unit_constants
+ *
+ * Helper function to add unit conversion constants to the symbol table.
+ * All unit constants use proper case (e.g., uF, nH) but are converted to
+ * lowercase when building tinyexpr variable arrays.
+ */
+static void add_unit_constants(deck_t *deck)
+{
+  const struct {
+    const char *name;
+    double value;
+  } units[] = {
+    // Length units (meters)
+    {"m", 1.0},
+    {"cm", 0.01},
+    {"mm", 0.001},
+    {"ft", 0.3048},
+    {"in", 0.0254},
+    {"mil", 0.0000254},  // 1 mil = 0.001 inch
+    
+    // Capacitance units (farads)
+    {"pF", 1e-12},
+    {"nF", 1e-9},
+    {"uF", 1e-6},
+    
+    // Inductance units (henries)
+    {"nH", 1e-9},
+    {"uH", 1e-6},
+    {"mH", 1e-3}
+  };
+  
+  const int num_units = sizeof(units) / sizeof(units[0]);
+  
+  for (int u = 0; u < num_units; ++u) {
+    bool found = false;
+    for (int s = 0; s < deck->num_symbols; ++s) {
+      key_value_t *sym = deck->symbols[s];
+      if (sym && sym->key && strcasecmp(sym->key, units[u].name) == 0) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      key_value_t *unit_sym = (key_value_t *)malloc(sizeof(key_value_t));
+      unit_sym->key = strdup(units[u].name);
+      char value_str[32];
+      snprintf(value_str, sizeof(value_str), "%.12g", units[u].value);
+      unit_sym->value = strdup(value_str);
+      unit_sym->fv = units[u].value;
+      unit_sym->separator = '=';
+      unit_sym->next = NULL;
+      add_symbol(deck, unit_sym);
+    }
+  }
+  
+  // Add AWG wire gauge constants (awg0 through awg40)
+  for (int awg = 0; awg <= 40; ++awg) {
+    char name[8];
+    snprintf(name, sizeof(name), "awg%d", awg);
+    
+    bool found = false;
+    for (int s = 0; s < deck->num_symbols; ++s) {
+      key_value_t *sym = deck->symbols[s];
+      if (sym && sym->key && strcasecmp(sym->key, name) == 0) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      double radius = convert_awg_to_meters((double)awg);
+      if (radius > 0) {
+        key_value_t *awg_sym = (key_value_t *)malloc(sizeof(key_value_t));
+        awg_sym->key = strdup(name);
+        char value_str[32];
+        snprintf(value_str, sizeof(value_str), "%.12g", radius);
+        awg_sym->value = strdup(value_str);
+        awg_sym->fv = radius;
+        awg_sym->separator = '=';
+        awg_sym->next = NULL;
+        add_symbol(deck, awg_sym);
       }
     }
   }
@@ -692,6 +822,7 @@ static void update_symbol_list(deck_t *deck, errors_list_t *errors) {
  *
  * After adding the user-defined symbols from SY cards, this looks to see if
  * pi and c are defined, and if not, adds them with default values.
+ * Also adds unit conversion constants (m, cm, mm, ft, in, pF, nF, uF, nH, uH, awg0-awg40).
  */
 void add_default_symbols(deck_t *deck)
 {
@@ -723,6 +854,9 @@ void add_default_symbols(deck_t *deck)
        add_symbol(deck, def_sym);
     }
   }
+  
+  /* Add unit conversion constants */
+  add_unit_constants(deck);
 } 
 
 /******************************************************************************
@@ -768,16 +902,6 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
     
     key_value_t *sym = syms[i];
     
-    // Early check: if the value is just a unit name, set it directly and return
-    if (sym->value && sym->value[0] != '\0') {
-      for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
-        if (strcmp(sym->value, unit_codes[u]) == 0) {
-          sym->fv = unit_mult[u];
-          return 0;
-        }
-      }
-    }
-    
     // Recursively evaluate all referenced symbols first
     for (int j = 0; j < sym_count; j++) {
       if (i == j) continue;
@@ -786,72 +910,9 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
           return -1;
       }
     }
-    // Now evaluate this symbol
+    
+    // Now evaluate this symbol's formula
     if (sym->value && sym->value[0] != '\0') {
-      // Early check: if the value exactly matches a unit name, set multiplier directly
-      for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
-        if (strcmp(sym->value, unit_codes[u]) == 0) {
-          sym->fv = unit_mult[u];
-          return 0;
-        }
-      }
-      
-      // Parse for trailing unit
-      int unit = 0;
-      bool has_unit = false;
-      char *formula_to_eval = NULL;
-      for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
-        const char *unit_str = unit_codes[u];
-        size_t len = strlen(sym->value);
-        size_t ulen = strlen(unit_str);
-        if(ulen > 0 && len >= ulen && strcmp(sym->value + len - ulen, unit_str) == 0) {
-          // Check if this is a complex formula containing operators/variables
-          // If so, don't treat the trailing unit string as an actual unit
-          // This handles rare cases in 4nec2 files where symbol names end with unit abbreviations
-          // like in TL_test.nec where they used "10*m" instead of "10m"
-          bool is_complex_formula = false;
-          for(size_t i = 0; i < len - ulen; i++) {
-            char c = sym->value[i];
-            if(!isdigit((unsigned char)c) && c != '.' && c != '+' && c != '-' && c != ' ') {
-              is_complex_formula = true;
-              break;
-            }
-          }
-          if(!is_complex_formula) {
-            unit = u;
-            has_unit = true;
-            formula_to_eval = strdup(sym->value);
-            formula_to_eval[len - ulen] = '\0';
-            // trim trailing space
-            while(strlen(formula_to_eval) > 0 && formula_to_eval[strlen(formula_to_eval)-1] == ' ') {
-              formula_to_eval[strlen(formula_to_eval)-1] = '\0';
-            }
-            // If formula is now empty, this was a pure unit value (e.g., "mm")
-            if (strlen(formula_to_eval) == 0) {
-              free(formula_to_eval);
-              formula_to_eval = strdup("1");
-            }
-            break;
-          }
-        }
-      }
-      if(!formula_to_eval) {
-        formula_to_eval = sym->value;
-      }
-      
-      // Check if the value is just a unit name
-      if (!has_unit) {
-        for(int u = 1; u < NUM_ONEC_UNIT_CODES; u++) {
-          const char *unit_str = unit_codes[u];
-          if (strcmp(sym->value, unit_str) == 0) {
-            unit = u;
-            has_unit = true;
-            // formula_to_eval remains sym->value, but we'll handle it specially
-            break;
-          }
-        }
-      }
-      
       // Convert to lowercase for tinyexpr (tinyexpr only accepts lowercase variable names)
       te_variable *vars = calloc(sym_count, sizeof(te_variable));
       char **lowercase_names = calloc(sym_count, sizeof(char*));
@@ -864,7 +925,7 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
         vars[k].context = NULL;
       }
       // Convert formula to lowercase for tinyexpr
-      char *lowercase_formula = strdup(formula_to_eval);
+      char *lowercase_formula = strdup(sym->value);
       for (char *p = lowercase_formula; *p; p++) *p = tolower((unsigned char)*p);
       
       // Preprocess AWG syntax (#14 -> awg value)
@@ -873,19 +934,9 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
       
       int err = 0;
       te_expr *expr = te_compile(processed_formula, vars, sym_count, &err);
-      if (has_unit && strcmp(formula_to_eval, unit_codes[unit]) == 0) {
-        // The formula is just the unit name, set to unit multiplier
-        sym->fv = unit_mult[unit];
-      } else if (expr) {
+      if (expr) {
         sym->fv = te_eval(expr);
         te_free(expr);
-        // Apply unit conversion if present
-        if(has_unit) {
-          if(unit_mult[unit] != 0) {
-            sym->fv *= unit_mult[unit];
-          }
-          // Special cases for ftin and awg are handled elsewhere or not needed for SY
-        }
       } else {
         // Find which card this symbol belongs to
         int card_num = -1;
@@ -916,7 +967,6 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
         }
         free(lowercase_names);
         free(vars);
-        if(formula_to_eval != sym->value) free(formula_to_eval);
         return -1;
       }
       free(processed_formula);
@@ -925,7 +975,6 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
       }
       free(lowercase_names);
       free(vars);
-      if(formula_to_eval != sym->value) free(formula_to_eval);
     }
     return 0;
 }
@@ -933,7 +982,8 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
 /******************************************************************************
  * preprocess_awg
  *
- * Preprocesses AWG syntax in formulas, converting #14 to the appropriate numerical value.
+ * Preprocesses AWG syntax in formulas, converting #14 or 14awg to radius in meters.
+ * Also handles special large wire gauges: 4/0, 3/0, 2/0, 1/0, 0, 00, 000, 0000
  */
 static char *preprocess_awg(const char *formula) {
   char *result = strdup(formula);
@@ -941,28 +991,96 @@ static char *preprocess_awg(const char *formula) {
   
   while (*p) {
     if (*p == '#') {
-      // Found #, check if followed by digits
-      char *endptr;
-      long gauge = strtol(p + 1, &endptr, 10);
-      if (endptr > p + 1 && gauge >= 0 && gauge <= 40) {
-        // Valid AWG gauge, convert to radius in meters
-        double diameter = convert_awg_to_meters(gauge);
-        double radius = diameter / 2.0;
+      // Found #, check if followed by digits or special gauge notation
+      char *start = p;
+      char *num_start = p + 1;
+      double gauge_value = 0;
+      bool valid_awg = false;
+      
+      // Check for special large wire gauges
+      if (strncasecmp(num_start, "4/0", 3) == 0 || strncasecmp(num_start, "0000", 4) == 0) {
+        gauge_value = -3;
+        valid_awg = true;
+        num_start += (strncasecmp(num_start, "4/0", 3) == 0) ? 3 : 4;
+      } else if (strncasecmp(num_start, "3/0", 3) == 0 || strncasecmp(num_start, "000", 3) == 0) {
+        gauge_value = -2;
+        valid_awg = true;
+        num_start += (strncasecmp(num_start, "3/0", 3) == 0) ? 3 : 3;
+      } else if (strncasecmp(num_start, "2/0", 3) == 0 || strncasecmp(num_start, "00", 2) == 0) {
+        gauge_value = -1;
+        valid_awg = true;
+        num_start += (strncasecmp(num_start, "2/0", 3) == 0) ? 3 : 2;
+      } else if (strncasecmp(num_start, "1/0", 3) == 0) {
+        gauge_value = 0;
+        valid_awg = true;
+        num_start += 3;
+      } else {
+        // Try to parse as regular number
+        char *endptr;
+        long gauge = strtol(num_start, &endptr, 10);
+        if (endptr > num_start && gauge >= 0 && gauge <= 40) {
+          gauge_value = (double)gauge;
+          valid_awg = true;
+          num_start = endptr;
+        }
+      }
+      
+      if (valid_awg) {
+        // Convert AWG gauge to radius in meters
+        double radius = convert_awg_to_meters(gauge_value);
         
         // Replace #NN with the numerical value
         char replacement[32];
         snprintf(replacement, sizeof(replacement), "%.10f", radius);
         
         // Calculate lengths
-        size_t prefix_len = p - result;
+        size_t prefix_len = start - result;
         size_t replacement_len = strlen(replacement);
-        size_t suffix_len = strlen(endptr);
+        size_t suffix_len = strlen(num_start);
         
         // Allocate new string
         char *new_result = malloc(prefix_len + replacement_len + suffix_len + 1);
         memcpy(new_result, result, prefix_len);
         memcpy(new_result + prefix_len, replacement, replacement_len);
-        memcpy(new_result + prefix_len + replacement_len, endptr, suffix_len + 1);
+        memcpy(new_result + prefix_len + replacement_len, num_start, suffix_len + 1);
+        
+        free(result);
+        result = new_result;
+        p = result + prefix_len + replacement_len;
+      } else {
+        p++;
+      }
+    } else if (isdigit(*p) || *p == '-') {
+      // Check for "NNawg" format
+      char *num_start = p;
+      char *endptr;
+      
+      // Try to parse the number
+      long gauge = strtol(num_start, &endptr, 10);
+      
+      // Check if followed by "awg" (case insensitive)
+      if (endptr > num_start && strncasecmp(endptr, "awg", 3) == 0) {
+        double gauge_value = (double)gauge;
+        
+        // Handle negative values for large wire gauges
+        // The parser may have already converted 4/0 to -3, etc.
+        double radius = convert_awg_to_meters(gauge_value);
+        
+        // Replace NNawg with the numerical value
+        char replacement[32];
+        snprintf(replacement, sizeof(replacement), "%.10f", radius);
+        
+        // Calculate lengths
+        size_t prefix_len = num_start - result;
+        size_t replacement_len = strlen(replacement);
+        char *suffix_start = endptr + 3; // skip "awg"
+        size_t suffix_len = strlen(suffix_start);
+        
+        // Allocate new string
+        char *new_result = malloc(prefix_len + replacement_len + suffix_len + 1);
+        memcpy(new_result, result, prefix_len);
+        memcpy(new_result + prefix_len, replacement, replacement_len);
+        memcpy(new_result + prefix_len + replacement_len, suffix_start, suffix_len + 1);
         
         free(result);
         result = new_result;
@@ -971,7 +1089,6 @@ static char *preprocess_awg(const char *formula) {
         p++;
       }
     } else {
-      // TODO: Handle % in formulas for percentages
       p++;
     }
   }
@@ -989,7 +1106,6 @@ static char *preprocess_awg(const char *formula) {
  */
 void update_card_values(deck_t *deck)
 {
-  double ft, det;
   for(int c = 0; c < deck->num_cards; c++) {
     card_t *card = &deck->cards[c];
     
@@ -1035,11 +1151,14 @@ void update_card_values(deck_t *deck)
         vars[v].type = TE_VARIABLE;
         v++;
       }
-      // add all deck symbols as variables
+      // add all deck symbols as variables (lowercase names for tinyexpr)
+      char **lowercase_names = calloc(num_syms, sizeof(char*));
       for(int s = 0; s < num_syms; s++) {
         key_value_t *sym = deck->symbols[s];
         if(sym && sym->key && sym->key[0] != '\0') {
-          vars[v].name = sym->key;
+          lowercase_names[s] = strdup(sym->key);
+          for (char *p = lowercase_names[s]; *p; p++) *p = tolower((unsigned char)*p);
+          vars[v].name = lowercase_names[s];
           vars[v].address = &sym->fv;
           vars[v].type = TE_VARIABLE;
           v++;
@@ -1077,49 +1196,16 @@ void update_card_values(deck_t *deck)
         }
         kv = kv->next;
       }
+      for(int s = 0; s < num_syms; s++) {
+        free(lowercase_names[s]);
+      }
+      free(lowercase_names);
       free(vars);
     }
     
-    // and finally, apply any unit conversions - which are only on the flts
-    for(int i = 1; i <= MAX_FLT_FIELDS; i++) {
-      if(card->units[i] == 0) continue;  // 0 means "no units", so skip it
-        if(unit_mult[card->units[i]] != 0) {
-          card->fv[i] = card->fv[i] * unit_mult[card->units[i]];
-        } else {
-          // units 6 through 8 are zeros and have to be converted case-by-case
-          switch(card->units[i]) {
-            case 6:  // ftin: feet + inches (two-digit inches)
-              ft = floor(card->fv[i]);
-              {
-                double frac = card->fv[i] - ft;
-                int inches_code = (int)lround(frac * 100.0);
-                if(inches_code >= 0 && inches_code <= 11) {
-                  // Interpret as inches digits (0..11)
-                  card->fv[i] = ft + (inches_code / 12.0);
-                } else {
-                  // Fallback: treat fractional part as decimal feet (legacy behavior)
-                  card->fv[i] = ft + frac;
-                }
-              }
-              // convert resulting feet to meters
-              card->fv[i] = card->fv[i] * unit_mult[4];
-              break;
-
-            case 7:
-            case 8: { // AWG
-              // Allow non-integer gauges via formulas; round and clamp to valid range
-              int gauge = (int)lround(card->fv[i]);
-              if(gauge < -3) gauge = -3; // 4/0 -> -3
-              if(gauge > 40) gauge = 40;
-              det = (36.0 - (double)gauge) / 39.0;
-              double mm_diam = 0.127 * pow(92.0, det); // diameter in mm
-              // Convert to meters radius: mm -> m (÷1000), then /2
-              card->fv[i] = (mm_diam * 0.001) * 0.5; // meters radius
-              break;
-            }
-          } // switch
-        } // if can be directly converted
-    } // for
+    // Unit conversions are now handled through formula evaluation
+    // with unit constants in the symbol table (mm=0.001, ft=0.3048, etc.)
+    // No post-processing needed here.
   }
 } /* update_card_values() */
 

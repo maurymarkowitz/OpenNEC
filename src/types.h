@@ -90,12 +90,6 @@ extern char *geometry_codes[NUM_GEOMETRY_CODES];
 #define NUM_ONEC_CODES 4
 extern char *onec_codes[NUM_ONEC_CODES];
 #endif
-
-#ifndef ONEC_UNITS_DEF
-#define ONEC_UNITS_DEF
-#define NUM_ONEC_UNIT_CODES 9
-extern char *unit_codes[NUM_ONEC_UNIT_CODES];
-extern double unit_mult[NUM_ONEC_UNIT_CODES];
 #endif
 
 /* tinyexpr variable names for field bindings */
@@ -191,9 +185,6 @@ typedef struct card_t
   int num_segments;
   int start_segment;
   int end_segment;
-
-  // onec measurements and formulas
-  int units[8];           // measurement units on the fields, or 0 for "default"
   bool int_form_inline[4];// was this formula found inline, or in a comment?
   bool flt_form_inline[8];
   

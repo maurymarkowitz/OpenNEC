@@ -377,24 +377,10 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                 }
                 kv = kv->next;
             }
-            
-            // Apply unit conversions to fv[] array
-            for (int j = 1; j <= MAX_FLT_FIELDS; j++) {
-                if (card->units[j] != 0 && unit_mult[card->units[j]] != 0) {
-                    card->fv[j] = card->fv[j] * unit_mult[card->units[j]];
-                }
-            }
         } else {
             // No formulas - just copy original values
             for (int j = 1; j <= MAX_INT_FIELDS; j++) card->iv[j] = card->i[j];
             for (int j = 1; j <= MAX_FLT_FIELDS; j++) card->fv[j] = card->f[j];
-            
-            // Still need to apply unit conversions
-            for (int j = 1; j <= MAX_FLT_FIELDS; j++) {
-                if (card->units[j] != 0 && unit_mult[card->units[j]] != 0) {
-                    card->fv[j] = card->fv[j] * unit_mult[card->units[j]];
-                }
-            }
         }
         
         // Skip XQ, EN, XT cards (they don't configure anything)

@@ -31,5 +31,6 @@ void evaluate_symbols_in_comments(deck_t *deck, errors_list_t *errors);
 
 /* Cross-module deck functions */
 void add_key_value(const card_t *card, key_value_t **list, char *key, char *value, char separator);
+const char* lookup_formula(const card_t *card, const char *key);
 
 #endif /* DECK_H */

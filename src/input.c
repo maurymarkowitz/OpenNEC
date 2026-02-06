@@ -628,8 +628,6 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
   char *end_ptr;      // end point of a a number as we parse them
   size_t int_value;   // used to parse ints...
   double dbl_value;   // ... and doubles
-  int unit;           // ...and our internal code for that unit if we found it, or 0 for default
-  bool isUnit;        // did the field have units?
   bool isFormula;     // was the double actually a formula?
   
   int MAX_INTS = max_int_fields(card);
@@ -652,8 +650,6 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
   token = strtok(str, ONEC_WHITESPACE);
   while(token != NULL) {
     isFormula = false;  // assume it's a number until proven otherwise
-    isUnit = false;     // assume no units
-    unit = 0;           // if we don't find a unit code, this will ensure it is set to "default"
 
     // we have a non-zero length token, which might be an int
     // or float depending on what we've seen before
@@ -701,45 +697,26 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
     else if(flts_processed < MAX_FLTS) {
       flts_processed++;
       
-      // AWG needs to be handled a little differently, because:
-      // 1. the unit code can be in the front or back
-      // 2. the value might look like a formula, eg. 2/0
-      
-      // look for a leading # indicating an awg measurement from 4nec2
+      // Check for AWG wire gauge notation (#14 or 14awg)
+      // These are now handled as formulas and processed by preprocess_awg()
+      bool is_awg = false;
       if(token[0] == '#') {
-        isUnit = true;
-        unit = 8;
-        token += 1; // move forward to skip the symbol
+        // 4nec2 format: #14
+        is_awg = true;
+      } else if(str_ends_with(ctx, token, "awg") == 0) {
+        // OpenNEC format: 14awg
+        is_awg = true;
       }
-      // or the onec indicator at the end
-      if(str_ends_with(ctx, token, "awg") == 0) {
-        isUnit = true;
-        unit = 7;
-        token[strlen(token) - 3] = '\0'; // cut the awg off the end
-      }
-      // here we test for the "large wire" case and convert it to a -ve value.
-      // 4/0 = -3 in the weird AWG system
-      if(unit == 7 || unit == 8) {
-        if(strcasecmp(token, "0000") == 0 || strcasecmp(token, "4/0") == 0) {
-          dbl_value = -2;
-        } else if(strcasecmp(token, "000") == 0 || strcasecmp(token, "3/0") == 0) {
-          dbl_value = -3;
-        } else if(strcasecmp(token, "00") == 0 || strcasecmp(token, "2/0") == 0) {
-          dbl_value = -1;
-        } else if(strcasecmp(token, "0") == 0 || strcasecmp(token, "1/0") == 0) {
-          dbl_value = 0;
-        }
-        // otherwise it should be just a value
-        else {
-          dbl_value = strtod(token, &end_ptr);
-        }
-        
-        // set the values
-        card->f[flts_processed] = dbl_value;
-        card->units[flts_processed] = unit;
-
-        // and them skip the rest
-        // FIXME: we are not handling the case where there is a formula in AWG
+      
+      if(is_awg) {
+        // Store AWG notation as a formula to be processed later
+        // This preserves the original notation and allows formulas like "#14*2"
+        card->flt_form_inline[flts_processed] = true;
+        char fld_name[3];
+        fld_name[0] = 'F';
+        fld_name[1] = flts_processed + '0';
+        fld_name[2] = '\0';
+        add_key_value(card, &card->formulas, fld_name, token, '=');
         goto NEXT_TOKEN;
       }
 
@@ -751,20 +728,10 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
         char *leftover = end_ptr;
         
         if(strlen(leftover) > 0) {
-          // check to see if the leftover is one of our known units (NOTE: case insensitive here!)
-          for(int i = 0; i < NUM_ONEC_UNIT_CODES; i++) {
-            if(strcasecmp(leftover, unit_codes[i]) == 0) {
-              unit = i;
-              isUnit = true;
-              break;
-            }
-          }
-          // TODO: Handle % for percentages in float fields
-          // if it was not a unit, and it wasn't zero length, we have to
-          // assume the entire thing was a formula with a leading number
-          if(!isUnit) {
-            isFormula = true;
-          }
+          // Any leftover text (like "mm", "ft", "uF") means this is a formula
+          // The parser treats tokens like "10mm" as formulas to be evaluated
+          // with unit constants from the symbol table (e.g., mm=0.001)
+          isFormula = true;
         }
       } else {
         // we did not get a number at the front, so it must be a formula one way or the other
@@ -773,11 +740,12 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
             
       // now we decide where to put it all...
       if(!isFormula) {
-        // if it's not a formula, set the values and any unit we found
+        // if it's not a formula, just store the numeric value
         card->f[flts_processed] = dbl_value;
-        card->units[flts_processed] = unit;
+        // Unit conversion now handled via formula constants
       } else {
         // it is a formula, copy the entire token into the right formula field
+        // This preserves the original capitalization (e.g., "10MM" stays "10MM")
         card->flt_form_inline[flts_processed] = true;  // indicate that we did have a formula inline
         char fld_name[3];
         fld_name[0] = 'F';

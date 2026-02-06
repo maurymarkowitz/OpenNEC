@@ -20,8 +20,6 @@ Items still to be implemented:
 
 * add support for LD type 7 from 4nec2
 
-* revisit % handling in formulas and parsing - some files use % for percentages, like example3.nec
-
 * files to examine:
 - Nec-Ex9.nec, - no geometry
 - coffee1.nec, - formula problems

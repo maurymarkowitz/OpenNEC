@@ -1272,17 +1272,50 @@ void test_bad_symbols(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   char *msg = calloc(1, MAX_ERROR_LEN);
   
-  // Check that symbols aren't overriding measurement units
+  // List of default symbol names (pi, c, and unit constants)
+  // Note: AWG symbols (awg0-awg40) are also defaults but checked separately below
+  const char *default_symbols[] = {
+    "pi", "c", "m", "cm", "mm", "ft", "in", "mil",
+    "pf", "nf", "uf", "nh", "uh", "mh"
+  };
+  int num_defaults = sizeof(default_symbols) / sizeof(default_symbols[0]);
+  
+  // Check if any user-defined symbols override defaults
+  for (int i = 0; i < deck->num_cards; i++) {
+    card_t *card = &deck->cards[i];
+    if (strcmp(card->card_code, "SY") == 0 && card->formulas) {
+      key_value_t *kv = card->formulas;
+      while (kv) {
+        // Check against standard defaults
+        for (int d = 0; d < num_defaults; d++) {
+          if (strcasecmp(kv->key, default_symbols[d]) == 0) {
+            sprintf(msg, "The symbol '%s' overrides a default symbol. This may cause unexpected results.", kv->key);
+            add_error(ctx, errors, msg, WARNING);
+          }
+        }
+        
+        // Check against AWG symbols (awg0-awg40)
+        if (strlen(kv->key) >= 4 && strlen(kv->key) <= 5) {
+          if ((kv->key[0] == 'a' || kv->key[0] == 'A') &&
+              (kv->key[1] == 'w' || kv->key[1] == 'W') &&
+              (kv->key[2] == 'g' || kv->key[2] == 'G')) {
+            int awg_num = atoi(&kv->key[3]);
+            if (awg_num >= 0 && awg_num <= 40) {
+              sprintf(msg, "The symbol '%s' overrides a default AWG constant. This may cause unexpected results.", kv->key);
+              add_error(ctx, errors, msg, WARNING);
+            }
+          }
+        }
+        
+        kv = kv->next;
+      }
+    }
+  }
+  
+  // Check for duplicate symbol names
   for (int i = 0; i < deck->num_symbols; i++) {
     key_value_t *outer = deck->symbols[i];
     if (outer == NULL) continue;
-    
-    for (int j = 0; j < NUM_ONEC_UNIT_CODES; j++) {
-      if (strcasecmp(outer->key, unit_codes[j]) == 0) {
-        sprintf(msg, "The symbol '%s' has been defined and overrides a system-wide symbol of the same name.", unit_codes[j]);
-        add_error(ctx, errors, msg, 0);
-      }
-    }
     
     // Check if any other symbol has the same name
     for (int k = i + 1; k < deck->num_symbols; k++) {

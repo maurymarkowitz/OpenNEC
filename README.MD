@@ -59,7 +59,6 @@ Known limitations
 -----------------
 
 * OpenNEC does not currently implement the IT and OP cards from 4nec2, although this is high on the list for implementation.
-* OpenNEC implements measurements differently than 4nec2, but this may be change to use their solution in the future.
 * NEC-4 cards like CW and IS are not currently supported.
 
 Acknowledgements

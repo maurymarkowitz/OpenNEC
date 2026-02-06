@@ -116,24 +116,10 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         }
         kv = kv->next;
       }
-      
-      // Apply unit conversions to fv[] array
-      for(int j = 1; j <= MAX_FLT_FIELDS; j++) {
-        if(card->units[j] != 0 && unit_mult[card->units[j]] != 0) {
-          card->fv[j] = card->fv[j] * unit_mult[card->units[j]];
-        }
-      }
     } else {
       // No formulas - just copy original values
       for(int j = 1; j <= MAX_INT_FIELDS; j++) card->iv[j] = card->i[j];
       for(int j = 1; j <= MAX_FLT_FIELDS; j++) card->fv[j] = card->f[j];
-      
-      // Still need to apply unit conversions
-      for(int j = 1; j <= MAX_FLT_FIELDS; j++) {
-        if(card->units[j] != 0 && unit_mult[card->units[j]] != 0) {
-          card->fv[j] = card->fv[j] * unit_mult[card->units[j]];
-        }
-      }
     }
     
     // one of the few ways that onec modifies the original NEC code is by adding
@@ -187,12 +173,6 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           card_t *gc_card = &deck->cards[i + 1];
           for(int j = 1; j <= MAX_FLT_FIELDS; j++) gc_card->fv[j] = gc_card->f[j];
           for(int j = 1; j <= MAX_INT_FIELDS; j++) gc_card->iv[j] = gc_card->i[j];
-          // Apply unit conversions if any
-          for(int j = 1; j <= MAX_FLT_FIELDS; j++) {
-            if(gc_card->units[j] != 0 && unit_mult[gc_card->units[j]] != 0) {
-              gc_card->fv[j] = gc_card->fv[j] * unit_mult[gc_card->units[j]];
-            }
-          }
           
           if((gc_card->fv[2] == 0.0) || (gc_card->fv[3] == 0.0)) {
             sprintf(msg, "The card on line %d is a GC with tapering info for GW in card %d, but there is a zero in Y1 or Z1.", i + 2, i + 1);
