@@ -1505,7 +1505,7 @@ void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors)
   } else {
     // Report error if compilation failed
     if (errors) {
-      char msg[256];
+      char msg[MAX_ERROR_LEN];
       // Try to provide a more descriptive error message
       const char *error_desc = get_formula_error_description(processed_formula, err);
       if (error_desc) {

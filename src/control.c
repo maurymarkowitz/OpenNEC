@@ -436,7 +436,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             ctx->zload.ldtagt[idx] = (i4 == 0) ? i3 : i4;
             
             if (ctx->zload.ldtagt[idx] < ctx->zload.ldtagf[idx]) {
-                char msg[256];
+                char msg[MAX_ERROR_LEN];
                 snprintf(msg, sizeof(msg),
                     "DATA FAULT ON LOADING CARD No: %d: ITAG "
                     "STEP1: %d IS GREATER THAN ITAG STEP2: %d",
@@ -485,7 +485,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             
             // warn about unsupported EX types
             if (i1 == 6 || i1 == 7) {
-                char msg[256];
+                char msg[MAX_ERROR_LEN];
                 snprintf(msg, sizeof(msg), "Card %d is an EX card with type %d, which is not supported and will be treated as a receiving pattern.", card_idx + 1, i1);
                 add_error(ctx, &ctx->errors, msg, WARNING);
             }
@@ -508,7 +508,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     int idx = ctx->vsorc.nvqd - 1;
                     int seg_num = segment_number(ctx, i2, i3);
                     if (seg_num == 0) {
-                        char msg[256];
+                        char msg[MAX_ERROR_LEN];
                         snprintf(msg, sizeof(msg), "Card %d is an EX that references invalid tag %d, segment %d", card_idx + 1, i2, i3);
                         add_error(ctx, &ctx->errors, msg, FATAL);
                         return -1;
@@ -530,7 +530,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     int idx = ctx->vsorc.nsant - 1;
                     int seg_num = segment_number(ctx, i2, i3);
                     if (seg_num == 0) {
-                        char msg[256];
+                        char msg[MAX_ERROR_LEN];
                         snprintf(msg, sizeof(msg), "Card %d is an EX that references invalid tag %d, segment %d", card_idx + 1, i2, i3);
                         add_error(ctx, &ctx->errors, msg, FATAL);
                         return -1;
@@ -689,7 +689,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             ctx->dataj.rkh = f1;
         }
         else if (strcmp(code, "WG") == 0) {
-            char msg[256];
+            char msg[MAX_ERROR_LEN];
             snprintf(msg, sizeof(msg), "Card %d is a WG which is not supported.", card_idx + 1);
             add_error(ctx, &ctx->errors, msg, FATAL);
             return -1;
