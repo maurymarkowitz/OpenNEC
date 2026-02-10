@@ -748,7 +748,7 @@ static void add_unit_constants(deck_t *deck)
     const char *name;
     double value;
   } units[] = {
-    // Length units (meters)
+    // length units (meters)
     {"m", 1.0},
     {"cm", 0.01},
     {"mm", 0.001},
@@ -756,12 +756,12 @@ static void add_unit_constants(deck_t *deck)
     {"in", 0.0254},
     {"mil", 0.0000254},  // 1 mil = 0.001 inch
     
-    // Capacitance units (farads)
+    // capacitance units (farads)
     {"pF", 1e-12},
     {"nF", 1e-9},
     {"uF", 1e-6},
     
-    // Inductance units (henries)
+    // inductance units (henries)
     {"nH", 1e-9},
     {"uH", 1e-6},
     {"mH", 1e-3}
@@ -791,7 +791,7 @@ static void add_unit_constants(deck_t *deck)
     }
   }
   
-  // Add AWG wire gauge constants (awg0 through awg40)
+  // add AWG wire gauge constants (awg0 through awg40)
   for (int awg = 0; awg <= 40; ++awg) {
     char name[8];
     snprintf(name, sizeof(name), "awg%d", awg);
@@ -859,7 +859,7 @@ void add_default_symbols(deck_t *deck)
     }
   }
   
-  /* Add unit conversion constants */
+  // add unit conversion constants
   add_unit_constants(deck);
 } 
 
@@ -900,26 +900,26 @@ static const char *get_formula_error_description(const char *formula, int error_
     return NULL;
   }
   
-  // Look for function-like patterns around the error position
+  // look for function-like patterns around the error position
   const char *pos = formula + error_pos;
   
-  // Look backwards from the error position to find the start of a potential function name
+  // look backwards from the error position to find the start of a potential function name
   const char *start = pos - 1;  // Start from the character before the error
   while (start >= formula && (isalnum((unsigned char)*start) || *start == '_')) {
     start--;
   }
   start++; // Move past the non-alphanumeric character we stopped at
   
-  // Check if this looks like a function call (we have a function name followed by '(')
+  // check if this looks like a function call (we have a function name followed by '(')
   if (pos > start && *pos == '(') {
-    // Extract the function name
+    // extract the function name
     size_t name_len = pos - start;
     if (name_len > 0 && name_len < 50) {
       static char func_name[64];
       strncpy(func_name, start, name_len);
       func_name[name_len] = '\0';
       
-      // Check if it looks like a valid identifier
+      // check if it looks like a valid identifier
       if (isalpha((unsigned char)func_name[0]) || func_name[0] == '_') {
         static char error_msg[128];
         snprintf(error_msg, sizeof(error_msg), "unknown function '%s'", func_name);
@@ -928,11 +928,8 @@ static const char *get_formula_error_description(const char *formula, int error_
     }
   }
   
-  return NULL; // No specific error description available
+  return NULL; // no specific error description available
 }
-
-// Recursive evaluation for symbol dependencies
-static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, nec_context_t *ctx, errors_list_t *errors);
 
 /******************************************************************************
  * preprocess_awg
