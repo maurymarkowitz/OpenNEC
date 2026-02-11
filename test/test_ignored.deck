@@ -1,0 +1,5 @@
+CM Test ignored tag reference
+GW 1 1 0 0 0 0 0 1 0.01 ! ignore=true
+GE
+EX 0 1 1 0 1
+EN

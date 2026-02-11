@@ -45,6 +45,28 @@ static void check_ge_low_height_hazard(nec_context_t *ctx, errors_list_t *errors
                                        int GEType);
 static void check_junction_segmentation_consistency(nec_context_t *ctx, errors_list_t *errors,
                                                     const wire_info_t *wires, int wire_count);
+static bool is_geometry_tag_ignored(deck_t *deck, int tag);
+
+/******************************************************************************
+ * is_geometry_tag_ignored
+ *
+ * Helper to check if a geometry tag is marked as ignored in the deck
+ *
+ * @param deck the deck to search
+ * @param tag the tag number to check
+ * @return true if the tag exists and is marked ignored, false otherwise
+ */
+static bool is_geometry_tag_ignored(deck_t *deck, int tag) {
+  if(tag <= 0 || deck->geometry_start < 0 || deck->geometry_end < 0) 
+    return false;
+  
+  for(int i = deck->geometry_start; i <= deck->geometry_end; i++) {
+    if(deck->cards[i].i[1] == tag) {
+      return deck->cards[i].ignore;
+    }
+  }
+  return false; // tag not found
+}
 
 /******************************************************************************
  * test_deck_structure
@@ -578,7 +600,10 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         int seen = 0;
         for(int t = 0; t < geom_tag_count; t++) { if(geom_tags[t] == tag) { seen = 1; break; } }
         if(!seen) {
-          sprintf(msg, "The card on line %d is an EX referencing tag %d, which was not found in prior geometry.", i + 1, tag);
+          sprintf(msg, "The card on line %d is an EX referencing tag %d, which was not found.", i + 1, tag);
+          add_error(ctx, errors, msg, 0);
+        } else if(is_geometry_tag_ignored(deck, tag)) {
+          sprintf(msg, "The card on line %d is an EX referencing tag %d, which is marked as ignored.", i + 1, tag);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -590,7 +615,10 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         int seen1 = 0;
         for(int t = 0; t < geom_tag_count; t++) { if(geom_tags[t] == tag1) { seen1 = 1; break; } }
         if(!seen1) {
-          sprintf(msg, "The TL on line %d references tag %d (first endpoint), which was not found in prior geometry.", i + 1, tag1);
+          sprintf(msg, "The TL on line %d references tag %d (first endpoint), which was not found.", i + 1, tag1);
+          add_error(ctx, errors, msg, 0);
+        } else if(is_geometry_tag_ignored(deck, tag1)) {
+          sprintf(msg, "The TL on line %d references tag %d (first endpoint), which is marked as ignored.", i + 1, tag1);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -598,7 +626,10 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         int seen2 = 0;
         for(int t = 0; t < geom_tag_count; t++) { if(geom_tags[t] == tag2) { seen2 = 1; break; } }
         if(!seen2) {
-          sprintf(msg, "The TL on line %d references tag %d (second endpoint), which was not found in prior geometry.", i + 1, tag2);
+          sprintf(msg, "The TL on line %d references tag %d (second endpoint), which was not found.", i + 1, tag2);
+          add_error(ctx, errors, msg, 0);
+        } else if(is_geometry_tag_ignored(deck, tag2)) {
+          sprintf(msg, "The TL on line %d references tag %d (second endpoint), which is marked as ignored.", i + 1, tag2);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -609,7 +640,10 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         int seen = 0;
         for(int t = 0; t < geom_tag_count; t++) { if(geom_tags[t] == tag) { seen = 1; break; } }
         if(!seen) {
-          sprintf(msg, "The card on line %d is an LD referencing tag %d, which was not found in prior geometry.", i + 1, tag);
+          sprintf(msg, "The card on line %d is an LD referencing tag %d, which was not found.", i + 1, tag);
+          add_error(ctx, errors, msg, 0);
+        } else if(is_geometry_tag_ignored(deck, tag)) {
+          sprintf(msg, "The card on line %d is an LD referencing tag %d, which is marked as ignored.", i + 1, tag);
           add_error(ctx, errors, msg, 0);
         }
       }

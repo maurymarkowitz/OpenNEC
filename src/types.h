@@ -692,6 +692,7 @@ typedef struct loading_outputs_t {
 typedef struct nec_context_t
 {
 	geometry_t geometry;
+	geometry_t ignored_geometry;
 	crnt_t crnt;
 	dataj_t dataj;
 	FILE *input_fp;

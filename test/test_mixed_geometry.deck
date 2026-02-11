@@ -1,0 +1,8 @@
+CM Test mixed geometry (both normal and ignored)
+GW 1 10 0 0 0 1 0 0 0.001
+GW 2 5 1 0 0 2 0 0 0.001 ! ignore=true
+GE
+GN -1
+FR 0 0 0 0 100 0
+EX 0 1 1 0 1
+EN
