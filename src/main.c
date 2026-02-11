@@ -281,7 +281,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
     }
     ctx->green_fp = fopen(path, "w");
     if (!ctx->green_fp) {
-      fprintf(ctx->error_fp, "Warning: could not open greens file '%s' for writing; skipping.\n", path);
+      nec_report(ctx, ONEC_SEV_WARNING, "Warning: could not open greens file '%s' for writing; skipping.", path);
     }
   }
 
@@ -301,10 +301,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
   // TESTING: print any file errors
   if (import_errors.num_errors > 0) {
     const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
-    fprintf(ctx->error_fp, "\n=== Import Errors for %s ===\n", display_name);
-    for(int i = 0; i < import_errors.num_errors; i++) {
-      fprintf(ctx->error_fp, "%s\n", import_errors.errors[i].message);
-    }
+    nec_report(ctx, ONEC_SEV_INFO, "=== Found %d Import Errors for %s ===", import_errors.num_errors, display_name);
   }
 
   // run basic sanity checks on the structure
@@ -316,10 +313,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
   // TESTING: print any structure errors
   if (test_errors.num_errors > 0) {
     const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
-    fprintf(ctx->error_fp, "\n=== Test Errors for %s ===\n", display_name);
-    for(int i = 0; i < test_errors.num_errors; i++) {
-      fprintf(ctx->error_fp, "%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
-    }
+    nec_report(ctx, ONEC_SEV_INFO, "=== Found %d Structural Errors for %s ===", test_errors.num_errors, display_name);
   }
 
   // run it if we've been asked to
@@ -335,9 +329,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
       }
       
       if (ctx->errors.num_errors > 0) {
-        for (int i = 0; i < ctx->errors.num_errors; i++) {
-          fprintf(ctx->error_fp, "%s\n", ctx->errors.errors[i].message);
-        }
+        nec_report(ctx, ONEC_SEV_INFO, "=== Found %d Simulation Errors ===", ctx->errors.num_errors);
       }
       
       if (input_fp != stdin) fclose(input_fp);
@@ -348,17 +340,14 @@ static int process_single_file(const char *input_filename, const char *output_fi
   }
   if (geometry_errors.num_errors > 0) {
     const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
-    fprintf(ctx->error_fp, "\n=== Geometry Errors for %s ===\n", display_name);
-    for(int i = 0; i < geometry_errors.num_errors; i++) {
-      fprintf(ctx->error_fp, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
-    }
+    nec_report(ctx, ONEC_SEV_INFO, "=== Found %d Geometry Errors for %s ===", geometry_errors.num_errors, display_name);
   }
 
   // write out the results (only if simulation was configured and ran)
   if (run_simulation && ctx->save.nfrq > 0) {
     write_nec_output(ctx, &deck, output_fp);
   } else if (run_simulation && ctx->save.nfrq == 0) {
-    fprintf(ctx->error_fp, "Warning: No FR card found, skipping output generation\n");
+    nec_report(ctx, ONEC_SEV_WARNING, "Warning: No FR card found, skipping output generation");
   }
 
   // close greens file if open

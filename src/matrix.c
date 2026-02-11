@@ -1114,9 +1114,9 @@ void factr(const nec_context_t *ctx, int n, complex double *a, int *ip, int ndim
 	zgetrf_(&m, &m, (double _Complex *)buf, &lda, ipiv, &info);
 
 	if (info < 0) {
-		fprintf(ctx->output_fp, "\n  ZGETRF ERROR: Illegal argument %d", -info);
+		nec_report(ctx, ONEC_SEV_ERROR, "ZGETRF ERROR: Illegal argument %d", -info);
 	} else if (info > 0) {
-		fprintf(ctx->output_fp, "\n  ZGETRF WARNING: U(%d,%d) is exactly zero", info, info);
+		nec_report(ctx, ONEC_SEV_WARNING, "ZGETRF WARNING: U(%d,%d) is exactly zero", info, info);
 	}
 
 	/* Copy LU factors back into the big matrix block. */
@@ -1374,7 +1374,7 @@ void solve(const nec_context_t *ctx, int n, complex double *a, int *ip,
 					ipiv, (double _Complex *)rhs, &ldb, &info);
 
 	if (info != 0) {
-		fprintf(ctx->output_fp, "\n  ZGETRS ERROR: Illegal argument %d", -info);
+		nec_report(ctx, ONEC_SEV_ERROR, "ZGETRS ERROR: Illegal argument %d", -info);
 	}
 
 	/* Copy solution back to b */

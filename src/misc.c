@@ -10,11 +10,16 @@
 #include "internals.h"
 #include <unistd.h>
 #include <sys/times.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 /***  ONEC utils ***/
 
 void add_error(const nec_context_t *ctx, errors_list_t *errors, char *message, int severity)
 {
+  // Trigger callback and logging via unified helper
+  nec_report(ctx, severity, "%s", message);
+
   // make a new error object and fill it out
   error_t newErr;
   newErr.severity = severity;
@@ -32,6 +37,9 @@ void add_error(const nec_context_t *ctx, errors_list_t *errors, char *message, i
 
 void add_message(const nec_context_t *ctx, outputs_list_t *outputs, char *message)
 {
+  // Trigger callback and logging via unified helper
+  nec_report(ctx, ONEC_SEV_INFO, "%s", message);
+
   // make a new message string
   char *newMsg = calloc(strlen(message) + 1, sizeof(char));
   strcpy(newMsg, message);
@@ -97,6 +105,27 @@ char* trim(char* str)
   return start;
 }
 
+/*-------------------------------------------------------------------*/
+void nec_report(const nec_context_t *ctx, int level, const char *format, ...)
+{
+    char buffer[2048];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+
+    // Trigger callback if registered
+    if (ctx && ctx->log_callback) {
+        ctx->log_callback(ctx->log_user_data, level, buffer);
+    }
+
+    // Also write to error_fp if it exists
+    if (ctx && ctx->error_fp) {
+        fprintf(ctx->error_fp, "%s\n", buffer);
+        fflush(ctx->error_fp);
+    }
+}
+
 /***  Various system/app utils ***/
 
 /*------------------------------------------------------------------------*/
@@ -110,38 +139,31 @@ void abort_on_error(const nec_context_t *ctx, int why)
   switch(why)
   {
 	case -1 : /* abort if input file name too long */
-	  fprintf( ctx->error_fp, "%s\n",
-		  "onec: Input file name too long - aborting" );
+	  nec_report(ctx, ONEC_SEV_FATAL, "onec: Input file name too long - aborting");
 	  break;
 
 	case -2 : /* abort if output file name too long */
-	  fprintf( ctx->error_fp, "%s\n",
-		  "onec: Output file name too long - aborting" );
+	  nec_report(ctx, ONEC_SEV_FATAL, "onec: Output file name too long - aborting");
 	  break;
 
 	case -3 : /* abort on input file read error */
-	  fprintf( ctx->error_fp, "%s\n",
-		  "onec: Error reading input file - aborting" );
+	  nec_report(ctx, ONEC_SEV_FATAL, "onec: Error reading input file - aborting");
 	  break;
 
 	case -4 : /* Abort on malloc failure */
-	  fprintf( ctx->error_fp, "%s\n",
-		  "onec: A memory allocation request has failed - aborting" );
+	  nec_report(ctx, ONEC_SEV_FATAL, "onec: A memory allocation request has failed - aborting");
 	  break;
 
 	case -5 : /* Abort if a GF card is read */
-	  fprintf( ctx->error_fp, "%s\n",
-		  "onec: NGF solution option not supported - aborting" );
+	  nec_report(ctx, ONEC_SEV_FATAL, "onec: NGF solution option not supported - aborting");
 	  break;
 
 	case -6: /* No convergence in gshank() */
-	  fprintf( ctx->error_fp, "%s\n",
-		  "onec: No convergence in gshank() - aborting" );
+	  nec_report(ctx, ONEC_SEV_FATAL, "onec: No convergence in gshank() - aborting");
 	  break;
 
 	case -7: /* Error in hankel() */
-	  fprintf( ctx->error_fp, "%s\n",
-		  "onec: Hankel not valid for z=0. - aborting" );
+	  nec_report(ctx, ONEC_SEV_FATAL, "onec: Hankel not valid for z=0. - aborting");
 
   }  /* switch( why ) */
 

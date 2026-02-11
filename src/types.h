@@ -225,6 +225,25 @@ typedef struct nec_context_t nec_context_t;
 nec_context_t* nec_create_context(void);
 void nec_destroy_context(nec_context_t *ctx);
 
+/**
+ * Logging Callbacks
+ * Allows modern GUIs to capture output without redirecting stdout/stderr.
+ */
+
+/* Logging severity levels */
+typedef enum {
+    ONEC_SEV_INFO = 0,
+    ONEC_SEV_WARNING = 1,
+    ONEC_SEV_ERROR = 2,
+    ONEC_SEV_FATAL = 3
+} nec_severity_t;
+
+/* Callback signature for logging and error reporting */
+typedef void (*nec_log_callback_t)(void *user_data, int level, const char *message);
+
+/* Registration functions */
+void nec_set_log_callback(nec_context_t *ctx, nec_log_callback_t callback, void *user_data);
+
 // typedefs for backward compatibility
 typedef card_t Card;
 typedef deck_t Deck;

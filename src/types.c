@@ -97,6 +97,14 @@ void nec_destroy_context(nec_context_t *ctx)
     }
 }
 
+void nec_set_log_callback(nec_context_t *ctx, nec_log_callback_t callback, void *user_data)
+{
+    if (ctx) {
+        ctx->log_callback = callback;
+        ctx->log_user_data = user_data;
+    }
+}
+
 void nec_context_init(nec_context_t *ctx)
 {
     memset(ctx, 0, sizeof(nec_context_t));

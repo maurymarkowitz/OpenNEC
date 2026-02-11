@@ -602,6 +602,10 @@ struct nec_context_t
 	/* Error tracking */
 	errors_list_t errors;
 	
+	/* Logging callbacks */
+	nec_log_callback_t log_callback;
+	void *log_user_data;
+	
 	/* Timing data for output */
 	double mat_fill_time;   /* Matrix fill time in seconds */
 	double mat_factor_time; /* Matrix factor time in seconds */
