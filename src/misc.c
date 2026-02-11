@@ -13,7 +13,7 @@
 
 /***  ONEC utils ***/
 
-void add_error(nec_context_t *ctx, errors_list_t *errors, char *message, int severity)
+void add_error(const nec_context_t *ctx, errors_list_t *errors, char *message, int severity)
 {
   // make a new error object and fill it out
   error_t newErr;
@@ -30,7 +30,7 @@ void add_error(nec_context_t *ctx, errors_list_t *errors, char *message, int sev
   errors->num_errors++;
 }
 
-void add_message(nec_context_t *ctx, outputs_list_t *outputs, char *message)
+void add_message(const nec_context_t *ctx, outputs_list_t *outputs, char *message)
 {
   // make a new message string
   char *newMsg = calloc(strlen(message) + 1, sizeof(char));
@@ -48,7 +48,7 @@ void add_message(nec_context_t *ctx, outputs_list_t *outputs, char *message)
 /***  String utils ***/
 
 /*-------------------------------------------------------------------*/
-int str_ends_with(nec_context_t *ctx, const char *str, const char *suffix)
+int str_ends_with(const nec_context_t *ctx, const char *str, const char *suffix)
 {
     if (!str || !suffix)
         return 1;
@@ -63,7 +63,7 @@ int str_ends_with(nec_context_t *ctx, const char *str, const char *suffix)
 }
 
 /*-------------------------------------------------------------------*/
-char* substr(nec_context_t *ctx, char* dest, char *src, int start, int len)
+char* substr(const nec_context_t *ctx, char* dest, char *src, int start, int len)
 {
   strncpy(dest, src+start, len);
   dest[len] = '\0';
@@ -105,7 +105,7 @@ char* trim(char* str)
  *  prints an error message and exits
  */
 
-void abort_on_error(nec_context_t *ctx, int why)
+void abort_on_error(const nec_context_t *ctx, int why)
 {
   switch(why)
   {
@@ -153,7 +153,7 @@ void abort_on_error(nec_context_t *ctx, int why)
 /*------------------------------------------------------------------------*/
 
 /* Returns process time (user+system) BUT in _msec_ */
-void secnds(nec_context_t *ctx, double *x)
+void secnds(const nec_context_t *ctx, double *x)
 {
   struct tms buffer;
   double clk_tck;
@@ -171,12 +171,12 @@ void secnds(nec_context_t *ctx, double *x)
 
 /*------------------------------------------------------------------------*/
 
-int mem_alloc( nec_context_t *ctx, void **ptr, size_t req )
+int mem_alloc( const nec_context_t *ctx, void **ptr, size_t req )
 {
   mem_free(ctx, ptr );
   *ptr = malloc( req );
   if( *ptr == NULL ) {
-	add_error(ctx, &ctx->errors, "Memory allocation failed", FATAL);
+	add_error(ctx, (errors_list_t*)&ctx->errors, "Memory allocation failed", FATAL);
 	return -1;
   }
   return 0;
@@ -184,11 +184,11 @@ int mem_alloc( nec_context_t *ctx, void **ptr, size_t req )
 
 /*------------------------------------------------------------------------*/
 
-int mem_realloc(nec_context_t *ctx, void **ptr, size_t req)
+int mem_realloc(const nec_context_t *ctx, void **ptr, size_t req)
 {
   *ptr = realloc(*ptr, req);
   if(*ptr == NULL) {
-	add_error(ctx, &ctx->errors, "Memory reallocation failed", FATAL);
+	add_error(ctx, (errors_list_t*)&ctx->errors, "Memory reallocation failed", FATAL);
 	return -1;
   }
   return 0;
@@ -196,7 +196,7 @@ int mem_realloc(nec_context_t *ctx, void **ptr, size_t req)
 
 /*------------------------------------------------------------------------*/
 
-void mem_free( nec_context_t *ctx, void **ptr )
+void mem_free( const nec_context_t *ctx, void **ptr )
 {
   if( *ptr != NULL )
 	free( *ptr );

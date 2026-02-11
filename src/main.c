@@ -88,7 +88,7 @@ void print_usage(char *argv[])
  * TODO: Make this static once all calculation files use add_error() instead
  *
  */
-int stop(nec_context_t *ctx, int flag)
+int stop(const nec_context_t *ctx, int flag)
 {
   if (ctx->input_fp != NULL)
     fclose(ctx->input_fp);
@@ -199,8 +199,11 @@ void parse_options(int argc, char *argv[])
  */
 static int process_single_file(const char *input_filename, const char *output_filename, FILE *error_fp)
 {
-  nec_context_t ctx;
-  nec_context_init(&ctx);
+  nec_context_t *ctx = nec_create_context();
+  if (ctx == NULL) {
+    fprintf(error_fp, "onec: Failed to allocate NEC context.\n");
+    return -1;
+  }
 
   // main variables
   deck_t deck;              // the deck we're processing, we'll make it local as it disappears on exit
@@ -223,7 +226,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
   geometry_outputs.num_messages = 0;
   geometry_outputs.messages = NULL;
   
-  ctx.error_fp = error_fp;
+  ctx->error_fp = error_fp;
 
   // open input file or use stdin
   if (strlen(input_filename) > 0) {
@@ -231,12 +234,13 @@ static int process_single_file(const char *input_filename, const char *output_fi
       char mesg[88] = "onec: ";
       strcat(mesg, input_filename);
       perror(mesg);
+      nec_destroy_context(ctx);
       return -1;
     }
-    ctx.input_fp = input_fp;
+    ctx->input_fp = input_fp;
   } else {
     input_fp = stdin;
-    ctx.input_fp = stdin;
+    ctx->input_fp = stdin;
   }
 
   // open output file or use stdout
@@ -246,12 +250,13 @@ static int process_single_file(const char *input_filename, const char *output_fi
       strcat(mesg, output_filename);
       perror(mesg);
       if (input_fp != stdin) fclose(input_fp);
+      nec_destroy_context(ctx);
       return -1;
     }
-    ctx.output_fp = output_fp;
+    ctx->output_fp = output_fp;
   } else {
     output_fp = stdout;
-    ctx.output_fp = stdout;
+    ctx->output_fp = stdout;
   }
 
   // open greens output file if requested
@@ -274,98 +279,98 @@ static int process_single_file(const char *input_filename, const char *output_fi
     } else {
       path = "greens.ngf";
     }
-    ctx.green_fp = fopen(path, "w");
-    if (!ctx.green_fp) {
-      fprintf(ctx.error_fp, "Warning: could not open greens file '%s' for writing; skipping.\n", path);
+    ctx->green_fp = fopen(path, "w");
+    if (!ctx->green_fp) {
+      fprintf(ctx->error_fp, "Warning: could not open greens file '%s' for writing; skipping.\n", path);
     }
   }
 
   // read input file into a deck
-  read_deck(&ctx, &deck, input_fp);
+  read_deck(ctx, &deck, input_fp);
 
   // and then parse what we read into the card
-  parse_deck(&ctx, &deck, &import_errors);
+  parse_deck(ctx, &deck, &import_errors);
   
   // Initialize symbol table: collect all SY symbols, add defaults (pi, c),
   // and evaluate symbols in comment section for initial values
   initialize_symbol_table(&deck, &import_errors);
   
   // Evaluate all formulas in the deck
-  update_deck_values(&ctx, &deck);
+  update_deck_values(ctx, &deck);
   
   // TESTING: print any file errors
   if (import_errors.num_errors > 0) {
     const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
-    fprintf(ctx.error_fp, "\n=== Import Errors for %s ===\n", display_name);
+    fprintf(ctx->error_fp, "\n=== Import Errors for %s ===\n", display_name);
     for(int i = 0; i < import_errors.num_errors; i++) {
-      fprintf(ctx.error_fp, "%s\n", import_errors.errors[i].message);
+      fprintf(ctx->error_fp, "%s\n", import_errors.errors[i].message);
     }
   }
 
   // run basic sanity checks on the structure
   if(run_tests) {
-    test_deck_structure(&ctx, &deck, &test_errors);
-    test_duplicate_tags(&ctx, &deck, &test_errors);
-    test_card_inputs(&ctx, &deck, &test_errors);
+    test_deck_structure(ctx, &deck, &test_errors);
+    test_duplicate_tags(ctx, &deck, &test_errors);
+    test_card_inputs(ctx, &deck, &test_errors);
   }
   // TESTING: print any structure errors
   if (test_errors.num_errors > 0) {
     const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
-    fprintf(ctx.error_fp, "\n=== Test Errors for %s ===\n", display_name);
+    fprintf(ctx->error_fp, "\n=== Test Errors for %s ===\n", display_name);
     for(int i = 0; i < test_errors.num_errors; i++) {
-      fprintf(ctx.error_fp, "%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
+      fprintf(ctx->error_fp, "%d, '%s'\n", test_errors.errors[i].severity, test_errors.errors[i].message);
     }
   }
 
   // run it if we've been asked to
   if(run_simulation) {
     // Run complete simulation with batch processing
-    int sim_result = nec_run_simulation(&ctx, &deck);
+    int sim_result = nec_run_simulation(ctx, &deck);
     
     // Check for any errors that occurred during calculation (whether simulation failed or succeeded)
-    if (ctx.errors.num_errors > 0 || sim_result != 0) {
+    if (ctx->errors.num_errors > 0 || sim_result != 0) {
       if (sim_result != 0) {
-        // fprintf(ctx.error_fp, "Failed to run simulation for %s.\n", 
+        // fprintf(ctx->error_fp, "Failed to run simulation for %s.\n", 
         //         strlen(input_filename) > 0 ? input_filename : "stdin");
       }
       
-      if (ctx.errors.num_errors > 0) {
-        for (int i = 0; i < ctx.errors.num_errors; i++) {
-          fprintf(ctx.error_fp, "%s\n", ctx.errors.errors[i].message);
+      if (ctx->errors.num_errors > 0) {
+        for (int i = 0; i < ctx->errors.num_errors; i++) {
+          fprintf(ctx->error_fp, "%s\n", ctx->errors.errors[i].message);
         }
       }
       
-      nec_context_cleanup(&ctx);
       if (input_fp != stdin) fclose(input_fp);
       if (output_fp != stdout) fclose(output_fp);
+      nec_destroy_context(ctx);
       return -1;
     }
   }
   if (geometry_errors.num_errors > 0) {
     const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
-    fprintf(ctx.error_fp, "\n=== Geometry Errors for %s ===\n", display_name);
+    fprintf(ctx->error_fp, "\n=== Geometry Errors for %s ===\n", display_name);
     for(int i = 0; i < geometry_errors.num_errors; i++) {
-      fprintf(ctx.error_fp, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
+      fprintf(ctx->error_fp, "%d, '%s'\n", geometry_errors.errors[i].severity, geometry_errors.errors[i].message);
     }
   }
 
   // write out the results (only if simulation was configured and ran)
-  if (run_simulation && ctx.save.nfrq > 0) {
-    write_nec_output(&ctx, &deck, output_fp);
-  } else if (run_simulation && ctx.save.nfrq == 0) {
-    fprintf(ctx.error_fp, "Warning: No FR card found, skipping output generation\n");
+  if (run_simulation && ctx->save.nfrq > 0) {
+    write_nec_output(ctx, &deck, output_fp);
+  } else if (run_simulation && ctx->save.nfrq == 0) {
+    fprintf(ctx->error_fp, "Warning: No FR card found, skipping output generation\n");
   }
 
   // close greens file if open
-  if (ctx.green_fp) {
-    fclose(ctx.green_fp);
-    ctx.green_fp = NULL;
+  if (ctx->green_fp) {
+    fclose(ctx->green_fp);
+    ctx->green_fp = NULL;
   }
 
   free_deck(&deck);
-  nec_context_cleanup(&ctx);
   if (input_fp != stdin) fclose(input_fp);
   if (output_fp != stdout) fclose(output_fp);
+  nec_destroy_context(ctx);
 
   return 0;
 }

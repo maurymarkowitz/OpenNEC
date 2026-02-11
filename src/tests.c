@@ -34,16 +34,16 @@ typedef struct { int line; int tag1; int seg1; int tag2; int seg2; } tl_ref_t;
 static double point_to_segment_distance(double px, double py, double pz,
                                         double qx1, double qy1, double qz1,
                                         double qx2, double qy2, double qz2);
-static void check_parallel_wire_segmentation(nec_context_t *ctx, errors_list_t *errors,
+static void check_parallel_wire_segmentation(const nec_context_t *ctx, errors_list_t *errors,
                                              const wire_info_t *wires, int wire_count,
                                              double freq_mhz);
-static void check_segment_length_and_radius(nec_context_t *ctx, errors_list_t *errors,
+static void check_segment_length_and_radius(const nec_context_t *ctx, errors_list_t *errors,
                                             const wire_info_t *wires, int wire_count,
                                             double freq_mhz, int ek_enabled);
-static void check_ge_low_height_hazard(nec_context_t *ctx, errors_list_t *errors,
+static void check_ge_low_height_hazard(const nec_context_t *ctx, errors_list_t *errors,
                                        const wire_info_t *wires, int wire_count,
                                        int GEType);
-static void check_junction_segmentation_consistency(nec_context_t *ctx, errors_list_t *errors,
+static void check_junction_segmentation_consistency(const nec_context_t *ctx, errors_list_t *errors,
                                                     const wire_info_t *wires, int wire_count);
 static bool is_geometry_tag_ignored(const deck_t *deck, int tag);
 
@@ -80,7 +80,7 @@ static bool is_geometry_tag_ignored(const deck_t *deck, int tag) {
  * @param errors the errors_list_t to add new messages to
  *
  */
-void test_deck_structure(nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
+void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
 {
   // A short list of the minimum structure is found in the 4nec2
   // documentation:
@@ -893,7 +893,7 @@ static double point_to_segment_distance(double px, double py, double pz,
 }
 
 // Helper: warn if parallel wires closer than 0.05 wavelengths have different segmentation
-static void check_parallel_wire_segmentation(nec_context_t *ctx, errors_list_t *errors,
+static void check_parallel_wire_segmentation(const nec_context_t *ctx, errors_list_t *errors,
                                              const wire_info_t *wires, int wire_count,
                                              double freq_mhz)
 {
@@ -947,7 +947,7 @@ static void check_parallel_wire_segmentation(nec_context_t *ctx, errors_list_t *
 }
 
 // Helper: junction segmentation consistency — connected wire endpoints should have similar segment lengths
-static void check_junction_segmentation_consistency(nec_context_t *ctx, errors_list_t *errors,
+static void check_junction_segmentation_consistency(const nec_context_t *ctx, errors_list_t *errors,
                                                     const wire_info_t *wires, int wire_count)
 {
   char msg[MAX_ERROR_LEN];
@@ -980,7 +980,7 @@ static void check_junction_segmentation_consistency(nec_context_t *ctx, errors_l
 }
 
 // Helper: GE I1=1 connects segment ends if wire height < 1e-3 * segment length; suggest GE -1
-static void check_ge_low_height_hazard(nec_context_t *ctx, errors_list_t *errors,
+static void check_ge_low_height_hazard(const nec_context_t *ctx, errors_list_t *errors,
                                        const wire_info_t *wires, int wire_count,
                                        int GEType)
 {
@@ -1001,7 +1001,7 @@ static void check_ge_low_height_hazard(nec_context_t *ctx, errors_list_t *errors
 }
 
 // Helper: segment length vs wavelength and radius sanity
-static void check_segment_length_and_radius(nec_context_t *ctx, errors_list_t *errors,
+static void check_segment_length_and_radius(const nec_context_t *ctx, errors_list_t *errors,
                                             const wire_info_t *wires, int wire_count,
                                             double freq_mhz, int ek_enabled)
 {
@@ -1060,7 +1060,7 @@ static void check_segment_length_and_radius(nec_context_t *ctx, errors_list_t *e
  * @param errors the errors_list_t to add new messages to
  *
  */
-void test_duplicate_tags(nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
+void test_duplicate_tags(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
 {
   // we will also check to see if there are duplicate tags
   char msg[MAX_ERROR_LEN];
@@ -1106,7 +1106,7 @@ void test_duplicate_tags(nec_context_t *ctx, const deck_t *deck, errors_list_t *
  * TODO: this needs to be greatly expanded!
  *
  */
-void test_card_inputs(nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
+void test_card_inputs(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
 {
   const char *code;
   char msg[MAX_ERROR_LEN];
@@ -1293,7 +1293,7 @@ void test_card_inputs(nec_context_t *ctx, const deck_t *deck, errors_list_t *err
  * @param errors the errors_list_t to add new messages to
  *
  */
-void test_bad_symbols(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
+void test_bad_symbols(const nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   char msg[MAX_ERROR_LEN];
   

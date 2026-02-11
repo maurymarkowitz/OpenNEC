@@ -80,6 +80,23 @@ const char *inames[MAX_INT_FIELDS + 1] = {
   "", "I1", "I2", "I3", "I4"
 };
 
+nec_context_t* nec_create_context(void)
+{
+    nec_context_t *ctx = (nec_context_t*)calloc(1, sizeof(nec_context_t));
+    if (ctx) {
+        nec_context_init(ctx);
+    }
+    return ctx;
+}
+
+void nec_destroy_context(nec_context_t *ctx)
+{
+    if (ctx) {
+        nec_context_cleanup(ctx);
+        free(ctx);
+    }
+}
+
 void nec_context_init(nec_context_t *ctx)
 {
     memset(ctx, 0, sizeof(nec_context_t));

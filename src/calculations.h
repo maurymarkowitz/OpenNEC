@@ -21,14 +21,14 @@ void intx(nec_context_t *ctx, double el1, double el2, double b, int ij, double *
 
 
 /* dB conversion utilities */
-double db10(nec_context_t *ctx, double x);
-double db20(nec_context_t *ctx, double x);
+double db10(const nec_context_t *ctx, double x);
+double db20(const nec_context_t *ctx, double x);
 
 /* Complex number utilities */
-double cang(nec_context_t *ctx, complex double z);
+double cang(const nec_context_t *ctx, complex double z);
 
 /* Simple utilities */
-int min(nec_context_t *ctx, int a, int b);
+int min(const nec_context_t *ctx, int a, int b);
 
 /* Internal calculation functions used within calculations.c and by other modules */
 void zint(nec_context_t *ctx, double sigl, double rolam, complex double *zt);

@@ -17,8 +17,8 @@ int fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym);
 void etmns(nec_context_t *ctx, double p1, double p2, double p3, double p4, double p5, double p6, int ipr, complex double *e);
 
 /* Linear system solvers - called from control.c and network.c */
-void factr(nec_context_t *ctx, int n, complex double *a, int *ip, int ndim);
-void solve(nec_context_t *ctx, int n, complex double *a, int *ip, complex double *b, int ndim);
+void factr(const nec_context_t *ctx, int n, complex double *a, int *ip, int ndim);
+void solve(const nec_context_t *ctx, int n, complex double *a, int *ip, complex double *b, int ndim);
 void solves(nec_context_t *ctx, complex double *a, int *ip, complex double *b, int neq, int nrh, int np, int n, int mp, int m);
 
 #endif /* MATRIX_H */

@@ -464,7 +464,7 @@ void gf(nec_context_t *ctx, double zk, double *co, double *si )
 /*-----------------------------------------------------------------------*/
 
 /* function db10 returns db for magnitude (field) */
-double db10(nec_context_t *ctx, double x )
+double db10(const nec_context_t *ctx, double x )
 {
   if( x < 1.e-20 )
     return( -999.99 );
@@ -475,7 +475,7 @@ double db10(nec_context_t *ctx, double x )
 /*-----------------------------------------------------------------------*/
 
 /* function db20 returns db for mag**2 (power) i */
-double db20(nec_context_t *ctx, double x )
+double db20(const nec_context_t *ctx, double x )
 {
   if( x < 1.e-20 )
     return( -999.99 );
@@ -828,7 +828,7 @@ void intx(nec_context_t *ctx, double el1, double el2, double b,
 /*-----------------------------------------------------------------------*/
 
 /* returns smallest of two arguments */
-int min(nec_context_t *ctx, int a, int b )
+int min(const nec_context_t *ctx, int a, int b )
 {
   if( a < b )
     return(a);
@@ -1514,7 +1514,7 @@ void zint(nec_context_t *ctx, double sigl, double rolam, complex double *zint )
 /*-----------------------------------------------------------------------*/
 
 /* cang returns the phase angle of a complex number in degrees. */
-double cang(nec_context_t *ctx, complex double z )
+double cang(const nec_context_t *ctx, complex double z )
 {
   return( carg(z)*TD );
 }

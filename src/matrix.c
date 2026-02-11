@@ -1078,7 +1078,7 @@ void etmns(nec_context_t *ctx, double p1, double p2, double p3, double p4,
 /* numerical analysis.  comments below refer to comments in ralstons */
 /* text.    (matrix transposed.) */
 
-void factr(nec_context_t *ctx, int n, complex double *a, int *ip, int ndim)
+void factr(const nec_context_t *ctx, int n, complex double *a, int *ip, int ndim)
 {
 #if defined(HAVE_ACCELERATE) || defined(HAVE_OPENBLAS) || defined(HAVE_BLAS) || defined(HAVE_MKL)
 	/* LAPACK-backed LU factorization using a local np×np buffer to honor layout. */
@@ -1338,7 +1338,7 @@ int fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym )
 /* lower triangular matrix and u is an upper triangular matrix both */
 /* of which are stored in a.  the rhs vector b is input and the */
 /* solution is returned through vector b.   (matrix transposed. */
-void solve(nec_context_t *ctx, int n, complex double *a, int *ip,
+void solve(const nec_context_t *ctx, int n, complex double *a, int *ip,
 		complex double *b, int ndim )
 {
 #if defined(HAVE_ACCELERATE) || defined(HAVE_OPENBLAS) || defined(HAVE_BLAS) || defined(HAVE_MKL)

@@ -5,18 +5,25 @@ This document outlines a roadmap for bringing the OpenNEC codebase up to modern 
 ## 1. API Hardening and Safety
 
 ### Const-Correctness
-- **Status**: In Progress
-- **Tasks**:
+- **Status**: [DONE] 2025-02-11
+- **Achievements**:
   - [x] Update `src/output.h`/`.c` with `const` for `nec_context_t` and `deck_t`.
-  - [x] Update `src/tests.h`/`.c` with `const` for `deck_t`.
-  - [ ] Audit remaining modules for read-only context usage.
+  - [x] Update `src/tests.h`/`.c` with `const` for `nec_context_t` and `deck_t`.
+  - [x] Applied `const` to core memory and utility functions in `src/misc.h`/`.c`.
+  - [x] Applied `const` to matrix solvers in `src/matrix.h`/`.c`.
+  - [x] Applied `const` to pure math getters in `src/calculations.h`/`.c`.
+  - [x] Performed global audit: most core calculation functions (fields, ground) utilize the context as a mutable scratchpad/cache and cannot be `const` without a major data architecture refactor.
 - **Goal**: Update function signatures in all headers (`input.h`, `output.h`, `geometry.h`, etc.) to use `const` for read-only parameters.
 - **Benefit**: Compiler optimizations and prevention of accidental state mutation.
 
 ### Opaque Handles
-- **Status**: Legacy (Context struct exposed) 
-- **Goal**: Hide the implementation details of `nec_context_t` behind an opaque pointer in the public API.
-- **Benefit**: Source and binary compatibility when updating internal structures.
+- **Status**: [DONE] 2025-02-11
+- **Achievements**:
+  - [x] Forward declared `nec_context_t` in `types.h`.
+  - [x] Moved full struct definition to `internals.h`.
+  - [x] Implemented `nec_create_context()` and `nec_destroy_context()`.
+  - [x] Refactored `main.c` (CLI tool) to use new handle API.
+- **Benefit**: Hide the implementation details of `nec_context_t` behind an opaque pointer in the public API. Ensure source and binary compatibility when updating internal structures.
 
 ### Logging Callbacks
 - **Status**: Legacy (FILE pointers)
