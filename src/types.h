@@ -612,6 +612,66 @@ typedef struct
 
 } tmi_t;
 
+/* common /evlcom/ (formerly static globals in somnec.c) */
+typedef struct
+{
+	int jh;
+	double ck2, ck2sq, tkmag, tsmag, ck1r, zph, rho;
+	complex double ct1, ct2, ct3, ck1, ck1sq, cksm;
+} evlcom_t;
+
+/* common /cntour/ (formerly static globals in somnec.c) */
+typedef struct
+{
+	complex double a, b;
+} cntour_t;
+
+/* Internal state for somnec functions (formerly static local variables) */
+typedef struct
+{
+	int init;
+	int m[101];
+	double a1[25], a2[25], a3[25], a4[25], psi, tst, zms;
+} som_bh_t;
+
+typedef struct
+{
+	double del, slope, rmis;
+	complex double cp1, cp2, cp3, bk, delta, delta2, sum[6], ans[6];
+} som_ev_t;
+
+typedef struct
+{
+	double rbk, amg, den, denm;
+} som_gs_t;
+
+typedef struct
+{
+	double z, ze, s, ep, zend, dz, dzot, tr, ti;
+	complex double t00, t11, t02;
+	complex double g1[6], g2[6], g3[6], g4[6], g5[6], t01[6], t10[6], t20[6];
+} som_ro_t;
+
+typedef struct
+{
+	evlcom_t evlcom;
+	cntour_t cntour;
+	som_bh_t bessel;
+	som_bh_t hankel;
+	som_ev_t evlua;
+	som_gs_t gshank;
+	som_ro_t rom1;
+} somnec_t;
+
+/* Interpolation state (formerly static globals in calculations.c:intrp) */
+typedef struct
+{
+	int ix, iy, ixs, iys, igrs, ixeg, iyeg;
+	int nxm2, nym2, nxms, nyms, nd, ndp;
+	double dx, dy, xs, ys, xz, yz;
+	complex double a[4][4], b[4][4], c[4][4], d[4][4];
+} intrp_t;
+
 /*common  /tmh/ */
 typedef struct
 {
@@ -717,6 +777,11 @@ typedef struct nec_context_t
 	zload_t zload;
 	loading_outputs_t loading_outputs;
 	
+	/* Thread-safety state (formerly static globals) */
+	somnec_t somnec;
+	intrp_t intrp;
+	tmh_t tmh;
+	
 	/* Radiation pattern results */
 	rpat_results_t rpat;
 	
@@ -734,6 +799,7 @@ typedef struct nec_context_t
 	int batch_end_card;     /* End of current batch (inclusive) */
 	int card_number_offset; /* Starting card number for current batch */
 	int iflow;              /* Processing state: 1=FR, 2=CP, 3=LD, 6=NT/TL, 7-11=execution */
+	int eval_depth;         /* To track recursion depth during symbol evaluation */
 } nec_context_t;
 
 void nec_context_init(nec_context_t *ctx);

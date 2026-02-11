@@ -24,7 +24,7 @@
  * ground, and matrix parameters to build and solve the system.
  ****************************************************************************/
 
-#include "opennec.h"
+#include "internals.h"
 #include "matrix.h"
 #include "fields.h"
 #include "calculations.h"

@@ -11,7 +11,7 @@
 #include <config.h>
 #endif
 
-#include "opennec.h"
+#include "internals.h"
 #include "input.h"
 #include "control.h"
 #include "output.h"

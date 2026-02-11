@@ -22,7 +22,7 @@
  *
  *****************************************************************************/
 
-#include "opennec.h"
+#include "internals.h"
 #include "tests.h"
 
 // Local structs for structural geometry validations
@@ -122,7 +122,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
   int GEType = 0;
   // and some temps
   char *code, *last_code;
-  char *msg = calloc(1, MAX_ERROR_LEN);
+  char msg[MAX_ERROR_LEN];
   // track geometry tags seen so far (simple fixed-size set)
   int geom_tags[512];
   int geom_tag_count = 0;
@@ -136,12 +136,12 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
   
   // start with some obvious ones
   if(deck->num_cards == 0) {
-    sprintf(msg, "The deck has no cards.");
+    snprintf(msg, sizeof(msg), "The deck has no cards.");
     add_error(ctx, errors, msg, 2);  // this is a critical error, this deck will not process
     return;
   }
   if(deck->num_cards < 5) {
-    sprintf(msg, "A deck has to have at least five cards; one or more comments, one or more Gx cards, a GE, an FX, and an EX.");
+    snprintf(msg, sizeof(msg), "A deck has to have at least five cards; one or more comments, one or more Gx cards, a GE, an FX, and an EX.");
     add_error(ctx, errors, msg, 2);  // same here, there is no way this will calculate property
     return;
   }
@@ -159,7 +159,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       if(sawGS == false) {
         sawGS = i;
       } else {
-        sprintf(msg, "The card on line %d is a GS, but we already saw one on card %d. No single measurement type can be defined.", i, sawGS + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GS, but we already saw one on card %d. No single measurement type can be defined.", i, sawGS + 1);
         add_error(ctx, errors, msg, 0);  // this will calculate fine, so this is merely a warning
       }
     }
@@ -168,7 +168,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       if(sawCE == false) {
         sawCE = i;
       } else {
-        sprintf(msg, "The card on line %d is a CE, but we already saw one on card %d.", i, sawCE + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is a CE, but we already saw one on card %d.", i, sawCE + 1);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -178,11 +178,11 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         GEType = deck->cards[i].i[1];
         // GE should typically follow at least one geometry card
         if(sawGx == false) {
-          sprintf(msg, "The card on line %d is a GE, but no geometry cards were seen before it.", i + 1);
+          snprintf(msg, sizeof(msg), "The card on line %d is a GE, but no geometry cards were seen before it.", i + 1);
           add_error(ctx, errors, msg, 0);
         }
       } else {
-        sprintf(msg, "The card on line %d is a GE, but we already saw one on card %d.", i, sawGE + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GE, but we already saw one on card %d.", i, sawGE + 1);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -190,7 +190,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       if(sawEN == false) {
         sawEN = i;
       } else {
-        sprintf(msg, "The card on line %d is an EN, but we already saw one on card %d.", i, sawEN + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is an EN, but we already saw one on card %d.", i, sawEN + 1);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -202,7 +202,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       if(sawGF == false) {
         sawGF = i;
       } else {
-        sprintf(msg, "The card on line %d is a GF, but we already saw one on card %d.", i, sawGF + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GF, but we already saw one on card %d.", i, sawGF + 1);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -213,7 +213,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
           freq_mhz = deck->cards[i].f[1];
         }
       } else {
-        sprintf(msg, "The card on line %d is an FR, but we already saw one on card %d.", i, sawFR + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is an FR, but we already saw one on card %d.", i, sawFR + 1);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -229,7 +229,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       if(is_control(&deck->cards[i]) && strcmp(code, "CE") != 0 &&
          strcmp(code, "EX") != 0 && strcmp(code, "TL") != 0 && strcmp(code, "LD") != 0 &&
          strcmp(code, "FR") != 0 && strcmp(code, "RP") != 0 && strcmp(code, "GN") != 0 && strcmp(code, "GD") != 0 && strcmp(code, "EK") != 0) {
-        sprintf(msg, "The card on line %d is a %s, but it appears before the GE; control cards should follow geometry.", i + 1, code);
+        snprintf(msg, sizeof(msg), "The card on line %d is a %s, but it appears before the GE; control cards should follow geometry.", i + 1, code);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -237,35 +237,35 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     // Specific placement warnings for common control cards
     if(sawGE == false) {
       if(strcmp(code, "EX") == 0) {
-        sprintf(msg, "The card on line %d is an EX, but it appears before the GE; excitations should follow geometry.", i + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is an EX, but it appears before the GE; excitations should follow geometry.", i + 1);
         add_error(ctx, errors, msg, 0);
       }
       if(strcmp(code, "TL") == 0) {
-        sprintf(msg, "The card on line %d is a TL, but it appears before the GE; transmission lines should follow geometry.", i + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is a TL, but it appears before the GE; transmission lines should follow geometry.", i + 1);
         add_error(ctx, errors, msg, 0);
       }
       if(strcmp(code, "LD") == 0) {
-        sprintf(msg, "The card on line %d is an LD, but it appears before the GE; loading should follow geometry.", i + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is an LD, but it appears before the GE; loading should follow geometry.", i + 1);
         add_error(ctx, errors, msg, 0);
       }
       if(strcmp(code, "FR") == 0) {
-        sprintf(msg, "The card on line %d is an FR, but it appears before the GE; frequency setup should follow geometry.", i + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is an FR, but it appears before the GE; frequency setup should follow geometry.", i + 1);
         add_error(ctx, errors, msg, 0);
       }
       if(strcmp(code, "RP") == 0) {
-        sprintf(msg, "The card on line %d is an RP, but it appears before the GE; pattern requests should follow geometry.", i + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is an RP, but it appears before the GE; pattern requests should follow geometry.", i + 1);
         add_error(ctx, errors, msg, 0);
       }
       if(strcmp(code, "GN") == 0) {
-        sprintf(msg, "The card on line %d is a GN, but it appears before the GE; ground settings should follow geometry.", i + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GN, but it appears before the GE; ground settings should follow geometry.", i + 1);
         add_error(ctx, errors, msg, 0);
       }
       if(strcmp(code, "GD") == 0) {
-        sprintf(msg, "The card on line %d is a GD, but it appears before the GE; ground parameters should follow geometry.", i + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GD, but it appears before the GE; ground parameters should follow geometry.", i + 1);
         add_error(ctx, errors, msg, 0);
       }
       if(strcmp(code, "EK") == 0) {
-        sprintf(msg, "The card on line %d is an EK, but it appears before the GE; EK should follow geometry to apply the extended kernel.", i + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is an EK, but it appears before the GE; EK should follow geometry to apply the extended kernel.", i + 1);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -273,16 +273,16 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     // GE: optional I1 in {-1,0,1,2}; no floats expected
     if(strcmp(code, "GE") == 0) {
       if(deck->cards[i].ints_used > 1) {
-        sprintf(msg, "The card on line %d is a GE but has more than one integer input.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GE but has more than one integer input.", i);
         add_error(ctx, errors, msg, 0);
       }
       int gei1 = deck->cards[i].i[1];
       if(!(gei1 == -1 || gei1 == 0 || gei1 == 1 || gei1 == 2)) {
-        sprintf(msg, "The card on line %d is a GE with I1=%d, which is outside the typical range {-1,0,1,2}.", i, gei1);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GE with I1=%d, which is outside the typical range {-1,0,1,2}.", i, gei1);
         add_error(ctx, errors, msg, 0);
       }
       if(deck->cards[i].flts_used > 0) {
-        sprintf(msg, "The card on line %d is a GE but has floating-point inputs, which are not expected.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GE but has floating-point inputs, which are not expected.", i);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -290,19 +290,19 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     // TL: expects 4 integer locators (tags/segments) and Z0 in F1
     if(strcmp(code, "TL") == 0) {
       if(deck->cards[i].ints_used < 4) {
-        sprintf(msg, "The card on line %d is a TL but has fewer than 4 integer inputs (tag/segment locators).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a TL but has fewer than 4 integer inputs (tag/segment locators).", i);
         add_error(ctx, errors, msg, 0);
       }
       // basic sanity: locators positive
       if(deck->cards[i].i[1] <= 0 || deck->cards[i].i[2] <= 0 || deck->cards[i].i[3] <= 0 || deck->cards[i].i[4] <= 0) {
-        sprintf(msg, "The card on line %d is a TL with non-positive tag/segment locator(s).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a TL with non-positive tag/segment locator(s).", i);
         add_error(ctx, errors, msg, 0);
       }
       if(deck->cards[i].flts_used < 1) {
-        sprintf(msg, "The card on line %d is a TL but has no characteristic impedance in F1.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a TL but has no characteristic impedance in F1.", i);
         add_error(ctx, errors, msg, 0);
       } else if(deck->cards[i].f[1] == 0.0) {
-        sprintf(msg, "The card on line %d is a TL with Z0 = 0 in F1, which is invalid.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a TL with Z0 = 0 in F1, which is invalid.", i);
         add_error(ctx, errors, msg, 0);
       }
       // record TL endpoints for segment-bounds validation later
@@ -319,20 +319,20 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     // EX: typical voltage source requires 4 integers and non-zero amplitude in F1
     if(strcmp(code, "EX") == 0) {
       if(deck->cards[i].ints_used < 4) {
-        sprintf(msg, "The card on line %d is an EX but has fewer than 4 integer inputs.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an EX but has fewer than 4 integer inputs.", i);
         add_error(ctx, errors, msg, 0);
       }
       if(deck->cards[i].flts_used < 1) {
-        sprintf(msg, "The card on line %d is an EX but has no amplitude in F1.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an EX but has no amplitude in F1.", i);
         add_error(ctx, errors, msg, 0);
       } else if(deck->cards[i].f[1] == 0.0) {
-        sprintf(msg, "The card on line %d is an EX with zero amplitude in F1.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an EX with zero amplitude in F1.", i);
         add_error(ctx, errors, msg, 0);
       }
       // Basic locator sanity: tag and segment positive
       if(deck->cards[i].ints_used >= 3) {
         if(deck->cards[i].i[2] <= 0 || deck->cards[i].i[3] <= 0) {
-          sprintf(msg, "The card on line %d is an EX with non-positive tag or segment locator.", i);
+          snprintf(msg, sizeof(msg), "The card on line %d is an EX with non-positive tag or segment locator.", i);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -340,7 +340,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       if(deck->cards[i].ints_used >= 1) {
         int ex_type = deck->cards[i].i[1];
         if(ex_type == 6 || ex_type == 7) {
-          sprintf(msg, "The card on line %d is an EX with type %d, which is not supported by OpenNEC.", i, ex_type);
+          snprintf(msg, sizeof(msg), "The card on line %d is an EX with type %d, which is not supported by OpenNEC.", i, ex_type);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -355,7 +355,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     // GN: minimal check — at least the ground type integer should be present
     if(strcmp(code, "GN") == 0) {
       if(deck->cards[i].ints_used < 1) {
-        sprintf(msg, "The card on line %d is a GN but has no integer ground type specified.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GN but has no integer ground type specified.", i);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -364,7 +364,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     if(strcmp(code, "LD") == 0) {
       // At minimum: I1 (type), I2 (tag), I3 (segment)
       if(deck->cards[i].ints_used < 3) {
-        sprintf(msg, "The card on line %d is an LD but has fewer than 3 integer inputs (type, tag, segment).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an LD but has fewer than 3 integer inputs (type, tag, segment).", i);
         add_error(ctx, errors, msg, 0);
       } else {
         int type = deck->cards[i].i[1];
@@ -372,24 +372,24 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         int seg1 = deck->cards[i].i[3];
         int seg2 = deck->cards[i].i[4];
         if(type < -1) {
-          sprintf(msg, "The card on line %d is an LD with unexpected type I1=%d.", i, type);
+          snprintf(msg, sizeof(msg), "The card on line %d is an LD with unexpected type I1=%d.", i, type);
           add_error(ctx, errors, msg, 0);
         }
         if(tag <= 0 || seg1 <= 0) {
-          sprintf(msg, "The card on line %d is an LD with non-positive tag or segment locator.", i);
+          snprintf(msg, sizeof(msg), "The card on line %d is an LD with non-positive tag or segment locator.", i);
           add_error(ctx, errors, msg, 0);
         }
         if(seg2 != 0 && seg2 < seg1) {
-          sprintf(msg, "The card on line %d is an LD with end segment I4 < start segment I3.", i);
+          snprintf(msg, sizeof(msg), "The card on line %d is an LD with end segment I4 < start segment I3.", i);
           add_error(ctx, errors, msg, 0);
         }
       }
       // Require at least one float and encourage non-zero values
       if(deck->cards[i].flts_used < 1) {
-        sprintf(msg, "The card on line %d is an LD but has no floating-point load value (e.g., resistance).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an LD but has no floating-point load value (e.g., resistance).", i);
         add_error(ctx, errors, msg, 0);
       } else if(deck->cards[i].f[1] == 0.0 && deck->cards[i].f[2] == 0.0 && deck->cards[i].f[3] == 0.0) {
-        sprintf(msg, "The card on line %d is an LD with zero load values (F1..F3 all zero).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an LD with zero load values (F1..F3 all zero).", i);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -425,7 +425,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     if(strcmp(code, "RP") == 0) {
       // RP should generally follow FR; warn if FR not yet seen
       if(sawFR == false) {
-        sprintf(msg, "The card on line %d is an RP, but no FR has been seen earlier.", i + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is an RP, but no FR has been seen earlier.", i + 1);
         add_error(ctx, errors, msg, 0);
       }
       if(sawSP == false) sawSP = i;
@@ -448,7 +448,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         // there's no else in this case, multiple Gx cards are fine, however
         // we do have a potential problem when we find Gx cards after a GE
         if(sawGx > 0 && sawGE > 0) {
-          sprintf(msg, "The card on line %d has geometry code %s, but we already saw the GE on card %d.", i, code, sawGE + 1);
+          snprintf(msg, sizeof(msg), "The card on line %d has geometry code %s, but we already saw the GE on card %d.", i, code, sawGE + 1);
           add_error(ctx, errors, msg, 1);
         }
         // record geometry tags seen (I1) for later reference by control cards
@@ -487,25 +487,25 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     
     // GC cards have to follow GW cards
     if(strcmp(code, "GC") == 0 && strcmp(last_code, "GW") != 0) {
-      sprintf(msg, "The card on line %d is a GC, but the card above it is not a GW.", i + 1);
+      snprintf(msg, sizeof(msg), "The card on line %d is a GC, but the card above it is not a GW.", i + 1);
       add_error(ctx, errors, msg, 1);
     }
     
     // FIXME: we should do this, but it has to be calculated first because it might be a formula or units
 //    // GW cards with zero radius have to have a GC after it
 //    if(strcmp(code, "GW") == 0 && deck->cards[i].f[7] == 0.0 && strcmp(deck->cards[i+1].card_code, "GC") != 0) {
-//      sprintf(msg, "The card on line %d is a GW with a zero radius, but the card after it is not a GC.", i + 1);
+//      snprintf(msg, sizeof(msg), "The card on line %d is a GW with a zero radius, but the card after it is not a GC.", i + 1);
 //      add_error(errors, msg, 1);
 //    }
     
     // GD cards have to follow GN cards
     if(strcmp(code, "GD") == 0 && strcmp(last_code, "GN") != 0) {
-      sprintf(msg, "The card on line %d is a GD, but the card above it is not a GN.", i + 1);
+      snprintf(msg, sizeof(msg), "The card on line %d is a GD, but the card above it is not a GN.", i + 1);
       add_error(ctx, errors, msg, 1);
     }
     if(strcmp(code, "GN") == 0) {
       if(i + 1 >= deck->num_cards || strcmp(deck->cards[i+1].card_code, "GD") != 0) {
-        sprintf(msg, "The card on line %d is a GN, but the card after it is not a GD.", i + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GN, but the card after it is not a GD.", i + 1);
         add_error(ctx, errors, msg, 1);
       }
     }
@@ -514,7 +514,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     // means they must follow CE cards, or in an onec deck, an SY
     // FIXME: it could also follow onec comment cards, so this is somewhat complex
     if(strcmp(code, "GF") == 0 && !(strcmp(last_code, "CE") == 0 || strcmp(last_code, "SY") == 0)) {
-      sprintf(msg, "The card on line %d is a GF, but the card above it is not a CE or SY.", i + 1);
+      snprintf(msg, sizeof(msg), "The card on line %d is a GF, but the card above it is not a CE or SY.", i + 1);
       add_error(ctx, errors, msg, 1);
     }
 
@@ -522,7 +522,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     if(strcmp(code, "GM") == 0 || strcmp(code, "GR") == 0 || strcmp(code, "GX") == 0) {
       if(!(strcmp(last_code, "GA") == 0 || strcmp(last_code, "GH") == 0 || strcmp(last_code, "GW") == 0 ||
            strcmp(last_code, "SP") == 0 || strcmp(last_code, "CW") == 0)) {
-        sprintf(msg, "The card on line %d is a %s, but the card above it is not a GA, GH, GW, SP or CW.", i + 1, code);
+        snprintf(msg, sizeof(msg), "The card on line %d is a %s, but the card above it is not a GA, GH, GW, SP or CW.", i + 1, code);
         add_error(ctx, errors, msg, 1);
       }
     }
@@ -530,7 +530,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     // SC cards have to follow an SP or SM, or another SC. this is not an exhaustive
     // test, it should really roll backward until it finds an SP or SM, but...
     if(strcmp(code, "SC") == 0 && !(strcmp(last_code, "SP") == 0 || strcmp(last_code, "SM") == 0 || strcmp(last_code, "SC") == 0)) {
-      sprintf(msg, "The card on line %d is an SC, but the card above it is not an SP, SM or another SC.", i + 1);
+      snprintf(msg, sizeof(msg), "The card on line %d is an SC, but the card above it is not an SP, SM or another SC.", i + 1);
       add_error(ctx, errors, msg, 1);
     }
     // If SC follows another SC, ensure there was an SP or SM earlier in the deck
@@ -542,13 +542,13 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         if(strcmp(deck->cards[j].card_code, "GE") == 0) break;
       }
       if(!hasAncestor) {
-        sprintf(msg, "The card on line %d is an SC following an SC, but no earlier SP or SM was found before this SC chain.", i + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is an SC following an SC, but no earlier SP or SM was found before this SC chain.", i + 1);
         add_error(ctx, errors, msg, 1);
       }
     }
     // SM cards should follow an SP or another SM
     if(strcmp(code, "SM") == 0 && !(strcmp(last_code, "SP") == 0 || strcmp(last_code, "SM") == 0)) {
-      sprintf(msg, "The card on line %d is an SM, but the card above it is not an SP or another SM.", i + 1);
+      snprintf(msg, sizeof(msg), "The card on line %d is an SM, but the card above it is not an SP or another SM.", i + 1);
       add_error(ctx, errors, msg, 1);
     }
     // SM must be immediately followed by SC (set pending on SM, clear on next non-SC)
@@ -556,7 +556,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       pendingSM = i + 1; // store 1-based line number of SM
     } else if(pendingSM) {
       if(strcmp(code, "SC") != 0) {
-        sprintf(msg, "The card on line %d is an SM, but the card after it is not an SC.", pendingSM);
+        snprintf(msg, sizeof(msg), "The card on line %d is an SM, but the card after it is not an SC.", pendingSM);
         add_error(ctx, errors, msg, 1);
       }
       pendingSM = 0;
@@ -567,7 +567,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
     // FR cards have to have either one input or three
     if(strcmp(code, "FR") == 0) {
       if(!(deck->cards[i].ints_used == 1 || deck->cards[i].ints_used == 3)) {
-        sprintf(msg, "The card on line %d is an FR but does not have 1 or 3 integer inputs.", i + 1);
+        snprintf(msg, sizeof(msg), "The card on line %d is an FR but does not have 1 or 3 integer inputs.", i + 1);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -576,20 +576,20 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
 
     // Warn about unsupported cards
     if(strcmp(code, "WG") == 0) {
-      sprintf(msg, "The card on line %d is a WG (Wire Grid), which is not supported by OpenNEC.", i + 1);
+      snprintf(msg, sizeof(msg), "The card on line %d is a WG (Wire Grid), which is not supported by OpenNEC.", i + 1);
       add_error(ctx, errors, msg, 0);
     }
     if(strcmp(code, "IT") == 0) {
-      sprintf(msg, "The card on line %d is an IT (Iteration), which is not supported by OpenNEC.", i + 1);
+      snprintf(msg, sizeof(msg), "The card on line %d is an IT (Iteration), which is not supported by OpenNEC.", i + 1);
       add_error(ctx, errors, msg, 0);
     }
     if(strcmp(code, "OP") == 0) {
-      sprintf(msg, "The card on line %d is an OP (Optimization), which is not supported by OpenNEC.", i + 1);
+      snprintf(msg, sizeof(msg), "The card on line %d is an OP (Optimization), which is not supported by OpenNEC.", i + 1);
       add_error(ctx, errors, msg, 0);
     }
     // Also warn for any other extension cards that are not supported
     if(is_extension(&deck->cards[i]) && strcmp(code, "SY") != 0 && strcmp(code, "XT") != 0) {
-      sprintf(msg, "The card on line %d is a %s, which is not supported by OpenNEC.", i + 1, code);
+      snprintf(msg, sizeof(msg), "The card on line %d is a %s, which is not supported by OpenNEC.", i + 1, code);
       add_error(ctx, errors, msg, 0);
     }
 
@@ -600,10 +600,10 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         int seen = 0;
         for(int t = 0; t < geom_tag_count; t++) { if(geom_tags[t] == tag) { seen = 1; break; } }
         if(!seen) {
-          sprintf(msg, "The card on line %d is an EX referencing tag %d, which was not found.", i + 1, tag);
+          snprintf(msg, sizeof(msg), "The card on line %d is an EX referencing tag %d, which was not found.", i + 1, tag);
           add_error(ctx, errors, msg, 0);
         } else if(is_geometry_tag_ignored(deck, tag)) {
-          sprintf(msg, "The card on line %d is an EX referencing tag %d, which is marked as ignored.", i + 1, tag);
+          snprintf(msg, sizeof(msg), "The card on line %d is an EX referencing tag %d, which is marked as ignored.", i + 1, tag);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -615,10 +615,10 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         int seen1 = 0;
         for(int t = 0; t < geom_tag_count; t++) { if(geom_tags[t] == tag1) { seen1 = 1; break; } }
         if(!seen1) {
-          sprintf(msg, "The TL on line %d references tag %d (first endpoint), which was not found.", i + 1, tag1);
+          snprintf(msg, sizeof(msg), "The TL on line %d references tag %d (first endpoint), which was not found.", i + 1, tag1);
           add_error(ctx, errors, msg, 0);
         } else if(is_geometry_tag_ignored(deck, tag1)) {
-          sprintf(msg, "The TL on line %d references tag %d (first endpoint), which is marked as ignored.", i + 1, tag1);
+          snprintf(msg, sizeof(msg), "The TL on line %d references tag %d (first endpoint), which is marked as ignored.", i + 1, tag1);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -626,10 +626,10 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         int seen2 = 0;
         for(int t = 0; t < geom_tag_count; t++) { if(geom_tags[t] == tag2) { seen2 = 1; break; } }
         if(!seen2) {
-          sprintf(msg, "The TL on line %d references tag %d (second endpoint), which was not found.", i + 1, tag2);
+          snprintf(msg, sizeof(msg), "The TL on line %d references tag %d (second endpoint), which was not found.", i + 1, tag2);
           add_error(ctx, errors, msg, 0);
         } else if(is_geometry_tag_ignored(deck, tag2)) {
-          sprintf(msg, "The TL on line %d references tag %d (second endpoint), which is marked as ignored.", i + 1, tag2);
+          snprintf(msg, sizeof(msg), "The TL on line %d references tag %d (second endpoint), which is marked as ignored.", i + 1, tag2);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -640,10 +640,10 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         int seen = 0;
         for(int t = 0; t < geom_tag_count; t++) { if(geom_tags[t] == tag) { seen = 1; break; } }
         if(!seen) {
-          sprintf(msg, "The card on line %d is an LD referencing tag %d, which was not found.", i + 1, tag);
+          snprintf(msg, sizeof(msg), "The card on line %d is an LD referencing tag %d, which was not found.", i + 1, tag);
           add_error(ctx, errors, msg, 0);
         } else if(is_geometry_tag_ignored(deck, tag)) {
-          sprintf(msg, "The card on line %d is an LD referencing tag %d, which is marked as ignored.", i + 1, tag);
+          snprintf(msg, sizeof(msg), "The card on line %d is an LD referencing tag %d, which is marked as ignored.", i + 1, tag);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -669,11 +669,11 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       if(ex_refs[er].tag == w.tag) {
         int seg = ex_refs[er].segStart;
         if(seg == 1 && w.segs > 1 && !end1_connected) {
-          sprintf(msg, "The EX on line %d is placed on segment 1 of tag %d, which is an open wire end.", ex_refs[er].line, w.tag);
+          snprintf(msg, sizeof(msg), "The EX on line %d is placed on segment 1 of tag %d, which is an open wire end.", ex_refs[er].line, w.tag);
           add_error(ctx, errors, msg, 0);
         }
         if(seg == w.segs && w.segs > 1 && !end2_connected) {
-          sprintf(msg, "The EX on line %d is placed on segment %d of tag %d, which is an open wire end.", ex_refs[er].line, w.segs, w.tag);
+          snprintf(msg, sizeof(msg), "The EX on line %d is placed on segment %d of tag %d, which is an open wire end.", ex_refs[er].line, w.segs, w.tag);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -684,12 +684,12 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         int s = ld_refs[lr].segStart;
         int e = ld_refs[lr].segEnd;
         if(s == 1 && w.segs > 1 && !end1_connected) {
-          sprintf(msg, "The LD on line %d starts at segment 1 of tag %d, which is an open wire end.", ld_refs[lr].line, w.tag);
+          snprintf(msg, sizeof(msg), "The LD on line %d starts at segment 1 of tag %d, which is an open wire end.", ld_refs[lr].line, w.tag);
           add_error(ctx, errors, msg, 0);
         }
         if(e == 0) e = s; // single-segment load
         if(e == w.segs && w.segs > 1 && !end2_connected) {
-          sprintf(msg, "The LD on line %d ends at segment %d of tag %d, which is an open wire end.", ld_refs[lr].line, w.segs, w.tag);
+          snprintf(msg, sizeof(msg), "The LD on line %d ends at segment %d of tag %d, which is an open wire end.", ld_refs[lr].line, w.segs, w.tag);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -717,16 +717,16 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         if(wires[w].tag == tl_refs[r].tag2) segs2 = wires[w].segs;
       }
       if(segs1 > 0 && (tl_refs[r].seg1 <= 0 || tl_refs[r].seg1 > segs1)) {
-        sprintf(msg, "The TL on line %d references an invalid segment on the first endpoint; segment index out of range for the wire tag %d.", tl_refs[r].line, tl_refs[r].tag1);
+        snprintf(msg, sizeof(msg), "The TL on line %d references an invalid segment on the first endpoint; segment index out of range for the wire tag %d.", tl_refs[r].line, tl_refs[r].tag1);
         add_error(ctx, errors, msg, 0);
       }
       if(segs2 > 0 && (tl_refs[r].seg2 <= 0 || tl_refs[r].seg2 > segs2)) {
-        sprintf(msg, "The TL on line %d references an invalid segment on the second endpoint; segment index out of range for the wire tag %d.", tl_refs[r].line, tl_refs[r].tag2);
+        snprintf(msg, sizeof(msg), "The TL on line %d references an invalid segment on the second endpoint; segment index out of range for the wire tag %d.", tl_refs[r].line, tl_refs[r].tag2);
         add_error(ctx, errors, msg, 0);
       }
       // TL self-loop: same tag+segment on both ends
       if(tl_refs[r].tag1 == tl_refs[r].tag2 && tl_refs[r].seg1 == tl_refs[r].seg2) {
-        sprintf(msg, "The TL on line %d connects the same tag and segment on both ends; this is a no-op or invalid connection.", tl_refs[r].line);
+        snprintf(msg, sizeof(msg), "The TL on line %d connects the same tag and segment on both ends; this is a no-op or invalid connection.", tl_refs[r].line);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -743,11 +743,11 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
         int s = ld_refs[r].segStart;
         int e = ld_refs[r].segEnd == 0 ? ld_refs[r].segStart : ld_refs[r].segEnd;
         if(s <= 0 || s > segs) {
-          sprintf(msg, "The LD on line %d references an invalid start segment; out of range for wire tag %d.", ld_refs[r].line, ld_refs[r].tag);
+          snprintf(msg, sizeof(msg), "The LD on line %d references an invalid start segment; out of range for wire tag %d.", ld_refs[r].line, ld_refs[r].tag);
           add_error(ctx, errors, msg, 0);
         }
         if(e <= 0 || e > segs) {
-          sprintf(msg, "The LD on line %d references an invalid end segment; out of range for wire tag %d.", ld_refs[r].line, ld_refs[r].tag);
+          snprintf(msg, sizeof(msg), "The LD on line %d references an invalid end segment; out of range for wire tag %d.", ld_refs[r].line, ld_refs[r].tag);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -762,7 +762,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       int same_dir = (a.x1==b.x1 && a.y1==b.y1 && a.z1==b.z1 && a.x2==b.x2 && a.y2==b.y2 && a.z2==b.z2);
       int reversed = (a.x1==b.x2 && a.y1==b.y2 && a.z1==b.z2 && a.x2==b.x1 && a.y2==b.y1 && a.z2==b.z1);
       if(same_dir || reversed) {
-        sprintf(msg, "The wire on line %d (tag %d) has the same endpoints as the wire on line %d (tag %d). Overlapping wires can cause issues.", a.line, a.tag, b.line, b.tag);
+        snprintf(msg, sizeof(msg), "The wire on line %d (tag %d) has the same endpoints as the wire on line %d (tag %d). Overlapping wires can cause issues.", a.line, a.tag, b.line, b.tag);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -775,10 +775,10 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       wire_info_t w = wires[wi];
       double z1 = w.z1, z2 = w.z2;
       if(z1 < 0.0 && z2 < 0.0) {
-        sprintf(msg, "The wire on line %d (tag %d) lies below the ground plane (z<0).", w.line, w.tag);
+        snprintf(msg, sizeof(msg), "The wire on line %d (tag %d) lies below the ground plane (z<0).", w.line, w.tag);
         add_error(ctx, errors, msg, 0);
       } else if(z1 * z2 < 0.0) {
-        sprintf(msg, "The wire on line %d (tag %d) crosses the ground plane (z=0), which is typically invalid.", w.line, w.tag);
+        snprintf(msg, sizeof(msg), "The wire on line %d (tag %d) crosses the ground plane (z=0), which is typically invalid.", w.line, w.tag);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -819,7 +819,7 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
             if(ed <= tol) { isEndpoint = 1; break; }
           }
           if(!isEndpoint) {
-            sprintf(msg, "The wire on line %d (tag %d) endpoint is connected near the middle of the wire on line %d (tag %d). Connections must be at segment ends.", a.line, a.tag, b.line, b.tag);
+            snprintf(msg, sizeof(msg), "The wire on line %d (tag %d) endpoint is connected near the middle of the wire on line %d (tag %d). Connections must be at segment ends.", a.line, a.tag, b.line, b.tag);
             add_error(ctx, errors, msg, 0);
           }
         }
@@ -829,52 +829,51 @@ void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
   
   // and with the entire deck tested, make sure we got the key cards
   if(!sawCE) {
-    sprintf(msg, "A NEC-2 deck should have a CE card.");
+    snprintf(msg, sizeof(msg), "A NEC-2 deck should have a CE card.");
     add_error(ctx, errors, msg, 0);
   }
   if(!sawGx) {
-    sprintf(msg, "A deck has to have at least one geometry card.");
+    snprintf(msg, sizeof(msg), "A deck has to have at least one geometry card.");
     add_error(ctx, errors, msg, 1);
   }
   if(!sawGE) {
-    sprintf(msg, "A deck has to have a GE card.");
+    snprintf(msg, sizeof(msg), "A deck has to have a GE card.");
     add_error(ctx, errors, msg, 1);
   }
   if(!sawFR) {
-    sprintf(msg, "A deck has to have an FR card.");
+    snprintf(msg, sizeof(msg), "A deck has to have an FR card.");
     add_error(ctx, errors, msg, 1);
   }
   if(!sawEN) {
-    sprintf(msg, "A deck should end with a EN card.");
+    snprintf(msg, sizeof(msg), "A deck should end with a EN card.");
     add_error(ctx, errors, msg, 0);
   }
   // EN should be the last card when present
   if(sawEN && sawEN != deck->num_cards - 1) {
-    sprintf(msg, "The EN card should be the final card in the deck (found earlier at card %d).", sawEN + 1);
+    snprintf(msg, sizeof(msg), "The EN card should be the final card in the deck (found earlier at card %d).", sawEN + 1);
     add_error(ctx, errors, msg, 0);
   }
   if(!sawEX && !sawLD) {
-    sprintf(msg, "A deck has to have at least one EX or LD card.");
+    snprintf(msg, sizeof(msg), "A deck has to have at least one EX or LD card.");
     add_error(ctx, errors, msg, 1);
   }
   if(sawSY && !sawCE) {
-    sprintf(msg, "We found SY cards in the deck, but there is no CE in the deck. SYs should follow the CE.");
+    snprintf(msg, sizeof(msg), "We found SY cards in the deck, but there is no CE in the deck. SYs should follow the CE.");
     add_error(ctx, errors, msg, 0);
   }
   // Warn if GD appears without any preceding GN
   if(sawGD && !sawGN) {
-    sprintf(msg, "A GD card appears in the deck, but there is no GN card.");
+    snprintf(msg, sizeof(msg), "A GD card appears in the deck, but there is no GN card.");
     add_error(ctx, errors, msg, 1);
   }
   
   // if the GE card was -1, there has to be a GN
   if(sawGE && GEType == -1 && !sawGN) {
-    sprintf(msg, "The GE is set to -1, but there is no GN card in the deck.");
+    snprintf(msg, sizeof(msg), "The GE is set to -1, but there is no GN card in the deck.");
     add_error(ctx, errors, msg, 1);
   }
   
   // and get rid of the local string
-  free(msg);
 }
 
 // Helper: point-to-segment distance in 3D
@@ -898,9 +897,9 @@ static void check_parallel_wire_segmentation(nec_context_t *ctx, errors_list_t *
                                              const wire_info_t *wires, int wire_count,
                                              double freq_mhz)
 {
-  char *msg = calloc(1, MAX_ERROR_LEN);
+  char msg[MAX_ERROR_LEN];
   double wlam_m = (freq_mhz > 0.0) ? (CVEL / freq_mhz) : 0.0; // CVEL in m/us vs MHz => meters
-  if(wlam_m <= 0.0) { free(msg); return; }
+  if(wlam_m <= 0.0) { return; }
   double thr = 0.05 * wlam_m;
 
   for(int i = 0; i < wire_count; i++) {
@@ -939,20 +938,19 @@ static void check_parallel_wire_segmentation(nec_context_t *ctx, errors_list_t *
         // different segmentation: either segment counts differ, or segment lengths differ >10%
         double rel = fabs(segA - segB) / fmax(segA, segB);
         if(a->segs != b->segs || rel > 0.10) {
-          sprintf(msg, "Parallel wires (tags %d and %d; lines %d and %d) are closer than 0.05 wavelengths but have different segmentation.", a->tag, b->tag, a->line, b->line);
+          snprintf(msg, sizeof(msg), "Parallel wires (tags %d and %d; lines %d and %d) are closer than 0.05 wavelengths but have different segmentation.", a->tag, b->tag, a->line, b->line);
           add_error(ctx, errors, msg, 0);
         }
       }
     }
   }
-  free(msg);
 }
 
 // Helper: junction segmentation consistency — connected wire endpoints should have similar segment lengths
 static void check_junction_segmentation_consistency(nec_context_t *ctx, errors_list_t *errors,
                                                     const wire_info_t *wires, int wire_count)
 {
-  char *msg = calloc(1, MAX_ERROR_LEN);
+  char msg[MAX_ERROR_LEN];
   for(int i = 0; i < wire_count; i++) {
     const wire_info_t *a = &wires[i];
     if(a->segs <= 0) continue;
@@ -973,13 +971,12 @@ static void check_junction_segmentation_consistency(nec_context_t *ctx, errors_l
       if(connected) {
         double rel = fabs(aSeg - bSeg) / fmax(aSeg, bSeg);
         if(rel > 0.20) {
-          sprintf(msg, "Connected wires (tags %d and %d; lines %d and %d) have very different segment lengths near the junction (%.4g m vs %.4g m); consider harmonizing segmentation.", a->tag, b->tag, a->line, b->line, aSeg, bSeg);
+          snprintf(msg, sizeof(msg), "Connected wires (tags %d and %d; lines %d and %d) have very different segment lengths near the junction (%.4g m vs %.4g m); consider harmonizing segmentation.", a->tag, b->tag, a->line, b->line, aSeg, bSeg);
           add_error(ctx, errors, msg, 0);
         }
       }
     }
   }
-  free(msg);
 }
 
 // Helper: GE I1=1 connects segment ends if wire height < 1e-3 * segment length; suggest GE -1
@@ -988,7 +985,7 @@ static void check_ge_low_height_hazard(nec_context_t *ctx, errors_list_t *errors
                                        int GEType)
 {
   if(GEType != 1) return;
-  char *msg = calloc(1, MAX_ERROR_LEN);
+  char msg[MAX_ERROR_LEN];
   for(int i = 0; i < wire_count; i++) {
     const wire_info_t *w = &wires[i];
     if(w->segs <= 0) continue;
@@ -997,11 +994,10 @@ static void check_ge_low_height_hazard(nec_context_t *ctx, errors_list_t *errors
     double dz = fabs(w->z2 - w->z1);
     double h = fmin(fabs(w->z1), fabs(w->z2));
     if(dz < 1e-9 && h < (1e-3 * segLen)) {
-      sprintf(msg, "With GE I1=1, the wire on line %d (tag %d) has height %.4g m < 1e-3 x segment length (%.4g m); segment ends may be connected to ground. Consider GE -1.", w->line, w->tag, h, segLen);
+      snprintf(msg, sizeof(msg), "With GE I1=1, the wire on line %d (tag %d) has height %.4g m < 1e-3 x segment length (%.4g m); segment ends may be connected to ground. Consider GE -1.", w->line, w->tag, h, segLen);
       add_error(ctx, errors, msg, 0);
     }
   }
-  free(msg);
 }
 
 // Helper: segment length vs wavelength and radius sanity
@@ -1009,9 +1005,9 @@ static void check_segment_length_and_radius(nec_context_t *ctx, errors_list_t *e
                                             const wire_info_t *wires, int wire_count,
                                             double freq_mhz, int ek_enabled)
 {
-  char *msg = calloc(1, MAX_ERROR_LEN);
+  char msg[MAX_ERROR_LEN];
   double wlam_m = (freq_mhz > 0.0) ? (CVEL / freq_mhz) : 0.0;
-  if(wlam_m <= 0.0) { free(msg); return; }
+  if(wlam_m <= 0.0) { return; }
 
   for(int i = 0; i < wire_count; i++) {
     const wire_info_t *w = &wires[i];
@@ -1020,36 +1016,35 @@ static void check_segment_length_and_radius(nec_context_t *ctx, errors_list_t *e
       double segLen = L / (double)w->segs;
       double segFrac = segLen / wlam_m; // in wavelengths
       if(segFrac >= 0.10) {
-        sprintf(msg, "The wire on line %d (tag %d) has segment length %.4g m (%.4g lambda) which is >= 0.1 lambda; consider increasing segmentation.", w->line, w->tag, segLen, segFrac);
+        snprintf(msg, sizeof(msg), "The wire on line %d (tag %d) has segment length %.4g m (%.4g lambda) which is >= 0.1 lambda; consider increasing segmentation.", w->line, w->tag, segLen, segFrac);
         add_error(ctx, errors, msg, 0);
       } else if(segFrac >= 0.05) {
-        sprintf(msg, "The wire on line %d (tag %d) has segment length %.4g m (%.4g lambda); in critical regions, aim for < 0.05 lambda.", w->line, w->tag, segLen, segFrac);
+        snprintf(msg, sizeof(msg), "The wire on line %d (tag %d) has segment length %.4g m (%.4g lambda); in critical regions, aim for < 0.05 lambda.", w->line, w->tag, segLen, segFrac);
         add_error(ctx, errors, msg, 0);
       }
       if(segFrac < 0.001) {
-        sprintf(msg, "The wire on line %d (tag %d) has very small segment length %.4g m (%.4g lambda); this may cause excessive segmentation.", w->line, w->tag, segLen, segFrac);
+        snprintf(msg, sizeof(msg), "The wire on line %d (tag %d) has very small segment length %.4g m (%.4g lambda); this may cause excessive segmentation.", w->line, w->tag, segLen, segFrac);
         add_error(ctx, errors, msg, 0);
       }
       // radius sanity relative to segment length
       if(w->radius > 0.0) {
         if(ek_enabled) {
           if(w->radius >= (2.0 * segLen)) {
-            sprintf(msg, "The wire on line %d (tag %d) has radius %.4g m >= 2*len (%.4g m) with extended kernel; reduce radius or increase segmentation.", w->line, w->tag, w->radius, 2.0*segLen);
+            snprintf(msg, sizeof(msg), "The wire on line %d (tag %d) has radius %.4g m >= 2*len (%.4g m) with extended kernel; reduce radius or increase segmentation.", w->line, w->tag, w->radius, 2.0*segLen);
             add_error(ctx, errors, msg, 0);
           }
         } else {
           if(w->radius >= (segLen / 2.0)) {
-            sprintf(msg, "The wire on line %d (tag %d) has radius %.4g m >= len/2 (%.4g m); this violates thin-wire assumptions.", w->line, w->tag, w->radius, segLen/2.0);
+            snprintf(msg, sizeof(msg), "The wire on line %d (tag %d) has radius %.4g m >= len/2 (%.4g m); this violates thin-wire assumptions.", w->line, w->tag, w->radius, segLen/2.0);
             add_error(ctx, errors, msg, 0);
           } else if(w->radius >= (segLen / 10.0)) {
-            sprintf(msg, "The wire on line %d (tag %d) has radius %.4g m; typical thin-wire usage prefers radius < len/10 (%.4g m).", w->line, w->tag, w->radius, segLen/10.0);
+            snprintf(msg, sizeof(msg), "The wire on line %d (tag %d) has radius %.4g m; typical thin-wire usage prefers radius < len/10 (%.4g m).", w->line, w->tag, w->radius, segLen/10.0);
             add_error(ctx, errors, msg, 0);
           }
         }
       }
     }
   }
-  free(msg);
 }
 
 
@@ -1068,7 +1063,7 @@ static void check_segment_length_and_radius(nec_context_t *ctx, errors_list_t *e
 void test_duplicate_tags(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   // we will also check to see if there are duplicate tags
-  char *msg = calloc(1, MAX_ERROR_LEN);
+  char msg[MAX_ERROR_LEN];
   
   // Only consider duplicates within the geometry section
   int gstart = deck->geometry_start;
@@ -1087,15 +1082,13 @@ void test_duplicate_tags(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
       for(int j = i + 1; j < gend; j++) {
         if(is_geometry(&deck->cards[j]) && deck->cards[j].i[1] > 0) {
           if(deck->cards[j].i[1] == tag_i) {
-            sprintf(msg, "The tag number %d is found on card %d and card %d.", tag_i, i + 1, j + 1);
+            snprintf(msg, sizeof(msg), "The tag number %d is found on card %d and card %d.", tag_i, i + 1, j + 1);
             add_error(ctx, errors, msg, 1);
           }
         }
       }
     }
   }
-  
-  free(msg);
 }
 /* end test_duplicate_tags */
 
@@ -1116,7 +1109,7 @@ void test_duplicate_tags(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
 void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   char *code;
-  char *msg = calloc(1, MAX_ERROR_LEN);
+  char msg[MAX_ERROR_LEN];
 
   for(int i = 0; i < deck->num_cards; i++) {
     code = deck->cards[i].card_code;
@@ -1124,7 +1117,7 @@ void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     // CE: comment end — should not have numeric inputs
     if(strcmp(code, "CE") == 0) {
       if(deck->cards[i].ints_used > 0 || deck->cards[i].flts_used > 0) {
-        sprintf(msg, "The card on line %d is a CE but has numeric inputs.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a CE but has numeric inputs.", i);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -1132,7 +1125,7 @@ void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     // EN: end of deck — should not have numeric inputs
     if(strcmp(code, "EN") == 0) {
       if(deck->cards[i].ints_used > 0 || deck->cards[i].flts_used > 0) {
-        sprintf(msg, "The card on line %d is an EN but has numeric inputs.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an EN but has numeric inputs.", i);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -1141,17 +1134,17 @@ void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     if(strcmp(code, "FR") == 0) {
       // there must be a value in F1
       if(deck->cards[i].f[1] == 0) {
-        sprintf(msg, "The card on line %d is a FR but has no base frequency in F1.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a FR but has no base frequency in F1.", i);
         add_error(ctx, errors, msg, 0);
       }
       // Single-frequency: I2==0 should have F2==0
       if(deck->cards[i].i[2] == 0 && deck->cards[i].f[2] != 0) {
-        sprintf(msg, "The card on line %d is a FR with I2 = 0 (single frequency), but has a non-zero F2.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a FR with I2 = 0 (single frequency), but has a non-zero F2.", i);
         add_error(ctx, errors, msg, 0);
       }
       // Stepped: I2>0 requires positive step in F2
       else if(deck->cards[i].i[2] > 0 && deck->cards[i].f[2] <= 0) {
-        sprintf(msg, "The card on line %d is a FR with I2 > 0 (stepped), but F2 is not a positive step.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a FR with I2 > 0 (stepped), but F2 is not a positive step.", i);
         add_error(ctx, errors, msg, 0);
       }
     }
@@ -1160,12 +1153,12 @@ void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     if(strcmp(code, "GW") == 0) {
       // At least tag and segment count
       if(deck->cards[i].ints_used < 2) {
-        sprintf(msg, "The card on line %d is a GW but has fewer than 2 integer inputs (tag, segments).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GW but has fewer than 2 integer inputs (tag, segments).", i);
         add_error(ctx, errors, msg, 0);
       } else {
         int segs = deck->cards[i].i[2];
         if(segs <= 0) {
-          sprintf(msg, "The card on line %d is a GW with non-positive segment count.", i);
+          snprintf(msg, sizeof(msg), "The card on line %d is a GW with non-positive segment count.", i);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -1173,26 +1166,26 @@ void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
       double x1 = deck->cards[i].f[1], y1 = deck->cards[i].f[2], z1 = deck->cards[i].f[3];
       double x2 = deck->cards[i].f[4], y2 = deck->cards[i].f[5], z2 = deck->cards[i].f[6];
       if(x1 == x2 && y1 == y2 && z1 == z2) {
-        sprintf(msg, "The card on line %d is a GW with identical endpoints (zero-length wire).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GW with identical endpoints (zero-length wire).", i);
         add_error(ctx, errors, msg, 0);
       }
       // Radius must be present and positive (F7)
       if(deck->cards[i].flts_used < 7) {
-        sprintf(msg, "The card on line %d is a GW but has no radius specified in F7.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GW but has no radius specified in F7.", i);
         add_error(ctx, errors, msg, 0);
       } else if(deck->cards[i].f[7] <= 0.0) {
-        sprintf(msg, "The card on line %d is a GW with non-positive radius in F7.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is a GW with non-positive radius in F7.", i);
         add_error(ctx, errors, msg, 0);
       }
       // If radius is zero, next card should be a GC with tapering info
       if(deck->cards[i].flts_used >= 7 && deck->cards[i].f[7] == 0.0) {
         if(i + 1 < deck->num_cards) {
           if(strcmp(deck->cards[i+1].card_code, "GC") != 0) {
-            sprintf(msg, "The card on line %d is a GW with a zero radius, but the next card is not a GC.", i + 1);
+            snprintf(msg, sizeof(msg), "The card on line %d is a GW with a zero radius, but the next card is not a GC.", i + 1);
             add_error(ctx, errors, msg, 1);
           }
         } else {
-          sprintf(msg, "The card on line %d is a GW with a zero radius and is the last card; a following GC is required.", i + 1);
+          snprintf(msg, sizeof(msg), "The card on line %d is a GW with a zero radius and is the last card; a following GC is required.", i + 1);
           add_error(ctx, errors, msg, 1);
         }
       }
@@ -1202,22 +1195,22 @@ void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     if(strcmp(code, "RP") == 0) {
       // Typical RP uses at least 4 integers and 4 floats
       if(deck->cards[i].ints_used < 4) {
-        sprintf(msg, "The card on line %d is an RP but has fewer than 4 integer inputs.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an RP but has fewer than 4 integer inputs.", i);
         add_error(ctx, errors, msg, 0);
       }
       if(deck->cards[i].flts_used < 4) {
-        sprintf(msg, "The card on line %d is an RP but has fewer than 4 floating-point inputs.", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an RP but has fewer than 4 floating-point inputs.", i);
         add_error(ctx, errors, msg, 0);
       }
       // Number of theta/phi points should be positive
       int ntheta = deck->cards[i].i[2];
       int nphi   = deck->cards[i].i[3];
       if(ntheta <= 0) {
-        sprintf(msg, "The card on line %d is an RP with non-positive NTHETA (I2).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an RP with non-positive NTHETA (I2).", i);
         add_error(ctx, errors, msg, 0);
       }
       if(nphi <= 0) {
-        sprintf(msg, "The card on line %d is an RP with non-positive NPHI (I3).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an RP with non-positive NPHI (I3).", i);
         add_error(ctx, errors, msg, 0);
       }
       // Steps must be non-zero when requesting multiple points
@@ -1226,66 +1219,64 @@ void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
       double th_step  = deck->cards[i].f[3];
       double ph_step  = deck->cards[i].f[4];
       if(ntheta > 1 && th_step == 0.0) {
-        sprintf(msg, "The card on line %d is an RP with NTHETA > 1 but zero theta step (F3).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an RP with NTHETA > 1 but zero theta step (F3).", i);
         add_error(ctx, errors, msg, 0);
       }
       if(nphi > 1 && ph_step == 0.0) {
-        sprintf(msg, "The card on line %d is an RP with NPHI > 1 but zero phi step (F4).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an RP with NPHI > 1 but zero phi step (F4).", i);
         add_error(ctx, errors, msg, 0);
       }
       // Basic angle sanity: starts within typical ranges
       if(!(th_start >= -180.0 && th_start <= 180.0)) {
-        sprintf(msg, "The card on line %d is an RP with theta start (F1) outside [-180,180].", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an RP with theta start (F1) outside [-180,180].", i);
         add_error(ctx, errors, msg, 0);
       }
       if(!(ph_start >= -360.0 && ph_start <= 360.0)) {
-        sprintf(msg, "The card on line %d is an RP with phi start (F2) outside [-360,360].", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an RP with phi start (F2) outside [-360,360].", i);
         add_error(ctx, errors, msg, 0);
       }
       // Step magnitudes should be reasonable
       if(fabs(th_step) > 180.0) {
-        sprintf(msg, "The card on line %d is an RP with an excessively large theta step (F3).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an RP with an excessively large theta step (F3).", i);
         add_error(ctx, errors, msg, 0);
       }
       if(fabs(ph_step) > 360.0) {
-        sprintf(msg, "The card on line %d is an RP with an excessively large phi step (F4).", i);
+        snprintf(msg, sizeof(msg), "The card on line %d is an RP with an excessively large phi step (F4).", i);
         add_error(ctx, errors, msg, 0);
       }
       // Derived end angles should remain within sensible bounds and match step direction
       if(ntheta > 1) {
         double th_end = th_start + (ntheta - 1) * th_step;
         if(!(th_end >= -180.0 && th_end <= 180.0)) {
-          sprintf(msg, "The card on line %d is an RP whose theta sweep leaves the [-180,180] range.", i);
+          snprintf(msg, sizeof(msg), "The card on line %d is an RP whose theta sweep leaves the [-180,180] range.", i);
           add_error(ctx, errors, msg, 0);
         }
         if(th_step > 0.0 && th_end < th_start) {
-          sprintf(msg, "The card on line %d is an RP with NTHETA>1 and positive theta step but decreasing sweep.", i);
+          snprintf(msg, sizeof(msg), "The card on line %d is an RP with NTHETA>1 and positive theta step but decreasing sweep.", i);
           add_error(ctx, errors, msg, 0);
         }
         if(th_step < 0.0 && th_end > th_start) {
-          sprintf(msg, "The card on line %d is an RP with NTHETA>1 and negative theta step but increasing sweep.", i);
+          snprintf(msg, sizeof(msg), "The card on line %d is an RP with NTHETA>1 and negative theta step but increasing sweep.", i);
           add_error(ctx, errors, msg, 0);
         }
       }
       if(nphi > 1) {
         double ph_end = ph_start + (nphi - 1) * ph_step;
         if(!(ph_end >= -720.0 && ph_end <= 720.0)) {
-          sprintf(msg, "The card on line %d is an RP whose phi sweep leaves a reasonable range.", i);
+          snprintf(msg, sizeof(msg), "The card on line %d is an RP whose phi sweep leaves a reasonable range.", i);
           add_error(ctx, errors, msg, 0);
         }
         if(ph_step > 0.0 && ph_end < ph_start) {
-          sprintf(msg, "The card on line %d is an RP with NPHI>1 and positive phi step but decreasing sweep.", i);
+          snprintf(msg, sizeof(msg), "The card on line %d is an RP with NPHI>1 and positive phi step but decreasing sweep.", i);
           add_error(ctx, errors, msg, 0);
         }
         if(ph_step < 0.0 && ph_end > ph_start) {
-          sprintf(msg, "The card on line %d is an RP with NPHI>1 and negative phi step but increasing sweep.", i);
+          snprintf(msg, sizeof(msg), "The card on line %d is an RP with NPHI>1 and negative phi step but increasing sweep.", i);
           add_error(ctx, errors, msg, 0);
         }
       }
     }
   }
-  
-  free(msg);
 }
 /* end test_card_inputs */
 
@@ -1304,7 +1295,7 @@ void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
  */
 void test_bad_symbols(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
-  char *msg = calloc(1, MAX_ERROR_LEN);
+  char msg[MAX_ERROR_LEN];
   
   // List of default symbol names (pi, c, and unit constants)
   // Note: AWG symbols (awg0-awg40) are also defaults but checked separately below
@@ -1323,7 +1314,7 @@ void test_bad_symbols(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
         // Check against standard defaults
         for (int d = 0; d < num_defaults; d++) {
           if (strcasecmp(kv->key, default_symbols[d]) == 0) {
-            sprintf(msg, "The symbol '%s' overrides a default symbol. This may cause unexpected results.", kv->key);
+            snprintf(msg, sizeof(msg), "The symbol '%s' overrides a default symbol. This may cause unexpected results.", kv->key);
             add_error(ctx, errors, msg, WARNING);
           }
         }
@@ -1335,7 +1326,7 @@ void test_bad_symbols(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
               (kv->key[2] == 'g' || kv->key[2] == 'G')) {
             int awg_num = atoi(&kv->key[3]);
             if (awg_num >= 0 && awg_num <= 40) {
-              sprintf(msg, "The symbol '%s' overrides a default AWG constant. This may cause unexpected results.", kv->key);
+              snprintf(msg, sizeof(msg), "The symbol '%s' overrides a default AWG constant. This may cause unexpected results.", kv->key);
               add_error(ctx, errors, msg, WARNING);
             }
           }
@@ -1357,13 +1348,11 @@ void test_bad_symbols(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
       if (inner == NULL) continue;
       
       if (strcasecmp(outer->key, inner->key) == 0) {
-        sprintf(msg, "The symbol '%s' has been defined more than once.", outer->key);
+        snprintf(msg, sizeof(msg), "The symbol '%s' has been defined more than once.", outer->key);
         add_error(ctx, errors, msg, 0);
       }
     }
   }
-  
-  free(msg);
 } /* end of test_bad_symbols */
 
 /* end of tests.c */

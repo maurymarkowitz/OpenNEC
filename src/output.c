@@ -14,7 +14,7 @@
  *
  *****************************************************************************/
 
-#include "opennec.h"
+#include "internals.h"
 #include "output.h"
 
 /* Forward declarations for internal write functions */

@@ -25,7 +25,7 @@
  * accumulate results.
  *****************************************************************************/
 
-#include "opennec.h"
+#include "internals.h"
 #include "fields.h"
 #include "ground.h"
 #include "calculations.h"
@@ -39,9 +39,6 @@ static void gx(nec_context_t *ctx, double zz, double rh, double xk, complex doub
 static void gxx(nec_context_t *ctx, double zz, double rh, double a, double a2, double xk, int ira, complex double *g1, complex double *g1p, complex double *g2, complex double *g2p, complex double *g3, complex double *gzp);
 static void hfk(nec_context_t *ctx, double el1, double el2, double rhk, double zpkx, double *sgr, double *sgi);
 static void hsflx(nec_context_t *ctx, double s, double rh, double zpx, complex double *hpk, complex double *hps, complex double *hpc);
-
-/*common  /tmh/ */
-static tmh_t tmh;
 
 /*-------------------------------------------------------------------*/
 
@@ -471,8 +468,8 @@ void gh(nec_context_t *ctx, double zk, double *hr, double *hi)
 {
   double rs, r, ckr, skr, rr2, rr3;
   
-  rs= zk- tmh.zpka;
-  rs= tmh.rhks+ rs* rs;
+  rs= zk- ctx->tmh.zpka;
+  rs= ctx->tmh.rhks+ rs* rs;
   r= sqrt( rs);
   ckr= cos( r);
   skr= sin( r);
@@ -658,8 +655,8 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
   double g1i, g5i=0., t01r, g3r=0, t01i, g3i=0, t10r, t10i, te1i, te1r, t02r;
   double g2r, g4r, t02i, g2i, g4i, t11r, t11i, t20r, t20i, te2i, te2r;
   
-  tmh.zpka= zpkx;
-  tmh.rhks= rhk* rhk;
+  ctx->tmh.zpka= zpkx;
+  ctx->tmh.rhks= rhk* rhk;
   z= el1;
   ze= el2;
   s= ze- z;

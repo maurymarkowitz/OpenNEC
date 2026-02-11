@@ -21,7 +21,7 @@
  * helper evaluators to produce consistent data for ground calculations.
  *****************************************************************************/
 
-#include "opennec.h"
+#include "internals.h"
 #include "somnec.h"
 #include "calculations.h"
 
@@ -33,14 +33,6 @@ static int hankel(nec_context_t *ctx, complex double z, complex double *h0, comp
 static void lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam);
 static void rom1(nec_context_t *ctx, int n, complex double *sum, int nx);
 static void saoa(nec_context_t *ctx, double t, complex double *ans);
-
-/* common /evlcom/ */
-static int jh;
-static double ck2, ck2sq, tkmag, tsmag, ck1r, zph, rho;
-static complex double ct1, ct2, ct3, ck1, ck1sq, cksm;
-
-/* common /cntour/ */
-static complex double a, b;
 
 /*-----------------------------------------------------------------------*/
 
@@ -59,26 +51,26 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
     ctx->ggrid.epscf=cmplx(epr,sig);
 
   secnds(ctx, &tst);
-  ck2 = TP;
-  ck2sq = ck2 * ck2;
+  ctx->somnec.evlcom.ck2 = TP;
+  ctx->somnec.evlcom.ck2sq = ctx->somnec.evlcom.ck2 * ctx->somnec.evlcom.ck2;
 
   /* sommerfeld integral evaluation uses exp(-jwt), nec uses exp(+jwt), */
   /* hence need conjg(ggrid.epscf).  conjugate of fields occurs in subroutine */
   /* evlua. */
 
-  ck1sq=ck2sq*conj(ctx->ggrid.epscf);
-  ck1=csqrt(ck1sq);
-  ck1r=creal(ck1);
-  tkmag=100.*cabs(ck1);
-  tsmag=100.*creal(ck1*conj(ck1));
-  cksm=ck2sq/(ck1sq+ck2sq);
-  ct1=.5*(ck1sq-ck2sq);
-  erv=ck1sq*ck1sq;
-  ezv=ck2sq*ck2sq;
-  ct2=.125*(erv-ezv);
-  erv *= ck1sq;
-  ezv *= ck2sq;
-  ct3=.0625*(erv-ezv);
+  ctx->somnec.evlcom.ck1sq=ctx->somnec.evlcom.ck2sq*conj(ctx->ggrid.epscf);
+  ctx->somnec.evlcom.ck1=csqrt(ctx->somnec.evlcom.ck1sq);
+  ctx->somnec.evlcom.ck1r=creal(ctx->somnec.evlcom.ck1);
+  ctx->somnec.evlcom.tkmag=100.*cabs(ctx->somnec.evlcom.ck1);
+  ctx->somnec.evlcom.tsmag=100.*creal(ctx->somnec.evlcom.ck1*conj(ctx->somnec.evlcom.ck1));
+  ctx->somnec.evlcom.cksm=ctx->somnec.evlcom.ck2sq/(ctx->somnec.evlcom.ck1sq+ctx->somnec.evlcom.ck2sq);
+  ctx->somnec.evlcom.ct1=.5*(ctx->somnec.evlcom.ck1sq-ctx->somnec.evlcom.ck2sq);
+  erv=ctx->somnec.evlcom.ck1sq*ctx->somnec.evlcom.ck1sq;
+  ezv=ctx->somnec.evlcom.ck2sq*ctx->somnec.evlcom.ck2sq;
+  ctx->somnec.evlcom.ct2=.125*(erv-ezv);
+  erv *= ctx->somnec.evlcom.ck1sq;
+  ezv *= ctx->somnec.evlcom.ck2sq;
+  ctx->somnec.evlcom.ct3=.0625*(erv-ezv);
 
   /* loop over 3 grid regions */
   for(k = 0; k < 3; k++) {
@@ -101,16 +93,16 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
       /* loop over theta.  (theta=atan((z+h)/rho)) */
       for(ith = 0; ith < nth; ith++) {
         thet += dth;
-        rho=r*cos(thet);
-        zph=r*sin(thet);
-        if(rho < 1.e-7)
-          rho=1.e-8;
-        if(zph < 1.e-7)
-          zph=0.;
+        ctx->somnec.evlcom.rho=r*cos(thet);
+        ctx->somnec.evlcom.zph=r*sin(thet);
+        if(ctx->somnec.evlcom.rho < 1.e-7)
+          ctx->somnec.evlcom.rho=1.e-8;
+        if(ctx->somnec.evlcom.zph < 1.e-7)
+          ctx->somnec.evlcom.zph=0.;
         
         evlua(ctx, &erv, &ezv, &erh, &eph );
         
-        rk=ck2*r;
+        rk=ctx->somnec.evlcom.ck2*r;
         con=-CONST1*r/cmplx(cos(rk),-sin(rk));
         
         switch( k ) {
@@ -184,20 +176,18 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
 void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex double *j0p )
 {
   int k, ib;
-  static int m[101], init = false;
-  static double a1[25], a2[25];
   double zms;
   complex double p0z, p1z, q0z, q1z, zi, zi2, zk, cz, sz, j0x=CPLX_00, j0px=CPLX_00;
 
   /* initialization of constants */
-  if( ! init )
+  if( ! ctx->somnec.bessel.init )
   {
 	int i;
 	for( k = 1; k <= 25; k++ )
 	{
 	  i = k-1;
-	  a1[i]=-.25/(k*k);
-	  a2[i]=1.0/(k+1.0);
+	  ctx->somnec.bessel.a1[i]=-.25/(k*k);
+	  ctx->somnec.bessel.a2[i]=1.0/(k+1.0);
 	}
 
 	for( i = 1; i <= 101; i++ )
@@ -205,16 +195,16 @@ void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex do
 	  double tst = 1.0;
 	  for( k = 0; k < 24; k++ )
 	  {
-		init = k;
-		tst *= -i*a1[k];
+		ctx->somnec.bessel.init = k;
+		tst *= -i*ctx->somnec.bessel.a1[k];
 		if( tst < 1.0e-6 )
 		  break;
 	  }
 
-	  m[i-1] = init+1;
+	  ctx->somnec.bessel.m[i-1] = ctx->somnec.bessel.init+1;
 	} /* for( i = 1; i<= 101; i++ ) */
 
-	init = true;
+	ctx->somnec.bessel.init = true;
   } /* if(init == 0) */
 
   zms=creal(z*conj(z));
@@ -233,7 +223,7 @@ void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex do
 
 	/* series expansion */
 	int iz=(int)zms;
-	int miz=m[iz];
+	int miz=ctx->somnec.bessel.m[iz];
 	*j0=CPLX_10;
 	*j0p=*j0;
 	zk=*j0;
@@ -241,9 +231,9 @@ void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex do
 
 	for( k = 0; k < miz; k++ )
 	{
-	  zk *= a1[k]*zi;
+	  zk *= ctx->somnec.bessel.a1[k]*zi;
 	  *j0 += zk;
-	  *j0p += a2[k]*zk;
+	  *j0p += ctx->somnec.bessel.a2[k]*zk;
 	}
 	*j0p *= -.5*z;
 
@@ -287,103 +277,101 @@ void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
 	complex double *erh, complex double *eph )
 {
   int i, jump;
-  static double del, slope, rmis;
-  static complex double cp1, cp2, cp3, bk, delta, delta2, sum[6], ans[6];
 
-  del=zph;
-  if( rho > del )
-	del=rho;
+  ctx->somnec.evlua.del=ctx->somnec.evlcom.zph;
+  if( ctx->somnec.evlcom.rho > ctx->somnec.evlua.del )
+	ctx->somnec.evlua.del=ctx->somnec.evlcom.rho;
 
-  if(zph >= 2.*rho)
+  if(ctx->somnec.evlcom.zph >= 2.*ctx->somnec.evlcom.rho)
   {
 	/* bessel function form of sommerfeld integrals */
-	jh=0;
-	a=CPLX_00;
-	del=1./del;
+	ctx->somnec.evlcom.jh=0;
+	ctx->somnec.cntour.a=CPLX_00;
+	ctx->somnec.evlua.del=1./ctx->somnec.evlua.del;
 
-	if( del > tkmag)
+	if( ctx->somnec.evlua.del > ctx->somnec.evlcom.tkmag)
 	{
-	  b=cmplx(.1*tkmag,-.1*tkmag);
-	  rom1(ctx,6,sum,2);
-	  a=b;
-	  b=cmplx(del,-del);
-	  rom1 (ctx,6,ans,2);
+	  ctx->somnec.cntour.b=cmplx(.1*ctx->somnec.evlcom.tkmag,-.1*ctx->somnec.evlcom.tkmag);
+	  rom1(ctx,6,ctx->somnec.evlua.sum,2);
+	  ctx->somnec.cntour.a=ctx->somnec.cntour.b;
+	  ctx->somnec.cntour.b=cmplx(ctx->somnec.evlua.del,-ctx->somnec.evlua.del);
+	  rom1 (ctx,6,ctx->somnec.evlua.ans,2);
 	  for( i = 0; i < 6; i++ )
-		sum[i] += ans[i];
+		ctx->somnec.evlua.sum[i] += ctx->somnec.evlua.ans[i];
 	}
 	else
 	{
-	  b=cmplx(del,-del);
-	  rom1(ctx,6,sum,2);
+	  ctx->somnec.cntour.b=cmplx(ctx->somnec.evlua.del,-ctx->somnec.evlua.del);
+	  rom1(ctx,6,ctx->somnec.evlua.sum,2);
 	}
 
-	delta=PTP*del;
-	gshank(ctx,b,delta,ans,6,sum,0,b,b);
-	ans[5] *= ck1;
+	ctx->somnec.evlua.delta=PTP*ctx->somnec.evlua.del;
+	gshank(ctx,ctx->somnec.cntour.b,ctx->somnec.evlua.delta,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,0,ctx->somnec.cntour.b,ctx->somnec.cntour.b);
+	ctx->somnec.evlua.ans[5] *= ctx->somnec.evlcom.ck1;
 
 	/* conjugate since nec uses exp(+jwt) */
-	*erv=conj(ck1sq*ans[2]);
-	*ezv=conj(ck1sq*(ans[1]+ck2sq*ans[4]));
-	*erh=conj(ck2sq*(ans[0]+ans[5]));
-	*eph=-conj(ck2sq*(ans[3]+ans[5]));
+	*erv=conj(ctx->somnec.evlcom.ck1sq*ctx->somnec.evlua.ans[2]);
+	*ezv=conj(ctx->somnec.evlcom.ck1sq*(ctx->somnec.evlua.ans[1]+ctx->somnec.evlcom.ck2sq*ctx->somnec.evlua.ans[4]));
+	*erh=conj(ctx->somnec.evlcom.ck2sq*(ctx->somnec.evlua.ans[0]+ctx->somnec.evlua.ans[5]));
+	*eph=-conj(ctx->somnec.evlcom.ck2sq*(ctx->somnec.evlua.ans[3]+ctx->somnec.evlua.ans[5]));
 
 	return;
 
   } /* if(zph >= 2.*rho) */
 
   /* hankel function form of sommerfeld integrals */
-  jh=1;
-  cp1=cmplx(0.0,.4*ck2);
-  cp2=cmplx(.6*ck2,-.2*ck2);
-  cp3=cmplx(1.02*ck2,-.2*ck2);
-  a=cp1;
-  b=cp2;
-  rom1(ctx,6,sum,2);
-  a=cp2;
-  b=cp3;
-  rom1(ctx,6,ans,2);
+  ctx->somnec.evlcom.jh=1;
+  ctx->somnec.evlua.cp1=cmplx(0.0,.4*ctx->somnec.evlcom.ck2);
+  ctx->somnec.evlua.cp2=cmplx(.6*ctx->somnec.evlcom.ck2,-.2*ctx->somnec.evlcom.ck2);
+  ctx->somnec.evlua.cp3=cmplx(1.02*ctx->somnec.evlcom.ck2,-.2*ctx->somnec.evlcom.ck2);
+  ctx->somnec.cntour.a=ctx->somnec.evlua.cp1;
+  ctx->somnec.cntour.b=ctx->somnec.evlua.cp2;
+  rom1(ctx,6,ctx->somnec.evlua.sum,2);
+  ctx->somnec.cntour.a=ctx->somnec.evlua.cp2;
+  ctx->somnec.cntour.b=ctx->somnec.evlua.cp3;
+  rom1(ctx,6,ctx->somnec.evlua.ans,2);
 
   for( i = 0; i < 6; i++ )
-	sum[i]=-(sum[i]+ans[i]);
+	ctx->somnec.evlua.sum[i]=-(ctx->somnec.evlua.sum[i]+ctx->somnec.evlua.ans[i]);
 
   /* path from imaginary axis to -infinity */
-  if(zph > .001*rho)
-	slope=rho/zph;
+  if(ctx->somnec.evlcom.zph > .001*ctx->somnec.evlcom.rho)
+	ctx->somnec.evlua.slope=ctx->somnec.evlcom.rho/ctx->somnec.evlcom.zph;
   else
-	slope=1000.;
+	ctx->somnec.evlua.slope=1000.;
 
-  del=PTP/del;
-  delta=cmplx(-1.0,slope)*del/sqrt(1.+slope*slope);
-  delta2=-conj(delta);
-  gshank(ctx,cp1,delta,ans,6,sum,0,bk,bk);
-  rmis=rho*(creal(ck1)-ck2);
+  ctx->somnec.evlua.del=PTP/ctx->somnec.evlua.del;
+  ctx->somnec.evlua.delta=cmplx(-1.0,ctx->somnec.evlua.slope)*ctx->somnec.evlua.del/sqrt(1.+ctx->somnec.evlua.slope*ctx->somnec.evlua.slope);
+  ctx->somnec.evlua.delta2=-conj(ctx->somnec.evlua.delta);
+  gshank(ctx,ctx->somnec.evlua.cp1,ctx->somnec.evlua.delta,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,0,ctx->somnec.evlua.bk,ctx->somnec.evlua.bk);
+  ctx->somnec.evlua.rmis=ctx->somnec.evlcom.rho*(creal(ctx->somnec.evlcom.ck1)-ctx->somnec.evlcom.ck2);
 
   jump = false;
-  if( (rmis >= 2.*ck2) && (rho >= 1.e-10) )
+  if( (ctx->somnec.evlua.rmis >= 2.*ctx->somnec.evlcom.ck2) && (ctx->somnec.evlcom.rho >= 1.e-10) )
   {
-	if(zph >= 1.e-10)
+	if(ctx->somnec.evlcom.zph >= 1.e-10)
 	{
-	  bk=cmplx(-zph,rho)*(ck1-cp3);
-	  rmis=-creal(bk)/fabs(cimag(bk));
-	  if(rmis > 4.*rho/zph)
+	  ctx->somnec.evlua.bk=cmplx(-ctx->somnec.evlcom.zph,ctx->somnec.evlcom.rho)*(ctx->somnec.evlcom.ck1-ctx->somnec.evlua.cp3);
+	  ctx->somnec.evlua.rmis=-creal(ctx->somnec.evlua.bk)/fabs(cimag(ctx->somnec.evlua.bk));
+	  if(ctx->somnec.evlua.rmis > 4.*ctx->somnec.evlcom.rho/ctx->somnec.evlcom.zph)
 		jump = true;
 	}
 
 	if( ! jump )
 	{
 	  /* integrate up between branch cuts, then to + infinity */
-	  cp1=ck1-(.1+I*0.2);
-	  cp2=cp1+.2;
-	  bk=cmplx(0.,del);
-	  gshank(ctx,cp1,bk,sum,6,ans,0,bk,bk);
-	  a=cp1;
-	  b=cp2;
-	  rom1(ctx,6,ans,1);
+	  ctx->somnec.evlua.cp1=ctx->somnec.evlcom.ck1-(.1+I*0.2);
+	  ctx->somnec.evlua.cp2=ctx->somnec.evlua.cp1+.2;
+	  ctx->somnec.evlua.bk=cmplx(0.,ctx->somnec.evlua.del);
+	  gshank(ctx,ctx->somnec.evlua.cp1,ctx->somnec.evlua.bk,ctx->somnec.evlua.sum,6,ctx->somnec.evlua.ans,0,ctx->somnec.evlua.bk,ctx->somnec.evlua.bk);
+	  ctx->somnec.cntour.a=ctx->somnec.evlua.cp1;
+	  ctx->somnec.cntour.b=ctx->somnec.evlua.cp2;
+	  rom1(ctx,6,ctx->somnec.evlua.ans,1);
 	  for( i = 0; i < 6; i++ )
-		ans[i] -= sum[i];
+		ctx->somnec.evlua.ans[i] -= ctx->somnec.evlua.sum[i];
 
-	  gshank(ctx,cp3,bk,sum,6,ans,0,bk,bk);
-	  gshank(ctx,cp2,delta2,ans,6,sum,0,bk,bk);
+	  gshank(ctx,ctx->somnec.evlua.cp3,ctx->somnec.evlua.bk,ctx->somnec.evlua.sum,6,ctx->somnec.evlua.ans,0,ctx->somnec.evlua.bk,ctx->somnec.evlua.bk);
+	  gshank(ctx,ctx->somnec.evlua.cp2,ctx->somnec.evlua.delta2,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,0,ctx->somnec.evlua.bk,ctx->somnec.evlua.bk);
 	}
 
 	jump = true;
@@ -396,26 +384,26 @@ void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
   {
 	/* integrate below branch points, then to + infinity */
 	for( i = 0; i < 6; i++ )
-	  sum[i]=-ans[i];
+	  ctx->somnec.evlua.sum[i]=-ctx->somnec.evlua.ans[i];
 
-	rmis=creal(ck1)*1.01;
-	if( (ck2+1.) > rmis )
-	  rmis=ck2+1.;
+	ctx->somnec.evlua.rmis=creal(ctx->somnec.evlcom.ck1)*1.01;
+	if( (ctx->somnec.evlcom.ck2+1.) > ctx->somnec.evlua.rmis )
+	  ctx->somnec.evlua.rmis=ctx->somnec.evlcom.ck2+1.;
 
-	bk=cmplx(rmis,.99*cimag(ck1));
-	delta=bk-cp3;
-	delta *= del/cabs(delta);
-	gshank(ctx,cp3,delta,ans,6,sum,1,bk,delta2);
+	ctx->somnec.evlua.bk=cmplx(ctx->somnec.evlua.rmis,.99*cimag(ctx->somnec.evlcom.ck1));
+	ctx->somnec.evlua.delta=ctx->somnec.evlua.bk-ctx->somnec.evlua.cp3;
+	ctx->somnec.evlua.delta *= ctx->somnec.evlua.del/cabs(ctx->somnec.evlua.delta);
+	gshank(ctx,ctx->somnec.evlua.cp3,ctx->somnec.evlua.delta,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,1,ctx->somnec.evlua.bk,ctx->somnec.evlua.delta2);
 
   } /* if( ! jump ) */
 
-  ans[5] *= ck1;
+  ctx->somnec.evlua.ans[5] *= ctx->somnec.evlcom.ck1;
 
   /* conjugate since nec uses exp(+jwt) */
-  *erv=conj(ck1sq*ans[2]);
-  *ezv=conj(ck1sq*(ans[1]+ck2sq*ans[4]));
-  *erh=conj(ck2sq*(ans[0]+ans[5]));
-  *eph=-conj(ck2sq*(ans[3]+ans[5]));
+  *erv=conj(ctx->somnec.evlcom.ck1sq*ctx->somnec.evlua.ans[2]);
+  *ezv=conj(ctx->somnec.evlcom.ck1sq*(ctx->somnec.evlua.ans[1]+ctx->somnec.evlcom.ck2sq*ctx->somnec.evlua.ans[4]));
+  *erh=conj(ctx->somnec.evlcom.ck2sq*(ctx->somnec.evlua.ans[0]+ctx->somnec.evlua.ans[5]));
+  *eph=-conj(ctx->somnec.evlcom.ck2sq*(ctx->somnec.evlua.ans[3]+ctx->somnec.evlua.ans[5]));
 
   return;
 }
@@ -488,11 +476,10 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
 	int ibk, complex double bk, complex double delb )
 {
   int ibx, j, i, jm, intx, inx, brk=0;
-  static double rbk, amg, den, denm;
   complex double a1, a2, as1, as2, del, aa;
   complex double q1[6][20], q2[6][20], ans1[6], ans2[6];
 
-  rbk=creal(bk);
+  ctx->somnec.gshank.rbk=creal(bk);
   del=dela;
   if(ibk == 0)
 	ibx=1;
@@ -501,19 +488,19 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
 
   for( i = 0; i < nans; i++ )
     ans2[i] = seed[i];
-  b = start;
+  ctx->somnec.cntour.b = start;
 
   for( intx = 1; intx <= MAXH; intx++ )
   {
     inx=intx-1;
-    a=b;
-    b += del;
+    ctx->somnec.cntour.a=ctx->somnec.cntour.b;
+    ctx->somnec.cntour.b += del;
 
-    if( (ibx == 0) && (creal(b) >= rbk) )
+    if( (ibx == 0) && (creal(ctx->somnec.cntour.b) >= ctx->somnec.gshank.rbk) )
     {
       /* hit break point.  reset seed and start over. */
       ibx=1;
-      b=bk;
+      ctx->somnec.cntour.b=bk;
       del=delb;
       rom1(ctx,nans,sum,2);
       for( i = 0; i < nans; i++ )
@@ -525,13 +512,13 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
     rom1(ctx,nans,sum,2);
     for( i = 0; i < nans; i++ )
       ans1[i] = ans2[i]+sum[i];
-    a=b;
-    b += del;
-    if( (ibx == 0) && (creal(b) >= rbk) )
+    ctx->somnec.cntour.a=ctx->somnec.cntour.b;
+    ctx->somnec.cntour.b += del;
+    if( (ibx == 0) && (creal(ctx->somnec.cntour.b) >= ctx->somnec.gshank.rbk) )
     {
       /* hit break point.  reset seed and start over. */
       ibx=2;
-      b=bk;
+      ctx->somnec.cntour.b=bk;
       del=delb;
       rom1(ctx,nans,sum,2);
       for( i = 0; i < nans; i++ )
@@ -544,7 +531,7 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
     for( i = 0; i < nans; i++ )
       ans2[i]=ans1[i]+sum[i];
 
-    den=0.;
+    ctx->somnec.gshank.den=0.;
     for( i = 0; i < nans; i++ )
     {
 	  as1=ans1[i];
@@ -582,13 +569,13 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
 
 	  q1[i][intx-1]=as1;
 	  q2[i][intx-1]=as2;
-	  amg=fabs(creal(as2))+fabs(cimag(as2));
-	  if(amg > den)
-		den=amg;
+	  ctx->somnec.gshank.amg=fabs(creal(as2))+fabs(cimag(as2));
+	  if(ctx->somnec.gshank.amg > ctx->somnec.gshank.den)
+		ctx->somnec.gshank.den=ctx->somnec.gshank.amg;
 
 	} /* for( i = 0; i < nans; i++ ) */
 
-	denm=1.e-3*den*CRIT;
+	ctx->somnec.gshank.denm=1.e-3*ctx->somnec.gshank.den*CRIT;
 	jm=intx-3;
 	if(jm < 1)
 	  jm=1;
@@ -599,12 +586,12 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
 	  for( i = 0; i < nans; i++ )
 	  {
 		a1=q2[i][j];
-		den=(fabs(creal(a1))+fabs(cimag(a1)))*CRIT;
-		if(den < denm)
-		  den=denm;
+		ctx->somnec.gshank.den=(fabs(creal(a1))+fabs(cimag(a1)))*CRIT;
+		if(ctx->somnec.gshank.den < ctx->somnec.gshank.denm)
+		  ctx->somnec.gshank.den=ctx->somnec.gshank.denm;
 		a1=q1[i][j]-a1;
-		amg=fabs(creal(a1)+fabs(cimag(a1)));
-		if(amg > den)
+		ctx->somnec.gshank.amg=fabs(creal(a1)+fabs(cimag(a1)));
+		if(ctx->somnec.gshank.amg > ctx->somnec.gshank.den)
 		{
 		  brk = true;
 		  break;
@@ -637,57 +624,55 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
 int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex double *h0p )
 {
   int k, ib;
-  static int m[101], init = false;
-  static double a1[25], a2[25], a3[25], a4[25], psi, tst, zms;
   complex double clogz, j0, j0p, p0z, p1z, q0z, q1z, y0=CPLX_00, y0p=CPLX_00, zi, zi2, zk;
 
   /* initialization of constants */
-  if( ! init )
+  if( ! ctx->somnec.hankel.init )
   {
 	int i;
-	psi=-GAMMA;
+	ctx->somnec.hankel.psi=-GAMMA;
 	for( k = 1; k <= 25; k++ )
 	{
 	  i = k-1;
-	  a1[i]=-.25/(k*k);
-	  a2[i]=1.0/(k+1.0);
-	  psi += 1.0/k;
-	  a3[i]=psi+psi;
-	  a4[i]=(psi+psi+1.0/(k+1.0))/(k+1.0);
+	  ctx->somnec.hankel.a1[i]=-.25/(k*k);
+	  ctx->somnec.hankel.a2[i]=1.0/(k+1.0);
+	  ctx->somnec.hankel.psi += 1.0/k;
+	  ctx->somnec.hankel.a3[i]=ctx->somnec.hankel.psi+ctx->somnec.hankel.psi;
+	  ctx->somnec.hankel.a4[i]=(ctx->somnec.hankel.psi+ctx->somnec.hankel.psi+1.0/(k+1.0))/(k+1.0);
 	}
 
 	for( i = 1; i <= 101; i++ )
 	{
-	  tst=1.0;
+	  ctx->somnec.hankel.tst=1.0;
 	  for( k = 0; k < 24; k++ )
 	  {
-		init = k;
-		tst *= -i*a1[k];
-		if(tst*a3[k] < 1.e-6)
+		ctx->somnec.hankel.init = k;
+		ctx->somnec.hankel.tst *= -i*ctx->somnec.hankel.a1[k];
+		if(ctx->somnec.hankel.tst*ctx->somnec.hankel.a3[k] < 1.e-6)
 		  break;
 	  }
-	  m[i-1]=init+1;
+	  ctx->somnec.hankel.m[i-1]=ctx->somnec.hankel.init+1;
 	}
 
-	init = true;
+	ctx->somnec.hankel.init = true;
 
   } /* if( ! init ) */
 
-  zms=creal(z*conj(z));
-  if(zms == 0.) {
+  ctx->somnec.hankel.zms=creal(z*conj(z));
+  if(ctx->somnec.hankel.zms == 0.) {
     add_error(ctx, &ctx->errors, "Hankel function invalid for z=0", FATAL);
     return -1;
   }
 
   ib=0;
-  if(zms <= 16.81)
+  if(ctx->somnec.hankel.zms <= 16.81)
   {
-	if(zms > 16.)
+	if(ctx->somnec.hankel.zms > 16.)
 	  ib=1;
 
 	/* series expansion */
-	int iz=(int)zms;
-	int miz=m[iz];
+	int iz=(int)ctx->somnec.hankel.zms;
+	int miz=ctx->somnec.hankel.m[iz];
 	j0=CPLX_10;
 	j0p=j0;
 	y0=CPLX_00;
@@ -697,11 +682,11 @@ int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex dou
 
 	for( k = 0; k < miz; k++ )
 	{
-	  zk *= a1[k]*zi;
+	  zk *= ctx->somnec.hankel.a1[k]*zi;
 	  j0 += zk;
-	  j0p += a2[k]*zk;
-	  y0 += a3[k]*zk;
-	  y0p += a4[k]*zk;
+	  j0p += ctx->somnec.hankel.a2[k]*zk;
+	  y0 += ctx->somnec.hankel.a3[k]*zk;
+	  y0p += ctx->somnec.hankel.a4[k]*zk;
 	}
 
 	j0p *= -.5*z;
@@ -733,9 +718,9 @@ int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex dou
   if(ib == 0)
     return 0;
 
-  zms=cos((sqrt(zms)-4.)*31.41592654);
-  *h0=.5*(y0*(1.+zms)+ *h0*(1.-zms));
-  *h0p=.5*(y0p*(1.+zms)+ *h0p*(1.-zms));
+  ctx->somnec.hankel.zms=cos((sqrt(ctx->somnec.hankel.zms)-4.)*31.41592654);
+  *h0=.5*(y0*(1.+ctx->somnec.hankel.zms)+ *h0*(1.-ctx->somnec.hankel.zms));
+  *h0p=.5*(y0p*(1.+ctx->somnec.hankel.zms)+ *h0p*(1.-ctx->somnec.hankel.zms));
 
   return 0;
 }
@@ -745,8 +730,8 @@ int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex dou
 /* compute integration parameter xlam=lambda from parameter t. */
 void lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam )
 {
-  *dxlam=b-a;
-  *xlam=a+*dxlam*t;
+  *dxlam=ctx->somnec.cntour.b-ctx->somnec.cntour.a;
+  *xlam=ctx->somnec.cntour.a+*dxlam*t;
   return;
 }
 
@@ -757,66 +742,63 @@ void lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *
 void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
 {
   int jump, lstep, nogo, i, ns, nt;
-  static double z, ze, s, ep, zend, dz=0., dzot=0., tr, ti;
-  static complex double t00, t11, t02;
-  static complex double g1[6], g2[6], g3[6], g4[6], g5[6], t01[6], t10[6], t20[6];
 
   lstep=0;
-  z=0.;
-  ze=1.;
-  s=1;
-  ep=s/(1.e4*NM);
-  zend=ze-ep;
+  ctx->somnec.rom1.z=0.;
+  ctx->somnec.rom1.ze=1.;
+  ctx->somnec.rom1.s=1;
+  ctx->somnec.rom1.ep=ctx->somnec.rom1.s/(1.e4*NM);
+  ctx->somnec.rom1.zend=ctx->somnec.rom1.ze-ctx->somnec.rom1.ep;
   for( i = 0; i < n; i++ )
     sum[i]=CPLX_00;
   ns=nx;
   nt=0;
-  saoa(ctx, z, g1);
+  saoa(ctx, ctx->somnec.rom1.z, ctx->somnec.rom1.g1);
 
   jump = false;
   while( true )
   {
     if( ! jump )
     {
-      dz=s/ns;
-      if( (z+dz) > ze )
+      ctx->somnec.rom1.dz=ctx->somnec.rom1.s/ns;
+      if( (ctx->somnec.rom1.z+ctx->somnec.rom1.dz) > ctx->somnec.rom1.ze )
       {
-        dz=ze-z;
-        if( dz <= ep )
+        ctx->somnec.rom1.dz=ctx->somnec.rom1.ze-ctx->somnec.rom1.z;
+        if( ctx->somnec.rom1.dz <= ctx->somnec.rom1.ep )
           return;
       }
 
-      dzot=dz*.5;
-      saoa(ctx, z+dzot, g3);
-      saoa(ctx, z+dz, g5);
+      ctx->somnec.rom1.dzot=ctx->somnec.rom1.dz*.5;
+      saoa(ctx, ctx->somnec.rom1.z+ctx->somnec.rom1.dzot, ctx->somnec.rom1.g3);
+      saoa(ctx, ctx->somnec.rom1.z+ctx->somnec.rom1.dz, ctx->somnec.rom1.g5);
 
     } /* if( ! jump ) */
 
     nogo=false;
     for( i = 0; i < n; i++ )
     {
-      t00=(g1[i]+g5[i])*dzot;
-      t01[i]=(t00+dz*g3[i])*.5;
-      t10[i]=(4.*t01[i]-t00)/3.;
+      ctx->somnec.rom1.t00=(ctx->somnec.rom1.g1[i]+ctx->somnec.rom1.g5[i])*ctx->somnec.rom1.dzot;
+      ctx->somnec.rom1.t01[i]=(ctx->somnec.rom1.t00+ctx->somnec.rom1.dz*ctx->somnec.rom1.g3[i])*.5;
+      ctx->somnec.rom1.t10[i]=(4.*ctx->somnec.rom1.t01[i]-ctx->somnec.rom1.t00)/3.;
 
       /* test convergence of 3 point romberg result */
-      test(ctx, creal(t01[i]), creal(t10[i]), &tr, cimag(t01[i]), cimag(t10[i]), &ti, 0. );
-      if( (tr > CRIT) || (ti > CRIT) )
+      test(ctx, creal(ctx->somnec.rom1.t01[i]), creal(ctx->somnec.rom1.t10[i]), &ctx->somnec.rom1.tr, cimag(ctx->somnec.rom1.t01[i]), cimag(ctx->somnec.rom1.t10[i]), &ctx->somnec.rom1.ti, 0. );
+      if( (ctx->somnec.rom1.tr > CRIT) || (ctx->somnec.rom1.ti > CRIT) )
         nogo = true;
     }
 
     if( ! nogo )
     {
       for( i = 0; i < n; i++ )
-        sum[i] += t10[i];
+        sum[i] += ctx->somnec.rom1.t10[i];
       nt += 2;
 
-      z += dz;
-      if(z > zend)
+      ctx->somnec.rom1.z += ctx->somnec.rom1.dz;
+      if(ctx->somnec.rom1.z > ctx->somnec.rom1.zend)
         return;
 
       for( i = 0; i < n; i++ )
-        g1[i]=g5[i];
+        ctx->somnec.rom1.g1[i]=ctx->somnec.rom1.g5[i];
 
       if( (nt >= NTS) && (ns > nx) )
       {
@@ -829,33 +811,33 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
 
     } /* if( ! nogo ) */
 
-    saoa(ctx, z+dz*.25, g2);
-    saoa(ctx, z+dz*.75, g4);
+    saoa(ctx, ctx->somnec.rom1.z+ctx->somnec.rom1.dz*.25, ctx->somnec.rom1.g2);
+    saoa(ctx, ctx->somnec.rom1.z+ctx->somnec.rom1.dz*.75, ctx->somnec.rom1.g4);
     nogo=false;
     for( i = 0; i < n; i++ )
     {
-      t02=(t01[i]+dzot*(g2[i]+g4[i]))*.5;
-      t11=(4.*t02-t01[i])/3.;
-      t20[i]=(16.*t11-t10[i])/15.;
+      ctx->somnec.rom1.t02=(ctx->somnec.rom1.t01[i]+ctx->somnec.rom1.dzot*(ctx->somnec.rom1.g2[i]+ctx->somnec.rom1.g4[i]))*.5;
+      ctx->somnec.rom1.t11=(4.*ctx->somnec.rom1.t02-ctx->somnec.rom1.t01[i])/3.;
+      ctx->somnec.rom1.t20[i]=(16.*ctx->somnec.rom1.t11-ctx->somnec.rom1.t10[i])/15.;
 
       /* test convergence of 5 point romberg result */
-      test(ctx, creal(t11), creal(t20[i]), &tr, cimag(t11), cimag(t20[i]), &ti, 0. );
-      if( (tr > CRIT) || (ti > CRIT) )
+      test(ctx, creal(ctx->somnec.rom1.t11), creal(ctx->somnec.rom1.t20[i]), &ctx->somnec.rom1.tr, cimag(ctx->somnec.rom1.t11), cimag(ctx->somnec.rom1.t20[i]), &ctx->somnec.rom1.ti, 0. );
+      if( (ctx->somnec.rom1.tr > CRIT) || (ctx->somnec.rom1.ti > CRIT) )
         nogo = true;
     }
 
     if( ! nogo )
     {
       for( i = 0; i < n; i++ )
-        sum[i] += t20[i];
+        sum[i] += ctx->somnec.rom1.t20[i];
 
       nt++;
-      z += dz;
-      if(z > zend)
+      ctx->somnec.rom1.z += ctx->somnec.rom1.dz;
+      if(ctx->somnec.rom1.z > ctx->somnec.rom1.zend)
         return;
 
       for( i = 0; i < n; i++ )
-        g1[i]=g5[i];
+        ctx->somnec.rom1.g1[i]=ctx->somnec.rom1.g5[i];
 
       if( (nt >= NTS) && (ns > nx) )
       {
@@ -872,13 +854,13 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
     if(ns < NM)
     {
       ns *= 2;
-      dz=s/ns;
-      dzot=dz*.5;
+      ctx->somnec.rom1.dz=ctx->somnec.rom1.s/ns;
+      ctx->somnec.rom1.dzot=ctx->somnec.rom1.dz*.5;
 
       for( i = 0; i < n; i++ )
       {
-        g5[i]=g3[i];
-        g3[i]=g2[i];
+        ctx->somnec.rom1.g5[i]=ctx->somnec.rom1.g3[i];
+        ctx->somnec.rom1.g3[i]=ctx->somnec.rom1.g2[i];
       }
 
       jump = true;
@@ -889,19 +871,19 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
     if( ! lstep )
     {
       lstep = true;
-      lambda(ctx, z, &t00, &t11 );
+      lambda(ctx, ctx->somnec.rom1.z, &ctx->somnec.rom1.t00, &ctx->somnec.rom1.t11 );
     }
 
     for( i = 0; i < n; i++ )
-      sum[i] += t20[i];
+      sum[i] += ctx->somnec.rom1.t20[i];
 
     nt++;
-    z += dz;
-    if(z > zend)
+    ctx->somnec.rom1.z += ctx->somnec.rom1.dz;
+    if(ctx->somnec.rom1.z > ctx->somnec.rom1.zend)
       return;
 
     for( i = 0; i < n; i++ )
-      g1[i]=g5[i];
+      ctx->somnec.rom1.g1[i]=ctx->somnec.rom1.g5[i];
 
     jump = false;
 
@@ -916,17 +898,17 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
 void saoa(nec_context_t *ctx, double t, complex double *ans)
 {
   double xlr;
-  static complex double xl, dxl, cgam1, cgam2, b0, b0p, com, dgam, den1, den2;
+  complex double xl, dxl, cgam1, cgam2, b0, b0p, com, dgam, den1, den2;
 
   lambda(ctx, t, &xl, &dxl);
-  if( jh == 0 )
+  if( ctx->somnec.evlcom.jh == 0 )
   {
     /* bessel function form */
-    bessel(ctx, xl*rho, &b0, &b0p);
+    bessel(ctx, xl*ctx->somnec.evlcom.rho, &b0, &b0p);
     b0  *=2.;
     b0p *=2.;
-    cgam1=csqrt(xl*xl-ck1sq);
-    cgam2=csqrt(xl*xl-ck2sq);
+    cgam1=csqrt(xl*xl-ctx->somnec.evlcom.ck1sq);
+    cgam2=csqrt(xl*xl-ctx->somnec.evlcom.ck2sq);
     if(creal(cgam1) == 0.)
       cgam1=cmplx(0.,-fabs(cimag(cgam1)));
     if(creal(cgam2) == 0.)
@@ -935,40 +917,40 @@ void saoa(nec_context_t *ctx, double t, complex double *ans)
   else
   {
     /* hankel function form */
-    hankel(ctx, xl*rho, &b0, &b0p);
-    com=xl-ck1;
-    cgam1=csqrt(xl+ck1)*csqrt(com);
+    hankel(ctx, xl*ctx->somnec.evlcom.rho, &b0, &b0p);
+    com=xl-ctx->somnec.evlcom.ck1;
+    cgam1=csqrt(xl+ctx->somnec.evlcom.ck1)*csqrt(com);
     if(creal(com) < 0. && cimag(com) >= 0.)
       cgam1=-cgam1;
-    com=xl-ck2;
-    cgam2=csqrt(xl+ck2)*csqrt(com);
+    com=xl-ctx->somnec.evlcom.ck2;
+    cgam2=csqrt(xl+ctx->somnec.evlcom.ck2)*csqrt(com);
     if(creal(com) < 0. && cimag(com) >= 0.)
       cgam2=-cgam2;
   }
 
   xlr=creal(xl*conj(xl));
-  if(xlr >= tsmag)
+  if(xlr >= ctx->somnec.evlcom.tsmag)
   {
     double sign;
     if(cimag(xl) >= 0.)
     {
       xlr=creal(xl);
-      if(xlr >= ck2)
+      if(xlr >= ctx->somnec.evlcom.ck2)
       {
-        if(xlr <= ck1r)
+        if(xlr <= ctx->somnec.evlcom.ck1r)
           dgam=cgam2-cgam1;
         else
         {
           sign=1.;
           dgam=1./(xl*xl);
-          dgam=sign*((ct3*dgam+ct2)*dgam+ct1)/xl;
+          dgam=sign*((ctx->somnec.evlcom.ct3*dgam+ctx->somnec.evlcom.ct2)*dgam+ctx->somnec.evlcom.ct1)/xl;
         }
       }
       else
       {
         sign=-1.;
         dgam=1./(xl*xl);
-        dgam=sign*((ct3*dgam+ct2)*dgam+ct1)/xl;
+        dgam=sign*((ctx->somnec.evlcom.ct3*dgam+ctx->somnec.evlcom.ct2)*dgam+ctx->somnec.evlcom.ct1)/xl;
       } /* if(xlr >= ck2) */
 
     } /* if(cimag(xl) >= 0.) */
@@ -976,22 +958,22 @@ void saoa(nec_context_t *ctx, double t, complex double *ans)
     {
       sign=1.;
       dgam=1./(xl*xl);
-      dgam=sign*((ct3*dgam+ct2)*dgam+ct1)/xl;
+      dgam=sign*((ctx->somnec.evlcom.ct3*dgam+ctx->somnec.evlcom.ct2)*dgam+ctx->somnec.evlcom.ct1)/xl;
     }
 
   } /* if(xlr < tsmag) */
   else
     dgam=cgam2-cgam1;
 
-  den2=cksm*dgam/(cgam2*(ck1sq*cgam2+ck2sq*cgam1));
-  den1=1./(cgam1+cgam2)-cksm/cgam2;
-  com=dxl*xl*cexp(-cgam2*zph);
-  ans[5]=com*b0*den1/ck1;
+  den2=ctx->somnec.evlcom.cksm*dgam/(cgam2*(ctx->somnec.evlcom.ck1sq*cgam2+ctx->somnec.evlcom.ck2sq*cgam1));
+  den1=1./(cgam1+cgam2)-ctx->somnec.evlcom.cksm/cgam2;
+  com=dxl*xl*cexp(-cgam2*ctx->somnec.evlcom.zph);
+  ans[5]=com*b0*den1/ctx->somnec.evlcom.ck1;
   com *= den2;
 
-  if(rho != 0.)
+  if(ctx->somnec.evlcom.rho != 0.)
   {
-    b0p=b0p/rho;
+    b0p=b0p/ctx->somnec.evlcom.rho;
     ans[0]=-com*xl*(b0p+b0*xl);
     ans[3]=com*xl*b0p;
   }
@@ -1002,7 +984,7 @@ void saoa(nec_context_t *ctx, double t, complex double *ans)
   }
 
   ans[1]=com*cgam2*cgam2*b0;
-  ans[2]=-ans[3]*cgam2*rho;
+  ans[2]=-ans[3]*cgam2*ctx->somnec.evlcom.rho;
   ans[4]=com*b0;
 
   return;

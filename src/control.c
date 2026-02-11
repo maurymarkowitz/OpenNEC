@@ -9,7 +9,7 @@
  *
  *****************************************************************************/
 
-#include "opennec.h"
+#include "internals.h"
 #include "control.h"
 #include "geometry.h"
 #include "matrix.h"
@@ -345,7 +345,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             if (card->formulas) {
                 key_value_t *kv = card->formulas;
                 while (kv) {
-                    evaluate_formula(kv, deck, &ctx->errors);
+                    evaluate_formula(ctx, kv, deck, &ctx->errors);
                     kv = kv->next;
                 }
             }
@@ -365,13 +365,13 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                 if (kv->key && kv->key[0] == 'I' && strlen(kv->key) == 2) {
                     int idx = kv->key[1] - '0';
                     if (idx >= 1 && idx <= MAX_INT_FIELDS) {
-                        evaluate_formula(kv, deck, &ctx->errors);
+                        evaluate_formula(ctx, kv, deck, &ctx->errors);
                         card->iv[idx] = (int)kv->fv;
                     }
                 } else if (kv->key && kv->key[0] == 'F' && strlen(kv->key) == 2) {
                     int idx = kv->key[1] - '0';
                     if (idx >= 1 && idx <= MAX_FLT_FIELDS) {
-                        evaluate_formula(kv, deck, &ctx->errors);
+                        evaluate_formula(ctx, kv, deck, &ctx->errors);
                         card->fv[idx] = kv->fv;
                     }
                 }
@@ -486,7 +486,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             // warn about unsupported EX types
             if (i1 == 6 || i1 == 7) {
                 char msg[MAX_ERROR_LEN];
-                snprintf(msg, sizeof(msg), "Card %d is an EX card with type %d, which is not supported and will be treated as a receiving pattern.", card_idx + 1, i1);
+                snprintf(msg, sizeof(msg), "Card %d is an EX card with type %d, which is not supported.", card_idx + 1, i1);
                 add_error(ctx, &ctx->errors, msg, WARNING);
             }
             

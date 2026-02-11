@@ -7,7 +7,7 @@
  *
  *****************************************************************************/
 
-#include "opennec.h"
+#include "internals.h"
 #include <unistd.h>
 #include <sys/times.h>
 

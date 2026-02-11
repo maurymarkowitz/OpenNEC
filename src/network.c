@@ -10,7 +10,7 @@
  *
  *****************************************************************************/
 
-#include "opennec.h"
+#include "internals.h"
 #include "network.h"
 #include "matrix.h"
 #include "calculations.h"

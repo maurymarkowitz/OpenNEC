@@ -17,7 +17,7 @@
  *****************************************************************************/
 
 
-#include "opennec.h"
+#include "internals.h"
 #include "deck.h"
 #include "tinyexpr.h"
 
@@ -874,6 +874,7 @@ void update_symbol_values(nec_context_t *ctx, deck_t *deck, errors_list_t *error
 {
   key_value_t **syms = deck->symbols;
   bool *evaluated = calloc(deck->num_symbols, sizeof(bool));
+  if (ctx) ctx->eval_depth = 0;
   for (int i = 0; i < deck->num_symbols; i++) if (eval_symbol(i, deck->num_symbols, syms, evaluated, deck, ctx, errors) != 0) {
     // error already added
   }
@@ -895,7 +896,7 @@ static bool references(const char *expr, const char *symname) {
 }
 
 // Helper function for better formula error messages
-static const char *get_formula_error_description(const char *formula, int error_pos) {
+static char *get_formula_error_description(const char *formula, int error_pos) {
   if (!formula || error_pos < 0 || error_pos >= (int)strlen(formula)) {
     return NULL;
   }
@@ -915,15 +916,15 @@ static const char *get_formula_error_description(const char *formula, int error_
     // extract the function name
     size_t name_len = pos - start;
     if (name_len > 0 && name_len < 50) {
-      static char func_name[64];
+      char func_name[64];
       strncpy(func_name, start, name_len);
       func_name[name_len] = '\0';
       
       // check if it looks like a valid identifier
       if (isalpha((unsigned char)func_name[0]) || func_name[0] == '_') {
-        static char error_msg[128];
+        char error_msg[128];
         snprintf(error_msg, sizeof(error_msg), "unknown function '%s'", func_name);
-        return error_msg;
+        return strdup(error_msg);
       }
     }
   }
@@ -1233,20 +1234,19 @@ static char *preprocess_implicit_multiplication(const char *formula) {
 
 // Recursive evaluation for symbol dependencies
 static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, nec_context_t *ctx, errors_list_t *errors) {
-    // Check recursion depth to prevent infinite loops
-    static int depth = 0;
-    depth++;
-    if (depth > 100) {
+    // Check recursion depth to prevent infinite loops using ctx->eval_depth
+    if (ctx) ctx->eval_depth++;
+    if (ctx && ctx->eval_depth > 100) {
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg), "Maximum recursion depth exceeded evaluating symbol '%s'", syms[i]->key);
         add_error(ctx, errors, err_msg, FATAL);
-        depth--;
+        ctx->eval_depth--;
         return -1;
     }
     
     // Check if already evaluated to prevent infinite recursion
     if (evaluated[i]) {
-      depth--;
+      if (ctx) ctx->eval_depth--;
       return 0;
     }
     
@@ -1314,16 +1314,18 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
         }
         char err_msg[256];
         // Try to provide a more descriptive error message
-        const char *error_desc = get_formula_error_description(processed_formula, err);
+        char *error_desc = get_formula_error_description(processed_formula, err);
         if (card_num > 0) {
           if (error_desc) {
             snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' on card %d: %s", processed_formula, card_num, error_desc);
+            free(error_desc);
           } else {
             snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d on card %d", processed_formula, err, card_num);
           }
         } else {
           if (error_desc) {
             snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s': %s", processed_formula, error_desc);
+            free(error_desc);
           } else {
             snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d", processed_formula, err);
           }
@@ -1331,12 +1333,12 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
         add_error(ctx, errors, err_msg, FATAL);
         free(processed_formula);
         free(vars);
-        depth--;
+        if (ctx) ctx->eval_depth--;
         return -1;
       }
       free(vars);
     }
-    depth--;
+    if (ctx) ctx->eval_depth--;
     return 0;
 }
 
@@ -1455,22 +1457,12 @@ void update_card_values(deck_t *deck)
  * in deck->symbols[]. Updates the key_value_t->fv field with the result.
  * Reports errors if symbols are undefined or if there are syntax errors.
  *
+ * @param ctx      The context (for add_error)
  * @param formula  The formula to evaluate (its value string will be compiled)
  * @param deck     The deck containing the symbol table
  * @param errors   Error list for reporting undefined symbols or syntax errors
  */
-/******************************************************************************
- * evaluate_formula
- *
- * Evaluates a single formula (key_value_t) using currently-defined symbols
- * in deck->symbols[]. Updates the key_value_t->fv field with the result.
- * Reports errors if symbols are undefined or if there are syntax errors.
- *
- * @param formula  The formula to evaluate (its value string will be compiled)
- * @param deck     The deck containing the symbol table
- * @param errors   Error list for reporting undefined symbols or syntax errors
- */
-void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors)
+void evaluate_formula(nec_context_t *ctx, key_value_t *formula, deck_t *deck, errors_list_t *errors)
 {
   // Prepare variables for tinyexpr - bind all current symbols (original case)
   int num_syms = deck ? deck->num_symbols : 0;
@@ -1497,7 +1489,6 @@ void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors)
   // Compile and evaluate
   int err = 0;
   te_expr *expr = te_compile(processed_formula, vars, num_syms, &err);
-  free(processed_formula);
   
   if (expr) {
     formula->fv = te_eval(expr);
@@ -1507,18 +1498,20 @@ void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors)
     if (errors) {
       char msg[MAX_ERROR_LEN];
       // Try to provide a more descriptive error message
-      const char *error_desc = get_formula_error_description(processed_formula, err);
+      char *error_desc = get_formula_error_description(processed_formula, err);
       if (error_desc) {
         snprintf(msg, sizeof(msg), "Error evaluating formula '%s = %s': %s", 
                  formula->key, formula->value, error_desc);
+        free(error_desc);
       } else {
         snprintf(msg, sizeof(msg), "Error evaluating formula '%s = %s' at position %d", 
                  formula->key, formula->value, err);
       }
-      add_error(NULL, errors, msg, WARNING);
+      add_error(ctx, errors, msg, WARNING);
     }
   }
   
+  free(processed_formula);
   free(vars);
 }
 
@@ -1528,10 +1521,11 @@ void evaluate_formula(key_value_t *formula, deck_t *deck, errors_list_t *errors)
  * Evaluates all SY card formulas in the comment/header section sequentially.
  * This establishes initial symbol values before geometry processing begins.
  *
+ * @param ctx      The context
  * @param deck     The deck containing cards and symbols
  * @param errors   Error list for reporting evaluation errors
  */
-void evaluate_symbols_in_comments(deck_t *deck, errors_list_t *errors)
+void evaluate_symbols_in_comments(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   if (!deck || deck->num_cards == 0) {
     return;

@@ -8,7 +8,7 @@
  *
  *******************************************************************/
 
-#include "opennec.h"
+#include "internals.h"
 #include "calculations.h"
 #include "geometry.h"
 
@@ -38,11 +38,11 @@ static int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double
 /* cabc computes coefficients of the constant (a), sine (b), and */
 /* cosine (c) terms in the current interpolation functions for the */
 /* current vector cur. */
-void cabc(nec_context_t *ctx, double complex *curx)
+void cabc(nec_context_t *ctx, complex double *curx)
 {
   int i, is, j, jx, jco1, jco2;
   double ar, ai, sh;
-  double complex  curd, cs1, cs2;
+  complex double  curd, cs1, cs2;
   
   if( ctx->geometry.n != 0)
   {
@@ -136,11 +136,11 @@ void cabc(nec_context_t *ctx, double complex *curx)
 /*-----------------------------------------------------------------------*/
 
 /* couple computes the maximum coupling between pairs of segments. */
-void couple(nec_context_t *ctx, double complex *cur, double wlam )
+void couple(nec_context_t *ctx, complex double *cur, double wlam )
 {
   int j, j1, j2, l1, i, k, itt1, itt2, its1, its2, isg1, isg2, npm1;
   double dbc, c, gmax;
-  double complex y11, y12, y22, yl, yin, zl, zin, rho;
+  complex double y11, y12, y22, yl, yin, zl, zin, rho;
   size_t mreq;
   
   if( (ctx->vsorc.nsant != 1) || (ctx->vsorc.nvqd != 0) )
@@ -153,7 +153,7 @@ void couple(nec_context_t *ctx, double complex *cur, double wlam )
   zin= ctx->vsorc.vsant[0];
   ctx->yparm.icoup++;
   mreq = (size_t)ctx->yparm.icoup;
-  mreq *= sizeof( double complex);
+  mreq *= sizeof( complex double);
   mem_realloc(ctx,  (void *)&ctx->yparm.y11a, mreq );
   ctx->yparm.y11a[ctx->yparm.icoup-1]= cur[j-1]*wlam/zin;
   
@@ -165,7 +165,7 @@ void couple(nec_context_t *ctx, double complex *cur, double wlam )
     
     l1++;
     mreq = (size_t)l1;
-    mreq *= sizeof( double complex);
+    mreq *= sizeof( complex double);
     mem_realloc(ctx,  (void *)&ctx->yparm.y12a, mreq );
     k= segment_number(ctx,  ctx->yparm.nctag[i], ctx->yparm.ncseg[i]);
     ctx->yparm.y12a[l1-1]= cur[k-1]* wlam/ zin;
@@ -252,7 +252,7 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
 {
   int i, istep, istepx, l1, l2, ldtags, jump, ichk;
   bool iwarn;
-  double complex zt=CPLX_00, tpcj;
+  complex double zt=CPLX_00, tpcj;
   size_t mreq;
   
   tpcj = (0.0+I*1.883698955e+9);
@@ -260,7 +260,7 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
   /* initialize d array, used for temporary */
   /* storage of loading information. */
   mreq = (size_t)ctx->geometry.npm;
-  mreq *= sizeof(double complex);
+  mreq *= sizeof(complex double);
   mem_realloc(ctx,  (void *)&ctx->zload.zarray, mreq );
   for( i = 0; i < ctx->geometry.n; i++ )
     ctx->zload.zarray[i]=CPLX_00;
@@ -487,34 +487,30 @@ double db20(nec_context_t *ctx, double x )
 
 /* intrp uses bivariate cubic interpolation to obtain */
 /* the values of 4 functions at the point (x,y). */
-void intrp(nec_context_t *ctx, double x, double y, double complex *f1,
-           double complex *f2, double complex *f3, double complex *f4 )
+void intrp(nec_context_t *ctx, double x, double y, complex double *f1,
+           complex double *f2, complex double *f3, complex double *f4 )
 {
-  static int ix, iy, ixs=-10, iys=-10, igrs=-10, ixeg=0, iyeg=0;
-  static int nxm2, nym2, nxms, nyms, nd, ndp;
   int nda[3]={11,17,9}, ndpa[3]={110,85,72};
   bool jump;
-  static double dx = 1., dy = 1., xs = 0., ys = 0., xz, yz;
   double xx, yy;
-  static double complex a[4][4], b[4][4], c[4][4], d[4][4];
-  double complex p1=CPLX_00, p2=CPLX_00, p3=CPLX_00, p4=CPLX_00;
-  double complex fx1, fx2, fx3, fx4;
+  complex double p1=CPLX_00, p2=CPLX_00, p3=CPLX_00, p4=CPLX_00;
+  complex double fx1, fx2, fx3, fx4;
   
   jump = false;
-  if( (x < xs) || (y < ys) )
+  if( (x < ctx->intrp.xs) || (y < ctx->intrp.ys) )
     jump = true;
   else
   {
-    ix= (int)(( x- xs)/ dx)+1;
-    iy= (int)(( y- ys)/ dy)+1;
+    ctx->intrp.ix= (int)(( x- ctx->intrp.xs)/ ctx->intrp.dx)+1;
+    ctx->intrp.iy= (int)(( y- ctx->intrp.ys)/ ctx->intrp.dy)+1;
   }
   
   /* if point lies in same 4 by 4 point region */
   /* as previous point, old values are reused. */
-  if( (ix < ixeg) ||
-     (iy < iyeg) ||
-     (abs(ix- ixs) >= 2) ||
-     (abs(iy- iys) >= 2) ||
+  if( (ctx->intrp.ix < ctx->intrp.ixeg) ||
+     (ctx->intrp.iy < ctx->intrp.iyeg) ||
+     (abs(ctx->intrp.ix- ctx->intrp.ixs) >= 2) ||
+     (abs(ctx->intrp.iy- ctx->intrp.iys) >= 2) ||
      jump )
   {
     int igr, iadd, iadz, i, k;
@@ -529,59 +525,59 @@ void intrp(nec_context_t *ctx, double x, double y, double complex *f1,
         igr=1;
     }
     
-    if( igr != igrs)
+    if( igr != ctx->intrp.igrs)
     {
-      igrs= igr;
-      dx= ctx->ggrid.dxa[igrs];
-      dy= ctx->ggrid.dya[igrs];
-      xs= ctx->ggrid.xsa[igrs];
-      ys= ctx->ggrid.ysa[igrs];
-      nxm2= ctx->ggrid.nxa[igrs]-2;
-      nym2= ctx->ggrid.nya[igrs]-2;
-      nxms=(( nxm2+1)/3)*3+1;
-      nyms=(( nym2+1)/3)*3+1;
-      nd= nda[igrs];
-      ndp= ndpa[igrs];
-      ix= (int)(( x- xs)/ dx)+1;
-      iy= (int)(( y- ys)/ dy)+1;
+      ctx->intrp.igrs= igr;
+      ctx->intrp.dx= ctx->ggrid.dxa[ctx->intrp.igrs];
+      ctx->intrp.dy= ctx->ggrid.dya[ctx->intrp.igrs];
+      ctx->intrp.xs= ctx->ggrid.xsa[ctx->intrp.igrs];
+      ctx->intrp.ys= ctx->ggrid.ysa[ctx->intrp.igrs];
+      ctx->intrp.nxm2= ctx->ggrid.nxa[ctx->intrp.igrs]-2;
+      ctx->intrp.nym2= ctx->ggrid.nya[ctx->intrp.igrs]-2;
+      ctx->intrp.nxms=(( ctx->intrp.nxm2+1)/3)*3+1;
+      ctx->intrp.nyms=(( ctx->intrp.nym2+1)/3)*3+1;
+      ctx->intrp.nd= nda[ctx->intrp.igrs];
+      ctx->intrp.ndp= ndpa[ctx->intrp.igrs];
+      ctx->intrp.ix= (int)(( x- ctx->intrp.xs)/ ctx->intrp.dx)+1;
+      ctx->intrp.iy= (int)(( y- ctx->intrp.ys)/ ctx->intrp.dy)+1;
       
-    } /* if( igr != igrs) */
+    } /* if( igr != ctx->intrp.igrs) */
     
-    ixs=(( ix-1)/3)*3+2;
-    if( ixs < 2)
-      ixs=2;
-    ixeg=-10000;
+    ctx->intrp.ixs=(( ctx->intrp.ix-1)/3)*3+2;
+    if( ctx->intrp.ixs < 2)
+      ctx->intrp.ixs=2;
+    ctx->intrp.ixeg=-10000;
     
-    if( ixs > nxm2)
+    if( ctx->intrp.ixs > ctx->intrp.nxm2)
     {
-      ixs= nxm2;
-      ixeg= nxms;
+      ctx->intrp.ixs= ctx->intrp.nxm2;
+      ctx->intrp.ixeg= ctx->intrp.nxms;
     }
     
-    iys=(( iy-1)/3)*3+2;
-    if( iys < 2)
-      iys=2;
-    iyeg=-10000;
+    ctx->intrp.iys=(( ctx->intrp.iy-1)/3)*3+2;
+    if( ctx->intrp.iys < 2)
+      ctx->intrp.iys=2;
+    ctx->intrp.iyeg=-10000;
     
-    if( iys > nym2)
+    if( ctx->intrp.iys > ctx->intrp.nym2)
     {
-      iys= nym2;
-      iyeg= nyms;
+      ctx->intrp.iys= ctx->intrp.nym2;
+      ctx->intrp.iyeg= ctx->intrp.nyms;
     }
     
     /* compute coefficients of 4 cubic polynomials in x for */
     /* the 4 grid values of y for each of the 4 functions */
-    iadz= ixs+( iys-3)* nd- ndp;
+    iadz= ctx->intrp.ixs+( ctx->intrp.iys-3)* ctx->intrp.nd- ctx->intrp.ndp;
     for( k = 0; k < 4; k++ )
     {
-      iadz += ndp;
+      iadz += ctx->intrp.ndp;
       iadd = iadz;
       
       for( i = 0; i < 4; i++ )
       {
-        iadd += nd;
+        iadd += ctx->intrp.nd;
         
-        switch( igrs )
+        switch( ctx->intrp.igrs )
         {
           case 0:
             p1= ctx->ggrid.ar1[iadd-2];
@@ -603,54 +599,54 @@ void intrp(nec_context_t *ctx, double x, double y, double complex *f1,
             p3= ctx->ggrid.ar3[iadd];
             p4= ctx->ggrid.ar3[iadd+1];
             
-        } /* switch( igrs ) */
+        } /* switch( ctx->intrp.igrs ) */
         
-        a[i][k]=( p4- p1+3.*( p2- p3))*.1666666667;
-        b[i][k]=( p1-2.* p2+ p3)*.5;
-        c[i][k]= p3-(2.* p1+3.* p2+ p4)*.1666666667;
-        d[i][k]= p2;
+        ctx->intrp.a[i][k]=( p4- p1+3.*( p2- p3))*.1666666667;
+        ctx->intrp.b[i][k]=( p1-2.* p2+ p3)*.5;
+        ctx->intrp.c[i][k]= p3-(2.* p1+3.* p2+ p4)*.1666666667;
+        ctx->intrp.d[i][k]= p2;
         
       } /* for( i = 0; i < 4; i++ ) */
       
     } /* for( k = 0; k < 4; k++ ) */
     
-    xz=( ixs-1)* dx+ xs;
-    yz=( iys-1)* dy+ ys;
+    ctx->intrp.xz=( ctx->intrp.ixs-1)* ctx->intrp.dx+ ctx->intrp.xs;
+    ctx->intrp.yz=( ctx->intrp.iys-1)* ctx->intrp.dy+ ctx->intrp.ys;
     
-  } /* if( (abs(ix- ixs) >= 2) || */
+  } /* if( (abs(ctx->intrp.ix- ctx->intrp.ixs) >= 2) || */
   
   /* evaluate polymomials in x and use cubic */
   /* interpolation in y for each of the 4 functions. */
-  xx=( x- xz)/ dx;
-  yy=( y- yz)/ dy;
-  fx1=(( a[0][0]* xx+ b[0][0])* xx+ c[0][0])* xx+ d[0][0];
-  fx2=(( a[1][0]* xx+ b[1][0])* xx+ c[1][0])* xx+ d[1][0];
-  fx3=(( a[2][0]* xx+ b[2][0])* xx+ c[2][0])* xx+ d[2][0];
-  fx4=(( a[3][0]* xx+ b[3][0])* xx+ c[3][0])* xx+ d[3][0];
+  xx=( x- ctx->intrp.xz)/ ctx->intrp.dx;
+  yy=( y- ctx->intrp.yz)/ ctx->intrp.dy;
+  fx1=(( ctx->intrp.a[0][0]* xx+ ctx->intrp.b[0][0])* xx+ ctx->intrp.c[0][0])* xx+ ctx->intrp.d[0][0];
+  fx2=(( ctx->intrp.a[1][0]* xx+ ctx->intrp.b[1][0])* xx+ ctx->intrp.c[1][0])* xx+ ctx->intrp.d[1][0];
+  fx3=(( ctx->intrp.a[2][0]* xx+ ctx->intrp.b[2][0])* xx+ ctx->intrp.c[2][0])* xx+ ctx->intrp.d[2][0];
+  fx4=(( ctx->intrp.a[3][0]* xx+ ctx->intrp.b[3][0])* xx+ ctx->intrp.c[3][0])* xx+ ctx->intrp.d[3][0];
   p1= fx4- fx1+3.*( fx2- fx3);
   p2=3.*( fx1-2.* fx2+ fx3);
   p3=6.* fx3-2.* fx1-3.* fx2- fx4;
   *f1=(( p1* yy+ p2)* yy+ p3)* yy*.1666666667+ fx2;
-  fx1=(( a[0][1]* xx+ b[0][1])* xx+ c[0][1])* xx+ d[0][1];
-  fx2=(( a[1][1]* xx+ b[1][1])* xx+ c[1][1])* xx+ d[1][1];
-  fx3=(( a[2][1]* xx+ b[2][1])* xx+ c[2][1])* xx+ d[2][1];
-  fx4=(( a[3][1]* xx+ b[3][1])* xx+ c[3][1])* xx+ d[3][1];
+  fx1=(( ctx->intrp.a[0][1]* xx+ ctx->intrp.b[0][1])* xx+ ctx->intrp.c[0][1])* xx+ ctx->intrp.d[0][1];
+  fx2=(( ctx->intrp.a[1][1]* xx+ ctx->intrp.b[1][1])* xx+ ctx->intrp.c[1][1])* xx+ ctx->intrp.d[1][1];
+  fx3=(( ctx->intrp.a[2][1]* xx+ ctx->intrp.b[2][1])* xx+ ctx->intrp.c[2][1])* xx+ ctx->intrp.d[2][1];
+  fx4=(( ctx->intrp.a[3][1]* xx+ ctx->intrp.b[3][1])* xx+ ctx->intrp.c[3][1])* xx+ ctx->intrp.d[3][1];
   p1= fx4- fx1+3.*( fx2- fx3);
   p2=3.*( fx1-2.* fx2+ fx3);
   p3=6.* fx3-2.* fx1-3.* fx2- fx4;
   *f2=(( p1* yy+ p2)* yy+ p3)* yy*.1666666667+ fx2;
-  fx1=(( a[0][2]* xx+ b[0][2])* xx+ c[0][2])* xx+ d[0][2];
-  fx2=(( a[1][2]* xx+ b[1][2])* xx+ c[1][2])* xx+ d[1][2];
-  fx3=(( a[2][2]* xx+ b[2][2])* xx+ c[2][2])* xx+ d[2][2];
-  fx4=(( a[3][2]* xx+ b[3][2])* xx+ c[3][2])* xx+ d[3][2];
+  fx1=(( ctx->intrp.a[0][2]* xx+ ctx->intrp.b[0][2])* xx+ ctx->intrp.c[0][2])* xx+ ctx->intrp.d[0][2];
+  fx2=(( ctx->intrp.a[1][2]* xx+ ctx->intrp.b[1][2])* xx+ ctx->intrp.c[1][2])* xx+ ctx->intrp.d[1][2];
+  fx3=(( ctx->intrp.a[2][2]* xx+ ctx->intrp.b[2][2])* xx+ ctx->intrp.c[2][2])* xx+ ctx->intrp.d[2][2];
+  fx4=(( ctx->intrp.a[3][2]* xx+ ctx->intrp.b[3][2])* xx+ ctx->intrp.c[3][2])* xx+ ctx->intrp.d[3][2];
   p1= fx4- fx1+3.*( fx2- fx3);
   p2=3.*( fx1-2.* fx2+ fx3);
   p3=6.* fx3-2.* fx1-3.* fx2- fx4;
   *f3=(( p1* yy+ p2)* yy+ p3)* yy*.1666666667+ fx2;
-  fx1=(( a[0][3]* xx+ b[0][3])* xx+ c[0][3])* xx+ d[0][3];
-  fx2=(( a[1][3]* xx+ b[1][3])* xx+ c[1][3])* xx+ d[1][3];
-  fx3=(( a[2][3]* xx+ b[2][3])* xx+ c[2][3])* xx+ d[2][3];
-  fx4=(( a[3][3]* xx+ b[3][3])* xx+ c[3][3])* xx+ d[3][3];
+  fx1=(( ctx->intrp.a[0][3]* xx+ ctx->intrp.b[0][3])* xx+ ctx->intrp.c[0][3])* xx+ ctx->intrp.d[0][3];
+  fx2=(( ctx->intrp.a[1][3]* xx+ ctx->intrp.b[1][3])* xx+ ctx->intrp.c[1][3])* xx+ ctx->intrp.d[1][3];
+  fx3=(( ctx->intrp.a[2][3]* xx+ ctx->intrp.b[2][3])* xx+ ctx->intrp.c[2][3])* xx+ ctx->intrp.d[2][3];
+  fx4=(( ctx->intrp.a[3][3]* xx+ ctx->intrp.b[3][3])* xx+ ctx->intrp.c[3][3])* xx+ ctx->intrp.d[3][3];
   p1= fx4- fx1+3.*( fx2- fx3);
   p2=3.*( fx1-2.* fx2+ fx3);
   p3=6.* fx3-2.* fx1-3.* fx2- fx4;
@@ -1447,7 +1443,7 @@ int trio(nec_context_t *ctx, int j )
 /*-----------------------------------------------------------------------*/
 
 /* zint computes the internal impedance of a circular wire */
-void zint(nec_context_t *ctx, double sigl, double rolam, double complex *zint )
+void zint(nec_context_t *ctx, double sigl, double rolam, complex double *zint )
 {
 #define cc1		( 6.0e-7     + I*1.9e-6)
 #define cc2		(-3.4e-6     + I*5.1e-6)
@@ -1471,7 +1467,7 @@ void zint(nec_context_t *ctx, double sigl, double rolam, double complex *zint )
 #define g(d)  ( cexp(cn*(d)+th(8./x))/csqrt(TP*(d)) )
   
   double x, tpcmu = 2.368705e+3, cmotp = 60.00;
-  double complex br1, br2;
+  complex double br1, br2;
   
   x= sqrt( tpcmu* sigl)* rolam;
   if( x <= 110.)
@@ -1518,7 +1514,7 @@ void zint(nec_context_t *ctx, double sigl, double rolam, double complex *zint )
 /*-----------------------------------------------------------------------*/
 
 /* cang returns the phase angle of a complex number in degrees. */
-double cang(nec_context_t *ctx, double complex z )
+double cang(nec_context_t *ctx, complex double z )
 {
   return( carg(z)*TD );
 }

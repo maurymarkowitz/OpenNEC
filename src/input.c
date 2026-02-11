@@ -32,7 +32,7 @@
  *
  *****************************************************************************/
 
-#include "opennec.h"
+#include "internals.h"
 #include "input.h"
 
 /* Forward declarations for internal functions */
@@ -86,20 +86,18 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
       deck->num_cards++;
       deck->cards = calloc(1, sizeof(card_t));
       if (!deck->cards) {
-        char *msg = calloc(1, MAX_ERROR_LEN);
+        char msg[MAX_ERROR_LEN];
         snprintf(msg, MAX_ERROR_LEN, "[read_deck] ERROR: calloc failed for deck->cards at line %d", line_num);
         add_error(ctx, &ctx->errors, msg, FATAL);
-        free(msg);
         return;
       }
     } else {
       deck->num_cards++;
       card_t *new_cards = realloc(deck->cards, deck->num_cards * sizeof(card_t));
       if (!new_cards) {
-        char *msg = calloc(1, MAX_ERROR_LEN);
+        char msg[MAX_ERROR_LEN];
         snprintf(msg, MAX_ERROR_LEN, "[read_deck] ERROR: realloc failed for deck->cards at line %d", line_num);
         add_error(ctx, &ctx->errors, msg, FATAL);
-        free(msg);
         return;
       }
       deck->cards = new_cards;
@@ -108,10 +106,9 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
     memset(dest, 0, sizeof(card_t));
     dest->orig_str = calloc(line_len + 1, sizeof(char));
     if (!dest->orig_str) {
-      char *msg = calloc(1, MAX_ERROR_LEN);
+      char msg[MAX_ERROR_LEN];
       snprintf(msg, MAX_ERROR_LEN, "[read_deck] ERROR: calloc failed for card->orig_str at line %d", line_num);
       add_error(ctx, &ctx->errors, msg, FATAL);
-      free(msg);
       return;
     }
     dest->edited = false;
@@ -230,11 +227,10 @@ int read_line(nec_context_t *ctx, char *buff, FILE *pfile, int line_num)
     }
     // Report if we found non-whitespace beyond the limit
     if(found_nonws) {
-      char *msg = calloc(1, MAX_ERROR_LEN);
+      char msg[MAX_ERROR_LEN];
       snprintf(msg, MAX_ERROR_LEN, "The card on line %d has non-whitespace characters beyond %d characters, these have been removed.", 
                line_num, MAX_LINE_LEN);
       add_error(ctx, &ctx->errors, msg, WARNING);
-      free(msg);
     }
   }
   
@@ -503,10 +499,9 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     // the end, and we didn't recognize the code then we want to report
     // an error
     if (!sawEN && !isCmt && !isCtl && !isGeo && !isExt) {
-      char *msg = calloc(1, MAX_ERROR_LEN);
+      char msg[MAX_ERROR_LEN];
       snprintf(msg, MAX_ERROR_LEN, "The card on line %d has unknown type '%s'. Card skipped.", i+1, type_buff);
       add_error(ctx, errors, msg, PROBLEM);
-      free(msg);
     }
     
     // if we did figure out the card type, then we want to put something in the card_str,

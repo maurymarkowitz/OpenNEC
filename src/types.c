@@ -24,7 +24,7 @@
  *****************************************************************************/
 
 #include "types.h"
-#include "opennec.h"
+#include "internals.h"
 
 // NOTE: ordering of these lists is important! they are used in
 //       various places to convert the code back to a number for
@@ -130,6 +130,13 @@ void nec_context_init(nec_context_t *ctx)
     ctx->ggrid.ar2 = malloc(mreq);
     mreq = sizeof(complex double) * 9 * 8 * 4;
     ctx->ggrid.ar3 = malloc(mreq);
+
+    // Initialize interpolation state for thread-safety
+    ctx->intrp.ixs = -10;
+    ctx->intrp.iys = -10;
+    ctx->intrp.igrs = -10;
+    ctx->intrp.dx = 1.0;
+    ctx->intrp.dy = 1.0;
 }
 
 void nec_context_cleanup(nec_context_t *ctx)

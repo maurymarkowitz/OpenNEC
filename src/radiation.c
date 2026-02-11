@@ -22,7 +22,7 @@
  *****************************************************************************/
 
 
-#include "opennec.h"
+#include "internals.h"
 #include "radiation.h"
 #include "fields.h"
 #include "calculations.h"
@@ -412,7 +412,7 @@ void gfld(nec_context_t *ctx, double rho, double phi, double rz,
 
 /* compute radiation pattern, gain, normalized gain */
 
-#include "opennec.h"
+#include "internals.h"
 
 /* rdpat_calc - Calculate radiation patterns (no output)
  * Refactored version that only performs calculations and stores results in ctx->rpat

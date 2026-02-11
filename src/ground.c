@@ -22,7 +22,7 @@
  * coefficients and accumulate results for near-field and radiation calculations.
  *****************************************************************************/
 
-#include "opennec.h"
+#include "internals.h"
 #include "ground.h"
 #include "calculations.h"
 #include "fields.h"

@@ -1,5 +1,7 @@
 Items still to be implemented:
 
+* add in the cebik collection and get the EZnec examples working
+
 * does anything in card.c really need ctx?
 
 * ensure that the logic for optional placing the formulas in the onec comment is implemented, and that if it is used and the deck is written in nec-2 format, that the value is copied into the corresponding field
