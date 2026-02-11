@@ -18,26 +18,26 @@
 #include "output.h"
 
 /* Forward declarations for internal write functions */
-static void write_header(nec_context_t *ctx, deck_t *deck, FILE *pfile);
-static int write_structure(nec_context_t *ctx, deck_t *deck, FILE *pfile);
-static int write_segments(nec_context_t *ctx, deck_t *deck, FILE *pfile);
-static void write_patches(nec_context_t *ctx, deck_t * deck, FILE *pfile);
-static void write_input_cards(FILE *file, deck_t *deck, int batch_start, int batch_end, int card_number_offset);
-static void write_frequency_data(FILE *file, nec_context_t *ctx);
-static void write_loading_data(FILE *file, nec_context_t *ctx);
-static void write_environment_data(FILE *file, nec_context_t *ctx);
-static void write_matrix_timing(FILE *file, nec_context_t *ctx);
-static void write_network_data(FILE *file, nec_context_t *ctx);
-static void write_matrix_asymmetry(FILE *file, nec_context_t *ctx);
-static void write_network_excitation(FILE *file, nec_context_t *ctx);
-static void write_antenna_input_parameters(FILE *file, nec_context_t *ctx);
-static void write_currents(FILE *file, nec_context_t *ctx);
-static void write_power_budget(FILE *file, nec_context_t *ctx);
-static void write_radiation_pattern_header(FILE *file, nec_context_t *ctx);
-static void write_radiation_pattern_data(FILE *file, nec_context_t *ctx);
-static void write_average_power_gain(FILE *file, nec_context_t *ctx);
-static void write_normalized_gain(FILE *file, nec_context_t *ctx);
-static void write_footer(FILE *file, nec_context_t *ctx, deck_t *deck);
+static void write_header(const nec_context_t *ctx, const deck_t *deck, FILE *pfile);
+static int write_structure(nec_context_t *ctx, const deck_t *deck, FILE *pfile);
+static int write_segments(nec_context_t *ctx, const deck_t *deck, FILE *pfile);
+static void write_patches(const nec_context_t *ctx, const deck_t * deck, FILE *pfile);
+static void write_input_cards(FILE *file, const deck_t *deck, int batch_start, int batch_end, int card_number_offset);
+static void write_frequency_data(FILE *file, const nec_context_t *ctx);
+static void write_loading_data(FILE *file, const nec_context_t *ctx);
+static void write_environment_data(FILE *file, const nec_context_t *ctx);
+static void write_matrix_timing(FILE *file, const nec_context_t *ctx);
+static void write_network_data(FILE *file, const nec_context_t *ctx);
+static void write_matrix_asymmetry(FILE *file, const nec_context_t *ctx);
+static void write_network_excitation(FILE *file, const nec_context_t *ctx);
+static void write_antenna_input_parameters(FILE *file, const nec_context_t *ctx);
+static void write_currents(FILE *file, const nec_context_t *ctx);
+static void write_power_budget(FILE *file, const nec_context_t *ctx);
+static void write_radiation_pattern_header(FILE *file, const nec_context_t *ctx);
+static void write_radiation_pattern_data(FILE *file, const nec_context_t *ctx);
+static void write_average_power_gain(FILE *file, const nec_context_t *ctx);
+static void write_normalized_gain(FILE *file, const nec_context_t *ctx);
+static void write_footer(FILE *file, const nec_context_t *ctx, const deck_t *deck);
 
 /******************************************************************************
  * write_deck_nec
@@ -52,7 +52,7 @@ static void write_footer(FILE *file, nec_context_t *ctx, deck_t *deck);
  *       to base units before exporting!
  *
  */
-void write_deck_nec(nec_context_t *ctx, deck_t *deck, FILE *file, int remove_inline_comments)
+void write_deck_nec(const nec_context_t *ctx, const deck_t *deck, FILE *file, int remove_inline_comments)
 {
   card_t *card;
   int MAX_INTS, MAX_FLTS;
@@ -130,7 +130,7 @@ void write_deck_nec(nec_context_t *ctx, deck_t *deck, FILE *file, int remove_inl
  * etc. This is by design.
  *
  */
-void write_deck_onec(nec_context_t *ctx, deck_t *deck, FILE *file)
+void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
 {
   card_t *card;
   int MAX_FLTS, MAX_INTS;
@@ -305,7 +305,7 @@ void write_deck_onec(nec_context_t *ctx, deck_t *deck, FILE *file)
  * Writes a standard NEC-style output file, using various work functions.
  *
  */
-void write_nec_output(nec_context_t *ctx, deck_t *deck, FILE *file)
+void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *file)
 {
   write_header(ctx, deck, file);
   write_structure(ctx, deck, file);
@@ -350,7 +350,7 @@ void write_nec_output(nec_context_t *ctx, deck_t *deck, FILE *file)
  * Matrix entries:
  *   CM i j re im
  */
-void write_greens_matrix(FILE *file, nec_context_t *ctx, int nrow, complex double *cm)
+void write_greens_matrix(FILE *file, const nec_context_t *ctx, int nrow, const complex double *cm)
 {
   if (!file || !cm || nrow <= 0) return;
 
@@ -387,12 +387,10 @@ void write_greens_matrix(FILE *file, nec_context_t *ctx, int nrow, complex doubl
 }
 
 /******************************************************************************
- * write_headers()
- *
  * Writes the header area and comment cards to the standard NEC output file.
  *
  */
-void write_header(nec_context_t *ctx, deck_t *deck, FILE *file)
+static void write_header(const nec_context_t *ctx, const deck_t *deck, FILE *file)
 {
   fprintf( file,  "\n\n\n"
           "                              "
@@ -441,7 +439,7 @@ void write_header(nec_context_t *ctx, deck_t *deck, FILE *file)
  * without having to rely on tag numbers, which are optional.
  *
  */
-int write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
+static int write_structure(nec_context_t *ctx, const deck_t *deck, FILE *file)
 {
   card_t card;
   int geo_card_num;
@@ -618,7 +616,7 @@ int write_structure(nec_context_t *ctx, deck_t *deck, FILE *file)
  * Writes the segment data section of the nec2 output.
  *
  */
-int write_segments(nec_context_t *ctx, deck_t * deck, FILE *file)
+static int write_segments(nec_context_t *ctx, const deck_t * deck, FILE *file)
 {
   // exit now if there's no segments
   if(ctx->geometry.n == 0) return 0;
@@ -698,7 +696,7 @@ int write_segments(nec_context_t *ctx, deck_t * deck, FILE *file)
  * writes the patch data section of the nec2 output.
  *
  */
-void write_patches(nec_context_t *ctx, deck_t *deck, FILE *file)
+static void write_patches(const nec_context_t *ctx, const deck_t *deck, FILE *file)
 {
   // exit now if there's no patches
   if (ctx->geometry.m == 0) return;
@@ -739,7 +737,7 @@ void write_patches(nec_context_t *ctx, deck_t *deck, FILE *file)
  * @param batch_end Last card index of this batch (inclusive)
  * @param card_number_offset Starting card number for this batch
  */
-void write_input_cards(FILE *file, deck_t *deck, int batch_start, int batch_end, int card_number_offset)
+static void write_input_cards(FILE *file, const deck_t *deck, int batch_start, int batch_end, int card_number_offset)
 {
     if (file == NULL || deck == NULL) {
         return;
@@ -833,7 +831,7 @@ void write_input_cards(FILE *file, deck_t *deck, int batch_start, int batch_end,
  * Writes the frequency in MHz and wavelength in meters, plus integration
  * method information. This matches the NEC2 output format.
  */
-void write_frequency_data(FILE *file, nec_context_t *ctx)
+static void write_frequency_data(FILE *file, const nec_context_t *ctx)
 {
     fprintf(file, "\n\n"
         "                               "
@@ -865,7 +863,7 @@ void write_frequency_data(FILE *file, nec_context_t *ctx)
  * The actual loading details are printed by load() in calculations.c
  * as it processes the loading cards.
  */
-void write_loading_data(FILE *file, nec_context_t *ctx)
+static void write_loading_data(FILE *file, const nec_context_t *ctx)
 {
     fprintf(file, "\n\n\n"
         "                          "
@@ -907,7 +905,7 @@ void write_loading_data(FILE *file, nec_context_t *ctx)
  * Writes the antenna environment section (free space, perfect ground, or
  * finite ground with parameters).
  */
-void write_environment_data(FILE *file, nec_context_t *ctx)
+static void write_environment_data(FILE *file, const nec_context_t *ctx)
 {
     fprintf(file, "\n\n\n"
         "                            "
@@ -974,7 +972,7 @@ void write_environment_data(FILE *file, nec_context_t *ctx)
  * 
  * Writes the matrix fill and factor timing information.
  */
-void write_matrix_timing(FILE *file, nec_context_t *ctx)
+static void write_matrix_timing(FILE *file, const nec_context_t *ctx)
 {
     fprintf(file, "\n\n\n"
         "                             "
@@ -991,7 +989,7 @@ void write_matrix_timing(FILE *file, nec_context_t *ctx)
  * Writes the network data section showing transmission lines and network
  * connections between segments.
  */
-void write_network_data(FILE *file, nec_context_t *ctx)
+static void write_network_data(FILE *file, const nec_context_t *ctx)
 {
     if (ctx->netcx.nonet == 0) {
         return;  // No network data to write
@@ -1072,7 +1070,7 @@ void write_network_data(FILE *file, nec_context_t *ctx)
  * Writes the maximum and RMS relative asymmetry of the driving point 
  * admittance matrix. This data is computed during network solution.
  */
-void write_matrix_asymmetry(FILE *file, nec_context_t *ctx)
+static void write_matrix_asymmetry(FILE *file, const nec_context_t *ctx)
 {
     // Only write if asymmetry check was performed and data exists
     if (ctx->netcx.masym == 0 || ctx->netcx.asmx == 0.0) {
@@ -1092,7 +1090,7 @@ void write_matrix_asymmetry(FILE *file, nec_context_t *ctx)
  * Writes structure excitation data at network connection points, including
  * voltage, current, impedance, admittance, and power for each connection.
  */
-void write_network_excitation(FILE *file, nec_context_t *ctx)
+static void write_network_excitation(FILE *file, const nec_context_t *ctx)
 {
     if (ctx->netcx.nexc == 0 || ctx->netcx.nprint != 0) {
         return;  // No excitation data or printing suppressed
@@ -1127,7 +1125,7 @@ void write_network_excitation(FILE *file, nec_context_t *ctx)
  * Writes antenna input parameters at source segments, including voltage,
  * current, impedance, admittance, and power.
  */
-void write_antenna_input_parameters(FILE *file, nec_context_t *ctx)
+static void write_antenna_input_parameters(FILE *file, const nec_context_t *ctx)
 {
     if (ctx->netcx.ninp == 0) {
         return;  // No input data to write
@@ -1164,7 +1162,7 @@ void write_antenna_input_parameters(FILE *file, nec_context_t *ctx)
  * Writes current distribution for all segments, including coordinates,
  * segment length, and current magnitude and phase.
  */
-void write_currents(FILE *file, nec_context_t *ctx)
+static void write_currents(FILE *file, const nec_context_t *ctx)
 {
     if (ctx->geometry.n == 0) {
         return;  // No segments to write
@@ -1209,7 +1207,7 @@ void write_currents(FILE *file, nec_context_t *ctx)
  * Writes the power budget showing input power, radiated power, structure
  * loss, network loss, and efficiency.
  */
-void write_power_budget(FILE *file, nec_context_t *ctx)
+static void write_power_budget(FILE *file, const nec_context_t *ctx)
 {
     // Only write for standard radiation pattern types
     if ((ctx->fpat.ixtyp != 0) && (ctx->fpat.ixtyp != 5)) {
@@ -1240,7 +1238,7 @@ void write_power_budget(FILE *file, nec_context_t *ctx)
  * 
  * Writes the radiation pattern section header and column headers.
  */
-void write_radiation_pattern_header(FILE *file, nec_context_t *ctx)
+static void write_radiation_pattern_header(FILE *file, const nec_context_t *ctx)
 {
     char *igtp[2] = { "----- POWER GAINS ----- ", "--- DIRECTIVE GAINS ---" };
     char *igax[4] = { " MAJOR", " MINOR", " VERTC", " HORIZ" };
@@ -1334,7 +1332,7 @@ void write_radiation_pattern_header(FILE *file, nec_context_t *ctx)
  * Writes the computed radiation pattern data for each theta/phi point.
  * Data includes gains, polarization, and E-field components.
  */
-void write_radiation_pattern_data(FILE *file, nec_context_t *ctx)
+static void write_radiation_pattern_data(FILE *file, const nec_context_t *ctx)
 {
     char *hpol[3] = { "LINEAR", "RIGHT ", "LEFT  " };
     double tmp5, tmp6;
@@ -1380,7 +1378,7 @@ void write_radiation_pattern_data(FILE *file, nec_context_t *ctx)
  * 
  * Writes the average power gain over the specified solid angle.
  */
-void write_average_power_gain(FILE *file, nec_context_t *ctx)
+static void write_average_power_gain(FILE *file, const nec_context_t *ctx)
 {
     if (ctx->fpat.iavp == 0) {
         return;
@@ -1397,7 +1395,7 @@ void write_average_power_gain(FILE *file, nec_context_t *ctx)
  * 
  * Writes the normalized gain table if requested.
  */
-void write_normalized_gain(FILE *file, nec_context_t *ctx)
+static void write_normalized_gain(FILE *file, const nec_context_t *ctx)
 {
     char *igntp[5] = { " MAJOR AXIS", "  MINOR AXIS",
         "    VERTICAL", "  HORIZONTAL", "       TOTAL " };
@@ -1507,7 +1505,7 @@ void write_normalized_gain(FILE *file, nec_context_t *ctx)
  * Writes the footer with total run time.
  * Note: EN card is now written by write_input_cards as part of the final batch.
  */
-void write_footer(FILE *file, nec_context_t *ctx, deck_t *deck)
+static void write_footer(FILE *file, const nec_context_t *ctx, const deck_t *deck)
 {
     // Output blank lines before footer
     fprintf(file, "\n\n\n");

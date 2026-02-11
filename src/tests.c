@@ -45,7 +45,7 @@ static void check_ge_low_height_hazard(nec_context_t *ctx, errors_list_t *errors
                                        int GEType);
 static void check_junction_segmentation_consistency(nec_context_t *ctx, errors_list_t *errors,
                                                     const wire_info_t *wires, int wire_count);
-static bool is_geometry_tag_ignored(deck_t *deck, int tag);
+static bool is_geometry_tag_ignored(const deck_t *deck, int tag);
 
 /******************************************************************************
  * is_geometry_tag_ignored
@@ -56,7 +56,7 @@ static bool is_geometry_tag_ignored(deck_t *deck, int tag);
  * @param tag the tag number to check
  * @return true if the tag exists and is marked ignored, false otherwise
  */
-static bool is_geometry_tag_ignored(deck_t *deck, int tag) {
+static bool is_geometry_tag_ignored(const deck_t *deck, int tag) {
   if(tag <= 0 || deck->geometry_start < 0 || deck->geometry_end < 0) 
     return false;
   
@@ -80,7 +80,7 @@ static bool is_geometry_tag_ignored(deck_t *deck, int tag) {
  * @param errors the errors_list_t to add new messages to
  *
  */
-void test_deck_structure(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
+void test_deck_structure(nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
 {
   // A short list of the minimum structure is found in the 4nec2
   // documentation:
@@ -1060,7 +1060,7 @@ static void check_segment_length_and_radius(nec_context_t *ctx, errors_list_t *e
  * @param errors the errors_list_t to add new messages to
  *
  */
-void test_duplicate_tags(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
+void test_duplicate_tags(nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
 {
   // we will also check to see if there are duplicate tags
   char msg[MAX_ERROR_LEN];
@@ -1106,9 +1106,9 @@ void test_duplicate_tags(nec_context_t *ctx, deck_t *deck, errors_list_t *errors
  * TODO: this needs to be greatly expanded!
  *
  */
-void test_card_inputs(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
+void test_card_inputs(nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
 {
-  char *code;
+  const char *code;
   char msg[MAX_ERROR_LEN];
 
   for(int i = 0; i < deck->num_cards; i++) {
