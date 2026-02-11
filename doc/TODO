@@ -14,8 +14,6 @@ Items still to be implemented:
 
 * add a -f(ormat) flag to the CLI version to specify an output format so it can write NEC, 4nec2, etc.
 
-* re-consider ignore: `ignore` tells the system to skip over that card when producing geometry or running calculations. This is useful during testing, as cards can be turned off without having to remove them from the deck or comment them out.
-
 * at some point, handle 4nec2 current sources, EX 6 and 7 (UA3SFH.nec, W2EEY.NEC, calvin.nec, class.NEC)
 
 * add support for LD type 7 from 4nec2 ()
