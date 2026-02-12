@@ -30,11 +30,11 @@
 #include "calculations.h"
 
 /* Forward declarations for internal functions */
-static void cmss(nec_context_t *ctx, int j1, int j2, int im1, int im2, complex double *cm, int nrow, int itrp);
-static void cmsw(nec_context_t *ctx, int j1, int j2, int i1, int i2, complex double *cm, complex double *cw, int ncw, int nrow, int itrp);
-static void cmws(nec_context_t *ctx, int j, int i1, int i2, complex double *cm, int nr, complex double *cw, int itrp);
-static void cmww(nec_context_t *ctx, int j, int i1, int i2, complex double *cm, int nr, complex double *cw, int nw, int itrp);
-void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e);
+static void cmss(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2, complex double *restrict cm, int nrow, int itrp);
+static void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex double *restrict cm, complex double *restrict cw, int ncw, int nrow, int itrp);
+static void cmws(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int itrp);
+static void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int nw, int itrp);
+void qdsrc(nec_context_t *restrict ctx, int is, complex double v, complex double *restrict e);
 
 #ifdef HAVE_ACCELERATE
 #include <Accelerate/Accelerate.h>
@@ -61,7 +61,7 @@ extern void zgetrs_(char*, int*, int*, double _Complex*, int*, int*, double _Com
 /*-------------------------------------------------------------------*/
 
 /* cmset sets up the complex structure matrix in the array cm */
-void cmset(nec_context_t *ctx, int nrow, complex double *cm, double rkhx, int iexkx)
+void cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, double rkhx, int iexkx)
 {
   int mp2, neq, npeq, it, i, j, i1, i2, in2;
   int im1, im2, ist, ij, ipr, jss, jm1, jm2, jst, k, ka, kk;
@@ -212,8 +212,8 @@ void cmset(nec_context_t *ctx, int nrow, complex double *cm, double rkhx, int ie
 /*-----------------------------------------------------------------------*/
 
 /* cmss computes matrix elements for surface-surface interactions. */
-void cmss(nec_context_t *ctx, int j1, int j2, int im1, int im2,
-    complex double *cm, int nrow, int itrp )
+void cmss(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2,
+    complex double *restrict cm, int nrow, int itrp )
 {
   int i1, i2, icomp, ii1, i, il, ii2, jj1, j, jl, /*jl2,*/ jj2;
   double t1xi, t1yi, t1zi, t2xi, t2yi, t2zi, xi, yi, zi;
@@ -318,8 +318,8 @@ void cmss(nec_context_t *ctx, int j1, int j2, int im1, int im2,
 /*-----------------------------------------------------------------------*/
 
 /* computes matrix elements for e along wires due to patch current */
-void cmsw(nec_context_t *ctx, int j1, int j2, int i1, int i2, complex double *cm,
-    complex double *cw, int ncw, int nrow, int itrp )
+void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex double *restrict cm,
+    complex double *restrict cw, int ncw, int nrow, int itrp )
 {
   int jsnox; /* -1 offset to "jsno" for array indexing */
   complex double emel[9];
@@ -454,8 +454,8 @@ void cmsw(nec_context_t *ctx, int j1, int j2, int i1, int i2, complex double *cm
 /*-----------------------------------------------------------------------*/
 
 /* cmws computes matrix elements for wire-surface interactions */
-void cmws(nec_context_t *ctx, int j, int i1, int i2, complex double *cm,
-    int nr, complex double *cw, int itrp )
+void cmws(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
+    int nr, complex double *restrict cw, int itrp )
  {
   int ipr, i, ipatch, ik, js=0, ij, jx;
   double xi, yi, zi, tx, ty, tz;
@@ -561,8 +561,8 @@ void cmws(nec_context_t *ctx, int j, int i1, int i2, complex double *cm,
 /*-----------------------------------------------------------------------*/
 
 /* cmww computes matrix elements for wire-wire interactions */
-void cmww(nec_context_t *ctx, int j, int i1, int i2, complex double *cm,
-    int nr, complex double *cw, int nw, int itrp)
+void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
+    int nr, complex double *restrict cw, int nw, int itrp)
  {
   int ipr, iprx, i, ij, jx;
   double xi, yi, zi, ai, cabi, sabi, salpi;
@@ -756,8 +756,8 @@ void cmww(nec_context_t *ctx, int j, int i1, int i2, complex double *cm,
 /* etmns fills the array e with the negative of the */
 /* electric field incident on the structure. e is the */
 /* right hand side of the matrix equation. */
-void etmns(nec_context_t *ctx, double p1, double p2, double p3, double p4,
-    double p5, double p6, int ipr, complex double *e )
+void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double p4,
+    double p5, double p6, int ipr, complex double *restrict e )
 {
   int i, is, i1, i2=0, neq;
   double cth, sth, cph, sph, cet, set, pxl, pyl, pzl, wx;
@@ -1078,7 +1078,7 @@ void etmns(nec_context_t *ctx, double p1, double p2, double p3, double p4,
 /* numerical analysis.  comments below refer to comments in ralstons */
 /* text.    (matrix transposed.) */
 
-void factr(const nec_context_t *ctx, int n, complex double *a, int *ip, int ndim)
+void factr(const nec_context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip, int ndim)
 {
 #if defined(HAVE_ACCELERATE) || defined(HAVE_OPENBLAS) || defined(HAVE_BLAS) || defined(HAVE_MKL)
 	/* LAPACK-backed LU factorization using a local np×np buffer to honor layout. */
@@ -1237,7 +1237,7 @@ void factr(const nec_context_t *ctx, int n, complex double *a, int *ip, int ndim
 /* matricies of the symmetric modes and calls routine to factor */
 /* matricies.  if no symmetry, the routine is called to factor the */
 /* complete matrix. */
-void factrs(nec_context_t *ctx, int np, int nrow, complex double *a, int *ip )
+void factrs(nec_context_t *restrict ctx, int np, int nrow, complex double *restrict a, int *restrict ip )
 {
   int kk, ka;
 
@@ -1338,8 +1338,8 @@ int fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym )
 /* lower triangular matrix and u is an upper triangular matrix both */
 /* of which are stored in a.  the rhs vector b is input and the */
 /* solution is returned through vector b.   (matrix transposed. */
-void solve(const nec_context_t *ctx, int n, complex double *a, int *ip,
-		complex double *b, int ndim )
+void solve(const nec_context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip,
+		complex double *restrict b, int ndim )
 {
 #if defined(HAVE_ACCELERATE) || defined(HAVE_OPENBLAS) || defined(HAVE_BLAS) || defined(HAVE_MKL)
 	/* LAPACK-backed solve using local buffers for matrix and RHS. */
@@ -1435,7 +1435,7 @@ void solve(const nec_context_t *ctx, int n, complex double *a, int *ip,
 /* subroutine solves, for symmetric structures, handles the */
 /* transformation of the right hand side vector and solution */
 /* of the matrix eq. */
-void solves(nec_context_t *ctx, complex double *a, int *ip, complex double *b,
+void solves(nec_context_t *restrict ctx, complex double *restrict a, int *restrict ip, complex double *restrict b,
     int neq, int nrh, int np, int n, int mp, int m)
 {
   int npeq, nrow, ic, i, kk, ia, ib, j, k;

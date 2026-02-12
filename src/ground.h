@@ -11,7 +11,7 @@
 #include "types.h"
 
 /* Ground field functions - called from fields.c */
-int rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmin);
-void sflds(nec_context_t *ctx, double t, complex double *e);
+int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restrict sum, double dmin);
+void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e);
 
 #endif /* GROUND_H */

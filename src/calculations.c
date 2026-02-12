@@ -38,7 +38,7 @@ static void add_loading_output(nec_context_t *ctx, int tag, int tagf, int tagt, 
 /* cabc computes coefficients of the constant (a), sine (b), and */
 /* cosine (c) terms in the current interpolation functions for the */
 /* current vector cur. */
-void cabc(nec_context_t *ctx, complex double *curx)
+void cabc(nec_context_t *restrict ctx, complex double *restrict curx)
 {
   int i, is, j, jx, jco1, jco2;
   double ar, ai, sh;
@@ -488,8 +488,8 @@ double db20(const nec_context_t *ctx, double x )
 
 /* intrp uses bivariate cubic interpolation to obtain */
 /* the values of 4 functions at the point (x,y). */
-void intrp(nec_context_t *ctx, double x, double y, complex double *f1,
-           complex double *f2, complex double *f3, complex double *f4 )
+void intrp(nec_context_t *restrict ctx, double x, double y, complex double *restrict f1,
+           complex double *restrict f2, complex double *restrict f3, complex double *restrict f4 )
 {
   int nda[3]={11,17,9}, ndpa[3]={110,85,72};
   bool jump;
@@ -1444,7 +1444,7 @@ int trio(nec_context_t *ctx, int j )
 /*-----------------------------------------------------------------------*/
 
 /* zint computes the internal impedance of a circular wire */
-void zint(nec_context_t *ctx, double sigl, double rolam, complex double *zint )
+void zint(nec_context_t *restrict ctx, double sigl, double rolam, complex double *restrict zint )
 {
 #define cc1		( 6.0e-7     + I*1.9e-6)
 #define cc2		(-3.4e-6     + I*5.1e-6)

@@ -32,19 +32,19 @@
 #include "somnec.h"
 
 /* Forward declarations for internal functions */
-static void eksc(nec_context_t *ctx, double s, double z, double rh, double xk, int ij, complex double *ezs, complex double *ers, complex double *ezc, complex double *erc, complex double *ezk, complex double *erk);
-static void ekscx(nec_context_t *ctx, double bx, double s, double z, double rhx, double xk, int ij, int inx1, int inx2, complex double *ezs, complex double *ers, complex double *ezc, complex double *erc, complex double *ezk, complex double *erk);
+static void eksc(nec_context_t *restrict ctx, double s, double z, double rh, double xk, int ij, complex double *restrict ezs, complex double *restrict ers, complex double *restrict ezc, complex double *restrict erc, complex double *restrict ezk, complex double *restrict erk);
+static void ekscx(nec_context_t *restrict ctx, double bx, double s, double z, double rhx, double xk, int ij, int inx1, int inx2, complex double *restrict ezs, complex double *restrict ers, complex double *restrict ezc, complex double *restrict erc, complex double *restrict ezk, complex double *restrict erk);
 static void gh(nec_context_t *ctx, double zk, double *hr, double *hi);
 static void gx(nec_context_t *ctx, double zz, double rh, double xk, complex double *gz, complex double *gzp);
 static void gxx(nec_context_t *ctx, double zz, double rh, double a, double a2, double xk, int ira, complex double *g1, complex double *g1p, complex double *g2, complex double *g2p, complex double *g3, complex double *gzp);
 static void hfk(nec_context_t *ctx, double el1, double el2, double rhk, double zpkx, double *sgr, double *sgi);
-static void hsflx(nec_context_t *ctx, double s, double rh, double zpx, complex double *hpk, complex double *hps, complex double *hpc);
+static void hsflx(nec_context_t *restrict ctx, double s, double rh, double zpx, complex double *restrict hpk, complex double *restrict hps, complex double *restrict hpc);
 
 /*-------------------------------------------------------------------*/
 
 /* compute near e fields of a segment with sine, cosine, and */
 /* constant currents.  ground effect included. */
-void efld(nec_context_t *ctx, double xi, double yi, double zi, double ai, int ij )
+void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double ai, int ij )
 {
 #define	txk	egnd[0]
 #define	tyk	egnd[1]
@@ -487,8 +487,8 @@ void gh(nec_context_t *ctx, double zk, double *hr, double *hi)
 /* current element over a ground plane using formulas of k.a. norton */
 /* (proc. ire, sept., 1937, pp.1203,1236.) */
 
-void gwave(nec_context_t *ctx, complex double *erv, complex double *ezv,
-           complex double *erh, complex double *ezh, complex double *eph )
+void gwave(nec_context_t *restrict ctx, complex double *restrict erv, complex double *restrict ezv,
+           complex double *restrict erh, complex double *restrict ezh, complex double *restrict eph )
 {
   double sppp, sppp2, cppp2, cppp, spp, spp2, cpp2, cpp;
   complex double rk1, rk2, t1, t2, t3, t4, p1, rv;
@@ -1109,8 +1109,8 @@ void hsflx(nec_context_t *ctx, double s, double rh, double zpx,
 
 /* nefld computes the near field at specified points in space after */
 /* the structure currents have been computed. */
-void nefld(nec_context_t *ctx, double xob, double yob, double zob,
-           complex double *ex, complex double *ey, complex double *ez )
+void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
+           complex double *restrict ex, complex double *restrict ey, complex double *restrict ez )
 {
   int i, ix, ipr, iprx, jc, ipa;
   double zp, xi, ax;
@@ -1646,8 +1646,8 @@ void nfpat(nec_context_t *ctx)
 /* nhfld computes the near field at specified points in space after */
 /* the structure currents have been computed. */
 
-void nhfld(nec_context_t *ctx,  double xob, double yob, double zob,
-           complex double *hx, complex double *hy, complex double *hz )
+void nhfld(nec_context_t *restrict ctx,  double xob, double yob, double zob,
+           complex double *restrict hx, complex double *restrict hy, complex double *restrict hz )
 {
   int i, jc;
   double ax, zp;
@@ -1728,8 +1728,8 @@ void nhfld(nec_context_t *ctx,  double xob, double yob, double zob,
 /*-----------------------------------------------------------------------*/
 
 /* integrate over patches at wire connection point */
-void pcint(nec_context_t *ctx,  double xi, double yi, double zi, double cabi,
-           double sabi, double salpi, complex double *e )
+void pcint(nec_context_t *restrict ctx,  double xi, double yi, double zi, double cabi,
+           double sabi, double salpi, complex double *restrict e )
 {
   int nint, i1, i2;
   double d, ds, da, gcon, fcon, xxj, xyj, xzj, xs, s1;

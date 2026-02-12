@@ -9,7 +9,7 @@
 
 #include "internals.h"
 #include <unistd.h>
-#include <sys/times.h>
+#include <time.h>
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -175,17 +175,15 @@ void abort_on_error(const nec_context_t *ctx, int why)
 
 /*------------------------------------------------------------------------*/
 
-/* Returns process time (user+system) BUT in _msec_ */
+/* Returns high-resolution monotonic time in milliseconds */
 void secnds(const nec_context_t *ctx, double *x)
 {
-  struct tms buffer;
-  double clk_tck;
-
-  times(&buffer);
-  clk_tck = sysconf( _SC_CLK_TCK );
-  *x = 1000.0 * (double)(buffer.tms_utime + buffer.tms_stime) / clk_tck;
-
-  return;
+  struct timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+    *x = (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1.0e6;
+  } else {
+    *x = 0.0;
+  }
 }
 
 /*------------------------------------------------------------------------*/

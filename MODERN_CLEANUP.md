@@ -39,39 +39,63 @@ This document outlines a roadmap for bringing the OpenNEC codebase up to modern 
 ## 2. Modern C Types and Standards
 
 ### Standard Integer Types
-- **Goal**: Replace generic `int` with explicitly sized types from `<stdint.h>` (e.g., `int32_t`, `size_t`) where appropriate.
+- **Status**: [SKIPPED] 2025-02-12
+- **Note**: Decided to maintain generic `int` and `unsigned int` types to stay in keeping with the legacy codebase style.
 - **Benefit**: Improved portability and memory safety across different architectures (ARM64 vs x86_64).
 
 ### Loop Optimization (`restrict`)
-- **Goal**: Use the `restrict` keyword in core calculation loops in `matrix.c`, `fields.c`, and `calculations.c`.
+- **Status**: [DONE] 2025-02-12
+- **Achievements**:
+  - [x] Applied `restrict` to core calculation loops in `matrix.c`, `fields.c`, `calculations.c`, `radiation.c`, `ground.c`, and `network.c`.
+  - [x] Updated function signatures in headers (`matrix.h`, `fields.h`, `calculations.h`, `ground.h`, `network.h`) to use `restrict` for improved compiler vectorization.
 - **Benefit**: Unlocks advanced compiler auto-vectorization (SIMD) for dramatically improved performance.
 
 ### Designated Initializers
+- **Status**: [DONE] 2025-02-12
+- **Achievements**:
+  - [x] Updated `src/tests.c` to use designated initializers for local test structures.
+  - [x] Refactored `src/types.c` to use designated initializers for `ggrid_t` and `intrp_t` in `nec_context_init`.
+  - [x] Updated `src/deck.c` and `src/input.c` to use designated initializers for `card_t`.
+  - [x] Modernized `src/main.c` to use `{0}` initialization for local structures instead of `memset`.
 - **Goal**: Use C99/C11 designated initializers for all structure initializations.
 - **Benefit**: Clearer code and safer initialization of complex structs like `nec_context_t`.
 
 ## 3. Mathematics and Physics
 
 ### High-Precision Constants
-- **Goal**: Standardize on high-precision constants in `opennec.h` and leverage `<math.h>` standard defines (e.g., `M_PI`).
+- **Status**: [DONE] 2025-02-12
+- **Achievements**:
+  - [x] Standardized on high-precision constants in `opennec.h` and `internals.h` using `M_PI`.
+  - [x] Derived physical constants (e.g., `CVEL`, `ETA`) from high-precision base values.
 - **Benefit**: Improved numerical stability and consistency with other modern EM simulation tools.
 
 ### High-Resolution Timing
-- **Goal**: Replace the FORTRAN-style `secnds()` with C11 `timespec_get()` or POSIX `clock_gettime`.
+- **Status**: [DONE] 2025-02-12
+- **Achievements**:
+  - [x] Replaced legacy `secnds()` with POSIX `clock_gettime(CLOCK_MONOTONIC)`.
+  - [x] Standardized internal timing to use seconds since start of context.
 - **Benefit**: Accurate performance profiling on modern multi-core systems.
 
 ## 4. Build and Documentation
 
 ### CMake Migration
-- **Goal**: Move from a static `Makefile` to `CMake`.
+- **Status**: [SKIPPED] 2026-02-12
+- **Note**: Decided to remain `make`-based to preserve the simplicity of the existing build system.
 - **Benefit**: Easier integration into Xcode/Swift projects, better cross-platform support, and simplified dependency management.
 
 ### Doxygen Documentation
-- **Goal**: Comment the public API in `opennec.h` using Doxygen syntax.
+- **Status**: [DONE] 2026-02-12
+- **Achievements**:
+  - [x] Documented [src/opennec.h](src/opennec.h) with high-level module overviews and physical constants.
+  - [x] Added Doxygen comments to `card_t` and `deck_t` structures in [src/types.h](src/types.h).
+  - [x] Documented context lifecycle and logging callback APIs in [src/types.h](src/types.h).
+  - [x] Provided Doxygen headers for [src/input.h](src/input.h) and [src/output.h](src/output.h) including parameter descriptions.
+- **Goal**: Comment the public API in `opennec.h` and main headers using Doxygen syntax.
 - **Benefit**: Enables IDE tooltips and automatically generated developer documentation.
 
 ## 5. Automated Testing
 
 ### Test Framework Integration
-- **Goal**: Migrate the internal unit tests in `src/tests.c` to a lightweight framework like **Unity** or **Check**.
+- **Status**: [SKIPPED] 2026-02-12
+- **Note**: The functions in `src/tests.c` are intended for GUI-driven verification rather than standard automated CLI testing.
 - **Benefit**: Better test isolation, detailed failure reporting, and CI/CD compatibility.

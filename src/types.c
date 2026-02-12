@@ -25,6 +25,7 @@
 
 #include "types.h"
 #include "internals.h"
+#include "misc.h"
 
 // NOTE: ordering of these lists is important! they are used in
 //       various places to convert the code back to a number for
@@ -124,48 +125,35 @@ void nec_context_init(nec_context_t *ctx)
     ctx->save.fmhz = CVEL;
     
     // Start timing for total runtime
-    ctx->start_time = clock();
+    secnds(ctx, &ctx->start_time);
     
     // Initialize ground grid parameters for somnec (from old main.c lines 145-175)
-    ctx->ggrid.nxa[0] = 11;
-    ctx->ggrid.nxa[1] = 17;
-    ctx->ggrid.nxa[2] = 9;
-    
-    ctx->ggrid.nya[0] = 10;
-    ctx->ggrid.nya[1] = 5;
-    ctx->ggrid.nya[2] = 8;
-    
-    ctx->ggrid.dxa[0] = 0.02;
-    ctx->ggrid.dxa[1] = 0.05;
-    ctx->ggrid.dxa[2] = 0.1;
-    
-    ctx->ggrid.dya[0] = 0.1745329252;
-    ctx->ggrid.dya[1] = 0.0872664626;
-    ctx->ggrid.dya[2] = 0.1745329252;
-    
-    ctx->ggrid.xsa[0] = 0.0;
-    ctx->ggrid.xsa[1] = 0.2;
-    ctx->ggrid.xsa[2] = 0.2;
-    
-    ctx->ggrid.ysa[0] = 0.0;
-    ctx->ggrid.ysa[1] = 0.0;
-    ctx->ggrid.ysa[2] = 0.3490658504;
+    ctx->ggrid = (ggrid_t){
+        .nxa = {11, 17, 9},
+        .nya = {10, 5, 8},
+        .dxa = {0.02, 0.05, 0.1},
+        .dya = {0.1745329252, 0.0872664626, 0.1745329252},
+        .xsa = {0.0, 0.2, 0.2},
+        .ysa = {0.0, 0.0, 0.3490658504}
+    };
     
     // Allocate ggrid arrays for SOMNEC ground calculations
     size_t mreq;
-    mreq = sizeof(complex double) * 11 * 10 * 4;
+    mreq = sizeof(complex double) * ctx->ggrid.nxa[0] * ctx->ggrid.nya[0] * 4;
     ctx->ggrid.ar1 = malloc(mreq);
-    mreq = sizeof(complex double) * 17 * 5 * 4;
+    mreq = sizeof(complex double) * ctx->ggrid.nxa[1] * ctx->ggrid.nya[1] * 4;
     ctx->ggrid.ar2 = malloc(mreq);
-    mreq = sizeof(complex double) * 9 * 8 * 4;
+    mreq = sizeof(complex double) * ctx->ggrid.nxa[2] * ctx->ggrid.nya[2] * 4;
     ctx->ggrid.ar3 = malloc(mreq);
 
     // Initialize interpolation state for thread-safety
-    ctx->intrp.ixs = -10;
-    ctx->intrp.iys = -10;
-    ctx->intrp.igrs = -10;
-    ctx->intrp.dx = 1.0;
-    ctx->intrp.dy = 1.0;
+    ctx->intrp = (intrp_t){
+        .ixs = -10,
+        .iys = -10,
+        .igrs = -10,
+        .dx = 1.0,
+        .dy = 1.0
+    };
 }
 
 void nec_context_cleanup(nec_context_t *ctx)

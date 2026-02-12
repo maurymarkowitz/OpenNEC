@@ -34,7 +34,7 @@
 /* variable interval width romberg integration is used.  there are 9 */
 /* field components - the x, y, and z components due to constant, */
 /* sine, and cosine current distributions. */
-int rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmin)
+int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restrict sum, double dmin)
 {
   int i, ns, nt;
   bool flag=true;
@@ -208,7 +208,7 @@ int rom2(nec_context_t *ctx, double a, double b, complex double *sum, double dmi
 
 /* sfldx returns the field due to ground for a current element on */
 /* the source segment at t relative to the segment center. */
-void sflds(nec_context_t *ctx, double t, complex double *e )
+void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
 {
   double xt, yt, zt, rhx, rhy, rhs, rho, phx, phy;
   double cph, sph, zphs, r2s, rk, sfac, thet;

@@ -41,9 +41,13 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
  */
 card_t* new_card(void) {
   card_t *card = calloc(1, sizeof(card_t));
-  card->edited = false;     // new cards are not edited, by default. this only applies to USER edits!
-  card->ignore = false;     // cards should not be ignored by default. should apply to geometry and commands?
-  card->extn_code[0] = 0;   // this will be applied if there is a code found on the line or the user adds one
+  if (card) {
+    *card = (card_t){
+      .edited = false,
+      .ignore = false,
+      .extn_code = {0}
+    };
+  }
   return card;
 }
 

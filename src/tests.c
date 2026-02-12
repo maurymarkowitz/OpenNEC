@@ -346,7 +346,12 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
       }
       // Record for open-end placement validation later
       if(deck->cards[i].ints_used >= 3) {
-        ref_info_t r = { i + 1, deck->cards[i].i[2], deck->cards[i].i[3], 0 };
+        ref_info_t r = { 
+          .line = i + 1, 
+          .tag = deck->cards[i].i[2], 
+          .segStart = deck->cards[i].i[3], 
+          .segEnd = 0 
+        };
         if(ex_ref_count < (int)(sizeof(ex_refs)/sizeof(ex_refs[0]))) ex_ref_count++;
         ex_refs[ex_ref_count - 1] = r;
       }
@@ -397,7 +402,12 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     if(strcmp(code, "LD") == 0 && deck->cards[i].ints_used >= 3) {
       int segStart = deck->cards[i].i[3];
       int segEnd = deck->cards[i].i[4];
-      ref_info_t r = { i + 1, deck->cards[i].i[2], segStart, segEnd };
+      ref_info_t r = { 
+        .line = i + 1, 
+        .tag = deck->cards[i].i[2], 
+        .segStart = segStart, 
+        .segEnd = segEnd 
+      };
       if(ld_ref_count < (int)(sizeof(ld_refs)/sizeof(ld_refs[0]))) ld_ref_count++;
       ld_refs[ld_ref_count - 1] = r;
     }

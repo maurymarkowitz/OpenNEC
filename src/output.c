@@ -48,9 +48,6 @@ static void write_footer(FILE *file, const nec_context_t *ctx, const deck_t *dec
  * comments. With this last option turned off, the deck is compatible
  * with nec2c, with it turned on, it is the original NEC2 format.
  *
- * TODO: need to calculate all float values and run any conversions
- *       to base units before exporting!
- *
  */
 void write_deck_nec(const nec_context_t *ctx, const deck_t *deck, FILE *file, int remove_inline_comments)
 {
@@ -1518,9 +1515,8 @@ static void write_footer(FILE *file, const nec_context_t *ctx, const deck_t *dec
     
     // Calculate and output total runtime
     if (ctx != NULL) {
-        clock_t end_time = clock();
-        double elapsed = ((double)(end_time - ctx->start_time)) / CLOCKS_PER_SEC * 1000.0;  // Convert to milliseconds
-        fprintf(file, "\n  TOTAL RUN TIME: %.0f msec", elapsed);
+        double elapsed_ms = secnds(ctx->start_time) * 1000.0;
+        fprintf(file, "\n  TOTAL RUN TIME: %.0f msec", elapsed_ms);
     }
 
   // At the very end, echo the EN card (if present) as the final data card

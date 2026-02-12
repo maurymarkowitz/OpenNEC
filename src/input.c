@@ -103,7 +103,11 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
       deck->cards = new_cards;
     }
     card_t *dest = &deck->cards[deck->num_cards - 1];
-    memset(dest, 0, sizeof(card_t));
+    *dest = (card_t){
+      .edited = false,
+      .ignore = false
+    };
+
     dest->orig_str = calloc(line_len + 1, sizeof(char));
     if (!dest->orig_str) {
       char msg[MAX_ERROR_LEN];
@@ -111,8 +115,6 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
       add_error(ctx, &ctx->errors, msg, FATAL);
       return;
     }
-    dest->edited = false;
-    dest->ignore = false;
     strncpy(dest->orig_str, line_buf, line_len);
     dest->orig_str[line_len] = '\0';
     if (read_result == EOF && !last_line_nonempty) {

@@ -24,7 +24,6 @@
 #include <pthread.h>
 #include <signal.h>
 #include <errno.h>
-#include <sys/times.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -206,19 +205,12 @@ static int process_single_file(const char *input_filename, const char *output_fi
   }
 
   // main variables
-  deck_t deck;              // the deck we're processing, we'll make it local as it disappears on exit
-  memset(&deck, 0, sizeof(deck_t));
-  errors_list_t import_errors;   // a list of errors that occured during import
-  errors_list_t test_errors;     // a list of errors and warnings about the deck's format
+  deck_t deck = {0};
+  errors_list_t import_errors = {0};
+  errors_list_t test_errors = {0};
 
   FILE *input_fp = NULL;
   FILE *output_fp = NULL;
-
-  // empty these out so we can test them easier
-  import_errors.num_errors = 0;
-  import_errors.errors = NULL;
-  test_errors.num_errors = 0;
-  test_errors.errors = NULL;
   
   ctx->error_fp = error_fp;
 

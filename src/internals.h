@@ -4,14 +4,14 @@
 #include "opennec.h"
 
 /* common constants - Internal physics and grid parameters */
-#define	POT		1.570796327
-#define	PTP		.6283185308
-#define	TPJ		(0.0+I*6.283185308)
-#define PI8		25.13274123
-#define PI10	31.41592654
-#define FPI     12.56637062
-#define	ETA		376.73
-#define	RETA	2.654420938E-3
+#define	POT		(M_PI / 2.0)
+#define	PTP		(M_PI / 5.0)
+#define	TPJ		(0.0+I*(2.0 * M_PI))
+#define PI8		(8.0 * M_PI)
+#define PI10	(10.0 * M_PI)
+#define FPI     (4.0 * M_PI)
+#define	ETA		376.73031346
+#define	RETA	(1.0 / ETA)
 #define	TOSP	1.128379167
 #define ACCS	1.E-12
 #define	SP		1.772453851
@@ -284,7 +284,7 @@ typedef struct
 /* common  /incom/ */
 typedef struct
 {
-	int isnor;
+	int32_t isnor;
 
 	double
 		xo,
@@ -610,7 +610,7 @@ struct nec_context_t
 	/* Timing data for output */
 	double mat_fill_time;   /* Matrix fill time in seconds */
 	double mat_factor_time; /* Matrix factor time in seconds */
-	clock_t start_time;     /* Start time for total runtime calculation */
+	double start_time;      /* Start time for total runtime calculation */
 	
 	/* Batch processing state for XQ command support */
 	int current_card_idx;   /* Current position in deck for batch processing */

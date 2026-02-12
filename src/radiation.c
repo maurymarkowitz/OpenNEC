@@ -28,16 +28,16 @@
 #include "calculations.h"
 
 /* Forward declarations for internal functions */
-static void ffld(nec_context_t *ctx, double thet, double phi, complex double *eth, complex double *eph);
-static void fflds(nec_context_t *ctx, double rox, double roy, double roz, complex double *scur, complex double *ex, complex double *ey, complex double *ez);
-static void gfld(nec_context_t *ctx, double rho, double phi, double rz, complex double *eth, complex double *epi, complex double *erd, complex double ux, int ksymp);
+static void ffld(nec_context_t *restrict ctx, double thet, double phi, complex double *restrict eth, complex double *restrict eph);
+static void fflds(nec_context_t *restrict ctx, double rox, double roy, double roz, complex double *restrict scur, complex double *restrict ex, complex double *restrict ey, complex double *restrict ez);
+static void gfld(nec_context_t *restrict ctx, double rho, double phi, double rz, complex double *restrict eth, complex double *restrict epi, complex double *restrict erd, complex double ux, int ksymp);
 
 /*-----------------------------------------------------------------------*/
 
 /* ffld calculates the far zone radiated electric fields, */
 /* the factor exp(j*k*r)/(r/lamda) not included */
-void ffld(nec_context_t *ctx, double thet, double phi,
-	complex double *eth, complex double *eph )
+void ffld(nec_context_t *restrict ctx, double thet, double phi,
+	complex double *restrict eth, complex double *restrict eph )
 {
   int k, i, ip;
   bool jump;
@@ -340,9 +340,9 @@ void ffld(nec_context_t *ctx, double thet, double phi,
 
 /* calculates the xyz components of the electric */
 /* field due to surface currents */
-void fflds(nec_context_t *ctx, double rox, double roy, double roz,
-	complex double *scur, complex double *ex,
-	complex double *ey, complex double *ez )
+void fflds(nec_context_t *restrict ctx, double rox, double roy, double roz,
+	complex double *restrict scur, complex double *restrict ex,
+	complex double *restrict ey, complex double *restrict ez )
 {
   int i, j, k;
   double arg;
@@ -385,9 +385,9 @@ void fflds(nec_context_t *ctx, double rox, double roy, double roz,
 /*-----------------------------------------------------------------------*/
 
 /* gfld computes the radiated field including ground wave. */
-void gfld(nec_context_t *ctx, double rho, double phi, double rz,
-	complex double *eth, complex double *epi,
-	complex double *erd, complex double ux, int ksymp )
+void gfld(nec_context_t *restrict ctx, double rho, double phi, double rz,
+	complex double *restrict eth, complex double *restrict epi,
+	complex double *restrict erd, complex double ux, int ksymp )
 {
   int k;
   complex double erv, ezv, erh, ezh, eph;
