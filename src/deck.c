@@ -1136,6 +1136,8 @@ void evaluate_formula(nec_context_t *ctx, key_value_t *formula, deck_t *deck, er
   for (char *p = processed_formula; *p; p++) {
     *p = tolower((unsigned char)*p);
   }
+
+    // (debug removed)
   
   // Compile and evaluate
   int err = 0;
@@ -1143,6 +1145,7 @@ void evaluate_formula(nec_context_t *ctx, key_value_t *formula, deck_t *deck, er
   
   if (expr) {
     formula->fv = te_eval(expr);
+    
     te_free(expr);
   } else {
     // Report error if compilation failed

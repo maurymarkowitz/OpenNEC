@@ -244,9 +244,51 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         
       case 3: // GS, scale structure dimensions by factor xw1
         if (xw1 == 0.0) {
-          snprintf(msg, sizeof(msg), "The GS card on line %d has a scale factor of zero. This is a fatal error.", i + 1);
-          add_error(ctx, errors, msg, FATAL);
-          return; // Stops further geometry processing
+          /*
+           * Special-case handling: sometimes unit tokens (e.g. "in", "ft")
+           * are separated by spaces and the preprocessor merges them into
+           * the previous integer field (producing "0*in"). In that case the
+           * float field may be empty but the original card contains the unit
+           * as the third token. Try to recover the scale by parsing the raw
+           * `card->card_str` (which contains the un-preprocessed card contents
+           * after the mnemonic) and evaluating the third token as a standalone
+           * formula (e.g. "in" -> 0.0254).
+           */
+          char tmp[256];
+          char *s = trim_start(card->card_str);
+          strncpy(tmp, s, sizeof(tmp)-1);
+          tmp[sizeof(tmp)-1] = '\0';
+          /* Skip the mnemonic (first token) and then pick the third field
+           * after the mnemonic (i.e., the float field). This handles lines
+           * like: "GS 0 0 in" where tokens are [GS,0,0,in] and we want "in".
+           */
+          char *tok = strtok(tmp, " \t");
+          int count = 0;
+          char *third = NULL;
+          while ((tok = strtok(NULL, " \t")) != NULL) {
+            count++;
+            if (count == 3) { /* third field after mnemonic */
+              third = tok;
+              break;
+            }
+          }
+          if (third) {
+            key_value_t temp_kv = {0};
+            temp_kv.key = "GS_TMP";
+            temp_kv.value = strdup(third);
+            temp_kv.fv = 0.0;
+            evaluate_formula(ctx, &temp_kv, deck, errors);
+            if (temp_kv.fv != 0.0) {
+              xw1 = temp_kv.fv;
+            }
+            free(temp_kv.value);
+          }
+
+          if (xw1 == 0.0) {
+            snprintf(msg, sizeof(msg), "The GS card on line %d has a scale factor of zero. This is a fatal error.", i + 1);
+            add_error(ctx, errors, msg, FATAL);
+            return; // Stops further geometry processing
+          }
         }
         scale(ctx, xw1);
         continue;

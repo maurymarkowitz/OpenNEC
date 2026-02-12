@@ -1,5 +1,7 @@
 Items still to be implemented:
 
+* see if there is any way to fix the issues with "GS 0 0 in" and "... 1ft" vs "1 ft" everywhere else in the stacks.
+
 * add in the cebik collection and get the EZnec examples working
 
 * does anything in card.c really need ctx?
