@@ -125,7 +125,7 @@ void nec_context_init(nec_context_t *ctx)
     ctx->save.fmhz = CVEL;
     
     // Start timing for total runtime
-    secnds(ctx, &ctx->start_time);
+    nec_get_time_ms(ctx, &ctx->start_time);
     
     // Initialize ground grid parameters for somnec (from old main.c lines 145-175)
     ctx->ggrid = (ggrid_t){

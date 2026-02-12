@@ -889,18 +889,18 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         
         // Fill and factor primary interaction matrix
         double tim1, tim2;
-        secnds(ctx, &tim1);
+        nec_get_time_ms(ctx, &tim1);
         cmset(ctx, ctx->netcx.neq, cm, ctx->dataj.rkh, ctx->dataj.iexk);
         // Export Greens matrix prior to factorization if requested
         if (ctx->green_fp != NULL) {
             write_greens_matrix(ctx->green_fp, ctx, ctx->netcx.neq, cm);
             fflush(ctx->green_fp);
         }
-        secnds(ctx, &tim2);
+        nec_get_time_ms(ctx, &tim2);
         ctx->mat_fill_time = tim2 - tim1;
         
         factrs(ctx, ctx->netcx.npeq, ctx->netcx.neq, cm, ctx->save.ip);
-        secnds(ctx, &tim1);
+        nec_get_time_ms(ctx, &tim1);
         ctx->mat_factor_time = tim1 - tim2;
         
         // Reset solution counter

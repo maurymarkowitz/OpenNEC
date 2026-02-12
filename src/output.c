@@ -1515,7 +1515,9 @@ static void write_footer(FILE *file, const nec_context_t *ctx, const deck_t *dec
     
     // Calculate and output total runtime
     if (ctx != NULL) {
-        double elapsed_ms = secnds(ctx->start_time) * 1000.0;
+        double current_time;
+        nec_get_time_ms(ctx, &current_time);
+        double elapsed_ms = current_time - ctx->start_time;
         fprintf(file, "\n  TOTAL RUN TIME: %.0f msec", elapsed_ms);
     }
 

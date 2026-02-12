@@ -579,8 +579,6 @@ bool isGeometryEdited(deck_t *deck)
 
 /******************************************************************************
  * initialize_symbol_table
-/******************************************************************************
- * initialize_symbol_table
  *
  * Collects all SY symbols from the deck, adds default symbols (pi, c),
  * and evaluates symbols in the comment section sequentially.

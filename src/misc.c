@@ -176,13 +176,13 @@ void abort_on_error(const nec_context_t *ctx, int why)
 /*------------------------------------------------------------------------*/
 
 /* Returns high-resolution monotonic time in milliseconds */
-void secnds(const nec_context_t *ctx, double *x)
+void nec_get_time_ms(const nec_context_t *ctx, double *ms)
 {
   struct timespec ts;
   if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
-    *x = (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1.0e6;
+    *ms = (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1.0e6;
   } else {
-    *x = 0.0;
+    *ms = 0.0;
   }
 }
 

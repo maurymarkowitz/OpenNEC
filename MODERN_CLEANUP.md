@@ -72,8 +72,8 @@ This document outlines a roadmap for bringing the OpenNEC codebase up to modern 
 ### High-Resolution Timing
 - **Status**: [DONE] 2025-02-12
 - **Achievements**:
-  - [x] Replaced legacy `secnds()` with POSIX `clock_gettime(CLOCK_MONOTONIC)`.
-  - [x] Standardized internal timing to use seconds since start of context.
+  - [x] Removed legacy `secnds()` and replaced it with `nec_get_time_ms()` using POSIX `clock_gettime(CLOCK_MONOTONIC)`.
+  - [x] Standardized internal timing to use microseconds/milliseconds since start of context.
 - **Benefit**: Accurate performance profiling on modern multi-core systems.
 
 ## 4. Build and Documentation

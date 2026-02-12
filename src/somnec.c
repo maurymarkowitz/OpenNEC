@@ -50,7 +50,7 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
   else
     ctx->ggrid.epscf=cmplx(epr,sig);
 
-  secnds(ctx, &tst);
+  nec_get_time_ms(ctx, &tst);
   ctx->somnec.evlcom.ck2 = TP;
   ctx->somnec.evlcom.ck2sq = ctx->somnec.evlcom.ck2 * ctx->somnec.evlcom.ck2;
 
@@ -163,7 +163,7 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
   ctx->ggrid.ar1[0+ith*11+330]=eph;
   }
 
-  secnds(ctx, &tim);
+  nec_get_time_ms(ctx, &tim);
   tim -= tst;
 
   return;
