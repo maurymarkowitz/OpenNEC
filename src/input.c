@@ -638,11 +638,11 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
   // skip the first two chars, the mnemonic is still there and it
   // can't be a single-char comment market, which was handled above
   // we'll use this as the pointer to the current start location
-  char str[MAX_LINE_LEN];
-  strcpy(str, trim_start(card->card_str + 2)); // skip the card code and remove whitespace
+  char *trimmed = trim_start(card->card_str + 2);
+  char *preprocessed = preprocess_line(trimmed);
   
   // tokenize the rest of the line on the remaining whitespace
-  token = strtok(str, ONEC_WHITESPACE);
+  token = strtok(preprocessed, ONEC_WHITESPACE);
   while(token != NULL) {
     isFormula = false;  // assume it's a number until proven otherwise
 
@@ -760,6 +760,8 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
   // now we copy down the number of ints and floats we actually saw
   card->ints_used = ints_processed;
   card->flts_used = flts_processed;
+  
+  free(preprocessed);
 } /* end of parse_geometry_card() */
 
 /******************************************************************************

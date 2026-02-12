@@ -36,4 +36,11 @@ char* trim_end(char* dest);
 char* trim(char* dest);
 int str_ends_with(const nec_context_t *ctx, const char *str, const char *suffix);
 
+/* 4nec2 Preprocessing */
+char *preprocess_line(const char *line);
+char *preprocess_awg(const char *formula);
+char *preprocess_feet_inches(const char *formula);
+char *preprocess_implicit_multiplication(const char *formula);
+double convert_awg_to_meters(double awg_value);
+
 #endif /* MISC_H */
