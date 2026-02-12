@@ -438,100 +438,101 @@ char *preprocess_feet_inches(const char *formula) {
   char *p = result;
   
   while (*p) {
-    // Look for "ft/" pattern
-    if (strncasecmp(p, "ft/", 3) == 0) {
+    // Look for "ft" pattern, ignoring case and optional spaces
+    if (strncasecmp(p, "ft", 2) == 0) {
       char *ft_pos = p;
-      char *slash_pos = p + 2; // position of '/'
-      char *after_slash = slash_pos + 1;
+      char *slash_pos = p + 2;
+      while (*slash_pos && isspace((unsigned char)*slash_pos)) slash_pos++;
       
-      // Skip whitespace after /
-      while (*after_slash == ' ' || *after_slash == '\t') after_slash++;
-      
-      // Check what comes after the slash
-      if (strncasecmp(after_slash, "in", 2) == 0) {
-        // Pattern: Nft/in (without a number after slash)
-        // Find the feet number before "ft"
-        char *before_ft = ft_pos - 1;
-        while (before_ft >= result && (*before_ft == ' ' || *before_ft == '\t')) before_ft--;
+      if (*slash_pos == '/') {
+        char *after_slash = slash_pos + 1;
+        while (*after_slash && isspace((unsigned char)*after_slash)) after_slash++;
         
-        // Find start of feet number
-        char *feet_start = before_ft;
-        while (feet_start > result && (isdigit((unsigned char)*(feet_start-1)) || *(feet_start-1) == '.' || *(feet_start-1) == '-')) feet_start--;
-        
-        if (feet_start <= before_ft && (isdigit((unsigned char)*feet_start) || *feet_start == '-')) {
-          // Found a number before ft
-          // Replace: Nft/in -> N*ft/in
-          char *endptr;
-          double feet_value = strtod(feet_start, &endptr);
-          if (endptr >= ft_pos - 1) { // number extends to ft
-            char replacement[128];
-            snprintf(replacement, sizeof(replacement), "%.10f*ft/in", feet_value);
-            
-            // Calculate lengths
-            size_t prefix_len = feet_start - result;
-            size_t replacement_len = strlen(replacement);
-            char *suffix_start = after_slash + 2; // skip "in"
-            size_t suffix_len = strlen(suffix_start);
-            
-            // Allocate new string
-            char *new_result = malloc(prefix_len + replacement_len + suffix_len + 1);
-            memcpy(new_result, result, prefix_len);
-            memcpy(new_result + prefix_len, replacement, replacement_len);
-            memcpy(new_result + prefix_len + replacement_len, suffix_start, suffix_len + 1);
-            
-            free(result);
-            result = new_result;
-            p = result + prefix_len + replacement_len;
-            continue;
-          }
-        }
-      } else if ((isdigit((unsigned char)*after_slash) || (*after_slash == '-' && isdigit((unsigned char)*(after_slash+1))))) {
-        // Original pattern: N ft / M in
-        char *inches_start = after_slash;
-        char *endptr;
-        
-        // Parse inches number
-        double inches_value = strtod(inches_start, &endptr);
-        if (endptr > inches_start) {
-          // Skip whitespace
-          char *after_inches_num = endptr;
-          while (*after_inches_num == ' ' || *after_inches_num == '\t') after_inches_num++;
+        // Check what comes after the slash: "in" or a number
+        if (strncasecmp(after_slash, "in", 2) == 0) {
+          // Pattern: N ft / in -> N*ft/in
+          char *feet_num_end = ft_pos;
+          while (feet_num_end > result && isspace((unsigned char)*(feet_num_end-1))) feet_num_end--;
           
-          // Check for "in"
-          if (strncasecmp(after_inches_num, "in", 2) == 0) {
-            // Found "ft/ number in" pattern
-            // Now find the feet number before "ft"
-            char *before_ft = ft_pos - 1;
-            while (before_ft >= result && (*before_ft == ' ' || *before_ft == '\t')) before_ft--;
-            
-            // Find start of feet number
-            char *feet_start = before_ft;
-            while (feet_start >= result && (isdigit((unsigned char)*feet_start) || *feet_start == '.' || *feet_start == '-')) feet_start--;
-            feet_start++; // move past the non-digit
-            
-            // Parse feet number
+          char *feet_start = feet_num_end;
+          while (feet_start > result && (isdigit((unsigned char)*(feet_start-1)) || *(feet_start-1) == '.' || *(feet_start-1) == '-')) feet_start--;
+          
+          if (feet_start < feet_num_end) {
+            char *endptr;
             double feet_value = strtod(feet_start, &endptr);
-            if (endptr == before_ft + 1) { // should end at the space before ft
-              // Replace the entire pattern: feet_number ft / inches_number in -> feet_value*ft + inches_value*in
+            if (endptr >= feet_num_end) {
               char replacement[128];
-              snprintf(replacement, sizeof(replacement), "%.10f*ft+%.10f*in", feet_value, inches_value);
+              snprintf(replacement, sizeof(replacement), "%.10g*ft/in", feet_value);
               
-              // Calculate lengths
               size_t prefix_len = feet_start - result;
               size_t replacement_len = strlen(replacement);
-              char *suffix_start = after_inches_num + 2; // skip "in"
+              const char *suffix_start = after_slash + 2; 
               size_t suffix_len = strlen(suffix_start);
               
-              // Allocate new string
-              char *new_result = malloc(prefix_len + replacement_len + suffix_len + 1);
+              // Handle potential digit following "in"
+              bool separate = isdigit((unsigned char)*suffix_start);
+              
+              char *new_result = malloc(prefix_len + replacement_len + suffix_len + (separate ? 1 : 0) + 1);
               memcpy(new_result, result, prefix_len);
               memcpy(new_result + prefix_len, replacement, replacement_len);
-              memcpy(new_result + prefix_len + replacement_len, suffix_start, suffix_len + 1);
+              if (separate) {
+                new_result[prefix_len + replacement_len] = ' ';
+                strcpy(new_result + prefix_len + replacement_len + 1, suffix_start);
+              } else {
+                strcpy(new_result + prefix_len + replacement_len, suffix_start);
+              }
               
               free(result);
               result = new_result;
-              p = result + prefix_len + replacement_len;
+              p = result + prefix_len + replacement_len + (separate ? 1 : 0);
               continue;
+            }
+          }
+        } else if (isdigit((unsigned char)*after_slash) || *after_slash == '.' || *after_slash == '-') {
+          // Pattern: N ft / M in
+          char *inches_start = after_slash;
+          char *endptr;
+          double inches_value = strtod(inches_start, &endptr);
+          if (endptr > inches_start) {
+            char *after_inches_num = endptr;
+            while (*after_inches_num && isspace((unsigned char)*after_inches_num)) after_inches_num++;
+            
+            if (strncasecmp(after_inches_num, "in", 2) == 0) {
+              char *feet_num_end = ft_pos;
+              while (feet_num_end > result && isspace((unsigned char)*(feet_num_end-1))) feet_num_end--;
+              
+              char *feet_start = feet_num_end;
+              while (feet_start > result && (isdigit((unsigned char)*(feet_start-1)) || *(feet_start-1) == '.' || *(feet_start-1) == '-')) feet_start--;
+              
+              if (feet_start < feet_num_end) {
+                double feet_value = strtod(feet_start, &endptr);
+                if (endptr >= feet_num_end) {
+                  char replacement[128];
+                  snprintf(replacement, sizeof(replacement), "%.10g*ft+%.10g*in", feet_value, inches_value);
+                  
+                  size_t prefix_len = feet_start - result;
+                  size_t replacement_len = strlen(replacement);
+                  const char *suffix_start = after_inches_num + 2;
+                  size_t suffix_len = strlen(suffix_start);
+                  
+                  bool separate = isdigit((unsigned char)*suffix_start);
+                  
+                  char *new_result = malloc(prefix_len + replacement_len + suffix_len + (separate ? 1 : 0) + 1);
+                  memcpy(new_result, result, prefix_len);
+                  memcpy(new_result + prefix_len, replacement, replacement_len);
+                  if (separate) {
+                    new_result[prefix_len + replacement_len] = ' ';
+                    strcpy(new_result + prefix_len + replacement_len + 1, suffix_start);
+                  } else {
+                    strcpy(new_result + prefix_len + replacement_len, suffix_start);
+                  }
+                  
+                  free(result);
+                  result = new_result;
+                  p = result + prefix_len + replacement_len + (separate ? 1 : 0);
+                  continue;
+                }
+              }
             }
           }
         }
@@ -556,22 +557,42 @@ char *preprocess_implicit_multiplication(const char *formula) {
     "m", "cm", "mm", "ft", "in",
     "pF", "nF", "uF", "mF",
     "pH", "nH", "uH", "mH",
+    "mil",
     NULL
   };
   
+  // Strip outer spaces and check if the entire formula is just a unit name
+  const char *trimmed = formula;
+  while (*trimmed && isspace((unsigned char)*trimmed)) trimmed++;
+  char *temp = strdup(trimmed);
+  char *end = temp + strlen(temp) - 1;
+  while (end > temp && isspace((unsigned char)*end)) *end-- = '\0';
+  
+  for (int i = 0; units[i] != NULL; i++) {
+    if (strcasecmp(temp, units[i]) == 0) {
+      char *new_result = malloc(strlen(units[i]) + 8);
+      sprintf(new_result, "1.0*%s", temp);
+      free(temp);
+      return new_result;
+    }
+  }
+  free(temp);
+
   char *result = strdup(formula);
   char *p = result;
   
   while (*p) {
-    // Look for digit (or end of number) followed by optional spaces, then a unit
-    if (isdigit((unsigned char)*p) || *p == '-' || *p == '+' || (*p == '.' && p > result && isdigit((unsigned char)*(p-1)))) {
+    // Look for digit (or end of number)
+    if (isdigit((unsigned char)*p) || (*p == '.' && p[1] != '\0' && isdigit((unsigned char)p[1]))) {
       // Find the end of the number
       char *num_end = p;
-      while (*num_end && (isdigit((unsigned char)*num_end) || *num_end == '.' || ((*num_end == '-' || *num_end == '+') && num_end == p))) num_end++;
+      if (*num_end == '.') num_end++;
+      while (*num_end && (isdigit((unsigned char)*num_end) || *num_end == '.')) num_end++;
       
-      // Skip whitespace
+      // Check for optional spaces followed by a unit
+      // We only skip spaces, not tabs, as tabs are field separators
       char *after_num = num_end;
-      while (*after_num == ' ' || *after_num == '\t') after_num++;
+      while (*after_num == ' ') after_num++;
       
       // Check if next chars match a known unit
       if (isalpha((unsigned char)*after_num)) {
@@ -579,21 +600,31 @@ char *preprocess_implicit_multiplication(const char *formula) {
           size_t unit_len = strlen(units[i]);
           if (strncasecmp(after_num, units[i], unit_len) == 0) {
             // Make sure unit is followed by non-alphanumeric (or end of string)
+            // or if it's followed by a digit, handle as a separate field
             char after_unit = after_num[unit_len];
-            if (!isalnum((unsigned char)after_unit) && after_unit != '_') {
+            bool separation_needed = isdigit((unsigned char)after_unit);
+            
+            if (!isalnum((unsigned char)after_unit) || separation_needed || after_unit == '_') {
               // Insert '*' between number and unit
               size_t prefix_len = num_end - result;
-              //size_t spaces_len = after_num - num_end;
               size_t suffix_len = strlen(after_num);
               
-              char *new_result = malloc(prefix_len + 1 + suffix_len + 1); // +1 for '*'
+              char *new_result = malloc(prefix_len + 1 + suffix_len + (separation_needed ? 1 : 0) + 1); // +1 for '*'
               memcpy(new_result, result, prefix_len);
               new_result[prefix_len] = '*';
-              memcpy(new_result + prefix_len + 1, after_num, suffix_len + 1);
+              
+              if (separation_needed) {
+                  // copy the unit, then a space, then the rest
+                  memcpy(new_result + prefix_len + 1, after_num, unit_len);
+                  new_result[prefix_len + 1 + unit_len] = ' ';
+                  strcpy(new_result + prefix_len + 1 + unit_len + 1, after_num + unit_len);
+              } else {
+                  strcpy(new_result + prefix_len + 1, after_num);
+              }
               
               free(result);
               result = new_result;
-              p = result + prefix_len + 1 + unit_len;
+              p = result + prefix_len + 1 + unit_len + (separation_needed ? 1 : 0);
               goto next_iteration;
             }
           }

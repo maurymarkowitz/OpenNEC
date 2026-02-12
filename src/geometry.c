@@ -243,6 +243,11 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         continue;
         
       case 3: // GS, scale structure dimensions by factor xw1
+        if (xw1 == 0.0) {
+          snprintf(msg, sizeof(msg), "The GS card on line %d has a scale factor of zero. This is a fatal error.", i + 1);
+          add_error(ctx, errors, msg, FATAL);
+          return; // Stops further geometry processing
+        }
         scale(ctx, xw1);
         continue;
         
@@ -257,7 +262,9 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         
         // if we're at the end of the geometry section, we have all the segments
         // so now is an opportune time to connect them together
-        connect_segments(ctx, tag, outputs);
+        if (connect_segments(ctx, tag, outputs) != 0) {
+          return; // Stop if there's a fatal geometry error (e.g. below ground)
+        }
         
         // ... and calculate the midpoints and other bits
         finish_geometry(ctx);

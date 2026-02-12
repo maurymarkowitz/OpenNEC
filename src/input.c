@@ -681,7 +681,6 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
         fld_name[0] = 'I';
         fld_name[1] = ints_processed +'0';
         fld_name[2] = '\0';
-        // ...removed pre-add_key_value debug print...
         add_key_value(card, &card->formulas, fld_name, token, '=');
       }
     } // end integer part
@@ -707,7 +706,6 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
       
       if(is_awg) {
         // Store AWG notation as a formula to be processed later
-        // This preserves the original notation and allows formulas like "#14*2"
         card->flt_form_inline[flts_processed] = true;
         char fld_name[3];
         fld_name[0] = 'F';
@@ -725,30 +723,21 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
         char *leftover = end_ptr;
         
         if(strlen(leftover) > 0) {
-          // Any leftover text (like "mm", "ft", "uF") means this is a formula
-          // The parser treats tokens like "10mm" as formulas to be evaluated
-          // with unit constants from the symbol table (e.g., mm=0.001)
           isFormula = true;
         }
       } else {
-        // we did not get a number at the front, so it must be a formula one way or the other
         isFormula = true;
       }
             
       // now we decide where to put it all...
       if(!isFormula) {
-        // if it's not a formula, just store the numeric value
         card->f[flts_processed] = dbl_value;
-        // Unit conversion now handled via formula constants
       } else {
-        // it is a formula, copy the entire token into the right formula field
-        // This preserves the original capitalization (e.g., "10MM" stays "10MM")
-        card->flt_form_inline[flts_processed] = true;  // indicate that we did have a formula inline
+        card->flt_form_inline[flts_processed] = true;
         char fld_name[3];
         fld_name[0] = 'F';
         fld_name[1] = flts_processed +'0';
         fld_name[2] = '\0';
-        // ...removed pre-add_key_value debug print...
         add_key_value(card, &card->formulas, fld_name, token, '=');
 
       } // isFormula = true
@@ -759,12 +748,11 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
     token = strtok(NULL, ONEC_WHITESPACE);
   } //token != NULL
   
-  // now we copy down the number of ints and floats we actually saw
   card->ints_used = ints_processed;
   card->flts_used = flts_processed;
   
   free(preprocessed);
-} /* end of parse_geometry_card() */
+} /* end of parse_geometry_or_control_card() */
 
 /******************************************************************************
  * parse_onec_card()
@@ -812,6 +800,10 @@ void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
         // trim whitespace from key and value
         key = trim(key);
         value = trim(value);
+        
+        // Lowercase symbolic keys for case-insensitive matching in TinyExpr
+        for (char *k = key; *k; k++) *k = tolower((unsigned char)*k);
+        
         // parse it if there's anything left
         if(strlen(key) > 0 && strlen(value) > 0) {
           key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));

@@ -716,6 +716,8 @@ static void add_unit_constants(deck_t *deck)
     if (!found) {
       key_value_t *unit_sym = (key_value_t *)malloc(sizeof(key_value_t));
       unit_sym->key = strdup(units[u].name);
+      // Lowercase for case-insensitive matching
+      for (char *k = unit_sym->key; *k; k++) *k = tolower((unsigned char)*k);
       char value_str[32];
       snprintf(value_str, sizeof(value_str), "%.12g", units[u].value);
       unit_sym->value = strdup(value_str);
@@ -1061,15 +1063,16 @@ void update_card_values(deck_t *deck)
           char *processed_expr = preprocess_implicit_multiplication(temp_expr2);
           free(temp_expr2);
           
+          // Normalize to lowercase for case-insensitive symbol matching
+          for (char *p = processed_expr; *p; p++) {
+            *p = tolower((unsigned char)*p);
+          }
+          
           te_expr *expr = te_compile(processed_expr, vars, v, &err);
           
           if(expr != NULL) {
             double val = te_eval(expr);
             te_free(expr);
-            
-            // DEBUG: Show formula evaluation results
-            //fprintf(stderr, "DEBUG: Card %d (%s) formula %s='%s' -> %g\n", 
-            //        c + 1, card->card_code, key, expr_str, val);
             
             if(kind == 'F' && idx >= 1 && idx <= MAX_FLT_FIELDS) {
               card->fv[idx] = val;
@@ -1128,6 +1131,11 @@ void evaluate_formula(nec_context_t *ctx, key_value_t *formula, deck_t *deck, er
   // Preprocess implicit multiplication (135 ft -> 135*ft)
   char *processed_formula = preprocess_implicit_multiplication(temp_formula2);
   free(temp_formula2);
+  
+  // Normalize to lowercase for case-insensitive symbol matching
+  for (char *p = processed_formula; *p; p++) {
+    *p = tolower((unsigned char)*p);
+  }
   
   // Compile and evaluate
   int err = 0;
