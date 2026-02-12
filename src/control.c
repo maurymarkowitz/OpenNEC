@@ -49,10 +49,9 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
 int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
 {
     errors_list_t geometry_errors = {0};
-    outputs_list_t geometry_outputs = {0};
     
     // Step 1: Calculate geometry
-    calculate_geometry(ctx, deck, &geometry_errors, &geometry_outputs);
+    calculate_geometry(ctx, deck, &geometry_errors, &ctx->outputs);
     
     // Check for geometry errors
     if (geometry_errors.num_errors > 0) {
@@ -408,6 +407,13 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             // LD card - Loading
             if (i1 == -1) {
                 continue;
+            }
+
+            if (i1 > 5) {
+                char msg[MAX_ERROR_LEN];
+                snprintf(msg, sizeof(msg), "Card %d is an LD card with type %d, which is not supported.", card_idx + 1, i1);
+                add_error(ctx, &ctx->errors, msg, FATAL);
+                return -1;
             }
             
             // First LD in batch resets loading (iflow transition to 3)

@@ -599,8 +599,9 @@ struct nec_context_t
 	/* Radiation pattern results */
 	rpat_results_t rpat;
 	
-	/* Error tracking */
+	/* Error and message tracking */
 	errors_list_t errors;
+	outputs_list_t outputs;
 	
 	/* Logging callbacks */
 	nec_log_callback_t log_callback;

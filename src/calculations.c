@@ -12,6 +12,10 @@
 #include "calculations.h"
 #include "geometry.h"
 
+/* Forward declarations for internal functions */
+static void gf(nec_context_t *ctx, double zk, double *co, double *si);
+static int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc);
+
 /* Helper function to add loading output entries */
 static void add_loading_output(nec_context_t *ctx, int tag, int tagf, int tagt, double conductivity, const char *type)
 {
@@ -28,10 +32,6 @@ static void add_loading_output(nec_context_t *ctx, int tag, int tagf, int tagt, 
     strncpy(entry->type, type, sizeof(entry->type) - 1);
     entry->type[sizeof(entry->type) - 1] = '\0';
 }
-
-/* Forward declarations for internal functions */
-static void gf(nec_context_t *ctx, double zk, double *co, double *si);
-static int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc);
 
 /*-----------------------------------------------------------------------*/
 
@@ -304,7 +304,8 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
     {
       char err_msg[256];
       snprintf(err_msg, sizeof(err_msg), 
-              "IMPROPER LOAD TYPE CHOSEN, REQUESTED TYPE IS %d", ldtyp[istepx]);
+              "INTERNAL ERROR: IMPROPER LOAD TYPE %d processed in load().", ldtyp[istepx]);
+
       add_error(ctx, &ctx->errors, err_msg, FATAL);
       return -1;
     }

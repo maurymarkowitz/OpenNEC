@@ -1397,6 +1397,14 @@ void update_card_values(deck_t *deck)
         vars[v].type = TE_VARIABLE;
         v++;
       }
+
+      for(int i = 0; i < num_syms; i++) {
+        vars[v].name = deck->symbols[i]->key;
+        vars[v].address = &deck->symbols[i]->fv;
+        vars[v].type = TE_VARIABLE;
+        v++;
+      }
+
       // Iterate formulas and evaluate each assignment (float/int targets)
       key_value_t *kv = card->formulas;
       while(kv != NULL) {

@@ -114,13 +114,14 @@ void nec_report(const nec_context_t *ctx, int level, const char *format, ...)
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    // Trigger callback if registered
+    // Trigger callback if registered (always fire for callback)
     if (ctx && ctx->log_callback) {
         ctx->log_callback(ctx->log_user_data, level, buffer);
     }
 
-    // Also write to error_fp if it exists
-    if (ctx && ctx->error_fp) {
+    // Also write to error_fp if it exists and level is WARNING or higher
+    // Informational messages (INFO) are suppressed from the console by default
+    if (ctx && ctx->error_fp && level >= ONEC_SEV_WARNING) {
         fprintf(ctx->error_fp, "%s\n", buffer);
         fflush(ctx->error_fp);
     }

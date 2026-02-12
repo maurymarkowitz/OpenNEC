@@ -113,6 +113,10 @@ void nec_context_init(nec_context_t *ctx)
     ctx->errors.num_errors = 0;
     ctx->errors.errors = NULL;
     
+    // Initialize output message list
+    ctx->outputs.num_messages = 0;
+    ctx->outputs.messages = NULL;
+    
     // Initialize default values (matching original NEC2 initialization)
     ctx->gnd.ksymp = 1;  // Default to free space
     ctx->gnd.ifar = -1;
@@ -200,6 +204,18 @@ void nec_context_cleanup(nec_context_t *ctx)
         ctx->errors.errors = NULL;
     }
     ctx->errors.num_errors = 0;
+
+    // Free output message list
+    if (ctx->outputs.messages != NULL) {
+        for (int i = 0; i < ctx->outputs.num_messages; i++) {
+            if (ctx->outputs.messages[i] != NULL) {
+                free(ctx->outputs.messages[i]);
+            }
+        }
+        free(ctx->outputs.messages);
+        ctx->outputs.messages = NULL;
+    }
+    ctx->outputs.num_messages = 0;
 }
 
 /* end of types.c */

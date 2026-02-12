@@ -25,6 +25,20 @@ static int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *output
 static void finish_geometry(nec_context_t *ctx);
 
 /******************************************************************************
+ * peek_next_geom
+ * 
+ * Looks ahead in the deck to find the next geometry card, skipping any
+ * continuation cards like SC or similar.
+ * 
+ */
+static int peek_next_geom(deck_t *deck, int current) {
+  for (int j = current + 1; j <= deck->geometry_end; j++) {
+    if (!is_extension(&deck->cards[j]) && !is_comment(&deck->cards[j])) return j;
+  }
+  return -1;
+}
+
+/******************************************************************************
  * calculate_geometry
  *
  * calculate_geometry (formerly datagn) is the main routine for creation
@@ -135,6 +149,11 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
     for(code_num = 0; code_num < NUM_GEOMETRY_CODES; code_num++) {
       if(strncmp(card->card_code, geometry_codes[code_num], 2) == 0) break;
     }
+    
+    // ignore SY and other extension cards in the geometry section
+    // they were already evaluated in update_deck_values()
+    if (is_extension(card)) continue;
+
     // now read in the values that are the same for all the cards
     // NOTE: remember to read the VALUES, not the original inputs!
     tag = card->iv[1];
@@ -162,32 +181,33 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           ys1 = 1.0;
         } else {
           // make sure the next card is a GC, although we should have already done that
-          if(strcmp(deck->cards[i + 1].card_code, "GC") != 0) {
+          int next_idx = peek_next_geom(deck, i);
+          if(next_idx == -1 || strcmp(deck->cards[next_idx].card_code, "GC") != 0) {
             snprintf(msg, sizeof(msg), "The card on line %d is a GW with a zero radius, but the next card is not a GC with the tapering info.", i + 1);
             add_error(ctx, errors, msg, WARNING);
             continue;
           }
           // and also that the values in it are valid
           // First, ensure the GC card's fv are set from f (since it may not be processed)
-          card_t *gc_card = &deck->cards[i + 1];
+          card_t *gc_card = &deck->cards[next_idx];
           for(int j = 1; j <= MAX_FLT_FIELDS; j++) gc_card->fv[j] = gc_card->f[j];
           for(int j = 1; j <= MAX_INT_FIELDS; j++) gc_card->iv[j] = gc_card->i[j];
           
           if((gc_card->fv[2] == 0.0) || (gc_card->fv[3] == 0.0)) {
-            snprintf(msg, sizeof(msg), "The card on line %d is a GC with tapering info for GW in card %d, but there is a zero in Y1 or Z1.", i + 2, i + 1);
+            snprintf(msg, sizeof(msg), "The card on line %d is a GC with tapering info for GW in card %d, but there is a zero in Y1 or Z1.", next_idx + 1, i + 1);
             add_error(ctx,errors, msg, WARNING);
-            i++; // skip the invalid GC card
+            i = next_idx; // skip the invalid GC card
             continue;
           }
           // override the original inputs with the ones from the GC
-          xs1 = deck->cards[i + 1].fv[1];  // check this!
-          ys1 = deck->cards[i + 1].fv[2];
-          zs1 = deck->cards[i + 1].fv[3];
+          xs1 = deck->cards[next_idx].fv[1];  // check this!
+          ys1 = deck->cards[next_idx].fv[2];
+          zs1 = deck->cards[next_idx].fv[3];
           rad = ys1;
           ys1 = pow((zs1 / ys1), (1.0 / (segs - 1.0)));
           
           // move up a card so we don't process the GC
-          i++;
+          i = next_idx;
         }
         
         // update the number of wires and the segment counts
@@ -275,34 +295,35 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         else {
           // make sure the next card is an SC
           // TODO: we should test the sanity of the inputs based on the ns
-          if(strcmp(deck->cards[i + 1].card_code, "SC") != 0) {
+          int next_idx = peek_next_geom(deck, i);
+          if(next_idx == -1 || strcmp(deck->cards[next_idx].card_code, "SC") != 0) {
             snprintf(msg, sizeof(msg), "The card on line %d is a SP with type %d, but the next card is not an SC, which it needs.", i + 1, segs);
             add_error(ctx, errors, msg, WARNING);
             continue;
           }
           // if it's a triangle we just read one more point from the new card and go...
           if(segs == 2) {
-            x3 = deck->cards[i + 1].fv[1];
-            y3 = deck->cards[i + 1].fv[2];
-            z3 = deck->cards[i + 1].fv[3];
-            i++; // skip the SC card next time through the main loop
+            x3 = deck->cards[next_idx].fv[1];
+            y3 = deck->cards[next_idx].fv[2];
+            z3 = deck->cards[next_idx].fv[3];
+            i = next_idx; // skip the SC card next time through the main loop
             patch(ctx, target_geom, i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, 0.0, 0.0, 0.0);
           } /* ns == 2 */
           // if it's not a triangle, we have to loop over the following cards
           else {
             // there has to be at least one following...
-            x3 = deck->cards[i + 1].fv[1];
-            y3 = deck->cards[i + 1].fv[2];
-            z3 = deck->cards[i + 1].fv[3];
-            x4 = deck->cards[i + 1].fv[4];
-            y4 = deck->cards[i + 1].fv[5];
-            z4 = deck->cards[i + 1].fv[6];
-            i++;
+            x3 = deck->cards[next_idx].fv[1];
+            y3 = deck->cards[next_idx].fv[2];
+            z3 = deck->cards[next_idx].fv[3];
+            x4 = deck->cards[next_idx].fv[4];
+            y4 = deck->cards[next_idx].fv[5];
+            z4 = deck->cards[next_idx].fv[6];
+            i = next_idx;
             patch(ctx, target_geom, i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
             
             // if it was segs=1 we are done at this point, for segs=3 there's more,
             // so loop until we run out of following SC's
-            while(strcmp(deck->cards[i + 1].card_code, "SC") == 0) {
+            while((next_idx = peek_next_geom(deck, i)) != -1 && strcmp(deck->cards[next_idx].card_code, "SC") == 0) {
               // copy the last set of end coords into this set's start coords
               xw1 = x3;
               yw1 = y3;
@@ -311,13 +332,13 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
               yw2 = y4;
               zw2 = z4;
               // and then get the next set of end coords
-              x3 = deck->cards[i + 1].fv[1];
-              y3 = deck->cards[i + 1].fv[2];
-              z3 = deck->cards[i + 1].fv[3];
-              x4 = deck->cards[i + 1].fv[4];
-              y4 = deck->cards[i + 1].fv[5];
-              z4 = deck->cards[i + 1].fv[6];
-              i++;
+              x3 = deck->cards[next_idx].fv[1];
+              y3 = deck->cards[next_idx].fv[2];
+              z3 = deck->cards[next_idx].fv[3];
+              x4 = deck->cards[next_idx].fv[4];
+              y4 = deck->cards[next_idx].fv[5];
+              z4 = deck->cards[next_idx].fv[6];
+              i = next_idx;
               patch(ctx, target_geom, i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
             } /* while cards are SC's */
           }/* ns = 2 */
@@ -331,17 +352,18 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           add_error(ctx, errors, msg, 1);
           continue;
         }
-        if(strcmp(deck->cards[i + 1].card_code, "SC") != 0) {
+        int sm_next = peek_next_geom(deck, i);
+        if(sm_next == -1 || strcmp(deck->cards[sm_next].card_code, "SC") != 0) {
           snprintf(msg, sizeof(msg), "The card on line %d is a SM, but the next card is not an SC, which it needs.", i + 1);
           add_error(ctx, errors, msg, 1);
           continue;
         }
         
         // read the sc and skip it
-        x3 = deck->cards[i + 1].fv[1];
-        y3 = deck->cards[i + 1].fv[2];
-        z3 = deck->cards[i + 1].fv[3];
-        i++;
+        x3 = deck->cards[sm_next].fv[1];
+        y3 = deck->cards[sm_next].fv[2];
+        z3 = deck->cards[sm_next].fv[3];
+        i = sm_next;
         
         // calculate corner 4
         if(segs == 2 || tag > 0) {
@@ -358,6 +380,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         continue;
         
       case 9: // SC card, skip it - but it should never happen because SP/SM should have read it
+        continue;
         
       case 10: // GH, generate helix
         helix(ctx, target_geom, i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, rad, outputs);
@@ -1510,7 +1533,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
         e1 = ctx->geometry.z1[i];
         e2 = ctx->geometry.z2[i];
         
-        if((fabs(e1) + fabs(e2) <= 1.0e-5) || (e1 * e2 < -1.0e-6)) {
+        if((fabs(e1) + fabs(e2) <= 1.0e-12) || (e1 * e2 < -1.0e-12)) {
           char l_msg[MAX_ERROR_LEN];
           snprintf(l_msg, sizeof(l_msg),
                   "\n  GEOMETRY DATA ERROR--SEGMENT %d"
@@ -1617,7 +1640,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
         e1= ctx->geometry.y1[i];
         e2= ctx->geometry.y2[i];
         
-        if((fabs(e1)+fabs(e2) <= 1.0e-5) || (e1*e2 < -1.0e-6)) {
+        if((fabs(e1)+fabs(e2) <= 1.0e-12) || (e1*e2 < -1.0e-12)) {
           char l_msg[MAX_ERROR_LEN];
           snprintf(l_msg, sizeof(l_msg),
                   "\n  GEOMETRY DATA ERROR--SEGMENT %d"
@@ -1723,7 +1746,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
       e1= ctx->geometry.x1[i];
       e2= ctx->geometry.x2[i];
       
-      if( (fabs(e1)+fabs(e2) <= 1.0e-5) || (e1*e2 < -1.0e-6) ) {
+      if( (fabs(e1)+fabs(e2) <= 1.0e-12) || (e1*e2 < -1.0e-12) ) {
         char l_msg[MAX_ERROR_LEN];
         snprintf(l_msg, sizeof(l_msg),
                 "\n  GEOMETRY DATA ERROR--SEGMENT %d"

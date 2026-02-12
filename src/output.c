@@ -607,6 +607,12 @@ static int write_structure(nec_context_t *ctx, const deck_t *deck, FILE *file)
               "\n  STRUCTURE HAS %d PLANES OF SYMMETRY\n", ic );
     } /* if(ctx->geometry.ipsym < 0 ) */
   } /* if( iseg != 1) */
+
+  // Output any informational messages collected during geometry processing
+  for (int i = 0; i < ctx->outputs.num_messages; i++) {
+    fprintf(ctx->output_fp, "%s\n", ctx->outputs.messages[i]);
+  }
+
   return 0;
 } /* write_structure() */
 

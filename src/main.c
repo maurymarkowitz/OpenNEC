@@ -210,8 +210,6 @@ static int process_single_file(const char *input_filename, const char *output_fi
   memset(&deck, 0, sizeof(deck_t));
   errors_list_t import_errors;   // a list of errors that occured during import
   errors_list_t test_errors;     // a list of errors and warnings about the deck's format
-  errors_list_t geometry_errors; // a list of errors and warnings during the conversion to segments
-  outputs_list_t geometry_outputs; // informational messages from geometry processing
 
   FILE *input_fp = NULL;
   FILE *output_fp = NULL;
@@ -221,10 +219,6 @@ static int process_single_file(const char *input_filename, const char *output_fi
   import_errors.errors = NULL;
   test_errors.num_errors = 0;
   test_errors.errors = NULL;
-  geometry_errors.num_errors = 0;
-  geometry_errors.errors = NULL;
-  geometry_outputs.num_messages = 0;
-  geometry_outputs.messages = NULL;
   
   ctx->error_fp = error_fp;
 
@@ -337,10 +331,6 @@ static int process_single_file(const char *input_filename, const char *output_fi
       nec_destroy_context(ctx);
       return -1;
     }
-  }
-  if (geometry_errors.num_errors > 0) {
-    const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
-    nec_report(ctx, ONEC_SEV_INFO, "=== Found %d Geometry Errors for %s ===", geometry_errors.num_errors, display_name);
   }
 
   // write out the results (only if simulation was configured and ran)

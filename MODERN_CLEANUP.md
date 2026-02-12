@@ -26,8 +26,14 @@ This document outlines a roadmap for bringing the OpenNEC codebase up to modern 
 - **Benefit**: Hide the implementation details of `nec_context_t` behind an opaque pointer in the public API. Ensure source and binary compatibility when updating internal structures.
 
 ### Logging Callbacks
-- **Status**: Legacy (FILE pointers)
-- **Goal**: Implement a callback registration system to replace direct `FILE*` output for errors and logs.
+- **Status**: [DONE] 2025-02-11
+- **Achievements**:
+  - [x] Defined `nec_log_callback_t` for UI event-driven logging.
+  - [x] Defined `nec_severity_t` (INFO, WARNING, ERROR, FATAL).
+  - [x] Implemented `nec_report()` unified logging helper.
+  - [x] Refactored `add_error()` and `add_message()` to trigger callbacks.
+  - [x] Added `outputs` message tracking to `nec_context_t` to ensure informational messages reach the `.out` file.
+  - [x] Suppressed library `INFO` logs from the console by default while keeping them available for GUI observers.
 - **Benefit**: Allows modern GUIs to capture and display output in real-time UI components without disk I/O.
 
 ## 2. Modern C Types and Standards
