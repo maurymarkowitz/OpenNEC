@@ -167,7 +167,14 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
     rad = card->fv[7];
     
     // set the card's tag number and number of segments
-    card->tag = tag;
+    // Only set card->tag for card types that actually assign an ITG (tag)
+    // to generated segments. Some geometry-like cards (GC, GN, GE, etc.)
+    // use I1 for other purposes and should not be treated as tags.
+    if (card_has_itag(card)) {
+      card->tag = tag;
+    } else {
+      card->tag = 0;
+    }
     card->num_segments = segs;
     
     // and now the switch. basically all this does is call the appropriate

@@ -1,0 +1,12 @@
+CM  Short dipole with mid-element stub loads
+CE TL method; separate termination wires
+GW 1 101 0 -.2 0 0 .2 0 .001   
+GW 2 1 .1 -.001 -.425 .1 .001 -.425 .0005
+GW 3 1 -.1 -.001 -.425 -.1 .001 -.425 .0005   
+GE
+FR 0 1 0 0 150 1    
+TL 1 25 2 1 157 .425 0 0 1e10 0  
+TL 1 77 3 1 157 .425 0 0 1e10 0  
+EX 0 1 51 00 1 0     
+XQ
+EN

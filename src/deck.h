@@ -16,6 +16,9 @@ bool is_geometry(const card_t *card);
 bool is_control(const card_t *card);
 bool is_extension(const card_t *card);
 
+/* Return true if this card type assigns an ITG tag to generated segments */
+bool card_has_itag(const card_t *card);
+
 /* Card field counts */
 int min_int_fields(const card_t *card);
 int max_int_fields(const card_t *card);

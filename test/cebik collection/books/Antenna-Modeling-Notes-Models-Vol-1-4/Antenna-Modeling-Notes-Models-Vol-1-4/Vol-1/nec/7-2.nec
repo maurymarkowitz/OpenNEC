@@ -1,0 +1,12 @@
+CM 40-m monopole-short/base-load--perfect ground
+CE
+GW 1 21 0 0 23.4 0 0 0 0.041665
+GS 0 0 .30479
+GE 1
+GN 1
+EX 0 1 21 0 1 0
+LD 0 1 21 21 0.588 4.008E-6 0E-12
+LD 5 1 1 21 3.0769E7
+FR 0 1 0 0 7 1
+RP 0 181 1 1000 -90 0 1 1
+EN

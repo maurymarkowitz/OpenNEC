@@ -1,0 +1,11 @@
+CM monopole 3.6 MHz .02 m dia.
+CM 64 radials, -.1m, ave ground
+CE
+GW 2 1 1.88 0 -.1 0 0 0 .001   
+GW 2 10 20.8189 0 -.1 1.88 0 -.1 .001   
+GR 0 64          
+GE -1 -1 0         
+GN 2 0 0 0 5 .001     
+FR 0 1 0 0 3.6 1     
+WG r64-80-vp          
+EN

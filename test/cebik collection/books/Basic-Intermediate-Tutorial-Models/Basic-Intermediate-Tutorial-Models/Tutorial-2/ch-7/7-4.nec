@@ -1,0 +1,9 @@
+CM Close spaced elements with different lengths
+CE
+GW 1 11 0 -.243 0 0 .243 0 .01   
+GW 2 7 0 -.152 .04 0 .152 .04 .01   
+GE 0 -1 0         
+EX 0 1 6 0 1 0     
+FR 0 1 0 0 299.7925 1     
+RP 0 1 361 1000 90 0 1.00000 1.00000   
+EN

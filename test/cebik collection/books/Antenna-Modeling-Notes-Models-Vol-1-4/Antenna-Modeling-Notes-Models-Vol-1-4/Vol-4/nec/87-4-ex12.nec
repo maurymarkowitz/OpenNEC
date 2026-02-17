@@ -1,0 +1,17 @@
+CM 6-Wire Radial-Wire Ground Screen. 
+CE An NGF file is written to take advantage of symnetry of the screen.
+GW 1	14 12.	0. -.05	0.8	0.	-.05	.01
+GW 1	1 0.8	0. -.05	0.	0.	0. 	.01
+GR 0	6
+GE
+FR 0	1	0	0	5.
+GN 2	0	0	0	10. .01	SOMEX10.NEC
+WG
+NX
+CE 15 m Monopole added to the ground screen from the NGF file.
+GF
+GW 2	10	0.	0.	0.	0.	0. 15. .01
+GE
+EX 0	2	1	0	1.
+RP 0	19	2	1001	0.	0.	5. 90.
+EN

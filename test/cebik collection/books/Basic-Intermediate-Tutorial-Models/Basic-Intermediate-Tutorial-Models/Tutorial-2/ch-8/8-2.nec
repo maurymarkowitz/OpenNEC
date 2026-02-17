@@ -1,0 +1,15 @@
+CM Multiple models
+CE First model structure
+GW 1 11 0 -.2375 0 0 .2375 0 .001   
+GE
+FR 0 1 0 0 299.7925 1     
+EX 0 1 6 00 1 0     
+RP 0 1 361 1000 90 0 1.00000 1.00000   
+NX
+CE Second model structure
+GW 1 11 0 0 -.2375 0 0 .2375 .001   
+GE
+FR 0 1 0 0 299.7925 1     
+EX 0 1 6 00 1 0     
+RP 0 1 361 1000 90 0 1.00000 1.00000   
+EN

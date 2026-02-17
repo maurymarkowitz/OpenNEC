@@ -1,0 +1,17 @@
+CM Planar Reflector 299.7925 MHz (WL=1 m)
+CM Y = 1.8 m;  Z = 1.4 m
+CM standard wire-grid:  Seg L = 0.1 m; redius = L/PI = 0.0159 m
+CM NGF file:  R-H18-V14-GX
+CE
+GW 1 9 0 -.9 0 0 0 0 .0159   
+GM 0 7 0 0 0 0 0 -.1 1 1 1 9
+GM 0 7 0 0 0 0 0 .1 1 1 1 9
+GW 2 14 0 -.1 -.7 0 -.1 .7 .0159   
+GM 0 8 0 0 0 0 -.1 0 2 1 2 14
+GX 2 010          
+GW 5 14 0 0 -.7 0 0 .7 .0159   
+GE 0 -1 0         
+FR 0 1 0 0 299.7925 1     
+GN -1       
+WG R-H18-V14-GX.WGF          
+EN 

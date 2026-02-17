@@ -1,0 +1,13 @@
+CM NGF file of 128 radials x3
+CM 3.6 MHz
+CE
+GW 1 11 0 0 -.1 20.8189 0 -.1 .001   
+GR 0 128          
+GM 1 1 0 0 0 0 -45 0    
+GM 1 1 0 0 0 0 45 0 1 1 1 1408
+GE -1 -1 0         
+FR 0 1 0 0 3.6 1     
+GN 2 0 0 0 5 .001     
+WG r128x3-vp-80.ngf          
+EN
+

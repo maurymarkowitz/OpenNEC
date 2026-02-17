@@ -1,0 +1,12 @@
+CM 12-deg axial-mode helix
+CM direct connection to perfect ground 
+CM LH elliptical excitation
+CE
+GH 1 100 0.2125566 -1.0627828 .1591549 .1591549 .1591549 .1591549 .001    
+GE 1           
+GN 1          
+EX 3 1 1 0 0 0 0 1 1 1 
+FR 0 1 0 0 299.7925 0     
+PT 1 1 1 1     
+XQ  
+EN

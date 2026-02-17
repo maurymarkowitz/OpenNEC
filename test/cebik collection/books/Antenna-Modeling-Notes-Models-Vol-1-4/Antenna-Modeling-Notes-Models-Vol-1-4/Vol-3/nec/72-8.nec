@@ -1,0 +1,13 @@
+CM Test dipole:  4002 segments  L=4000 m  GX
+CM Fr=15 MHz  WL=20m 10 seg/1/2 wl
+CM 
+CE
+GW 1 2001 0 -2000 0 0 0 0 0.000005
+GX 1 010 
+GS 0 0 1
+GE 0 -1 0 
+EX 0 1 2001 0 1 0
+EX 0 2 2001 0 -1 0
+FR 0 1 0 0 15 1
+RP 0 1 73 1000 90 0 1 5
+EN

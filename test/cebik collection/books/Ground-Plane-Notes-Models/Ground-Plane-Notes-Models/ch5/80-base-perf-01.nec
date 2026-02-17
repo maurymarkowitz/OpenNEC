@@ -1,0 +1,10 @@
+CM monopole 3.6 MHz .02 m dia.
+CM perfect ground
+CE
+GW 1 10 0 0 0 0 0 20.113 .01   
+GE 1 -1 0         
+GN 1          
+EX 0 1 1 0 1 0     
+FR 0 1 0 0 3.6 1     
+RP 0 181 1 1000 -90 0 1.00000 1.00000   
+EN

@@ -1,0 +1,11 @@
+CM 1.4-wl monople
+CM NGF NEC-2 radials
+CM distance 1000 m
+CE
+GF 0 radials-vg          
+GW 201 21 0 0 .02998 0 0 74 .001   
+GE 1           
+EX 0 201 1 00 277.1 0     
+RP 0 181 1 1000 -90 90 1.00000 1.00000   
+RP 1 1 1 0000 2 0 1.00000 1.00000 1000  
+EN

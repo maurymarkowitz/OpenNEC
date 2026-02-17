@@ -1,0 +1,12 @@
+CM Helix on perfect ground
+CM Example of clues to 1 or more geometry flaws
+CE
+GH 1 200 .238 2.38 .171 .171 .171 .171 .225   
+GM 0 0 0 0 0 0 0 .115    
+GW 2 5 .171 0 0 .171 0 .115 .005   
+GE 1 0 0
+GN 1          
+FR 0 0 0 0 299.7925 1     
+EX 0 2 1 00 1 0     
+RP 0 181 1 1000 -90 0 1.00000 1.00000
+EN

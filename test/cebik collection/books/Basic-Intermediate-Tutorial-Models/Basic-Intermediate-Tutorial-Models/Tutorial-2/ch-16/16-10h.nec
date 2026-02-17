@@ -1,0 +1,12 @@
+CM 30 MHz wire dipole
+CM LD2 ins test case: R=2.0, r=1, per=3.0
+CE 
+GW 1 21 0 -2.33 0 0 2.33 0 .001   
+GE 0
+EX 0 1 11 0 1 0
+LD 5 1 1 21 5.8001E7
+LD 2 0 0 0 0 1.073e-7 0    
+FR 0 1 0 0 30 1 
+RP 0 1 360 1000 90 0 1 1
+EN
+

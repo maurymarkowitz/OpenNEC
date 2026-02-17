@@ -1,0 +1,9 @@
+CM Dipole over S-N Ground
+CE Vary Height (Z) in 0.05 wl steps
+GW 1 11 0 -.2375 .05 0 .2375 .05 .001   
+GE 1           
+GN 2 0 0 0 13.0000 0.0050     
+FR 0 1 0 0 299.7925 1     
+EX 0 1 6 00 1 0     
+RP 0 181 1 1000 -90 0 1.00000 1.00000   
+EN

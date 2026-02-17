@@ -1,0 +1,15 @@
+CM In-Phase Dipoles .25 m from planar reflector
+CM Planar Reflector 299.7925 MHz (WL=1 m)
+CM Y = 1.8 m;  Z = 1.4 m
+CM standard wire-grid:  Seg L = 0.1 m; radius = L/PI = 0.0159 m
+CM NGF file:  R2-H18-V14-GX
+CE
+GF 0 R2-H18-V14-GX.WGF          
+GW 24 11 .25 -.25 -.233 .25 -.25 .233 .004
+GW 25 11 .25 .25 -.233 .25 .25 .233 .004   
+GE 0 -1 0         
+EX 0 24 6 0 1 0
+EX 0 25 6 0 1 0     
+RP 0 361 1 1000 -90 0 1.00000 1.00000   
+RP 0 1 361 1000 90 0 1.00000 1.00000  
+EN 

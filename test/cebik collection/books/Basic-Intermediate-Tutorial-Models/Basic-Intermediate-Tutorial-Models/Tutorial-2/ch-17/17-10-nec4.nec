@@ -1,0 +1,9 @@
+CM Right-Hand Helix over Perfect Ground
+CE NEC-4 version
+GH 1 100 5 .6959 .191 .191 .0005 .0005 0
+GE 1 -1 0
+GN 1
+EX 0 1 1 0 1 0
+FR 0 1 0 0 299.7925 1
+RP 0 181 1 1000 -90 90 1.00000 1.00000
+EN

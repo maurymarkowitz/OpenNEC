@@ -1,0 +1,12 @@
+CM NE/NH test
+CM 1-step, Cartesian coordinates
+CM Frequency sweep:  trial 1
+CE
+GW 1 11 0 0 .25 0 0 .75 .001   
+GE 1 0 0         
+GN 2 0 0 0 13.0000 0.0050     
+EX 0 1 6 00 1 0     
+FR 0 9 0 0 290 2.5     
+NE 0 1 1 1 5 10 5 1.0 1.0 1.0 
+NH 0 1 1 1 5 10 5 1.0 1.0 1.0 
+EN

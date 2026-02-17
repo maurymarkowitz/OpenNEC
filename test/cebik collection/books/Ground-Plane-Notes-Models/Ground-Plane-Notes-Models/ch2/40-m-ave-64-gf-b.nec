@@ -1,0 +1,13 @@
+CM monopole 7.15 MHz 25-mm dia.
+CM average: 64 radials: GF r64-40-b.ngf
+CM buried radials
+CE
+GF 0 r64-40-ave-b.ngf          
+GW 201 11 0 0 .042 0 0 10.109 0   
+GC 1 0 0 .0125 .0125 .042      
+GW 202 1 0 0 0 0 0 .042 .0125   
+GW 203 1 0 0 -.042 0 0 0 .0125 
+GE -1 -1 0         
+EX 0 202 1 0 1 0     
+RP 0 181 1 1000 -90 0 1.00000 1.00000   
+EN

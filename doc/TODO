@@ -1,5 +1,7 @@
 Items still to be implemented:
 
+* add support for NX cards, which essentially make a second deck
+
 * cebik files have "IS" and "PS" cards
 
 * add greens file support, at that time allow these cards to process

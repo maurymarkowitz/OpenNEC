@@ -1,0 +1,12 @@
+CM Cage element--free space
+CM Substitute element   
+CE 
+GW 1 103 -745 0 0 745 0 0 6
+GS 0 0 .02540
+GE 0
+EX 0 1 52 0 1 0
+LD 5 1 1 103 5.8001E7
+FR 0 1 0 0 3.7 0
+RP 0 1 360 1000 90 0 1 1
+EN
+

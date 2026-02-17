@@ -1,0 +1,9 @@
+CM 1.85-MHz vertical dipole, free space
+CM 0.01-m radius
+CE
+GW 2 21 0 0 -39.279 0 0 39.279 .01   
+GE 0 -1 0         
+EX 0 2 11 0 1 0     
+FR 0 1 0 0 1.85 1     
+RP 0 361 1 1000 -90 0 1.00000 1.00000   
+EN

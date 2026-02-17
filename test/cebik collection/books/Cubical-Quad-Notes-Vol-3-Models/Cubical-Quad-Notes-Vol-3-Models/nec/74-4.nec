@@ -1,0 +1,10 @@
+CM dipole + planar reflector
+CE 
+GF 0 planar.wgf 
+GW 1,21, -.147,.122,0, .147,.122,0, .00476 
+GE 0
+EX 0 1 11 0 1 0
+LD 5 0 0 0 5.8E7  
+RP 0 1 361 1000 90 0 1 1
+EN
+

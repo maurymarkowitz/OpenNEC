@@ -1,0 +1,10 @@
+CM 12-deg axial-mode helix: outward spiral
+CM free-space model
+CE
+GH 1 100 .0002 -.001 .05 .05 .1591549 .1591549 .001   
+GE 0           
+GN -1          
+EX 0 1 1 00 1.0 0.0     
+FR 0 1 0 0 299.7925 0     
+RP 0 181 1 1000 -90 0 1.00000 1.00000   
+EN

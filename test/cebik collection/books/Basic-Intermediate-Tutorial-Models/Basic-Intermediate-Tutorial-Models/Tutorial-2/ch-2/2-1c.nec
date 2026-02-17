@@ -1,0 +1,15 @@
+CM 5 Vertical Dipoles, spaced 1/2 wl, fed in phase
+CM Starting dipole + 4 copies, no increment of Tag #
+CM EX referred to Absolute Seg. #
+CE
+GW 1 11 -1 0 -.245 -1 0 .245 .001   
+GM 0 4 0 0 0 .5 0 0    
+GE
+EX 0 0 6 0 1 0     
+EX 0 0 17 0 1 0     
+EX 0 0 28 0 1 0     
+EX 0 0 39 0 1 0     
+EX 0 0 50 0 1 0     
+FR 0 1 0 0 299.7925 1     
+RP 0 1 361 1000 90 0 1.00000 1.00000   
+EN

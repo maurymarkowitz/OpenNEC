@@ -1,0 +1,13 @@
+CM 1/2 wl vert: 7.05 MHz 
+CM Perfect ground        
+CE 
+GW 1 10 0 0 20.3692 0 0 0 .025
+GS 0 0 1
+GE 1
+GN 1
+EX 0 1 10 0 1 0
+LD 5 1 1 10 2.4938E7
+FR 0 1 0 0 7.05 0
+RP 0 181 1 1000 -90 0 1 1
+EN
+

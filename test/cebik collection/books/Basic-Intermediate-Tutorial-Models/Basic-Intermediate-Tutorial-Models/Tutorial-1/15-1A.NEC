@@ -1,0 +1,13 @@
+CM 1/4 wave vertical: 3 MHz
+CM 80% length             
+CE 
+GW 1 28 0 0 0 0 0 19.304 .0127
+GS 0 0 1
+GE 1
+GN 1
+EX 0 1 1 0 1 0
+LD 5 1 1 28 2.4938E7
+FR 0 1 0 0 3 0
+RP 0 181 1 1000 -90 0 1 1
+EN
+

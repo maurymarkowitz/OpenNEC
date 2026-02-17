@@ -1,0 +1,9 @@
+CM Monopole over perfect ground
+CE Segmentation and source impedance
+GW 1 23 0 0 0 0 0 .2375 .001   
+GE 1           
+GN 1          
+EX 0 1 1 00 1 0     
+FR 0 1 0 0 299.7925 1     
+XQ
+EN

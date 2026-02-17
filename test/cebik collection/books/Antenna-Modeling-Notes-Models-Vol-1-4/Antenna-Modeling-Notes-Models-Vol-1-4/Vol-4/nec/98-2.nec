@@ -1,0 +1,16 @@
+CM Dipole .175 m from planar reflector
+CM Planar Reflector 299.7925 MHz (WL=1 m)
+CM Y = 1.2 m;  Z = 1.2 m
+CM SM patch: 10 patches/meter
+CE
+SM 12 12 0. -.6 -.6 0. .6 -.6    
+SC 0 0 0. .6 .6   
+GW 24 11 .175 0 -.218 .175 0 .218 .004   
+GE 0 -1 0         
+FR 0 1 0 0 299.7925 1     
+GN -1       
+EX 0 24 6 0 1 0     
+RP 0 361 1 1000 -90 0 1.00000 1.00000   
+RP 0 1 361 1000 90 0 1.00000 1.00000  
+EN 
+

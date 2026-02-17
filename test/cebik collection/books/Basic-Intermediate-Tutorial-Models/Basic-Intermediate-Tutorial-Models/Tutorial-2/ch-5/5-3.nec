@@ -1,0 +1,18 @@
+CM 4 Vertical Dipoles, spaced 1/2 wl, fed in phase
+CM Each Dipole = separate wire
+CM LD5 loads
+CM EX referred to Tag # and Rel. Seg. #
+CE
+GW 1 11 -.75 0 -.245 -.75 0 .245 .001   
+GW 2 11 -.25 0 -.245 -.25 0 .245 .001   
+GW 3 11 .25 0 -.245 .250 0 .245 .001   
+GW 4 11 .75 0 -.245 .75 0 .245 .001 
+GE
+EX 0 1 6 0 1 0     
+EX 0 2 6 0 1 0     
+EX 0 3 6 0 1 0     
+EX 0 4 6 0 1 0     
+LD 5 0 0 0 5.8e7 1     
+FR 0 1 0 0 299.7925 1     
+RP 0 1 361 1000 90 0 1.00000 1.00000   
+EN

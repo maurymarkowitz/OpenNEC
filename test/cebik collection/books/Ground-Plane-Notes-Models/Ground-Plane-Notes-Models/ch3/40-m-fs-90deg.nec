@@ -1,0 +1,13 @@
+CM monopole 7.15 MHz 25-mm dia.
+CM free space
+CM 90-deg radials
+CE
+GW 1 11 0 0 0 0 0 10.071 .0125   
+GW 2 11 11.57 0 0 0 0 0 .002   
+GM 1 3 0 0 90 0 0 0 2 1 2 11
+GE 0 -1 0         
+GN -1          
+EX 0 1 1 0 1 0     
+FR 0 1 0 0 7.15 1     
+RP 0 361 1 1000 -90 0 1.00000 1.00000   
+EN

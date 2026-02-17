@@ -1,0 +1,12 @@
+CM Shortened dipole with mid-element loads
+CM Load losses:  LD4: Q=200
+CE
+GW 1 21 0 -.15 0 0 .15 0 .001   
+GE
+FR 0 1 0 0 299.7925 1    
+EX 0 1 11 00 1 0     
+LD 4 1 5 5 1.82 364     
+LD 4 1 17 17 1.82 364     
+RP 0 1 361 1000 90 0 1.00000 1.00000   
+EN
+

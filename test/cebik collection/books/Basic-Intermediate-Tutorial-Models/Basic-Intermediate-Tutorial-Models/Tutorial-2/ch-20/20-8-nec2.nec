@@ -1,0 +1,13 @@
+CM CP demonstration
+CM NEC-2 requirements
+CE
+GW 1 11 0 -.2375 0 0 .2375 0 .001   
+GW 2 11 2 -.2375 0 2 .2375 0 .001   
+GE
+FR 0 1 0 0 299.7925 1  
+CP 1 6 2 6  
+EX 0 1 6 00 1 0 
+XQ
+EX 0 2 6 00 1 0    
+XQ
+EN

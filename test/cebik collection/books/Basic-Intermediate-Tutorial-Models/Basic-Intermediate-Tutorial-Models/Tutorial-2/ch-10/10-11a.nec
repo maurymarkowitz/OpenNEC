@@ -1,0 +1,8 @@
+CM Diole for FR exercises
+CE 11-step linear sweep:  250-350 MHz
+GW 1 11 0 -.2375 0 0 .2375 0 .001   
+GE
+EX 0 1 6 00 1 0     
+FR 0 11 0 0 250 10     
+XQ
+EN

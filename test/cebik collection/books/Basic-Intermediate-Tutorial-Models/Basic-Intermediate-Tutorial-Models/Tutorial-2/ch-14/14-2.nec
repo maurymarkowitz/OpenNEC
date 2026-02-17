@@ -1,0 +1,10 @@
+CM dipole with current source
+CE 0 deg at antenna source
+GW 1 11 0 -.2375 0 0 .2375 0 .001   
+GW 2 1 9999 -.005 9999 9999 .005 9999 .001   
+GE
+FR 0 1 0 0 299.7925 1     
+EX 0 2 1 00 0.00000 1.00000     
+NT 2 1 1 6 0 0 0 1 0 0 
+XQ
+EN

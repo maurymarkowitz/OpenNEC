@@ -1,0 +1,16 @@
+CM Phased 1/4 wl monopoles
+CM Transmission line phasing: simple       
+CE 
+GW 1 21 0 0 7.255 0 0 0 .003625
+GW 2 21 7.495 0 7.255 7.495 0 0 .003625
+GS 0 0 1
+GE 1
+GN 1
+EX 0 2 21 0 1 0
+LD 5 1 1 21 5.8001E7
+LD 5 2 1 21 5.8001E7
+TL 1 21 2 21 -50 11.35578 0 0 0 0
+FR 0 1 0 0 10 0
+RP 0 1 360 1000 89 0 1 1
+EN
+

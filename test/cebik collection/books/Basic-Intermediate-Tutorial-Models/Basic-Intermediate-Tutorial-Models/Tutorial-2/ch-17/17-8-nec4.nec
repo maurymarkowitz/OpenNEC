@@ -1,0 +1,10 @@
+CM 120 radials in NGF file
+CM NEC-4 buried ground system
+CE 1 MHz: 1/4 wl
+GW 1 25 0 0 -1 0 74.95 -1 .001   
+GR 1 120          
+GE
+GN 2 0 0 0 20 .0303     
+FR 0 1 0 0 1 1     
+WG bradials-vg          
+EN

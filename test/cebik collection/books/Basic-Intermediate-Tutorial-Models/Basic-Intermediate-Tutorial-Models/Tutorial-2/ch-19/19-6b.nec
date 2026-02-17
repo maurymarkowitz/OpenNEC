@@ -1,0 +1,12 @@
+CM Plane-Wave Excitation-linear
+CM Vertical dipole over average SN ground
+CM eta = 22.5
+CE
+GW 1 11 0 0 .2375 0 0 .7125 .001   
+GE 1 -1 0         
+GN 2 0 0 0 13.0000 0.0050     
+FR 0 1 0 0 299.7925 1     
+EX 1 1 1 0 76 0 22.5 1 1 0 0
+PT 1 1 6 6       
+XQ 
+EN

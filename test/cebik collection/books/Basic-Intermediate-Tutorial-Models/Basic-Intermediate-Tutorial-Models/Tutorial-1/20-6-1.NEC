@@ -1,0 +1,12 @@
+CM Vertical dipole:  146 MHz
+CM Free Space
+CE 
+GW 1 21 0 0 37.55 0 0 0 .25
+GS 0 0 .02540
+GE 0
+EX 0 1 11 0 1 0
+LD 5 1 1 21 2.4938E7
+FR 0 1 0 0 146 0
+RP 0 1 360 1000 90 0 1 1
+EN
+

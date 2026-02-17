@@ -1,0 +1,11 @@
+CM NGF file of 128 radials
+CM 3.6 MHz
+CE
+GW 1 11 0 0 -.1 20.8189 0 -.1 .001   
+GR 0 128          
+GE -1 -1 0         
+FR 0 1 0 0 3.6 1     
+GN 2 0 0 0 20 .0303     
+WG r128-vg-80.ngf          
+EN
+

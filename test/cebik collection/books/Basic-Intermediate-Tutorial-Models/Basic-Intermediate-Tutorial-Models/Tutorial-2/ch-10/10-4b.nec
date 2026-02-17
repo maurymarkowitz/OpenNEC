@@ -1,0 +1,11 @@
+CM Off-center-fed wire: 3-wire version
+CE Target Z = 300 +/- j0 Ohms
+GW 1 21 0 -21.9 0 0 -1.5 0 .00673   
+GW 2 3 0 -1.5 0 0 1.5 0 .00673   
+GW 3 115 0 1.5 0 0 115.7 0 .00673   
+GS 0 0 0.304800         
+GE
+FR 0 1 0 0 3.5 1     
+EX 0 2 2 00 1 0     
+XQ
+EN

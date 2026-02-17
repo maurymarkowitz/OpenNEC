@@ -1,0 +1,12 @@
+CM Dipole in Free Space:  7.0 MHz
+CE 
+GW 1 11 20.86 0 0 0 0 0 .000814
+GS 0 0 1
+GE 0
+EX 0 1 6 0 1 0
+LD 4 1 7 7 25 0 0
+LD 4 1 5 5 25 0 0
+FR 0 1 0 0 7 1
+RP 0 1 360 1000 90 0 1 1
+EN
+

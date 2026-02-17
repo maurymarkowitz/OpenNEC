@@ -1,0 +1,10 @@
+CM monopole 1.85 MHz .02 m dia.
+CM perfect gnd
+CE
+GW 1 27 0 0 0 0 0 101.281 .01   
+GE 1 -1 0         
+GN 1          
+EX 0 1 1 0 1 0     
+FR 0 1 0 0 1.85 1     
+RP 0 181 1 1000 -90 0 1.00000 1.00000   
+EN

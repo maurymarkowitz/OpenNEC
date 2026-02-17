@@ -436,6 +436,23 @@ bool is_extension(const card_t *card)
   return isExt;
 }
 
+
+/* card_has_itag
+ *
+ * Returns true if the given geometry card assigns an ITG (tag) to the segments
+ * it generates. Only a subset of geometry cards actually set a tag: GW, GA and
+ * GH per the NEC specification. Other geometry/control cards use I1 for other
+ * purposes and should not be treated as assigning tags.
+ */
+bool card_has_itag(const card_t *card)
+{
+  if (card == NULL) return false;
+  if (strcmp(card->card_code, "GW") == 0) return true;
+  if (strcmp(card->card_code, "GA") == 0) return true;
+  if (strcmp(card->card_code, "GH") == 0) return true;
+  return false;
+}
+
 /******************************************************************************
  * min_int_fields/max_int_fields/min_flt_fields/max_flt_fields
  *

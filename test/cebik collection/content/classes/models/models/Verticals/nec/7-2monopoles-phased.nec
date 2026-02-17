@@ -1,0 +1,20 @@
+CM Vertical over real ground
+CM
+CM ! Wire # 3  for I srcs, shorted/open TL, and/or loads.
+CM 
+CM ! WARNING: MININEC-type ground may not work properly with standard
+CM !          NEC program.
+CE
+GW 1,10,0.,0.,0.,0.,0.,10.3,.02
+GW 2,10,-10.69848,0.,0.,-10.69848,0.,10.3,.02
+GW 3,2,4282.75,4282.75,4282.75,4282.835,4282.835,4282.835, 4.2828E-3
+GE 1
+FR 0,1,0,0,7.
+GN 1,0,0,0,0.,0.
+EX 0,3,1,0,0.,1.414214
+EX 0,3,2,0,-1.448661,-.1522604
+NT 3,1,1,1,0.,0.,0.,1.,0.,0.
+NT 3,2,2,1,0.,0.,0.,1.,0.,0.
+GD 2,0,0,0,13.,.005,0.,0.
+RP 3,181,1,1000,90.,0.,-1.,0.,0.
+EN

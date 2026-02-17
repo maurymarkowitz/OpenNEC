@@ -1,0 +1,10 @@
+CM Turnstile dipole pair--interpenetrating
+CE
+GW 1 11 0 -.235 0 0 .235 0 .002   
+GW 2 11 -.235 0 .0039 .235 0 .0039 .002   
+GE
+EX 0 1 6 00 1 0     
+EX 0 2 6 00 0 1     
+FR 0 1 0 0 299.7925 1     
+RP 0 1 361 1000 90 0 1.00000 1.00000   
+EN

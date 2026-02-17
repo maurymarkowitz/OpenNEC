@@ -1,0 +1,13 @@
+CM Horizontal dipole
+CM Perfect ground
+CM Specified distance = 100 m
+CM EX = 269.19 vpk (P = 1000 w)
+CE
+GW 1 21 0 -4.88 19.986 0 4.88 19.986 .001   
+GE 1           
+GN 1          
+FR 0 1 0 0 15 1     
+EX 0 1 11 00 378.837 0     
+RP 0 181 1 1000 -90 0 1.00000 1.00000 100  
+RP 1 1 73 0000 0 0 1.00000 2.50000 100  
+EN

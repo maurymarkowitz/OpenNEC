@@ -1,0 +1,11 @@
+CM 1/2 wave free space dipole:  3 MHz             
+CE 
+GW 1 71 -24.13 0 0 24.13 0 0 .0127
+GS 0 0 1
+GE 0
+EX 0 1 36 0 1 0
+LD 5 1 1 71 2.4938E7
+FR 0 1 0 0 3 0
+RP 0 1 360 1000 90 0 1 1
+EN
+
