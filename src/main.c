@@ -267,7 +267,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
     }
     ctx->green_fp = fopen(path, "w");
     if (!ctx->green_fp) {
-      nec_report(ctx, ONEC_SEV_WARNING, "Warning: could not open greens file '%s' for writing; skipping.", path);
+      nec_report(ctx, ONEC_SEV_WARNING, "Could not open greens file '%s' for writing; skipping.", path);
     }
   }
 
@@ -329,7 +329,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
   if (run_simulation && ctx->save.nfrq > 0) {
     write_nec_output(ctx, &deck, output_fp);
   } else if (run_simulation && ctx->save.nfrq == 0) {
-    nec_report(ctx, ONEC_SEV_WARNING, "Warning: No FR card found, skipping output generation");
+    nec_report(ctx, ONEC_SEV_WARNING, "No FR card found, skipping output generation");
   }
 
   // close greens file if open

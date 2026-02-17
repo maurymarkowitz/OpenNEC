@@ -49,6 +49,14 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
 int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
 {
     errors_list_t geometry_errors = {0};
+    /* If deck contains WG or GF cards, skip calculations as requested */
+    for (int ci = 0; ci < deck->num_cards; ++ci) {
+        card_t *c = &deck->cards[ci];
+        if (c && (strcmp(c->card_code, "WG") == 0 || strcmp(c->card_code, "GF") == 0)) {
+            add_message(ctx, &ctx->outputs, "Deck contains WG/GF card; calculations skipped");
+            return 0;
+        }
+    }
     
     // Step 1: Calculate geometry
     calculate_geometry(ctx, deck, &geometry_errors, &ctx->outputs);

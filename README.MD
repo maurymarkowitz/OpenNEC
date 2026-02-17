@@ -55,7 +55,7 @@ Programs that wish to use OpenNEC as their calculation engine can directly acces
 
 OpenNEC also improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. See [Differences between OpenNEC, NEC-2 and nec2c](/doc/Differences%20between%20OpenNEC,%20NEC-2%20and%20nec2c.md) for details.
 
-OpenNEC also adds many of the features found in the popular 4nec2 program on Windows. In particular, it supports the formulas and calculations that make it easier to design complex antennas, which are widely used and found in many of the .nec decks found on the 'net.
+OpenNEC also adds many of the features found in the popular 4nec2 program on Windows. In particular, it supports the symbols (variables), formulas and calculations that make it easier to design complex antennas. These features are widely used and found in many of the real-world `.nec` decks found on the 'net.
 
 Known limitations
 -----------------

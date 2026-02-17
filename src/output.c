@@ -568,7 +568,7 @@ static int write_structure(nec_context_t *ctx, const deck_t *deck, FILE *file)
                 " LENGTH: %8.3f  %8.3f %5d %5d %5d %4d\n      "
                 " RADIUS X1:%8.3f Y1:%8.3f X2:%8.3f Y2:%8.3f ",
                 num_wires, card.fv[1], card.fv[2], card.fv[7], card.tag, card.start_segment, card.end_segment,
-                card.iv[1], card.fv[3], card.fv[4], card.fv[6], card.fv[6]);
+                card.iv[1], card.fv[3], card.fv[4], card.fv[5], card.fv[6]);
         break;
         
     } /* switch on the card type */

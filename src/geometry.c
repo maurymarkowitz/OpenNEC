@@ -432,6 +432,32 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         continue;
         
       case 10: // GH, generate helix
+        // Detect 4NEC2's "NEC-4" GH format vs standard NEC-2 format.
+        // NEC-2: F1=spacing, F2=length(signed), F3=a1, F4=b1, F5=a2, F6=b2, F7=rad
+        // 4NEC2: F1=turns(signed), F2=length, F3=a1, F4=b1, F5=rad, F6=rad, F7=flag
+        //   F7=0: log spiral, F7=1: Archimedes spiral (flag only, geometry is the same)
+        //
+        // Detection: if F7 is 0 or 1 AND F5 is much smaller than F3 (wire radius vs
+        // helix radius), this is the 4NEC2 format. Convert turns to spacing and use
+        // F5 as the wire radius.
+        if((rad == 0.0 || rad == 1.0) && yw2 > 0.0 && zw1 > 0.0 && yw2 < zw1 * 0.5) {
+          // 4NEC2 format: F1=turns, F5=wire radius, F7=spiral type flag
+          double turns = xw1;      // F1 = number of turns (signed for handedness)
+          double wire_rad = yw2;   // F5 = wire radius
+          // Convert to NEC-2 parameters: spacing = length / turns
+          xw1 = yw1 / turns;       // spacing = total_length / turns (sign carries handedness)
+          // For 4NEC2 format, a2=a1 and b2=b1 (uniform helix assumed)
+          yw2 = zw1;               // a2 = a1
+          zw2 = xw2;               // b2 = b1
+          rad = wire_rad;
+          // Update card fv[] so output display shows the converted NEC-2 values
+          card->fv[1] = xw1;
+          card->fv[5] = yw2;
+          card->fv[6] = zw2;
+          card->fv[7] = rad;
+          snprintf(msg, sizeof(msg), "GH card on line %d: detected 4NEC2 format (%.0f turns, wire radius %.4g).", i + 1, fabs(turns), rad);
+          add_message(ctx, outputs, msg);
+        }
         helix(ctx, target_geom, i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, rad, outputs);
         continue;
         
