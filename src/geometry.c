@@ -195,26 +195,39 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
             continue;
           }
           // and also that the values in it are valid
-          // First, ensure the GC card's fv are set from f (since it may not be processed)
+          // Use the GC card tapering info. Do NOT blindly overwrite any
+          // previously-evaluated `fv[]` values -- those may contain unit
+          // conversions or formula results established earlier. Prefer
+          // `fv[]` and fall back to the raw `f[]` inputs only if necessary.
           card_t *gc_card = &deck->cards[next_idx];
-          for(int j = 1; j <= MAX_FLT_FIELDS; j++) gc_card->fv[j] = gc_card->f[j];
-          for(int j = 1; j <= MAX_INT_FIELDS; j++) gc_card->iv[j] = gc_card->i[j];
-          
-          if((gc_card->fv[2] == 0.0) || (gc_card->fv[3] == 0.0)) {
+
+            double gc_x1 = gc_card->fv[1] != 0.0 ? gc_card->fv[1] : gc_card->f[1];
+            // In many decks a GC F1 value of 0 means "no tapering of spacing";
+            // treat 0 the same as 1 (equal spacing) to avoid producing zero
+            // rd values that collapse segment lengths to zero.
+            if (gc_x1 == 0.0) gc_x1 = 1.0;
+            double gc_y1 = gc_card->fv[2] != 0.0 ? gc_card->fv[2] : gc_card->f[2];
+            double gc_z1 = gc_card->fv[3] != 0.0 ? gc_card->fv[3] : gc_card->f[3];
+
+
+          if((gc_y1 == 0.0) || (gc_z1 == 0.0)) {
             snprintf(msg, sizeof(msg), "The card on line %d is a GC with tapering info for GW in card %d, but there is a zero in Y1 or Z1.", next_idx + 1, i + 1);
-            add_error(ctx,errors, msg, WARNING);
+            add_error(ctx, errors, msg, WARNING);
             i = next_idx; // skip the invalid GC card
             continue;
           }
-          // override the original inputs with the ones from the GC
-          xs1 = deck->cards[next_idx].fv[1];  // check this!
-          ys1 = deck->cards[next_idx].fv[2];
-          zs1 = deck->cards[next_idx].fv[3];
-          rad = ys1;
-          ys1 = pow((zs1 / ys1), (1.0 / (segs - 1.0)));
+
+            // override the original inputs with the ones from the GC (prefer evaluated fv[])
+            xs1 = gc_x1;
+            ys1 = gc_y1;
+            zs1 = gc_z1;
+            rad = ys1;
+            ys1 = pow((zs1 / ys1), (1.0 / (segs - 1.0)));
+
           
-          // move up a card so we don't process the GC
-          i = next_idx;
+
+            // move up a card so we don't process the GC separately
+            i = next_idx;
         }
         
         // update the number of wires and the segment counts
