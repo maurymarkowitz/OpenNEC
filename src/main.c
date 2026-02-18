@@ -329,7 +329,16 @@ static int process_single_file(const char *input_filename, const char *output_fi
   if (run_simulation && ctx->save.nfrq > 0) {
     write_nec_output(ctx, &deck, output_fp);
   } else if (run_simulation && ctx->save.nfrq == 0) {
-    nec_report(ctx, ONEC_SEV_WARNING, "No FR card found, skipping output generation");
+    // If there were no FR cards, check whether the deck contained RP cards
+    // (request points). If RP cards are present it's acceptable to have no
+    // FR card for some decks, so only warn when neither FR nor RP appear.
+    int sawRP = 0;
+    for (int ci = 0; ci < deck.num_cards; ci++) {
+      if (strcmp(deck.cards[ci].card_code, "RP") == 0) { sawRP = 1; break; }
+    }
+    if (!sawRP) {
+      nec_report(ctx, ONEC_SEV_WARNING, "No FR card found, skipping output generation");
+    }
   }
 
   // close greens file if open
