@@ -115,6 +115,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
   // so we can report the card number where the duplicate was seen
   int sawCE = 0, sawGx = 0, sawGE = 0, sawEN = 0, sawGF = 0;
   int sawFR = 0, sawSC = 0, sawSP = 0, sawGN = 0, sawGD = 0;
+  int sawRP = 0;
   double freq_mhz = 0.0; // first FR base frequency for wavelength-based checks
   int ek_enabled = 0;
   int sawGS = 0, sawLD = 0, sawEX = 0, sawSY = 0;
@@ -439,6 +440,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
         add_error(ctx, errors, msg, 0);
       }
       if(sawSP == false) sawSP = i;
+      if(sawRP == 0) sawRP = i + 1; // mark that we have at least one RP (store 1-based index)
     }
     // you need an EX or LD
     if(strcmp(code, "EX") == 0) {
@@ -850,7 +852,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     snprintf(msg, sizeof(msg), "A deck has to have a GE card.");
     add_error(ctx, errors, msg, 1);
   }
-  if(!sawFR) {
+  if(!sawFR && !sawRP) {
     snprintf(msg, sizeof(msg), "A deck has to have an FR card.");
     add_error(ctx, errors, msg, 1);
   }
