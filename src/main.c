@@ -28,9 +28,8 @@
 #include <dirent.h>
 #include <unistd.h>
 
-
 /** signal handler */
-//static void sig_handler(int signal);
+// static void sig_handler(int signal);
 
 // various switches for the command line arguments
 static bool run_simulation = true;
@@ -100,19 +99,18 @@ int stop(const nec_context_t *ctx, int flag)
 }
 
 static struct option program_options[] =
-{
-  {"help", no_argument, NULL, 'h'},
-  {"version", no_argument, NULL, 'v'},
-  {"no-run", no_argument, NULL, 'n'},
-  {"test-deck", no_argument, NULL, 't'},
-  {"recursive", no_argument, NULL, 'r'},
-  {"input-file", required_argument, NULL, 'i'},
-  {"output-file", required_argument,  NULL, 'o'},
-  {"error-file", required_argument,  NULL, 'e'},
-  {"greens", required_argument, NULL, 'g'},
-  {"jobs", required_argument, NULL, 'j'},
-  {0, 0, 0, 0}
-};
+    {
+        {"help", no_argument, NULL, 'h'},
+        {"version", no_argument, NULL, 'v'},
+        {"no-run", no_argument, NULL, 'n'},
+        {"test-deck", no_argument, NULL, 't'},
+        {"recursive", no_argument, NULL, 'r'},
+        {"input-file", required_argument, NULL, 'i'},
+        {"output-file", required_argument, NULL, 'o'},
+        {"error-file", required_argument, NULL, 'e'},
+        {"greens", required_argument, NULL, 'g'},
+        {"jobs", required_argument, NULL, 'j'},
+        {0, 0, 0, 0}};
 
 /******************************************************************************
  * parse_options()
@@ -124,68 +122,72 @@ void parse_options(int argc, char *argv[])
 {
   int option_index = 0;
   /* int printed_help = false; */
-  
-  while(1) {
+
+  while (1)
+  {
     // eat an option and exit if we're done
     /* portable short options: 'g' requires an argument */
     int c = getopt_long(argc, argv, "hvntri:o:e:g:j:", program_options, &option_index); // should match the items above
-    if(c == -1) break;
-    
-    switch(c) {
-      case 0:
-        // flag-setting options return 0 - these are t and n
-        if (program_options[option_index].flag != 0)
-          break;
-        
-      case 'h':
-        print_usage(argv);
-        /* printed_help = true; */
+    if (c == -1)
+      break;
+
+    switch (c)
+    {
+    case 0:
+      // flag-setting options return 0 - these are t and n
+      if (program_options[option_index].flag != 0)
         break;
-        
-      case 'v':
-        print_version();
-        /* printed_help =  true; */
-        break;
-        
-      case 'r':
-        recursive = true;
-        break;
-        
-      case 'o':
-        output_file = optarg;
-        break;
-        
-      case 'e':
-        error_file = optarg;
-        break;
-        
-      case 'n':
-        run_simulation = false;
-        break;
-        
-      case 't':
-        run_tests = true;
-        break;
-        
-      case 'g':
-        run_greens = true;
-        greens_file = optarg;
-        break;
-      case 'j':
-        jobs = atoi(optarg);
-        if (jobs < 1) jobs = 1;
-        break;
-        
-      default:
-        abort();
+
+    case 'h':
+      print_usage(argv);
+      /* printed_help = true; */
+      break;
+
+    case 'v':
+      print_version();
+      /* printed_help =  true; */
+      break;
+
+    case 'r':
+      recursive = true;
+      break;
+
+    case 'o':
+      output_file = optarg;
+      break;
+
+    case 'e':
+      error_file = optarg;
+      break;
+
+    case 'n':
+      run_simulation = false;
+      break;
+
+    case 't':
+      run_tests = true;
+      break;
+
+    case 'g':
+      run_greens = true;
+      greens_file = optarg;
+      break;
+    case 'j':
+      jobs = atoi(optarg);
+      if (jobs < 1)
+        jobs = 1;
+      break;
+
+    default:
+      abort();
     }
   } // while
-  
+
   // now see if there's a filename at the end without an option
   // flag, if so it overrides -i if it was supplied
   if (optind < argc)
     input_file = argv[optind];
-  
+
   // if no input file, we'll use stdin
 }
 
@@ -199,7 +201,8 @@ void parse_options(int argc, char *argv[])
 static int process_single_file(const char *input_filename, const char *output_filename, FILE *error_fp)
 {
   nec_context_t *ctx = nec_create_context();
-  if (ctx == NULL) {
+  if (ctx == NULL)
+  {
     fprintf(error_fp, "onec: Failed to allocate NEC context.\n");
     return -1;
   }
@@ -211,12 +214,14 @@ static int process_single_file(const char *input_filename, const char *output_fi
 
   FILE *input_fp = NULL;
   FILE *output_fp = NULL;
-  
+
   ctx->error_fp = error_fp;
 
   // open input file or use stdin
-  if (strlen(input_filename) > 0) {
-    if ((input_fp = fopen(input_filename, "r")) == NULL) {
+  if (strlen(input_filename) > 0)
+  {
+    if ((input_fp = fopen(input_filename, "r")) == NULL)
+    {
       char mesg[88] = "onec: ";
       strcat(mesg, input_filename);
       perror(mesg);
@@ -224,49 +229,64 @@ static int process_single_file(const char *input_filename, const char *output_fi
       return -1;
     }
     ctx->input_fp = input_fp;
-  } else {
+  }
+  else
+  {
     input_fp = stdin;
     ctx->input_fp = stdin;
   }
 
   // open output file or use stdout
-  if (strlen(output_filename) > 0) {
-    if((output_fp = fopen(output_filename, "w")) == NULL) {
+  if (strlen(output_filename) > 0)
+  {
+    if ((output_fp = fopen(output_filename, "w")) == NULL)
+    {
       char mesg[88] = "onec: ";
       strcat(mesg, output_filename);
       perror(mesg);
-      if (input_fp != stdin) fclose(input_fp);
+      if (input_fp != stdin)
+        fclose(input_fp);
       nec_destroy_context(ctx);
       return -1;
     }
     ctx->output_fp = output_fp;
-  } else {
+  }
+  else
+  {
     output_fp = stdout;
     ctx->output_fp = stdout;
   }
 
   // open greens output file if requested
-  if (run_greens) {
+  if (run_greens)
+  {
     char ngfpath[512];
     const char *path = NULL;
-    if (strlen(greens_file) > 0) {
+    if (strlen(greens_file) > 0)
+    {
       path = greens_file;
-    } else if (strlen(input_filename) > 0) {
+    }
+    else if (strlen(input_filename) > 0)
+    {
       // derive from input filename by replacing extension with .ngf
       strncpy(ngfpath, input_filename, sizeof(ngfpath) - 1);
       ngfpath[sizeof(ngfpath) - 1] = '\0';
       char *dot = strrchr(ngfpath, '.');
       char *slash = strrchr(ngfpath, '/');
-      if (dot != NULL && (slash == NULL || dot > slash)) {
+      if (dot != NULL && (slash == NULL || dot > slash))
+      {
         *dot = '\0';
       }
       strncat(ngfpath, ".ngf", sizeof(ngfpath) - strlen(ngfpath) - 1);
       path = ngfpath;
-    } else {
+    }
+    else
+    {
       path = "greens.ngf";
     }
     ctx->green_fp = fopen(path, "w");
-    if (!ctx->green_fp) {
+    if (!ctx->green_fp)
+    {
       nec_report(ctx, ONEC_SEV_WARNING, "Could not open greens file '%s' for writing; skipping.", path);
     }
   }
@@ -276,80 +296,87 @@ static int process_single_file(const char *input_filename, const char *output_fi
 
   // and then parse what we read into the card
   parse_deck(ctx, &deck, &import_errors);
-  
+
   // Initialize symbol table: collect all SY symbols, add defaults (pi, c),
   // and evaluate symbols in comment section for initial values
   initialize_symbol_table(&deck, &import_errors);
-  
+
   // Evaluate all formulas in the deck
   update_deck_values(ctx, &deck);
-  
+
   // TESTING: print any file errors
-  if (import_errors.num_errors > 0) {
+  if (import_errors.num_errors > 0)
+  {
     const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
     nec_report(ctx, ONEC_SEV_INFO, "=== Found %d Import Errors for %s ===", import_errors.num_errors, display_name);
   }
 
   // run basic sanity checks on the structure
-  if(run_tests) {
+  if (run_tests)
+  {
     test_deck_structure(ctx, &deck, &test_errors);
     test_duplicate_tags(ctx, &deck, &test_errors);
     test_card_inputs(ctx, &deck, &test_errors);
   }
   // TESTING: print any structure errors
-  if (test_errors.num_errors > 0) {
+  if (test_errors.num_errors > 0)
+  {
     const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
     nec_report(ctx, ONEC_SEV_INFO, "=== Found %d Structural Errors for %s ===", test_errors.num_errors, display_name);
   }
 
   // run it if we've been asked to
-  if(run_simulation) {
+  if (run_simulation)
+  {
     // Run complete simulation with batch processing
     int sim_result = nec_run_simulation(ctx, &deck);
-    
+
     // Check for any errors that occurred during calculation (whether simulation failed or succeeded)
-    if (ctx->errors.num_errors > 0 || sim_result != 0) {
-      if (sim_result != 0) {
-        // fprintf(ctx->error_fp, "Failed to run simulation for %s.\n", 
+    if (ctx->errors.num_errors > 0 || sim_result != 0)
+    {
+      if (sim_result != 0)
+      {
+        // fprintf(ctx->error_fp, "Failed to run simulation for %s.\n",
         //         strlen(input_filename) > 0 ? input_filename : "stdin");
       }
-      
-      if (ctx->errors.num_errors > 0) {
+
+      if (ctx->errors.num_errors > 0)
+      {
         nec_report(ctx, ONEC_SEV_INFO, "=== Found %d Simulation Errors ===", ctx->errors.num_errors);
       }
-      
-      if (input_fp != stdin) fclose(input_fp);
-      if (output_fp != stdout) fclose(output_fp);
+
+      if (input_fp != stdin)
+        fclose(input_fp);
+      if (output_fp != stdout)
+        fclose(output_fp);
       nec_destroy_context(ctx);
       return -1;
     }
   }
 
   // write out the results (only if simulation was configured and ran)
-  if (run_simulation && ctx->save.nfrq > 0) {
-    write_nec_output(ctx, &deck, output_fp);
-  } else if (run_simulation && ctx->save.nfrq == 0) {
-    // If there were no FR cards, check whether the deck contained RP cards
-    // (request points). If RP cards are present it's acceptable to have no
-    // FR card for some decks, so only warn when neither FR nor RP appear.
-    int sawRP = 0;
-    for (int ci = 0; ci < deck.num_cards; ci++) {
-      if (strcmp(deck.cards[ci].card_code, "RP") == 0) { sawRP = 1; break; }
-    }
-    if (!sawRP) {
-      nec_report(ctx, ONEC_SEV_WARNING, "No FR card found, skipping output generation");
+  // Sentinels: gnd.ifar == -1 means no RP card; fpat.near == -1 means no NE/NH card.
+  // ifar==0 and near==0 are both valid calculation modes, so we check != -1.
+  if (run_simulation) {
+    if (ctx->save.nfrq > 0 || ctx->gnd.ifar != -1 || ctx->fpat.near != -1 || ctx->rpat.num_points > 0) {
+      write_nec_output(ctx, &deck, output_fp);
+    } else {
+      nec_report(ctx, ONEC_SEV_FATAL, "No output cards found (FR, RP, NE/NH), skipping output generation");
     }
   }
 
   // close greens file if open
-  if (ctx->green_fp) {
+  if (ctx->green_fp)
+  {
     fclose(ctx->green_fp);
     ctx->green_fp = NULL;
   }
 
   free_deck(&deck);
-  if (input_fp != stdin) fclose(input_fp);
-  if (output_fp != stdout) fclose(output_fp);
+  if (input_fp != stdin)
+    fclose(input_fp);
+  if (output_fp != stdout)
+    fclose(output_fp);
   nec_destroy_context(ctx);
 
   return 0;
@@ -365,30 +392,33 @@ static void generate_output_filename(const char *input_filename, char *output_fi
 {
   strncpy(output_filename, input_filename, size - 1);
   output_filename[size - 1] = '\0';
-  
+
   // Find the last dot in the filename
   char *dot = strrchr(output_filename, '.');
   char *slash = strrchr(output_filename, '/');
-  
+
   // Only use the dot if it's after the last slash (part of filename, not directory)
-  if (dot != NULL && (slash == NULL || dot > slash)) {
+  if (dot != NULL && (slash == NULL || dot > slash))
+  {
     *dot = '\0';
   }
-  
+
   // Add .out extension
   strncat(output_filename, ".out", size - strlen(output_filename) - 1);
 }
 
-typedef struct {
+typedef struct
+{
   const char *input;
   char output[512];
   int index;
-  int status; // 0 ok, -1 failure
+  int status;    // 0 ok, -1 failure
   char *log_buf; // captured stderr
   size_t log_size;
 } task_t;
 
-typedef struct {
+typedef struct
+{
   task_t *tasks;
   int task_count;
   int next_index;
@@ -398,15 +428,18 @@ typedef struct {
 static void *worker_thread(void *arg)
 {
   work_queue_t *q = (work_queue_t *)arg;
-  while (1) {
+  while (1)
+  {
     int idx = -1;
     pthread_mutex_lock(&q->lock);
-    if (q->next_index < q->task_count) {
+    if (q->next_index < q->task_count)
+    {
       idx = q->next_index++;
     }
     pthread_mutex_unlock(&q->lock);
 
-    if (idx == -1) break;
+    if (idx == -1)
+      break;
 
     task_t *t = &q->tasks[idx];
 
@@ -418,7 +451,8 @@ static void *worker_thread(void *arg)
     char *buf = NULL;
     size_t sz = 0;
     FILE *memfp = open_memstream(&buf, &sz);
-    if (!memfp) {
+    if (!memfp)
+    {
       // fallback: use stderr (may interleave)
       fprintf(stderr, "Processing %d of %d: %s...\n", idx + 1, q->task_count, t->input);
       fflush(stderr);
@@ -438,19 +472,25 @@ static void *worker_thread(void *arg)
   return NULL;
 }
 
-static void add_to_string_list(char ***list, int *count, int *cap, const char *str) {
-  if (*list == NULL || *count >= *cap) {
-    if (*cap == 0) *cap = 16;
+static void add_to_string_list(char ***list, int *count, int *cap, const char *str)
+{
+  if (*list == NULL || *count >= *cap)
+  {
+    if (*cap == 0)
+      *cap = 16;
     char **new_list = realloc(*list, *cap * sizeof(char *));
-    if (!new_list) abort();
+    if (!new_list)
+      abort();
     *list = new_list;
   }
   (*list)[(*count)++] = strdup(str);
 }
 
-static int has_nec_extension(const char *filename) {
+static int has_nec_extension(const char *filename)
+{
   const char *ext = strrchr(filename, '.');
-  if (!ext) return false;
+  if (!ext)
+    return false;
   return (strcasecmp(ext, ".nec") == 0 ||
           strcasecmp(ext, ".deck") == 0 ||
           strcasecmp(ext, ".onec") == 0);
@@ -460,20 +500,23 @@ static int has_nec_extension(const char *filename) {
 int main(int argc, char **argv)
 {
   FILE *error_fp = NULL;
-  
+
   // process the command line options
   parse_options(argc, argv);
 
   // open the error file if it was provided, otherwise stderr
-  if(strlen(error_file) > 0) {
-    if((error_fp = fopen(error_file, "w")) == NULL) {
+  if (strlen(error_file) > 0)
+  {
+    if ((error_fp = fopen(error_file, "w")) == NULL)
+    {
       char mesg[128] = "onec: ";
       strcat(mesg, error_file);
       perror(mesg);
       exit(EXIT_FAILURE);
     }
   }
-  else {
+  else
+  {
     error_fp = stderr;
   }
 
@@ -482,22 +525,31 @@ int main(int argc, char **argv)
   int num_files = 0;
   int file_cap = 4096;
 
-  if (optind >= argc) {
-    if (!isatty(STDIN_FILENO)) {
+  if (optind >= argc)
+  {
+    if (!isatty(STDIN_FILENO))
+    {
       // Stdin is redirected, process it
       const char *out = (strlen(output_file) > 0) ? output_file : "";
-      if (process_single_file("", out, error_fp) != 0) {
+      if (process_single_file("", out, error_fp) != 0)
+      {
         fprintf(error_fp, "Error processing stdin\n");
-        if (error_fp != stderr) fclose(error_fp);
+        if (error_fp != stderr)
+          fclose(error_fp);
         return EXIT_FAILURE;
       }
-    } else {
+    }
+    else
+    {
       // No input files specified and stdin not redirected
       fprintf(error_fp, "onec: missing file operand\nTry 'onec --help' for more information.\n");
-      if (error_fp != stderr) fclose(error_fp);
+      if (error_fp != stderr)
+        fclose(error_fp);
       return EXIT_FAILURE;
     }
-  } else {
+  }
+  else
+  {
     // Collect all files, including from directories
     char **dir_queue = NULL;
     int dir_count = 0;
@@ -505,24 +557,33 @@ int main(int argc, char **argv)
     int dir_head = 0;
 
     // Initial files/dirs from command line
-    for (int i = optind; i < argc; i++) {
+    for (int i = optind; i < argc; i++)
+    {
       struct stat st;
-      if (stat(argv[i], &st) == 0) {
-        if (S_ISDIR(st.st_mode)) {
+      if (stat(argv[i], &st) == 0)
+      {
+        if (S_ISDIR(st.st_mode))
+        {
           add_to_string_list(&dir_queue, &dir_count, &dir_cap, argv[i]);
-        } else {
+        }
+        else
+        {
           add_to_string_list(&file_list, &num_files, &file_cap, argv[i]);
         }
-      } else {
+      }
+      else
+      {
         fprintf(error_fp, "Warning: cannot access '%s': %s\n", argv[i], strerror(errno));
       }
     }
 
     // BFS for directories
-    while (dir_head < dir_count) {
+    while (dir_head < dir_count)
+    {
       char *current_dir = dir_queue[dir_head++];
       DIR *d = opendir(current_dir);
-      if (!d) {
+      if (!d)
+      {
         fprintf(error_fp, "Warning: cannot open directory '%s': %s\n", current_dir, strerror(errno));
         continue;
       }
@@ -533,7 +594,8 @@ int main(int argc, char **argv)
       int subdir_cap = 128;
 
       struct dirent *entry;
-      while ((entry = readdir(d)) != NULL) {
+      while ((entry = readdir(d)) != NULL)
+      {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
           continue;
 
@@ -546,160 +608,195 @@ int main(int argc, char **argv)
 
         struct stat st;
         // For directories, check with stat
-        if (stat(path, &st) == 0 && S_ISDIR(st.st_mode)) {
-          if (recursive) {
+        if (stat(path, &st) == 0 && S_ISDIR(st.st_mode))
+        {
+          if (recursive)
+          {
             add_to_string_list(&subdirs_in_dir, &subdir_count, &subdir_cap, path);
           }
-          } else {
-            // For files, just check extension
-            if (has_nec_extension(entry_name)) {
-              add_to_string_list(&file_list, &num_files, &file_cap, path);
-            }
+        }
+        else
+        {
+          // For files, just check extension
+          if (has_nec_extension(entry_name))
+          {
+            add_to_string_list(&file_list, &num_files, &file_cap, path);
           }
+        }
       }
       // closedir(d);
 
       // Add subdirs to our BFS queue
-      for (int i = 0; i < subdir_count; i++) {
+      for (int i = 0; i < subdir_count; i++)
+      {
         add_to_string_list(&dir_queue, &dir_count, &dir_cap, subdirs_in_dir[i]);
         free(subdirs_in_dir[i]);
       }
       free(subdirs_in_dir);
     }
     // Free all directory paths
-    for (int i = 0; i < dir_count; i++) {
+    for (int i = 0; i < dir_count; i++)
+    {
       free(dir_queue[i]);
     }
     free(dir_queue);
 
-    if (num_files == 0) {
+    if (num_files == 0)
+    {
       fprintf(error_fp, "No compatible files found to process.\n");
-      if (error_fp != stderr) fclose(error_fp);
+      if (error_fp != stderr)
+        fclose(error_fp);
       return EXIT_FAILURE;
     }
 
     // Process files (possibly in parallel)
     int failed_count = 0;
-    if (jobs <= 1 || num_files == 1) {
+    if (jobs <= 1 || num_files == 1)
+    {
       // Serial path
-      if (num_files > 1) {
+      if (num_files > 1)
+      {
         fprintf(error_fp, "Found %d files to process\n", num_files);
       }
-      for (int i = 0; i < num_files; i++) {
+      for (int i = 0; i < num_files; i++)
+      {
         const char *input = file_list[i];
         char output[512];
-        if (strlen(output_file) > 0 && num_files == 1) {
+        if (strlen(output_file) > 0 && num_files == 1)
+        {
           strncpy(output, output_file, sizeof(output) - 1);
           output[sizeof(output) - 1] = '\0';
-        } else {
+        }
+        else
+        {
           generate_output_filename(input, output, sizeof(output));
         }
-        if (num_files > 1) {
+        if (num_files > 1)
+        {
           fprintf(error_fp, "Processing %d of %d: %s...\n", i + 1, num_files, input);
           fflush(error_fp);
         }
-        if (process_single_file(input, output, error_fp) != 0) {
+        if (process_single_file(input, output, error_fp) != 0)
+        {
           failed_count++;
         }
         free(file_list[i]);
         file_list[i] = NULL;
       }
-      if (failed_count > 0) {
+      if (failed_count > 0)
+      {
         fprintf(error_fp, "\nCompleted with %d error(s) out of %d file(s)\n", failed_count, num_files);
       }
-    } else {
+    }
+    else
+    {
       // Parallel execution with deterministic log ordering
       int count = num_files;
       task_t *tasks = (task_t *)calloc((size_t)count, sizeof(task_t));
-      if (!tasks) {
+      if (!tasks)
+      {
         fprintf(error_fp, "Error: Out of memory creating task list\n");
-        if (error_fp != stderr) fclose(error_fp);
+        if (error_fp != stderr)
+          fclose(error_fp);
         return EXIT_FAILURE;
       }
-      // Prepare tasks 
-      for (int k = 0; k < count; k++) {
+      // Prepare tasks
+      for (int k = 0; k < count; k++)
+      {
         tasks[k].input = file_list[k];
         tasks[k].index = k;
-        if (strlen(output_file) > 0 && count == 1) {
+        if (strlen(output_file) > 0 && count == 1)
+        {
           strncpy(tasks[k].output, output_file, sizeof(tasks[k].output) - 1);
           tasks[k].output[sizeof(tasks[k].output) - 1] = '\0';
-        } else {
+        }
+        else
+        {
           generate_output_filename(tasks[k].input, tasks[k].output, sizeof(tasks[k].output));
         }
       }
       // Start worker pool
       int nthreads = jobs;
-      if (nthreads > count) nthreads = count;
+      if (nthreads > count)
+        nthreads = count;
       pthread_t *threads = (pthread_t *)calloc((size_t)nthreads, sizeof(pthread_t));
       work_queue_t queue;
       queue.tasks = tasks;
       queue.task_count = count;
       queue.next_index = 0;
       pthread_mutex_init(&queue.lock, NULL);
-      for (int t = 0; t < nthreads; t++) {
+      for (int t = 0; t < nthreads; t++)
+      {
         pthread_create(&threads[t], NULL, worker_thread, &queue);
       }
-      for (int t = 0; t < nthreads; t++) {
+      for (int t = 0; t < nthreads; t++)
+      {
         pthread_join(threads[t], NULL);
       }
       pthread_mutex_destroy(&queue.lock);
       free(threads);
 
       // Emit logs and summarize
-      for (int k = 0; k < count; k++) {
-        if (tasks[k].log_buf && tasks[k].log_size > 0) {
+      for (int k = 0; k < count; k++)
+      {
+        if (tasks[k].log_buf && tasks[k].log_size > 0)
+        {
           fwrite(tasks[k].log_buf, 1, tasks[k].log_size, error_fp);
           free(tasks[k].log_buf);
           tasks[k].log_buf = NULL;
         }
-        if (tasks[k].status != 0) failed_count++;
+        if (tasks[k].status != 0)
+          failed_count++;
       }
       free(tasks);
-      if (failed_count > 0) {
+      if (failed_count > 0)
+      {
         fprintf(error_fp, "\nCompleted with %d error(s) out of %d file(s)\n", failed_count, num_files);
       }
     }
-    
+
     // Clean up file list
-    for (int i = 0; i < num_files; i++) {
-      if (file_list[i]) free(file_list[i]);
+    for (int i = 0; i < num_files; i++)
+    {
+      if (file_list[i])
+        free(file_list[i]);
     }
     free(file_list);
   }
 
-  if (error_fp != stderr) fclose(error_fp);
+  if (error_fp != stderr)
+    fclose(error_fp);
   return EXIT_SUCCESS;
 } /* main */
 
 /*-----------------------------------------------------------------------*/
 #if __WIN32__
-static void sig_handler( int signal )
+static void sig_handler(int signal)
 {
-  fprintf( error_fp, "\n" );
-  switch( signal )
+  fprintf(error_fp, "\n");
+  switch (signal)
   {
-    case SIGINT :
-      fprintf( error_fp, "%s\n", "onec: exiting via user interrupt" );
-      exit( signal );
-      
-    case SIGSEGV :
-      fprintf( error_fp, "%s\n", "onec: segmentation fault" );
-      exit( signal );
-      
-    case SIGFPE :
-      fprintf( error_fp, "%s\n", "onec: floating point exception" );
-      exit( signal );
-      
-    case SIGABRT :
-      fprintf( error_fp, "%s\n", "onec: abort signal received" );
-      exit( signal );
-      
-    case SIGTERM :
-      fprintf( error_fp, "%s\n", "onec: termination request received" );
-      exit( signal );
+  case SIGINT:
+    fprintf(error_fp, "%s\n", "onec: exiting via user interrupt");
+    exit(signal);
+
+  case SIGSEGV:
+    fprintf(error_fp, "%s\n", "onec: segmentation fault");
+    exit(signal);
+
+  case SIGFPE:
+    fprintf(error_fp, "%s\n", "onec: floating point exception");
+    exit(signal);
+
+  case SIGABRT:
+    fprintf(error_fp, "%s\n", "onec: abort signal received");
+    exit(signal);
+
+  case SIGTERM:
+    fprintf(error_fp, "%s\n", "onec: termination request received");
+    exit(signal);
   }
-  
+
 } /* end of sig_handler() */
 #endif
 /*------------------------------------------------------------------------*/
-

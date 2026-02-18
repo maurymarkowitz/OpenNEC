@@ -49,7 +49,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
 int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
 {
     errors_list_t geometry_errors = {0};
-    /* If deck contains WG or GF cards, skip calculations as requested */
+    /* if deck contains WG or GF cards, skip calculations as requested */
     for (int ci = 0; ci < deck->num_cards; ++ci) {
         card_t *c = &deck->cards[ci];
         if (c && (strcmp(c->card_code, "WG") == 0 || strcmp(c->card_code, "GF") == 0)) {
@@ -141,22 +141,22 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
  */
 static int nec_calculation_defaults(nec_context_t *ctx)
 {
-    // Validate that geometry has been calculated
-    if (ctx->geometry.np <= 0) {
+    // validate that geometry has been calculated
+    if (ctx->geometry.np <= 0 && ctx->geometry.mp <= 0) {
         return -1;
     }
     
-    // Set geometry-dependent matrix parameters
+    // set geometry-dependent matrix parameters
     ctx->netcx.npeq = ctx->geometry.np + 2 * ctx->geometry.mp;
     
-    // Matrix parameters (from oldmain.c lines 289-292)
+    // matrix parameters (from oldmain.c lines 289-292)
     if (ctx->matpar.imat == 0) {
         ctx->netcx.neq = ctx->geometry.n + 2 * ctx->geometry.m;
         ctx->netcx.neq2 = 0;
     }
     
-    // Reset all calculation defaults to initial values
-    // These are reset for each run to support multiple calculations
+    // reset all calculation defaults to initial values
+    // these are reset for each run to support multiple calculations
     ctx->fpat.ixtyp = 0;
     ctx->fpat.near = -1;
     ctx->zload.nload = 0;
@@ -736,6 +736,12 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         return -1;
     }
     
+    // If no FR card was processed, default to a single frequency run at
+    // the context default frequency (CVEL MHz => wavelength = 1 m), matching
+    // NEC-2 behaviour when FR is absent.
+    if (nfrq == 0) {
+        nfrq = 1;
+    }
     // Validate geometry exists
     if (ctx->netcx.neq == 0 || ctx->netcx.npeq == 0) {
         add_error(ctx, &ctx->errors, "Geometry not initialized before frequency loop", FATAL);
@@ -778,7 +784,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
     double *xtemp = NULL, *ytemp = NULL, *ztemp = NULL;
     double *sitemp = NULL, *bitemp = NULL;
     
-    if (ctx->geometry.n > 0) {
+    if (ctx->geometry.n > 0 || ctx->geometry.m > 0) {
         mreq = (ctx->geometry.n + ctx->geometry.m) * sizeof(double);
         mem_alloc(ctx, (void **)&xtemp, mreq);
         mem_alloc(ctx, (void **)&ytemp, mreq);
@@ -795,7 +801,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
             bitemp[i] = ctx->geometry.bi[i];
         }
         
-        // Save patch geometry
+        // Save patch geometry (patch-only decks have n==0 but m>0)
         if (ctx->geometry.m > 0) {
             for (int i = 0; i < ctx->geometry.m; i++) {
                 int j = i + ctx->geometry.n;
@@ -945,11 +951,11 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
             }
             
             // Near field calculation if requested
+            // Note: do NOT reset near to -1 here after the last frequency;
+            // the output guard in main.c reads it after execute_frequency_loop
+            // returns, and nec_calculation_defaults resets it per-batch.
             if (ctx->fpat.near != -1) {
                 nfpat(ctx);
-                if (mhz == nfrq) {
-                    ctx->fpat.near = -1;
-                }
             }
             
             // Store data for radiation pattern output (calculation happens in output.c)

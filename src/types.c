@@ -121,6 +121,7 @@ void nec_context_init(nec_context_t *ctx)
     // Initialize default values (matching original NEC2 initialization)
     ctx->gnd.ksymp = 1;  // Default to free space
     ctx->gnd.ifar = -1;
+    ctx->fpat.near = -1;  // -1 = sentinel "no NE/NH card" (0 is a valid near-field mode)
     ctx->gnd.zrati = CPLX_10;
     ctx->save.fmhz = CVEL;
     

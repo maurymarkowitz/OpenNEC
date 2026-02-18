@@ -513,12 +513,12 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
  * @param m The segment number within that structure
  *
  */
-int segment_number(nec_context_t *ctx, int tag, int m)
+int segment_number(nec_context_t *ctx, int tag, int seg)
 {
   int icnt, iseg;
   char msg[MAX_ERROR_LEN];
   
-  if (m <= 0) {
+  if (seg <= 0) {
     snprintf(msg, sizeof(msg), "segment_number was called with a segment number less or equal to zero.");
     add_error(ctx, &ctx->geometry.errors, msg, 1);
   }
@@ -526,7 +526,7 @@ int segment_number(nec_context_t *ctx, int tag, int m)
   // if the tag number is zero, then simply return the mth segment as the answer
   // FIXME: is there any point assigning iseg here?
   if (tag == 0) {
-    iseg = m;
+    iseg = seg;
     return(iseg);
   }
   
@@ -538,7 +538,7 @@ int segment_number(nec_context_t *ctx, int tag, int m)
         continue;
       
       icnt++;
-      if (icnt == m) {
+      if (icnt == seg) {
         iseg = i + 1;
         return(iseg);
       }
@@ -550,7 +550,6 @@ int segment_number(nec_context_t *ctx, int tag, int m)
     snprintf(msg, sizeof(msg), "segment_number was called with an unknown tag %d", tag);
     add_error(ctx, &ctx->geometry.errors, msg, 1);
   }
-  
   return(0);
 } /* end of segment_number */
 
