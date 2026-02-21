@@ -262,17 +262,18 @@ int insert_card(deck_t *deck, card_t *card, int location) {
  */
 int remove_card(deck_t *deck, int location) {
   // sanity check the location
-  if(location < 0 || location > deck->num_cards) return 1;
+  if(location < 0 || location >= deck->num_cards) return 1;
   
   // get a handle to the card for future references
   card_t temp = deck->cards[location];
   
   // don't calloc/realloc the deck_t smaller, see
   // https://stackoverflow.com/questions/7078019/using-realloc-to-shrink-the-allocated-memory
-  // copy everything below it up one space
-  for(int i = deck->num_cards - 1; i >= location; i--) {
-    deck->cards[i - 1] = deck->cards[i];
+  // shift everything after location down one space
+  for(int i = location; i < deck->num_cards - 1; i++) {
+    deck->cards[i] = deck->cards[i + 1];
   }
+  deck->num_cards--;
   
   // free the card
   free_card(&temp);
