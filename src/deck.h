@@ -36,4 +36,8 @@ void evaluate_symbols_in_comments(nec_context_t *ctx, deck_t *deck, errors_list_
 void add_key_value(const card_t *card, key_value_t **list, char *key, char *value, char separator);
 const char* lookup_formula(const card_t *card, const char *key);
 
+/* Card insertion and removal */
+int insert_card(deck_t *deck, card_t *card, int location);
+int remove_card(deck_t *deck, int location);
+
 #endif /* DECK_H */
