@@ -231,9 +231,9 @@ int insert_card(deck_t *deck, card_t *card, int location) {
     deck->cards = realloc(deck->cards, deck->num_cards * sizeof(card_t));
   }
 
-  // copy everything below the point down one space
-  for(int i = location + 1; i < deck->num_cards; i++) {
-    deck->cards[i + 1] = deck->cards[i];
+  // shift everything from location onward up one space to make room
+  for(int i = deck->num_cards - 1; i > location; i--) {
+    deck->cards[i] = deck->cards[i - 1];
   }
   
   // then insert the new one

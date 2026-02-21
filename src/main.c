@@ -74,7 +74,7 @@ void print_usage(char *argv[])
   puts("  -g, --greens: write a greens function file to *.ngf or provided filename");
   puts("  -j, --jobs N: process up to N files in parallel (default 1)");
   puts("  -r, --recursive: process directories recursively");
-  puts("Multiple input files can be specified; each will generate a .out file.");
+  puts("Multiple input files or folders can be specified; each file will generate a .out file.");
   puts("If no source_file is provided, input is read from stdin and output goes to stdout.");
   exit(0);
 }
