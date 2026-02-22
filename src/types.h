@@ -199,6 +199,8 @@ typedef struct deck_t
   
   int comment_start;  /**< Index of the first continuous CM card */
   int comment_end;    /**< Index of the last CM or the CE card */
+  int symbol_start;   /**< Index of the first SY card after CE (-1 if none) */
+  int symbol_end;     /**< Index of the last SY card before geometry (-1 if none) */
   int geometry_start; /**< Index of the first geometry card (usually GW) */
   int geometry_end;   /**< Index of the GE (Geometry End) card */
   int deck_end;       /**< Index of the EN (Execution End) card */
@@ -206,7 +208,7 @@ typedef struct deck_t
   int unit_val;       /**< GS card scaling value (default 1) */
   int unit_typ;       /**< Recognized index for GS unit type */
   key_value_t **symbols; /**< Array of symbols (SY) found in the deck */
-  int num_symbols;       /**< Total number of symbols */
+  int num_symbols;    /**< Total number of symbols */
 } deck_t;
 
 /** @brief Opaque handle to the internal simulation state. 

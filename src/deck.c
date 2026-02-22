@@ -102,6 +102,8 @@ void recalculate_sections(deck_t *deck)
   // reset the indexes
   deck->comment_start = -1;
   deck->comment_end = -1;
+  deck->symbol_start = -1;
+  deck->symbol_end = -1;
   deck->geometry_start = -1;
   deck->geometry_end = -1;
   deck->deck_end = -1;
@@ -118,16 +120,22 @@ void recalculate_sections(deck_t *deck)
     if(isCmt) {
       if(deck->comment_start == -1)
         deck->comment_start = i;
-      if(deck->comment_start != -1)
-        deck->comment_end = i;
+      deck->comment_end = i;
+      continue;
+    }
+    // SY cards form an optional symbol section between CE and first geometry;
+    // SY cards that appear elsewhere in the deck are not part of this section
+    if(strcmp(card->card_code, "SY") == 0 && deck->geometry_start == -1) {
+      if(deck->symbol_start == -1)
+        deck->symbol_start = i;
+      deck->symbol_end = i;
       continue;
     }
     bool isGeo = is_geometry(card);
     if(isGeo) {
       if(deck->geometry_start == -1)
         deck->geometry_start = i;
-      if(deck->geometry_end != -1)
-        deck->geometry_end = i;
+      deck->geometry_end = i;
       continue;
     }
     // the oddball is the end, which is only at the EN card
