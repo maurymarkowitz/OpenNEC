@@ -208,6 +208,10 @@ int append_card(deck_t *deck, card_t *card) {
   // so we need to make the card edited so this will be noticed
   card->edited = true;
 
+  // new cards inherit the deck's separator style if one has been established
+  if (deck->field_sep != FSEP_UNKNOWN)
+    deck->cards[deck->num_cards - 1].field_sep = deck->field_sep;
+
   // refresh the deck layout
   recalculate_sections(deck);
 
@@ -250,6 +254,10 @@ int insert_card(deck_t *deck, card_t *card, int location) {
   // appending a card changes the deck and requires a recalc of that section
   // so we need to make the card edited so this will be noticed
   card->edited = true;
+
+  // new cards inherit the deck's separator style if one has been established
+  if (deck->field_sep != FSEP_UNKNOWN)
+    deck->cards[location].field_sep = deck->field_sep;
 
   // refresh the deck layout
   recalculate_sections(deck);

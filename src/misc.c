@@ -228,6 +228,31 @@ void mem_free( const nec_context_t *ctx, void **ptr )
 /*------------------------------------------------------------------------*/
 
 /******************************************************************************
+ * detect_field_separator
+ *
+ * Examines the raw card string after the 2-char mnemonic to determine
+ * the field separator style. Used during parsing to record the original
+ * formatting for round-trip output.
+ *
+ * @param card_str the raw card string starting with the 2-char mnemonic
+ * @return the detected field_sep_t style
+ */
+field_sep_t detect_field_separator(const char *card_str) {
+  if (!card_str || strlen(card_str) <= 2) return FSEP_UNKNOWN;
+
+  const char *p = card_str + 2; // skip 2-char mnemonic
+
+  if (*p == '\t') return FSEP_TAB;
+  if (*p == ',')  return FSEP_COMMA;
+  if (*p == ' ') {
+    int count = 0;
+    while (*p == ' ') { count++; p++; }
+    return (count >= 2) ? FSEP_COLUMN_ALIGNED : FSEP_SPACE;
+  }
+  return FSEP_UNKNOWN;
+}
+
+/******************************************************************************
  * preprocess_line
  *
  * Applies all 4nec2 preprocessing steps to a card line.

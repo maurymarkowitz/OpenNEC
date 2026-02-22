@@ -146,6 +146,22 @@ typedef struct key_value_t
 	struct key_value_t* next;
 } key_value_t;
 
+/**
+ * @enum field_sep_t
+ * @brief Describes the field separator style used in a card's raw input.
+ *
+ * Captured during parsing to allow round-trip output to preserve the
+ * original file's formatting style. At the deck level, only set when
+ * all geometry and control cards agree on the same style.
+ */
+typedef enum {
+  FSEP_UNKNOWN = 0,     /**< Not detected or cards disagree */
+  FSEP_SPACE,           /**< Single space between fields */
+  FSEP_COLUMN_ALIGNED,  /**< Two or more spaces (column-aligned style) */
+  FSEP_TAB,             /**< Tab character between fields */
+  FSEP_COMMA,           /**< Comma between fields */
+} field_sep_t;
+
 /*** card_t encapsulates a single card ***/
 /**
  * @struct card_t
@@ -157,7 +173,8 @@ typedef struct key_value_t
 typedef struct card_t
 {
   bool edited;        /**< true if the card has been modified since being read */
-  
+  field_sep_t field_sep; /**< Field separator style detected during parsing */
+
   char *orig_str;     /**< The original raw string line from the file */
   char *card_str;     /**< The card content minus any inline comments */
   
@@ -209,6 +226,7 @@ typedef struct deck_t
   int unit_typ;       /**< Recognized index for GS unit type */
   key_value_t **symbols; /**< Array of symbols (SY) found in the deck */
   int num_symbols;    /**< Total number of symbols */
+  field_sep_t field_sep; /**< Separator style shared by all geo/control cards, or FSEP_UNKNOWN if mixed */
 } deck_t;
 
 /** @brief Opaque handle to the internal simulation state. 

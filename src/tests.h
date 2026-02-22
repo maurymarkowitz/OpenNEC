@@ -13,5 +13,6 @@
 void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors);
 void test_duplicate_tags(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors);
 void test_card_inputs(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors);
+void test_field_separators(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors);
 
 #endif /* TESTS_H */

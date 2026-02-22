@@ -37,6 +37,9 @@ char* trim_end(char* dest);
 char* trim(char* dest);
 int str_ends_with(const nec_context_t *ctx, const char *str, const char *suffix);
 
+/* Field separator detection */
+field_sep_t detect_field_separator(const char *card_str);
+
 /* 4nec2 Preprocessing */
 char *preprocess_line(const char *line);
 char *preprocess_awg(const char *formula);

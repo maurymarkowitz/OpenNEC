@@ -567,6 +567,24 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     }
   } // foreach card
 
+  // Determine deck-level separator: scan geometry and control cards only;
+  // set deck->field_sep if they all agree, otherwise leave as FSEP_UNKNOWN.
+  {
+    field_sep_t consensus = FSEP_UNKNOWN;
+    bool conflict = false;
+    for (int i = 0; i < deck->num_cards && !conflict; i++) {
+      card_t *c = &deck->cards[i];
+      if (!is_geometry(c) && !is_control(c)) continue;
+      if (c->field_sep == FSEP_UNKNOWN) continue;
+      if (consensus == FSEP_UNKNOWN) {
+        consensus = c->field_sep;
+      } else if (c->field_sep != consensus) {
+        conflict = true;
+      }
+    }
+    deck->field_sep = conflict ? FSEP_UNKNOWN : consensus;
+  }
+
    // add invisible=true for geometry cards with tag >9000, from 4nec2
   mark_4nec2_cards_invisible(ctx, deck);
 } /* end of parse_deck() */
@@ -640,6 +658,7 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
   // skip the first two chars, the mnemonic is still there and it
   // can't be a single-char comment market, which was handled above
   // we'll use this as the pointer to the current start location
+  card->field_sep = detect_field_separator(card->card_str);
   char *trimmed = trim_start(card->card_str + 2);
   char *preprocessed = preprocess_line(trimmed);
   

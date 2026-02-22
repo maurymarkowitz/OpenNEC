@@ -1367,4 +1367,72 @@ void test_bad_symbols(const nec_context_t *ctx, deck_t *deck, errors_list_t *err
   }
 } /* end of test_bad_symbols */
 
+/******************************************************************************
+ * test_field_separators
+ *
+ * Checks whether all cards in the geometry section use the same field
+ * separator style, and likewise for the control section.  Mixed separators
+ * within a section produce a warning — the deck will still calculate, but
+ * it suggests the file was edited inconsistently and may cause problems
+ * for any output code attempting to preserve the original formatting.
+ *
+ * @param ctx  the nec_context_t (used for error reporting)
+ * @param deck the deck_t to test
+ * @param errors the errors_list_t to append warnings to
+ */
+void test_field_separators(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
+{
+  char msg[MAX_ERROR_LEN];
+
+  // helper: scan a range of cards for separator consistency
+  // returns false (and adds a warning) if mixed separators are found
+  int geo_end   = (deck->geometry_end  >= 0) ? deck->geometry_end  : deck->num_cards - 1;
+  int ctrl_end  = (deck->deck_end      >= 0) ? deck->deck_end      : deck->num_cards - 1;
+  int ctrl_start = geo_end + 1;
+
+  // --- geometry section ---
+  if (deck->geometry_start >= 0) {
+    field_sep_t first_sep = FSEP_UNKNOWN;
+    int first_sep_idx = -1;
+    for (int i = deck->geometry_start; i <= geo_end; i++) {
+      const card_t *c = &deck->cards[i];
+      if (!is_geometry(c)) continue;
+      if (c->field_sep == FSEP_UNKNOWN) continue;
+      if (first_sep == FSEP_UNKNOWN) {
+        first_sep = c->field_sep;
+        first_sep_idx = i + 1; // 1-based for message
+      } else if (c->field_sep != first_sep) {
+        snprintf(msg, sizeof(msg),
+          "Geometry section has mixed field separators: card %d uses a different style "
+          "from card %d. Output formatting may not preserve the original file style.",
+          i + 1, first_sep_idx);
+        add_error(ctx, errors, msg, WARNING);
+        break; // one warning per section is enough
+      }
+    }
+  }
+
+  // --- control section ---
+  if (ctrl_start < deck->num_cards) {
+    field_sep_t first_sep = FSEP_UNKNOWN;
+    int first_sep_idx = -1;
+    for (int i = ctrl_start; i <= ctrl_end; i++) {
+      const card_t *c = &deck->cards[i];
+      if (!is_control(c)) continue;
+      if (c->field_sep == FSEP_UNKNOWN) continue;
+      if (first_sep == FSEP_UNKNOWN) {
+        first_sep = c->field_sep;
+        first_sep_idx = i + 1;
+      } else if (c->field_sep != first_sep) {
+        snprintf(msg, sizeof(msg),
+          "Control section has mixed field separators: card %d uses a different style "
+          "from card %d. Output formatting may not preserve the original file style.",
+          i + 1, first_sep_idx);
+        add_error(ctx, errors, msg, WARNING);
+        break;
+      }
+    }
+  }
+} /* end of test_field_separators */
+
 /* end of tests.c */
