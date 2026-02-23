@@ -158,6 +158,8 @@ onec comment cards can be placed anywhere in the deck. They can be marked with t
 ```
 Note: function names are case-insensitive. Trigonometric functions (`sin`, `cos`, `tan`) take angles in **degrees**; `atn` (arc tangent) also returns **degrees**. `log` is the natural logarithm (base e); use `log10` for base-10. `int` rounds to the nearest integer. `mod(val, div)` returns the remainder after division. `sgn` returns -1, 0, or +1 depending on the sign of its argument. `sqr` is an alias for square root, the `sqrt` variation is also available.
 
+Although variables can be defined on any line, throughout the deck, when they are used it is common to see them in a separate section near the top of the file, between the comments and geometry. onec refers to this as the "variable area".
+
 An onec variable card contains one or more variable definitions consisting of name=formula pairs. Variable names and formulas may not contain spaces or other whitespace characters. Variable names must start with a leading letter character followed by zero or more characters including digits and underscores. Formulas consist of one or more visible characters including numbers and mathematical symbols.
 
 NOTE: formula names are case insensitive, p and P refer to the same variable, as does r1 and R1.
