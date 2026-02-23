@@ -19,6 +19,23 @@ bool card_is_toggleable(const card_t *card);
 void card_disable(deck_t *deck, card_t *card);
 void card_enable(deck_t *deck, card_t *card);
 
+/**
+ * card_is_invisible - card is annotated invisible (ignore=true, no leading marker).
+ * Geometry IS generated but goes to ignored_geometry rather than live geometry.
+ * The card remains visible to the GUI and can be toggled back on.
+ */
+static inline bool card_is_invisible(const card_t *card) {
+  return card->ignore && card->cmt_code[0] == '\0';
+}
+
+/**
+ * card_is_commented_out - card has a leading comment marker (e.g. '!', '\'', '#').
+ * Entirely skipped during geometry and calculation — no geometry is generated at all.
+ */
+static inline bool card_is_commented_out(const card_t *card) {
+  return card->ignore && card->cmt_code[0] != '\0';
+}
+
 /* Card type checking - heavily used across modules */
 bool is_comment(const card_t *card);
 bool is_geometry(const card_t *card);

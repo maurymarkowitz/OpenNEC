@@ -142,8 +142,13 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
     // as commenting it out, because the card is still read and parsed, and the
     // segments are in the geometry and can still be used in a GUI
     //
-    // Determine which geometry structure to use - ignored cards go to ignored_geometry
-    geometry_t *target_geom = card->ignore ? &ctx->ignored_geometry : &ctx->geometry;
+    // Commented-out cards (leading marker like '!' or ''') are skipped entirely —
+    // they produce no geometry at all, not even in ignored_geometry.
+    if (card_is_commented_out(card)) continue;
+
+    // Invisible cards (annotated ignore=true but no leading marker) still generate
+    // geometry, routed to ignored_geometry so the GUI can display them.
+    geometry_t *target_geom = card_is_invisible(card) ? &ctx->ignored_geometry : &ctx->geometry;
     
     // convert the code into its numeric value so we can switch on it
     for(code_num = 0; code_num < NUM_GEOMETRY_CODES; code_num++) {
@@ -240,7 +245,9 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         continue;
         
       case 1: // GX, reflect structure along x, y, or z axes, or rotate to form cylinder
-        if (card->ignore) continue; // ignored/commented-out GX cards must not affect the live geometry
+        // card_is_commented_out already handled above; invisible GX runs against ignored_geometry is not
+        // meaningful (reflect has no target_geom param), so skip invisible too
+        if (card->ignore) continue;
         // the gx puts a three-digit integer value in the I2 slot, and then uses its digits
         // as bit flags for the x, y and z axes. here were pull them out...
         iy = segs / 10;
@@ -258,7 +265,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         continue;
         
       case 2: // GR, rotate the structure
-        if (card->ignore) continue; // ignored/commented-out GR cards must not affect the live geometry
+        if (card->ignore) continue; // structural transforms have no target_geom param; skip all ignored
         // I2 is the number of times to duplicate the structure as it rotates
         
         // ix is set to -1 to indicate this is a rotation, not reflection
@@ -266,7 +273,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         continue;
         
       case 3: // GS, scale structure dimensions by factor xw1
-        if (card->ignore) continue; // ignored/commented-out GS cards must not affect the live geometry
+        if (card->ignore) continue; // structural transforms have no target_geom param; skip all ignored
         if (xw1 == 0.0) {
           /*
            * Special-case handling: sometimes unit tokens (e.g. "in", "ft")
@@ -339,7 +346,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         return;
         
       case 5: // GM, move structure or reproduce/duplicate original structure in new positions
-        if (card->ignore) continue; // ignored/commented-out GM cards must not affect the live geometry
+        if (card->ignore) continue; // structural transforms have no target_geom param; skip all ignored
         xw1 = xw1 * TA;
         yw1 = yw1 * TA;
         zw1 = zw1 * TA;
