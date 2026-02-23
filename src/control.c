@@ -109,6 +109,9 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
             if (strcmp(card->card_code, "EN") == 0 || strcmp(card->card_code, "XT") == 0) {
                 is_termination = true;
             }
+            if (strcmp(card->card_code, "XT") == 0) {
+                ctx->xt_terminated = true;
+            }
         }
         
         // Execute frequency loop for this batch (unless EN/XT)

@@ -361,6 +361,9 @@ static int process_single_file(const char *input_filename, const char *output_fi
   if (run_simulation) {
     if (ctx->save.nfrq > 0 || ctx->gnd.ifar != -1 || ctx->fpat.near != -1 || ctx->rpat.num_points > 0) {
       write_nec_output(ctx, &deck, output_fp);
+    } else if (ctx->xt_terminated) {
+      // XT card halted execution before any FR/RP — this is expected, not an error
+      nec_report(ctx, ONEC_SEV_WARNING, "Simulation halted by XT card; no output generated.");
     } else {
       nec_report(ctx, ONEC_SEV_FATAL, "No output cards found (FR, RP, NE/NH), skipping output generation");
     }

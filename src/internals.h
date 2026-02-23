@@ -619,6 +619,7 @@ struct nec_context_t
 	int card_number_offset; /* Starting card number for current batch */
 	int iflow;              /* Processing state: 1=FR, 2=CP, 3=LD, 6=NT/TL, 7-11=execution */
 	int eval_depth;         /* To track recursion depth during symbol evaluation */
+	bool xt_terminated;     /* True if simulation was halted by an XT card; no output is expected */
 };
 
 /* Internal initialization and cleanup (called by nec_create_context/nec_destroy_context) */

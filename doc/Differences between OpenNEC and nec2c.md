@@ -26,28 +26,15 @@ Changes in the code
 Other basic changes
 -------------------
 
-- OpenNEC includes extensive input validations that test for errors in the deck setup, like `FR`s lacking a frequency, or that `GN` must be immediately followed by `GD`. These can be run against any NEC-2 compatible deck. These are emitted as warnings and do not prevent calculation in cases where other engines are permissive, but they help make decks more portable across implementations.
+- OpenNEC includes extensive input validations that test for errors in the deck setup, like a missing `GE` card, `FR`s lacking a frequency, or a `GN` that is not followed by `GD`. These tests can be run against any NEC-2 compatible deck. These are emitted as warnings and do not prevent calculation in cases where other engines are permissive, but they help make decks more portable across implementations.
+
+- The tests also include a geometry and calculation sanity check system that looks for common errors like overlapping wires or wires touching ground. This is currently limited in scope, but will be expanded over time.
 
 - OpenNEC also includes per-field validations that can be used by a GUI program to graphically indicate problems. For instance, if the user makes a new FR card, the validation functions will indicate that the empty value in the F2 field needs to be entered. If they enter a value in I2, which indicates steps, it will indicate that a value has to be entered in F2. There is an extensive suite of these validations.
 
+  - Note: Many validations are emitted as warnings (non-fatal) to preserve compatibility with existing decks while highlighting potential issues.
+
 - OpenNEC provides a `-g` option to export Green's function data (NGF). When enabled, segment centers and the interaction matrix are written per frequency step.
-
-OpenNEC additions
------------------
-
-OpenNEC also includes a number of significant additions to the basic NEC-2 system:
-
-- OpenNEC allows measurement units to be defined on a per-field basis. This is especially useful when defining wire radii; in an OpenNEC file a wire can be defined as "#3" to use an AWG wire, instead of having to replace that with the measurement in meters, "0.0058268". Different measurements can be used on different fields on the same card, or different cards.
-
-- OpenNEC adds a generic extension mechanism using key/value pairs that can be used by 3rd party software to add functionality without changing the underlying deck format. For instance, one could add "material:copper" to a card, and a GUI application using OpenNEC could then apply a copper color in a 3D model. These extensions are stored within an inline comment, so they have no effect on the NEC-2 code. A utility method allows these to be stripped out to produce a new deck that is compatible with generic NEC implementations.
-
-  - Extension keys should always be compared in a case-insensitive manner. Keys should always be *written* in lower-case no matter how they were entered.
-
-  - Four extensions are known to the basic OpenNEC system: `name`, `group`, `ignored` and `invisible`. `name` and `group` are free-form strings intended to allow GUI-based applications to provide richer information and/or group related sections of the deck together. `ignore` is used to calculate the object's geometry but ignore it during calculations. This can be used, for instance, to add a boom that is displayed in the GUI but has no effect on the calculations. `invisible` is the opposite, it is used to suppress the element in GUI displays of the geometry, while still being used in calculations. This is useful when there are elements placed a long distance from the main antenna, which might otherwise cause the GUI to zoom out too far when rendering.
-
-  - Additionally, 3rd party software using OpenNEC should be aware of these non-required GUI-related extensions: `material` and `shape`. `material` is a free-form field but a number of common materials are defined. `shape` is used to control the cross section in the display, for instance `shape=square` might be used when defining a boom on a Yagi antenna.
-
-- The key/value entries can be entered in a variety of formats, see the "OpenNEC file format" document for details.
 
 Additions from other systems
 ----------------------------
@@ -60,16 +47,26 @@ A number of features commonly found in other popular NEC-based programs have bee
 
 * OpenNEC supports in-line formulas, also found in 4nec2 decks. These allow you to define a symbol and then perform basic math operations on it, like "height+5". This has many uses, especially during optimizations. OpenNEC adds the additional ability to define these formulas in the extensions instead of directly in the card fields. OpenNEC can save files in 4nec2 format with these items directly in the fields, or in OpenNEC format with them hidden in comments so that the resulting deck is NEC-2 compatible. In the latter case, the calculated value is placed in the field so it remains NEC-2 compatible during calculations.
 
-* OpenNEC supports the `XT` card type from nec2c, which stops processing at that point. In contrast to nec2c, which simply exits the program when an `XT` is encountered, OpenNEC will still read the entire deck, but will only process up to the point of the XT. This effectively treats any following cards as comments.
+* In-line formulas can be used to support measurement units on a per-field basis. For instance, one can use "1ft" to define the span of a wire. Internally, this is converted to "1*ft", where ft is a variable with the conversion from feet to meters. This is the same basic logic used in 4nec2.
+
+* OpenNEC supports the `XT` card type from nec2c, which stops processing at that point. OpenNEC will still read the entire deck, but will only process up to the point of the XT. This allows additional cards to be placed in the deck but ignored during processing, and those can be "turned on" by removing the XT.
 
 * OpenNEC supports the `#` comment marker from nec2c. This was used to insert whole-line comments at any point in the deck, a system that does not appear to be widely used in other systems. Note that the `#` comment marker can only appear at the start of a line and cannot be used to insert end-of-line comments. At any other location in the line, # is used as it is in 4nec2, to indicate a field is using AWG measurements. The leading-`#` is included only for compatibility, it is not considered to be part of the OpenNEC standard and should not be used except to produce nec2c compatible files. The modern replacement is `!`.
 
-Other additions
----------------
+OpenNEC additions
+-----------------
 
-* OpenNEC includes a whole-deck sanity check system that looks for common errors, like overlapping wires or wires touching ground. It also reports on more minor issues like missing CE or EN cards that can cause problems with some NEC-2 implementations. This allows OpenNEC to be used as a stand-alone syntax checker. The list of issues is in an exposed structure, Errors, which allows further tests to be implemented in external software and then added to existing errors lists to keep everything in one place.
+OpenNEC also includes a number of significant additions to the basic NEC-2 system:
 
-  - Note: Many validations are emitted as warnings (non-fatal) to preserve compatibility with existing decks while highlighting potential issues.
+- OpenNEC adds a generic extension mechanism using key/value pairs that can be used by 3rd party software to add functionality without changing the underlying deck format. For instance, one could add "material:copper" to a card, and a GUI application using OpenNEC could then apply a copper color in a 3D model. These extensions are stored within an inline comment, so they have no effect on the NEC-2 code. A utility method allows these to be stripped out to produce a new deck that is compatible with generic NEC implementations.
+
+  - Extension keys should always be compared in a case-insensitive manner. Keys should always be *written* in lower-case no matter how they were entered.
+
+- Four extensions are known to the basic OpenNEC system: `name`, `group`, `ignored` and `invisible`. `name` and `group` are free-form strings intended to allow GUI-based applications to provide richer information and/or group related sections of the deck together. `ignore` is used to calculate the object's geometry but ignore it during calculations. This can be used, for instance, to add a boom that is displayed in the GUI but has no effect on the calculations. `invisible` is the opposite, it is used to suppress the element in GUI displays of the geometry, while still being used in calculations. This is useful when there are elements placed a long distance from the main antenna, which might otherwise cause the GUI to zoom out too far when rendering.
+
+- Additionally, 3rd party software using OpenNEC should be aware of these non-required GUI-related extensions: `material` and `shape`. `material` is a free-form field but a number of common materials are defined. `shape` is used to control the cross section in the display, for instance `shape=square` might be used when defining a boom on a Yagi antenna.
+
+- The key/value entries can be entered in a variety of formats, see the "OpenNEC file format" document for details.
 
 Defined constants
 -----------------
@@ -80,4 +77,4 @@ OpenNEC defines a number of constants used in the extensions that 3rd party soft
 
 - the `material` may be any value, but the following values should be expected; `silver`, `copper`, `aluminum`, `6061-T6`, `6063-T832`, `brass`, `phosphor bronze` and `steel`. This list was based on the materials from Yagi Optimizer.
 
-- `shape` may also be any value, but `circle` and `square` should be expected
+- `shape` may also be any value, but `circle` and `square` should be expected.
