@@ -65,7 +65,8 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
   // and the symbols...
   deck->num_symbols = 0;
   
-  // and set the default comment marker to empty
+  // and set the default comment markers to empty
+  deck->extn_code = 0;
   deck->cmt_code = 0;
 
   // loop and read lines one-by-one until we hit the EOF
@@ -369,6 +370,8 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     card = &deck->cards[i];
     // get the card and the original string length
     line_len = strlen(card->orig_str);
+    // for hidden (commented-out) cards, card_str starts past the leading marker
+    size_t card_str_offset = 0;
     
     // Skip leading whitespace
     size_t first = 0;
@@ -432,13 +435,13 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
       deck->comment_end = i;
       sawCE = true;
     }
-    // if this is the first geo card, including GE...
-    if(isGeo && !sawGx && !sawEN) {
+    // if this is the first geo card, including GE (but not commented-out cards)...
+    if(isGeo && !sawGx && !sawEN && !card->ignore) {
       deck->geometry_start = i;
       sawGx = true;
     }
     // the GE only has to be above the end of the deck
-    if(strcmp(type_buff, "GE") == 0 && !sawGE && !sawEN) {
+    if(strcmp(type_buff, "GE") == 0 && !sawGE && !sawEN && !card->ignore) {
       deck->geometry_end = i;
       sawGE = true;
     }
@@ -448,51 +451,58 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
       sawEN = true;
     }
     
-    // another special case: if this is a comment card but the next two characters
-    // are one of the extensions, this is really a "hidden extension" that is being
-    // used to make the deck compatible with older NEC programs. In that case, we
-    // want to change the card to an extension type, make it not a comment, and save
-    // the comment marker in the extn. note that this could only be the case if the
-    // card has at least three characters, which would assume something like !SY
-    if(isCmt && line_len > 3) {
-      // skip forward to find anything after the comment marker
-      size_t pos = 0;
-      if(strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0)  {
-        pos = 2;
-      } else if (strcmp(type_buff, "!") == 0 || strcmp(type_buff, "#") == 0|| strcmp(type_buff, "'") == 0) {
-        pos = 1;
-      } else {
-        // how would this even happen?
-      }
-      // only continue if we didn't eat the entire line
-      if(pos < line_len) {
-        // eat any whitespace
-        if(isspace(card->orig_str[pos])) {
-          pos++;
-        }
+    // another special case: if this is a single-character comment marker (!, ', #)
+    // followed by a valid NEC or OpenNEC card code, this is a "hidden" (commented-out)
+    // card. Parse it normally and set ignore=true so it is skipped during
+    // calculation, but fully available to the GUI for single-click toggling.
+    // Note: CM/CE header lines are deliberately excluded — they are comment headers,
+    // not commented-out cards.
+    if(isCmt && line_len > 3 &&
+       (strcmp(type_buff, "!") == 0 || strcmp(type_buff, "#") == 0 || strcmp(type_buff, "'") == 0)) {
+      // advance pos past the single-character comment marker
+      size_t pos = 1;
+      // eat one whitespace character if present (handles both !GW and ! GW)
+      if(pos < line_len && isspace((unsigned char)card->orig_str[pos])) {
+        pos++;
       }
       
-      // get the two characters *after* the comment marker
-      if((strcmp(type_buff, "CM") == 0 || strcmp(type_buff, "CE") == 0) && line_len > 4) {
-        strncpy(hidden_type_buff, &card->orig_str[2], 2);
-      } else if (strcmp(type_buff, "!") == 0 || strcmp(type_buff, "#") == 0|| strcmp(type_buff, "'") == 0) {
-        strncpy(hidden_type_buff, &card->orig_str[1], 2);
+      // extract and uppercase the two characters at pos as a potential card code
+      if(pos + 1 < line_len) {
+        hidden_type_buff[0] = toupper((unsigned char)card->orig_str[pos]);
+        hidden_type_buff[1] = toupper((unsigned char)card->orig_str[pos + 1]);
+        hidden_type_buff[2] = '\0';
       } else {
-        // we didn't find anything interesting
-        strcpy(hidden_type_buff, "");
+        hidden_type_buff[0] = '\0';
       }
-      // now we see if those two characters are one of the extensions
+      
+      // check all three code arrays: OpenNEC extensions, geometry, and control
       bool isHidden = false;
-      for(int i = 0; i < NUM_ONEC_CODES; i++) {
-        if(strcmp(hidden_type_buff, onec_codes[i]) == 0) { // was card->card_code in the front?
-          isHidden = true;
-          break;
-        }
+      bool hiddenIsExt = false, hiddenIsGeo = false, hiddenIsCtl = false;
+      for(int j = 0; j < NUM_ONEC_CODES && !isHidden; j++) {
+        if(strcmp(hidden_type_buff, onec_codes[j]) == 0) { isHidden = true; hiddenIsExt = true; }
       }
+      for(int j = 0; j < NUM_GEOMETRY_CODES && !isHidden; j++) {
+        if(strcmp(hidden_type_buff, geometry_codes[j]) == 0) { isHidden = true; hiddenIsGeo = true; }
+      }
+      for(int j = 0; j < NUM_CONTROL_CODES && !isHidden; j++) {
+        if(strcmp(hidden_type_buff, control_codes[j]) == 0) { isHidden = true; hiddenIsCtl = true; }
+      }
+      
       if(isHidden) {
+        // set card_code to the real code, not the comment marker
+        strncpy(card->card_code, hidden_type_buff, 2);
+        card->card_code[2] = '\0';
+        // save the leading comment marker character
+        card->cmt_code[0] = card->orig_str[first];
+        // mark as ignored (commented out); processing will skip it
+        card->ignore = true;
+        // update flags
         isCmt = false;
-        isExt = true;
-        card->extn_code[0] = '!';
+        isExt = hiddenIsExt;
+        isGeo = hiddenIsGeo;
+        isCtl = hiddenIsCtl;
+        // card_str starts at the actual code position, not the comment marker
+        card_str_offset = pos;
       }
     } // checking for hidden info
     
@@ -508,29 +518,32 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     
     // if we did figure out the card type, then we want to put something in the card_str,
     // but first we want to see if there is a comment inside the line ( > 0, < len ) and
-    // clip that part out separately into extn_str
+    // clip that part out separately into extn_str.
+    // For hidden (commented-out) cards, card_str_offset skips past the leading marker
+    // so that card_str starts with the actual card code (e.g. "GW", "GN").
     if(isCmt || isCtl || isGeo || isExt) {
       size_t len; // this is the length of the main card text
-      // look for a comment marker, adjust length of card text based on that
-      const char *sep = strpbrk(card->orig_str, ONEC_COMMENTS);
+      const char *base = card->orig_str + card_str_offset;
+      // look for an inline comment marker, adjust length of card text based on that
+      const char *sep = strpbrk(base, ONEC_COMMENTS);
       if(sep == NULL) {
         // no comment was found, put everything into the string
-        len = strlen(card->orig_str);
+        len = strlen(base);
       } else {
-        if (isCmt && sep == card->orig_str) {
+        if (isCmt && sep == base) {
           // for comment cards that start with comment marker, include the whole line
-          len = strlen(card->orig_str);
+          len = strlen(base);
         } else {
-          len = sep - card->orig_str;
+          len = sep - base;
         }
       }
       // malloc room for the card part, copy that in, and close the string
       card->card_str = (char *)malloc((len * sizeof(char)) + 1);
-      strncpy(card->card_str, card->orig_str, len);
+      strncpy(card->card_str, base, len);
       card->card_str[len] = '\0';
 
       // and if there was any leftover, copy it into the extension, otherwise make sure its empty
-      if(sep == NULL || (isCmt && sep == card->orig_str)) {
+      if(sep == NULL || (isCmt && sep == base)) {
         card->extn_str = NULL;
         card->extn_code[0] = '\0';
       } else {
@@ -539,13 +552,13 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
       }
     }
     
-    // if we did find a comment marker in this line, and the deck doesn't have a
-    // a default marker set, assume this is the one used in the entire file and
-    // make it the default. You can still use other markers on other lines, but
-    // if you add a new card programmatically and set a comment, it should
-    // default to using this marker
-    if(card->extn_code[0] != 0 && deck->cmt_code == 0) {
-      deck->cmt_code = card->extn_code[0];
+    // if we found an inline comment marker, set the deck default for inline markers
+    if(card->extn_code[0] != 0 && deck->extn_code == 0) {
+      deck->extn_code = card->extn_code[0];
+    }
+    // if we found a leading (prefix) comment marker on a hidden card, set that deck default
+    if(card->cmt_code[0] != '\0' && deck->cmt_code == 0) {
+      deck->cmt_code = card->cmt_code[0];
     }
     
     // now call the card parsers on the different card types

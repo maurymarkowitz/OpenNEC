@@ -14,6 +14,11 @@
 int insert_card(deck_t *deck, card_t *card, int location);
 int remove_card(deck_t *deck, int location);
 
+/* Card enable/disable (comment out / uncomment) for GUI toggling */
+bool card_is_toggleable(const card_t *card);
+void card_disable(deck_t *deck, card_t *card);
+void card_enable(deck_t *deck, card_t *card);
+
 /* Card type checking - heavily used across modules */
 bool is_comment(const card_t *card);
 bool is_geometry(const card_t *card);

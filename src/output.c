@@ -186,6 +186,10 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
     
     // all the rest of the cards have multiple parts to put together
     
+    // for commented-out cards, write the leading marker before the code
+    if(card->cmt_code[0] != '\0') {
+      fputc(card->cmt_code[0], file);
+    }
     // start with the card code
     fputs(card->card_code, file);
 
@@ -237,7 +241,8 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
       bool hasComment = (card->comment != NULL && strlen(card->comment) > 0);
       
       bool hasOnec = false;
-      if(card->ignore) hasOnec = true;
+      // only treat ignore as an onec annotation if it's the annotated form (not prefix-commented)
+      if(card->ignore && card->cmt_code[0] == '\0') hasOnec = true;
       if(card->extensns != NULL ) hasOnec = true;
       if(card->formulas != NULL ) hasOnec = true;
       
@@ -247,8 +252,8 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
         fputc(' ', file);
         if(strlen(card->extn_code) > 0) {
           fputs(card->extn_code, file);
-        } else if(deck->cmt_code != 0 ){
-          fputc(deck->cmt_code, file);
+        } else if(deck->extn_code != 0 ){
+          fputc(deck->extn_code, file);
         } else {
           fputc('!', file);
         }
@@ -259,7 +264,7 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
       if(hasComment && !hasOnec) {
         fputs(card->comment, file);
       } else {
-        if(card->ignore) {
+        if(card->ignore && card->cmt_code[0] == '\0') {
           fputs(" ignore:true", file);
         }
         // formulas next - only the ones that aren't inline

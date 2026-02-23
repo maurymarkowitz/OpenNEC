@@ -196,7 +196,8 @@ typedef struct card_t
   bool int_form_inline[5]; /**< true if the integer field was defined by an inline formula (1-based) */
   bool flt_form_inline[8]; /**< true if the float field was defined by an inline formula (1-based) */
   
-  char extn_code[1];  /**< Code character for the OpenNEC extension (if any) */
+  char cmt_code[1];   /**< Leading comment marker if this card is commented out (e.g. '!'); '\0' if active */
+  char extn_code[1];  /**< Inline/trailing extension or comment marker character (e.g. '!' or '\'') */
   char *extn_str;     /**< Full string of the OpenNEC extension */
   char *comment;      /**< Captured comment string */
   key_value_t *extensns; /**< Linked list of key-value extensions */
@@ -221,7 +222,8 @@ typedef struct deck_t
   int geometry_start; /**< Index of the first geometry card (usually GW) */
   int geometry_end;   /**< Index of the GE (Geometry End) card */
   int deck_end;       /**< Index of the EN (Execution End) card */
-  char cmt_code;      /**< Default marker used for inline comments ('!', '$', or ''') */
+  char cmt_code;      /**< Default leading marker used to comment out cards (e.g. '!'); 0 if not seen */
+  char extn_code;     /**< Default inline/trailing comment marker seen in the deck ('!', or '\'') */
   int unit_val;       /**< GS card scaling value (default 1) */
   int unit_typ;       /**< Recognized index for GS unit type */
   key_value_t **symbols; /**< Array of symbols (SY) found in the deck */

@@ -111,7 +111,10 @@ void recalculate_sections(deck_t *deck)
   // re-calculate the section limits
   for(int i = 0; i < deck->num_cards; i++) {
     card = &deck->cards[i];
-    
+
+    // commented-out (ignored) cards do not contribute to section boundaries
+    if(card->ignore) continue;
+
     // the logic here is pretty simple: get the section this card belongs to,
     // if we haven't see a card in that section yet then it's the start, but
     // if we have, keep updating the end until we stop seeing them. that way
@@ -299,6 +302,57 @@ int remove_card(deck_t *deck, int location) {
   
   // and we're good to go
   return 0;
+}
+
+/******************************************************************************
+ * card_is_toggleable
+ *
+ * Returns true if the card can be meaningfully commented out or uncommented.
+ * Comment cards (CM, CE, !, ', #) cannot be toggled.
+ *
+ * @param card the card_t to check
+ * @return true if the card is geometry or control (can be enabled/disabled)
+ */
+bool card_is_toggleable(const card_t *card) {
+  if(card == NULL) return false;
+  return is_geometry(card) || is_control(card);
+}
+
+/******************************************************************************
+ * card_disable
+ *
+ * Comments out a card by setting ignore=true and recording the leading comment
+ * marker in card->cmt_code. Uses deck->cmt_code as the marker if set, otherwise
+ * falls back to '!'. Calls recalculate_sections so section indices stay correct.
+ *
+ * @param deck the deck_t containing the card
+ * @param card the card_t to disable
+ */
+void card_disable(deck_t *deck, card_t *card) {
+  if(card == NULL || !card_is_toggleable(card)) return;
+  if(card->ignore) return; // already disabled
+  card->ignore = true;
+  card->cmt_code[0] = (deck->cmt_code != 0) ? deck->cmt_code : '!';
+  card->edited = true;
+  recalculate_sections(deck);
+}
+
+/******************************************************************************
+ * card_enable
+ *
+ * Uncomments a card by clearing ignore and cmt_code, making it active again.
+ * Calls recalculate_sections so section indices stay correct.
+ *
+ * @param deck the deck_t containing the card
+ * @param card the card_t to enable
+ */
+void card_enable(deck_t *deck, card_t *card) {
+  if(card == NULL) return;
+  if(!card->ignore) return; // already enabled
+  card->ignore = false;
+  card->cmt_code[0] = '\0';
+  card->edited = true;
+  recalculate_sections(deck);
 }
 
 /******************************************************************************
