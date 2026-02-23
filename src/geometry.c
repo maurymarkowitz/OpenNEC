@@ -231,14 +231,16 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         }
         
         // update the number of wires and the segment counts
-        card->start_segment = ctx->geometry.n + 1;
+        // Use target_geom->n so ignored cards track against ignored_geometry, not live geometry
+        card->start_segment = target_geom->n + 1;
         // now we have all the data, so turn it into segments
         wire(ctx, target_geom, i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, rad, xs1, ys1);
         // and cache the final number
-        card->end_segment = ctx->geometry.n;
+        card->end_segment = target_geom->n;
         continue;
         
       case 1: // GX, reflect structure along x, y, or z axes, or rotate to form cylinder
+        if (card->ignore) continue; // ignored/commented-out GX cards must not affect the live geometry
         // the gx puts a three-digit integer value in the I2 slot, and then uses its digits
         // as bit flags for the x, y and z axes. here were pull them out...
         iy = segs / 10;
@@ -256,6 +258,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         continue;
         
       case 2: // GR, rotate the structure
+        if (card->ignore) continue; // ignored/commented-out GR cards must not affect the live geometry
         // I2 is the number of times to duplicate the structure as it rotates
         
         // ix is set to -1 to indicate this is a rotation, not reflection
@@ -263,6 +266,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         continue;
         
       case 3: // GS, scale structure dimensions by factor xw1
+        if (card->ignore) continue; // ignored/commented-out GS cards must not affect the live geometry
         if (xw1 == 0.0) {
           /*
            * Special-case handling: sometimes unit tokens (e.g. "in", "ft")
@@ -335,6 +339,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         return;
         
       case 5: // GM, move structure or reproduce/duplicate original structure in new positions
+        if (card->ignore) continue; // ignored/commented-out GM cards must not affect the live geometry
         xw1 = xw1 * TA;
         yw1 = yw1 * TA;
         zw1 = zw1 * TA;
