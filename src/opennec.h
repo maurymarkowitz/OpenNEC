@@ -40,7 +40,8 @@
 #include "network.h"
 #include "radiation.h"
 #include "somnec.h"
-#include "tests.h"
+#include "deck_validations.h"
+#include "card_validation.h"
 
 /** @name Public Constants
  *  Limits and sizes for various internal buffers.

@@ -14,7 +14,7 @@ Changes in the code
 - nec2c parses the deck card-by-card from the input file.
 - onec parses the entire deck in one pass, which allows it to perform whole-deck checks.
 
-- nec2c can calculate only one file at a time.
+- nec2c can calculate only one file.
 - onec's command line can process multiple files, whole directories, and can recurse multiple directories.
 
 - nec2c has considerable global state inherited from the original Fortran code's COMMON sections. This makes it non-reentrant and it cannot be used in a threaded fashion.
@@ -28,6 +28,8 @@ Other basic changes
 
 - OpenNEC includes extensive input validations that test for errors in the deck setup, like `FR`s lacking a frequency, or that `GN` must be immediately followed by `GD`. These can be run against any NEC-2 compatible deck. These are emitted as warnings and do not prevent calculation in cases where other engines are permissive, but they help make decks more portable across implementations.
 
+- OpenNEC also includes per-field validations that can be used by a GUI program to graphically indicate problems. For instance, if the user makes a new FR card, the validation functions will indicate that the empty value in the F2 field needs to be entered. If they enter a value in I2, which indicates steps, it will indicate that a value has to be entered in F2. There is an extensive suite of these validations.
+
 - OpenNEC provides a `-g` option to export Green's function data (NGF). When enabled, segment centers and the interaction matrix are written per frequency step.
 
 OpenNEC additions
@@ -35,7 +37,7 @@ OpenNEC additions
 
 OpenNEC also includes a number of significant additions to the basic NEC-2 system:
 
-- OpenNEC allows measurement units to be defined on a per-field basis. This is especially useful when defining wire radii; in an OpenNEC file a wire can be defined as "3awg" instead of having to replace that with the measurement in meters, "0.0058268". Different measurements can be used on different fields on the same card, or different cards. A `GS` card, if present, will *not* override those fields that have explicit measurements.
+- OpenNEC allows measurement units to be defined on a per-field basis. This is especially useful when defining wire radii; in an OpenNEC file a wire can be defined as "#3" to use an AWG wire, instead of having to replace that with the measurement in meters, "0.0058268". Different measurements can be used on different fields on the same card, or different cards.
 
 - OpenNEC adds a generic extension mechanism using key/value pairs that can be used by 3rd party software to add functionality without changing the underlying deck format. For instance, one could add "material:copper" to a card, and a GUI application using OpenNEC could then apply a copper color in a 3D model. These extensions are stored within an inline comment, so they have no effect on the NEC-2 code. A utility method allows these to be stripped out to produce a new deck that is compatible with generic NEC implementations.
 
@@ -56,7 +58,7 @@ A number of features commonly found in other popular NEC-based programs have bee
 
 * OpenNEC supports the `SY` card type from 4nec2. This is used to define variables, or SYmbols, which can be used in place of numbers in the rest of the deck. These are useful for defining the radius of wires and similar tasks, as well as making the deck more self-documented. A common example is to use something like `SY rad=0.01` to define a 1 cm radius, and then use the variable `rad` instead of typing `0.01` everywhere. The advantage is that you can experiment with changing the radius by editing a single card.
 
-* OpenNEC supports in-line formulas, also found in 4nec2 decks. These allow you to define a symbol and then perform basic math operations on it, like "height+5". This has many uses, especially during optimizations. OpenNEC adds the additional ability to define these formulas in the extensions instead of directly in the card fields. OpenNEC can save files in 4nec2 format with these items directly in the fields, or in OpenNEC format with them hidden in comments so that the resulting deck is NEC-2 compatible. In the latter case, the calculated value is placed in the field.
+* OpenNEC supports in-line formulas, also found in 4nec2 decks. These allow you to define a symbol and then perform basic math operations on it, like "height+5". This has many uses, especially during optimizations. OpenNEC adds the additional ability to define these formulas in the extensions instead of directly in the card fields. OpenNEC can save files in 4nec2 format with these items directly in the fields, or in OpenNEC format with them hidden in comments so that the resulting deck is NEC-2 compatible. In the latter case, the calculated value is placed in the field so it remains NEC-2 compatible during calculations.
 
 * OpenNEC supports the `XT` card type from nec2c, which stops processing at that point. In contrast to nec2c, which simply exits the program when an `XT` is encountered, OpenNEC will still read the entire deck, but will only process up to the point of the XT. This effectively treats any following cards as comments.
 

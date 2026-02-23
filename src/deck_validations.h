@@ -1,11 +1,11 @@
 /*
- * tests.h - Deck validation functions for OpenNEC
+ * deck_validations.h - Deck validation functions for OpenNEC
  * 
  * Public interface for deck structure and content validation.
  */
 
-#ifndef TESTS_H
-#define TESTS_H
+#ifndef DECK_VALIDATIONS_H
+#define DECK_VALIDATIONS_H
 
 #include "types.h"
 
@@ -15,4 +15,4 @@ void test_duplicate_tags(const nec_context_t *ctx, const deck_t *deck, errors_li
 void test_card_inputs(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors);
 void test_field_separators(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors);
 
-#endif /* TESTS_H */
+#endif /* DECK_VALIDATIONS_H */

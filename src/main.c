@@ -15,7 +15,7 @@
 #include "input.h"
 #include "control.h"
 #include "output.h"
-#include "tests.h"
+#include "deck_validations.h"
 
 #ifndef _GETOPT_H
 #include <getopt.h>

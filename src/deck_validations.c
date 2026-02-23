@@ -1,7 +1,7 @@
 /******************************************************************************
- * tests.c
+ * deck_validations.c
  *
- * tests.c contains code for a number of sanity-checking routines that look
+ * deck_validations.c contains code for a number of sanity-checking routines that look
  * for problems in the structure of the deck as a whole, or commonly found
  * issues in the design.
  *
@@ -23,7 +23,7 @@
  *****************************************************************************/
 
 #include "internals.h"
-#include "tests.h"
+#include "deck_validations.h"
 
 // Local structs for structural geometry validations
 typedef struct { int tag; int segs; int line; double x1,y1,z1,x2,y2,z2; double radius; } wire_info_t;

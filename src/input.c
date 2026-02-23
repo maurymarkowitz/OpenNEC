@@ -466,11 +466,20 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
         pos++;
       }
       
-      // extract and uppercase the two characters at pos as a potential card code
+      // extract and uppercase the two characters at pos as a potential card code.
+      // Also require that a valid separator (whitespace, comma, or end-of-string)
+      // follows the two-character code — this prevents a plain comment line like
+      // "' Except for..." from being mis-detected as a hidden EX card just because
+      // its first two significant letters happen to match a known card mnemonic.
       if(pos + 1 < line_len) {
         hidden_type_buff[0] = toupper((unsigned char)card->orig_str[pos]);
         hidden_type_buff[1] = toupper((unsigned char)card->orig_str[pos + 1]);
         hidden_type_buff[2] = '\0';
+        // verify the character after the 2-char code is a separator or end-of-string
+        size_t after = pos + 2;
+        if(after < line_len && !isspace((unsigned char)card->orig_str[after]) && card->orig_str[after] != ',') {
+          hidden_type_buff[0] = '\0'; // not a valid card code boundary — treat as plain comment
+        }
       } else {
         hidden_type_buff[0] = '\0';
       }
