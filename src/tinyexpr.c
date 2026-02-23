@@ -31,8 +31,9 @@
 
 /* Logarithms
  For log = base 10 log do nothing
- For log = natural log uncomment the next line. */
-/* #define TE_NAT_LOG */
+ For log = natural log uncomment the next line.
+ 4nec2 defines log() as natural log, so we enable TE_NAT_LOG to match. */
+#define TE_NAT_LOG
 
 #include "tinyexpr.h"
 #include <stdlib.h>
@@ -151,6 +152,16 @@ static double ncr(double n, double r) {
 }
 static double npr(double n, double r) {return ncr(n, r) * fac(r);}
 
+/* 4nec2 compatibility: trig in degrees, and sgn/mod/sqr aliases */
+#define TE_DEG2RAD (3.14159265358979323846 / 180.0)
+#define TE_RAD2DEG (180.0 / 3.14159265358979323846)
+static double te_sin(double d) { return sin(d * TE_DEG2RAD); }
+static double te_cos(double d) { return cos(d * TE_DEG2RAD); }
+static double te_tan(double d) { return tan(d * TE_DEG2RAD); }
+static double te_atn(double x) { return atan(x) * TE_RAD2DEG; }
+static double te_sgn(double x) { return (double)((x > 0.0) - (x < 0.0)); }
+static double te_mod(double x, double y) { return fmod(x, y); }
+
 static const te_variable functions[] = {
   /* must be in alphabetical order */
   {"abs", fabs,     TE_FUNCTION1 | TE_FLAG_PURE, 0},
@@ -158,14 +169,15 @@ static const te_variable functions[] = {
   {"asin", asin,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"atan", atan,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"atan2", atan2,  TE_FUNCTION2 | TE_FLAG_PURE, 0},
+  {"atn",   te_atn,  TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: arc tangent, result in degrees */
   {"ceil", ceil,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
-  {"cos", cos,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
+  {"cos",  te_cos,  TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: argument in degrees */
   {"cosh", cosh,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"e", e,          TE_FUNCTION0 | TE_FLAG_PURE, 0},
   {"exp", exp,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"fac", fac,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"floor", floor,  TE_FUNCTION1 | TE_FLAG_PURE, 0},
-  {"int", floor,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
+  {"int",   round,   TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: rounds to nearest integer */
   {"ln", log,       TE_FUNCTION1 | TE_FLAG_PURE, 0},
 #ifdef TE_NAT_LOG
   {"log", log,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
@@ -173,14 +185,17 @@ static const te_variable functions[] = {
   {"log", log10,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
 #endif
   {"log10", log10,  TE_FUNCTION1 | TE_FLAG_PURE, 0},
+  {"mod",   te_mod,  TE_FUNCTION2 | TE_FLAG_PURE, 0},  /* 4nec2: remainder after division */
   {"ncr", ncr,      TE_FUNCTION2 | TE_FLAG_PURE, 0},
   {"npr", npr,      TE_FUNCTION2 | TE_FLAG_PURE, 0},
   {"pi", pi,        TE_FUNCTION0 | TE_FLAG_PURE, 0},
-  {"pow", pow,      TE_FUNCTION2 | TE_FLAG_PURE, 0},
-  {"sin", sin,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
+  {"pow",  pow,     TE_FUNCTION2 | TE_FLAG_PURE, 0},
+  {"sgn",  te_sgn,  TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: returns -1, 0, or +1 */
+  {"sin",  te_sin,  TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: argument in degrees */
   {"sinh", sinh,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
+  {"sqr",  sqrt,    TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2 alias for sqrt */
   {"sqrt", sqrt,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
-  {"tan", tan,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
+  {"tan",  te_tan,  TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: argument in degrees */
   {"tanh", tanh,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {0, 0, 0, 0}
 };

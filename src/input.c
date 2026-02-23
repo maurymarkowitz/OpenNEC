@@ -817,21 +817,38 @@ void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
     char str[MAX_LINE_LEN];
     strcpy(str, card->card_str + 2);
 
-    // Accept both comma and whitespace as delimiters, but also handle single key=value with no comma
-    char *token, *split;
-    // First, try to split by comma. If no comma, treat as single token
-    token = strtok(str, ",");
-    while(token != NULL) {
-      // Now trim leading whitespace
-      while(isspace((unsigned char)*token)) token++;
-
-      // if token is empty, skip
-      if(strlen(token) == 0) {
-        token = strtok(NULL, ",");
-        continue;
+    // Split on commas that are NOT inside parentheses, so mod(10,3) stays intact.
+    char *p = str;
+    char *split;
+    while (p != NULL) {
+      // Find the next top-level comma (depth == 0)
+      char *tok_start = p;
+      char *tok_end = NULL;
+      int depth = 0;
+      char *scan = p;
+      while (*scan) {
+        if (*scan == '(') depth++;
+        else if (*scan == ')') depth--;
+        else if (*scan == ',' && depth == 0) {
+          tok_end = scan;
+          break;
+        }
+        scan++;
+      }
+      if (tok_end) {
+        *tok_end = '\0';   // terminate this token
+        p = tok_end + 1;   // next search starts after the comma
+      } else {
+        p = NULL;          // last token
       }
 
-      // now split on '='
+      char *token = tok_start;
+      // trim leading whitespace
+      while(isspace((unsigned char)*token)) token++;
+      // skip empty tokens
+      if(strlen(token) == 0) continue;
+
+      // split on '='
       split = strchr(token, '=');
       if(split != NULL) {
         // separate key and value
@@ -864,8 +881,6 @@ void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
           }
         }
       }
-      // next token
-      token = strtok(NULL, ",");
     }
   }
 } /* end of parse_onec_card() */
