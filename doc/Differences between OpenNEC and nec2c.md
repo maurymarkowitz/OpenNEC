@@ -43,7 +43,7 @@ OpenNEC also includes a number of significant additions to the basic NEC-2 syste
 
   - Extension keys should always be compared in a case-insensitive manner. Keys should always be *written* in lower-case no matter how they were entered.
 
-  - Four extensions are known to the basic OpenNEC system: `name`, `group`, `ignored` and `invisible`. `name` and `group` are free-form strings intended to allow GUI-based applications to provide richer information and/or group related sections of the deck together. `ignore` is used to calculate the object's geometry but ignore it during calculations. This can be used, for instance, to add a boom that is displayed in the GUI but has no effect on the calculations. `invisible` is the opposite, it is used to suppress the element in GUI displays of the geometry, while still being used in calculations. This is useful when there are elements placed a long distance from the main antenna, which might otherwise cause the GUI to zoom out too far when rendering. You can also set an element to invisible using the 4nec2 solution, by changing the tag to a value between 9700 and 9799.
+  - Four extensions are known to the basic OpenNEC system: `name`, `group`, `ignored` and `invisible`. `name` and `group` are free-form strings intended to allow GUI-based applications to provide richer information and/or group related sections of the deck together. `ignore` is used to calculate the object's geometry but ignore it during calculations. This can be used, for instance, to add a boom that is displayed in the GUI but has no effect on the calculations. `invisible` is the opposite, it is used to suppress the element in GUI displays of the geometry, while still being used in calculations. This is useful when there are elements placed a long distance from the main antenna, which might otherwise cause the GUI to zoom out too far when rendering.
 
   - Additionally, 3rd party software using OpenNEC should be aware of these non-required GUI-related extensions: `material` and `shape`. `material` is a free-form field but a number of common materials are defined. `shape` is used to control the cross section in the display, for instance `shape=square` might be used when defining a boom on a Yagi antenna.
 
@@ -54,7 +54,7 @@ Additions from other systems
 
 A number of features commonly found in other popular NEC-based programs have been added:
 
-* OpenNEC notices cards using the 4nec2 convention with tag numbers >= 9800 < 9900 and sets `invisible=true` on those cards. 
+* OpenNEC notices cards using the 4nec2 convention with tag numbers between 9800 and 9899 and sets `invisible=true` on those cards. 
 
 * OpenNEC supports the `SY` card type from 4nec2. This is used to define variables, or SYmbols, which can be used in place of numbers in the rest of the deck. These are useful for defining the radius of wires and similar tasks, as well as making the deck more self-documented. A common example is to use something like `SY rad=0.01` to define a 1 cm radius, and then use the variable `rad` instead of typing `0.01` everywhere. The advantage is that you can experiment with changing the radius by editing a single card.
 

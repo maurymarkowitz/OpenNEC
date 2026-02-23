@@ -245,35 +245,45 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         continue;
         
       case 1: // GX, reflect structure along x, y, or z axes, or rotate to form cylinder
-        // card_is_commented_out already handled above; invisible GX runs against ignored_geometry is not
-        // meaningful (reflect has no target_geom param), so skip invisible too
-        if (card->ignore) continue;
         // the gx puts a three-digit integer value in the I2 slot, and then uses its digits
         // as bit flags for the x, y and z axes. here were pull them out...
         iy = segs / 10;
         iz = segs - iy * 10;
         ix = iy / 10;
         iy = iy - ix * 10;
-        
         if(ix != 0) ix = 1;
         if(iy != 0) iy = 1;
         if(iz != 0) iz = 1;
-        
-        card->start_segment = ctx->geometry.n + 1;
-        reflect(ctx, i, tag, ix, iy, iz);
-        card->end_segment = ctx->geometry.n;
+        if (!card->ignore) {
+          card->start_segment = ctx->geometry.n + 1;
+          reflect(ctx, i, tag, ix, iy, iz);
+          card->end_segment = ctx->geometry.n;
+        }
+        if (ctx->ignored_geometry.n > 0 || ctx->ignored_geometry.m > 0) {
+          geometry_t _live = ctx->geometry;
+          ctx->geometry = ctx->ignored_geometry;
+          reflect(ctx, i, tag, ix, iy, iz);
+          ctx->ignored_geometry = ctx->geometry;
+          ctx->geometry = _live;
+        }
         continue;
         
       case 2: // GR, rotate the structure
-        if (card->ignore) continue; // structural transforms have no target_geom param; skip all ignored
         // I2 is the number of times to duplicate the structure as it rotates
-        
         // ix is set to -1 to indicate this is a rotation, not reflection
-        rotate(ctx, i, tag, segs);
+        if (!card->ignore) {
+          rotate(ctx, i, tag, segs);
+        }
+        if (ctx->ignored_geometry.n > 0 || ctx->ignored_geometry.m > 0) {
+          geometry_t _live = ctx->geometry;
+          ctx->geometry = ctx->ignored_geometry;
+          rotate(ctx, i, tag, segs);
+          ctx->ignored_geometry = ctx->geometry;
+          ctx->geometry = _live;
+        }
         continue;
         
       case 3: // GS, scale structure dimensions by factor xw1
-        if (card->ignore) continue; // structural transforms have no target_geom param; skip all ignored
         if (xw1 == 0.0) {
           /*
            * Special-case handling: sometimes unit tokens (e.g. "in", "ft")
@@ -321,7 +331,16 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
             return; // Stops further geometry processing
           }
         }
-        scale(ctx, xw1);
+        if (!card->ignore) {
+          scale(ctx, xw1);
+        }
+        if (ctx->ignored_geometry.n > 0 || ctx->ignored_geometry.m > 0) {
+          geometry_t _live = ctx->geometry;
+          ctx->geometry = ctx->ignored_geometry;
+          scale(ctx, xw1);
+          ctx->ignored_geometry = ctx->geometry;
+          ctx->geometry = _live;
+        }
         continue;
         
       case 4: // GE, finish off the segments and patches, and calculate everything
@@ -346,15 +365,21 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         return;
         
       case 5: // GM, move structure or reproduce/duplicate original structure in new positions
-        if (card->ignore) continue; // structural transforms have no target_geom param; skip all ignored
         xw1 = xw1 * TA;
         yw1 = yw1 * TA;
         zw1 = zw1 * TA;
-        
         // convert the original float value in F7 to int
         int tag_increment = (int)(card->fv[7] + .5);
-        
-        reproduce(ctx, xw1, yw1, zw1, xw2, yw2, zw2, tag_increment, segs, tag);
+        if (!card->ignore) {
+          reproduce(ctx, xw1, yw1, zw1, xw2, yw2, zw2, tag_increment, segs, tag);
+        }
+        if (ctx->ignored_geometry.n > 0 || ctx->ignored_geometry.m > 0) {
+          geometry_t _live = ctx->geometry;
+          ctx->geometry = ctx->ignored_geometry;
+          reproduce(ctx, xw1, yw1, zw1, xw2, yw2, zw2, tag_increment, segs, tag);
+          ctx->ignored_geometry = ctx->geometry;
+          ctx->geometry = _live;
+        }
         continue;
         
       case 6: // SP, generate single new patch or a series of patches with SC
