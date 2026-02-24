@@ -74,8 +74,8 @@ static int parse_field_name(const char *name, int *is_int, int *idx)
 
 /* FR — frequency sweep
  *   F1: base frequency — required, must be non-zero
- *   I2: step count — if non-zero, F2 must be a positive step
- *   F2: frequency step — must be positive when I2 > 0; spurious if I2 == 0
+ *   I2: step count — if > 1, F2 must be a positive step
+ *   F2: frequency step — must be positive when I2 > 1; spurious if I2 <= 1
  */
 static field_validation_t validate_FR_field(const card_t *c, int is_int, int idx)
 {
