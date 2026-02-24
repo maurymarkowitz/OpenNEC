@@ -1218,8 +1218,7 @@ void factr(const nec_context_t *restrict ctx, int n, complex double *restrict a,
 
 	if( iflg == true )
 	{
-	  fprintf( ctx->output_fp,
-		  "\n  PIVOT(%d)= %16.8E", r, dmax );
+	  nec_report(ctx, ONEC_SEV_INFO, "PIVOT(%d)= %16.8E", r, dmax);
 	  iflg=false;
 	}
 

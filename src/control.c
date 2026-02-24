@@ -27,6 +27,60 @@ static void reset_loading_buffers(nec_context_t *ctx);
 static void reset_network_buffers(nec_context_t *ctx);
 static void reset_coupling_buffers(nec_context_t *ctx);
 static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start, int *batch_end);
+static int count_tag_segments(const nec_context_t *ctx, int tag);
+static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card, int field_idx, int tag);
+
+/******************************************************************************
+ * count_tag_segments()
+ *
+ * Returns the total number of geometry segments carrying the given tag.
+ * tag == 0 means all segments (NEC convention).
+ */
+static int count_tag_segments(const nec_context_t *ctx, int tag)
+{
+    if (tag == 0) return ctx->geometry.n;
+    int count = 0;
+    for (int i = 0; i < ctx->geometry.n; i++) {
+        if (ctx->geometry.tag_nums[i] == tag) count++;
+    }
+    return count;
+}
+
+/******************************************************************************
+ * resolve_pct_segment()
+ *
+ * 4nec2 allows specifying a segment as a percentage of the wire's total
+ * segment count, e.g. "50%" on an EX card means the middle segment.
+ *
+ * If the I<field_idx> formula ends with '%', this computes:
+ *   seg = round(pct / 100.0 * count_tag_segments(tag)), clamped to [1, count].
+ * Otherwise returns card->iv[field_idx] unchanged.
+ */
+static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card,
+                               int field_idx, int tag)
+{
+    if (!card->int_form_inline[field_idx]) return card->iv[field_idx];
+
+    char key[3] = { 'I', (char)('0' + field_idx), '\0' };
+    const key_value_t *kv = card->formulas;
+    while (kv) {
+        if (kv->key && strcmp(kv->key, key) == 0 && kv->value) {
+            size_t vlen = strlen(kv->value);
+            if (vlen > 1 && kv->value[vlen - 1] == '%') {
+                double pct = strtod(kv->value, NULL);
+                int count = count_tag_segments(ctx, tag);
+                if (count <= 0) return card->iv[field_idx];
+                int seg = (int)round(pct / 100.0 * (double)count);
+                if (seg < 1) seg = 1;
+                if (seg > count) seg = count;
+                return seg;
+            }
+            break;
+        }
+        kv = kv->next;
+    }
+    return card->iv[field_idx];
+}
 
 /******************************************************************************
  * nec_run_simulation()
@@ -375,8 +429,17 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                 if (kv->key && kv->key[0] == 'I' && strlen(kv->key) == 2) {
                     int idx = kv->key[1] - '0';
                     if (idx >= 1 && idx <= MAX_INT_FIELDS) {
-                        evaluate_formula(ctx, kv, deck, &ctx->errors);
-                        card->iv[idx] = (int)kv->fv;
+                        /* Skip percent-segment formulas (e.g. "50%") — they
+                         * cannot be evaluated by tinyexpr and are resolved
+                         * against the geometry by resolve_pct_segment() at
+                         * point-of-use (e.g. the EX handler below). */
+                        size_t vlen = kv->value ? strlen(kv->value) : 0;
+                        if (vlen > 1 && kv->value[vlen - 1] == '%') {
+                            /* leave card->iv[idx] = card->i[idx] (already copied) */
+                        } else {
+                            evaluate_formula(ctx, kv, deck, &ctx->errors);
+                            card->iv[idx] = (int)kv->fv;
+                        }
                     }
                 } else if (kv->key && kv->key[0] == 'F' && strlen(kv->key) == 2) {
                     int idx = kv->key[1] - '0';
@@ -523,10 +586,11 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     mem_realloc(ctx, (void **)&ctx->vsorc.vqds, mreq);
                     
                     int idx = ctx->vsorc.nvqd - 1;
-                    int seg_num = segment_number(ctx, i2, i3);
+                    int i3_resolved = resolve_pct_segment(ctx, card, 3, i2);
+                    int seg_num = segment_number(ctx, i2, i3_resolved);
                     if (seg_num == 0) {
                         char msg[MAX_ERROR_LEN];
-                        snprintf(msg, sizeof(msg), "Card %d is an EX that references invalid tag %d, segment %d", card_idx + 1, i2, i3);
+                        snprintf(msg, sizeof(msg), "Card %d is an EX that references invalid tag %d, segment %d", card_idx + 1, i2, i3_resolved);
                         add_error(ctx, &ctx->errors, msg, FATAL);
                         return -1;
                     }
@@ -545,10 +609,11 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     mem_realloc(ctx, (void **)&ctx->vsorc.vsant, mreq);
                     
                     int idx = ctx->vsorc.nsant - 1;
-                    int seg_num = segment_number(ctx, i2, i3);
+                    int i3_resolved = resolve_pct_segment(ctx, card, 3, i2);
+                    int seg_num = segment_number(ctx, i2, i3_resolved);
                     if (seg_num == 0) {
                         char msg[MAX_ERROR_LEN];
-                        snprintf(msg, sizeof(msg), "Card %d is an EX that references invalid tag %d, segment %d", card_idx + 1, i2, i3);
+                        snprintf(msg, sizeof(msg), "Card %d is an EX that references invalid tag %d, segment %d", card_idx + 1, i2, i3_resolved);
                         add_error(ctx, &ctx->errors, msg, FATAL);
                         return -1;
                     }

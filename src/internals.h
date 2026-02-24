@@ -513,6 +513,17 @@ typedef struct
 
 } vsorc_t;
 
+/* One row of CP (coupling) output, accumulated during calculation */
+typedef struct {
+  int tag1, seg1, segno1;
+  int tag2, seg2, segno2;
+  bool is_error;             /* true when coupling is outside [0,1] */
+  double coupling_db;        /* max coupling in dB (valid when !is_error) */
+  double zl_real, zl_imag;  /* load impedance   (valid when !is_error) */
+  double zin_real, zin_imag;/* input impedance  (valid when !is_error) */
+  double c_value;            /* raw c value      (valid when is_error)  */
+} coupling_row_t;
+
 /* common  /yparm/ */
 typedef struct
 {
@@ -525,7 +536,12 @@ typedef struct
 	complex double
 		*y11a,	/* Self admittance of segments */
 		*y12a;	/* Mutual admittances stored in order 1,2 1,3 2,3 2,4 etc */
-  
+
+  /* accumulated CP output rows — rendered by write_nec_output() */
+  coupling_row_t *coupling_rows;
+  int num_coupling_rows;
+  int coupling_rows_cap;
+
 } yparm_t;
 
 /* common  /zload/ */

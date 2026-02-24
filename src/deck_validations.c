@@ -1181,16 +1181,21 @@ void test_card_inputs(const nec_context_t *ctx, const deck_t *deck, errors_list_
         snprintf(msg, sizeof(msg), "The card on line %d is a GW with identical endpoints (zero-length wire).", i);
         add_error(ctx, errors, msg, 0);
       }
-      // Radius must be present and positive (F7)
-      if(deck->cards[i].flts_used < 7) {
+      // Radius must be present and positive (F7).
+      // When the radius was given as a formula (e.g. AWG notation like #12),
+      // f[7] is 0 but fv[7] holds the evaluated radius — use that instead.
+      double gw_radius = (deck->cards[i].flt_form_inline[7] && deck->cards[i].fv[7] > 0.0)
+                         ? deck->cards[i].fv[7]
+                         : deck->cards[i].f[7];
+      if(deck->cards[i].flts_used < 7 && !deck->cards[i].flt_form_inline[7]) {
         snprintf(msg, sizeof(msg), "The card on line %d is a GW but has no radius specified in F7.", i);
         add_error(ctx, errors, msg, 0);
-      } else if(deck->cards[i].f[7] <= 0.0) {
+      } else if(gw_radius <= 0.0) {
         snprintf(msg, sizeof(msg), "The card on line %d is a GW with non-positive radius in F7.", i);
         add_error(ctx, errors, msg, 0);
       }
-      // If radius is zero, next card should be a GC with tapering info
-      if(deck->cards[i].flts_used >= 7 && deck->cards[i].f[7] == 0.0) {
+      // If radius is zero (and not a formula), next card should be a GC with tapering info
+      if((deck->cards[i].flts_used >= 7 || deck->cards[i].flt_form_inline[7]) && gw_radius == 0.0) {
         if(i + 1 < deck->num_cards) {
           if(strcmp(deck->cards[i+1].card_code, "GC") != 0) {
             snprintf(msg, sizeof(msg), "The card on line %d is a GW with a zero radius, but the next card is not a GC.", i + 1);

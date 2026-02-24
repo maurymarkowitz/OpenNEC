@@ -205,6 +205,14 @@ void nec_context_cleanup(nec_context_t *ctx)
         ctx->outputs.messages = NULL;
     }
     ctx->outputs.num_messages = 0;
+
+    // Free CP coupling rows
+    if (ctx->yparm.coupling_rows != NULL) {
+        free(ctx->yparm.coupling_rows);
+        ctx->yparm.coupling_rows = NULL;
+    }
+    ctx->yparm.num_coupling_rows = 0;
+    ctx->yparm.coupling_rows_cap = 0;
 }
 
 /* end of types.c */

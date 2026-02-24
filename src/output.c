@@ -31,6 +31,7 @@ static void write_network_data(FILE *file, const nec_context_t *ctx);
 static void write_matrix_asymmetry(FILE *file, const nec_context_t *ctx);
 static void write_network_excitation(FILE *file, const nec_context_t *ctx);
 static void write_antenna_input_parameters(FILE *file, const nec_context_t *ctx);
+static void write_coupling_data(nec_context_t *ctx);
 static void write_currents(FILE *file, const nec_context_t *ctx);
 static void write_power_budget(FILE *file, const nec_context_t *ctx);
 static void write_radiation_pattern_header(FILE *file, const nec_context_t *ctx);
@@ -302,6 +303,47 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
 }
 
 /******************************************************************************
+ * write_coupling_data()
+ *
+ * Renders the CP (coupling) isolation table accumulated by couple() in
+ * calculations.c.  No-op if no coupling rows were recorded.
+ */
+static void write_coupling_data(nec_context_t *ctx)
+{
+  if (ctx->yparm.num_coupling_rows == 0) return;
+
+  fprintf(ctx->output_fp, "\n\n\n"
+          "                        -----------"
+          " ISOLATION DATA -----------\n\n"
+          " ------- COUPLING BETWEEN ------     MAXIMUM    "
+          " ---------- FOR MAXIMUM COUPLING ----------\n"
+          "            SEG              SEG    COUPLING  LOAD"
+          " IMPEDANCE (2ND SEG)         INPUT IMPEDANCE \n"
+          " TAG  SEG   No:   TAG  SEG   No:      (DB)       "
+          " REAL     IMAGINARY         REAL       IMAGINARY" );
+
+  for (int i = 0; i < ctx->yparm.num_coupling_rows; i++) {
+    coupling_row_t *r = &ctx->yparm.coupling_rows[i];
+    if (!r->is_error) {
+      fprintf(ctx->output_fp, "\n"
+              " %4d %4d %5d  %4d %4d %5d  %9.3f"
+              "  %12.5E %12.5E  %12.5E %12.5E",
+              r->tag1, r->seg1, r->segno1,
+              r->tag2, r->seg2, r->segno2,
+              r->coupling_db,
+              r->zl_real, r->zl_imag, r->zin_real, r->zin_imag);
+    } else {
+      fprintf(ctx->output_fp, "\n"
+              " %4d %4d %5d   %4d %4d %5d  **ERROR** "
+              "COUPLING IS NOT BETWEEN 0 AND 1. (= %12.5E)",
+              r->tag1, r->seg1, r->segno1,
+              r->tag2, r->seg2, r->segno2,
+              r->c_value);
+    }
+  }
+}
+
+/******************************************************************************
  * write_nec_output()
  *
  * Writes a standard NEC-style output file, using various work functions.
@@ -323,6 +365,7 @@ void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *file)
   write_matrix_asymmetry(file, ctx);
   write_network_excitation(file, ctx);
   write_antenna_input_parameters(file, ctx);
+  write_coupling_data(ctx);
   write_currents(file, ctx);
   write_power_budget(file, ctx);
   write_radiation_pattern_header(file, ctx);

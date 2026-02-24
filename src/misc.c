@@ -259,12 +259,15 @@ field_sep_t detect_field_separator(const char *card_str) {
  * Returns a new allocated string that must be freed by the caller.
  */
 char *preprocess_line(const char *line) {
-  char *t1 = preprocess_awg(line);
-  char *t2 = preprocess_feet_inches(t1);
+  // NOTE: AWG notation (#12, 12awg) is intentionally NOT preprocessed here.
+  // It is detected as a formula token in parse_geometry_or_control_card(),
+  // stored as e.g. F7=#12 in card->formulas, and converted to a numeric
+  // radius by preprocess_awg() during formula evaluation in update_card_values().
+  // This preserves the original notation so the GUI can display and round-trip it.
+  char *t1 = preprocess_feet_inches(line);
+  char *t2 = preprocess_implicit_multiplication(t1);
   free(t1);
-  char *t3 = preprocess_implicit_multiplication(t2);
-  free(t2);
-  return t3;
+  return t2;
 }
 
 /******************************************************************************

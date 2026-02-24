@@ -174,25 +174,16 @@ void couple(nec_context_t *ctx, complex double *cur, double wlam )
   if( ctx->yparm.icoup < ctx->yparm.ncoup)
     return;
   
-  fprintf( ctx->output_fp, "\n\n\n"
-          "                        -----------"
-          " ISOLATION DATA -----------\n\n"
-          " ------- COUPLING BETWEEN ------     MAXIMUM    "
-          " ---------- FOR MAXIMUM COUPLING ----------\n"
-          "            SEG              SEG    COUPLING  LOAD"
-          " IMPEDANCE (2ND SEG)         INPUT IMPEDANCE \n"
-          " TAG  SEG   No:   TAG  SEG   No:      (DB)       "
-          " REAL     IMAGINARY         REAL       IMAGINARY" );
-  
+  /* Accumulate coupling rows; write_nec_output() will render them. */
   npm1= ctx->yparm.ncoup-1;
-  
+
   for( i = 0; i < npm1; i++ )
   {
     itt1= ctx->yparm.nctag[i];
     its1= ctx->yparm.ncseg[i];
     isg1= segment_number(ctx,  itt1, its1);
     l1= i+1;
-    
+
     for( j = l1; j < ctx->yparm.ncoup; j++ )
     {
       itt2= ctx->yparm.nctag[j];
@@ -206,40 +197,50 @@ void couple(nec_context_t *ctx, complex double *cur, double wlam )
       yin= y12* y12;
       dbc= cabs( yin);
       c= dbc/(2.* creal( y11)* creal( y22)- creal( yin));
-      
+
+      coupling_row_t row;
+      memset(&row, 0, sizeof(row));
+      row.tag1 = itt1; row.seg1 = its1; row.segno1 = isg1;
+      row.tag2 = itt2; row.seg2 = its2; row.segno2 = isg2;
+
       if( (c >= 0.0) && (c <= 1.0) )
       {
         if( c >= .01 )
           gmax=(1.- sqrt(1.- c*c))/c;
         else
           gmax=.5*( c+.25* c* c* c);
-        
+
         rho= gmax* conj( yin)/ dbc;
         yl=((1.- rho)/(1.+ rho)+1.)* creal( y22)- y22;
         zl=1./ yl;
         yin= y11- yin/( y22+ yl);
         zin=1./ yin;
         dbc= db10(ctx,  gmax);
-        
-        fprintf( ctx->output_fp, "\n"
-                " %4d %4d %5d  %4d %4d %5d  %9.3f"
-                "  %12.5E %12.5E  %12.5E %12.5E",
-                itt1, its1, isg1, itt2, its2, isg2, dbc,
-                creal(zl), cimag(zl), creal(zin), cimag(zin) );
-        
-        continue;
-        
-      } /* if( (c >= 0.0) && (c <= 1.0) ) */
-      
-      fprintf( ctx->output_fp, "\n"
-              " %4d %4d %5d   %4d %4d %5d  **ERROR** "
-              "COUPLING IS NOT BETWEEN 0 AND 1. (= %12.5E)",
-              itt1, its1, isg1, itt2, its2, isg2, c );
-      
+
+        row.is_error   = false;
+        row.coupling_db = dbc;
+        row.zl_real    = creal(zl);  row.zl_imag  = cimag(zl);
+        row.zin_real   = creal(zin); row.zin_imag = cimag(zin);
+      }
+      else
+      {
+        row.is_error = true;
+        row.c_value  = c;
+      }
+
+      /* grow buffer if needed */
+      if (ctx->yparm.num_coupling_rows >= ctx->yparm.coupling_rows_cap) {
+        int newcap = ctx->yparm.coupling_rows_cap == 0 ? 8 : ctx->yparm.coupling_rows_cap * 2;
+        ctx->yparm.coupling_rows = realloc(ctx->yparm.coupling_rows,
+                                           (size_t)newcap * sizeof(coupling_row_t));
+        ctx->yparm.coupling_rows_cap = newcap;
+      }
+      ctx->yparm.coupling_rows[ctx->yparm.num_coupling_rows++] = row;
+
     } /* for( j = l1; j < ctx->yparm.ncoup; j++ ) */
-    
+
   } /* for( i = 0; i < npm1; i++ ) */
-  
+
   return;
 }
 
@@ -277,10 +278,9 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
     if( istep > ctx->zload.nload)
     {
       if( iwarn == true )
-        fprintf( ctx->output_fp,
-                "\n  NOTE, SOME OF THE ABOVE SEGMENTS "
-                "HAVE BEEN LOADED TWICE - IMPEDANCES ADDED" );
-      
+        nec_report(ctx, ONEC_SEV_WARNING,
+                   "Some segments have been loaded more than once; impedances added.");
+
       ctx->smat.nop = ctx->geometry.n/ctx->geometry.np;
       if( ctx->smat.nop == 1)
         return 0;
@@ -776,7 +776,7 @@ void intx(nec_context_t *ctx, double el1, double el2, double b,
     {
       nt=0;
       if( ns >= nma)
-        fprintf( ctx->output_fp, "\n  STEP SIZE LIMITED AT Z= %10.5f", z );
+        nec_report(ctx, ONEC_SEV_WARNING, "Step size limited at Z= %10.5f", z);
       else
       {
         /* halve step size */
