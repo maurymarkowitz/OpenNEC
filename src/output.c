@@ -119,6 +119,24 @@ void write_deck_nec(const nec_context_t *ctx, const deck_t *deck, FILE *file, in
 }
 
 /******************************************************************************
+ * is_inline_formula
+ *
+ * Returns true if the formula key (e.g. "F7", "I3") corresponds to a field
+ * that was originally written inline (i.e. the value is already emitted as
+ * part of the card's field list and must not be repeated in the onec comment).
+ */
+static bool is_inline_formula(const card_t *card, const char *key)
+{
+  if (!key || strlen(key) != 2) return false;
+  int idx = key[1] - '0';
+  if (key[0] == 'F' && idx >= 1 && idx <= MAX_FLT_FIELDS)
+    return card->flt_form_inline[idx];
+  if (key[0] == 'I' && idx >= 1 && idx <= MAX_INT_FIELDS)
+    return card->int_form_inline[idx];
+  return false;
+}
+
+/******************************************************************************
  * write_deck_onec
  *
  * Writes a deck in the onec format, which is basically everything in the
@@ -153,9 +171,10 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
     
     // the ONEC cards like SY are also generally simple
     if(is_extension(card)) {
-      if(strcmp(card->extn_code, "") != 0) {
-        fputs(card->extn_code, file);
-      }
+      // NOTE: extn_code is the inline comment *separator* found in the original
+      // line (e.g. '!' or '\'').  Do NOT write it as a leading prefix before the
+      // card mnemonic — that would make read_deck treat the line as a
+      // commented-out (ignored) hidden card on the next round-trip.
       fputs(card->card_code, file);
       
       key_value_t *head = card->formulas;
@@ -176,9 +195,11 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
         head = head->next;
         if(head != NULL) fputs(",", file);
       }
-      // is there also a comment?
+      // is there also a comment?  Use the original separator char if known.
       if(card->comment != NULL && strlen(card->comment) > 0) {
-        fputs(" !", file); // this means we always convert to ! comments
+        char sep = (card->extn_code[0] != '\0') ? card->extn_code[0] : '!';
+        fputc(' ', file);
+        fputc(sep, file);
         fputs(card->comment, file);
       }
       fputc('\n', file);
@@ -245,7 +266,14 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
       // only treat ignore as an onec annotation if it's the annotated form (not prefix-commented)
       if(card->ignore && card->cmt_code[0] == '\0') hasOnec = true;
       if(card->extensns != NULL ) hasOnec = true;
-      if(card->formulas != NULL ) hasOnec = true;
+      // only flag hasOnec for formulas that are NOT already emitted inline as card fields
+      if(card->formulas != NULL) {
+        key_value_t *f = card->formulas;
+        while(f != NULL) {
+          if(!is_inline_formula(card, f->key)) { hasOnec = true; break; }
+          f = f->next;
+        }
+      }
       
       // if we found anything, print the comment marker found on this
       // card, the global one in the deck, or the onec default, !
@@ -268,14 +296,16 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
         if(card->ignore && card->cmt_code[0] == '\0') {
           fputs(" ignore:true", file);
         }
-        // formulas next - only the ones that aren't inline
+        // formulas next - only the ones that aren't inline (inline ones are already in the card fields)
         if(card->formulas != NULL) {
           key_value_t *form = card->formulas;
           while(form != NULL) {
-            fputc(' ', file);
-            fputs(form->key, file);
-            fputc('=', file);
-            fputs(form->value, file);
+            if(!is_inline_formula(card, form->key)) {
+              fputc(' ', file);
+              fputs(form->key, file);
+              fputc('=', file);
+              fputs(form->value, file);
+            }
             form = form->next;
           }
         }

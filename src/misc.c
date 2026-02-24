@@ -273,9 +273,11 @@ char *preprocess_line(const char *line) {
 /******************************************************************************
  * convert_awg_to_meters
  *
- * convert_awg_to_meters returns the radius in meters for a given AWG value.
- * Supports standard gauges (0-40) and large wire gauges (4/0 through 1/0).
- * Large wire gauges are represented as negative values: 4/0=-3, 3/0=-2, 2/0=-1, 1/0=0
+ * convert_awg_to_meters returns the wire RADIUS in meters for a given AWG
+ * gauge number. Supports standard gauges (0-40) and large wire gauges
+ * (4/0 through 1/0). Large wire gauges are represented as negative values:
+ * 4/0=-3, 3/0=-2, 2/0=-1, 1/0=0. Returns -1.0 for invalid gauge values.
+ * Values are computed as (ASTM B258 diameter_mm / 2) / 1000.
  */
 double convert_awg_to_meters(double awg_value)
 {
@@ -286,53 +288,59 @@ double convert_awg_to_meters(double awg_value)
     return -1.0;
   }
 
+  // These are wire RADIUS in meters, computed as (diameter_mm / 2) / 1000.
+  // Large gauge diameters are ASTM B258 standard values; AWG 1-40 use
+  // the formula d_mm = 0.127 * 92^((36-n)/39).
+  // NOTE: prior to this fix the table contained values 20x too large because
+  // the source data (diameter in inches) was multiplied by 0.254 instead of
+  // 0.0254, and was never halved to convert diameter → radius.
   switch(awg_code) {
     // Large wire gauges (negative values represent N/0 format)
-    case -3: return 0.11684;   // 4/0 or 0000
-    case -2: return 0.104049;  // 3/0 or 000
-    case -1: return 0.092658;  // 2/0 or 00
-    case 0: return 0.082515;   // 1/0 or 0
+    case -3: return 0.0058420;  // 4/0 or 0000
+    case -2: return 0.0052025;  // 3/0 or 000
+    case -1: return 0.0046328;  // 2/0 or 00
+    case  0: return 0.0041258;  // 1/0 or 0
     // Standard AWG gauges
-    case 1: return 0.073481;
-    case 2: return 0.065437;
-    case 3: return 0.058273;
-    case 4: return 0.051894;
-    case 5: return 0.046213;
-    case 6: return 0.041154;
-    case 7: return 0.036649;
-    case 8: return 0.032636;
-    case 9: return 0.029064;
-    case 10: return 0.025882;
-    case 11: return 0.023048;
-    case 12: return 0.020525;
-    case 13: return 0.018278;
-    case 14: return 0.016277;
-    case 15: return 0.014495;
-    case 16: return 0.012908;
-    case 17: return 0.011495;
-    case 18: return 0.010237;
-    case 19: return 0.009116;
-    case 20: return 0.008118;
-    case 21: return 0.007229;
-    case 22: return 0.006438;
-    case 23: return 0.005733;
-    case 24: return 0.005106;
-    case 25: return 0.004547;
-    case 26: return 0.004049;
-    case 27: return 0.003606;
-    case 28: return 0.003211;
-    case 29: return 0.002859;
-    case 30: return 0.002546;
-    case 31: return 0.002268;
-    case 32: return 0.002019;
-    case 33: return 0.001798;
-    case 34: return 0.001601;
-    case 35: return 0.001426;
-    case 36: return 0.00127;
-    case 37: return 0.001131;
-    case 38: return 0.001007;
-    case 39: return 0.000897;
-    case 40: return 0.000799;
+    case  1: return 0.0036741;
+    case  2: return 0.0032719;
+    case  3: return 0.0029137;
+    case  4: return 0.0025947;
+    case  5: return 0.0023106;
+    case  6: return 0.0020577;
+    case  7: return 0.0018324;
+    case  8: return 0.0016318;
+    case  9: return 0.0014532;
+    case 10: return 0.0012941;
+    case 11: return 0.0011524;
+    case 12: return 0.0010263;
+    case 13: return 0.0009139;
+    case 14: return 0.0008139;
+    case 15: return 0.0007248;
+    case 16: return 0.0006454;
+    case 17: return 0.0005748;
+    case 18: return 0.0005118;
+    case 19: return 0.0004558;
+    case 20: return 0.0004059;
+    case 21: return 0.0003615;
+    case 22: return 0.0003219;
+    case 23: return 0.0002867;
+    case 24: return 0.0002553;
+    case 25: return 0.0002273;
+    case 26: return 0.0002024;
+    case 27: return 0.0001803;
+    case 28: return 0.0001605;
+    case 29: return 0.0001430;
+    case 30: return 0.0001273;
+    case 31: return 0.0001134;
+    case 32: return 0.0001010;
+    case 33: return 0.0000899;
+    case 34: return 0.0000801;
+    case 35: return 0.0000713;
+    case 36: return 0.0000635;
+    case 37: return 0.0000565;
+    case 38: return 0.0000504;
+    case 39: return 0.0000448;
+    case 40: return 0.0000399;
     default: return -1.0;
   }
 }

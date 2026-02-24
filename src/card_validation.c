@@ -389,14 +389,19 @@ static field_validation_t validate_GW_field(const card_t *c, int is_int, int idx
     if(c->i[2] <= 0)
       RESULT(PROBLEM, "GW I2: segment count must be positive (got %d).", c->i[2]);
   }
-  /* Report zero-length wire on the second endpoint fields (F4, F5, F6) */
+  /* Report zero-length wire on the second endpoint fields (F4, F5, F6).
+   * Use fv[] (evaluated values) so formula-based coordinates are handled
+   * correctly — fv[] equals f[] when no formula is present. */
   if(!is_int && idx >= 4 && idx <= 6) {
-    if(c->f[1] == c->f[4] && c->f[2] == c->f[5] && c->f[3] == c->f[6])
+    if(c->fv[1] == c->fv[4] && c->fv[2] == c->fv[5] && c->fv[3] == c->fv[6])
       RESULT(PROBLEM, "GW F4-F6: both endpoints are identical (zero-length wire).");
   }
   if(!is_int && idx == 7) {
-    if(c->f[7] <= 0.0)
-      RESULT(PROBLEM, "GW F7: wire radius must be positive (got %.4g).", c->f[7]);
+    /* When the radius was given as a formula (e.g. AWG #12), f[7]==0 but
+     * fv[7] holds the evaluated radius.  Use fv[7] when a formula is present. */
+    double radius = (c->flt_form_inline[7] && c->fv[7] > 0.0) ? c->fv[7] : c->f[7];
+    if(radius <= 0.0)
+      RESULT(PROBLEM, "GW F7: wire radius must be positive (got %.4g).", radius);
   }
   return ok();
 }
