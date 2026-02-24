@@ -277,11 +277,12 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
       
       // if we found anything, print the comment marker found on this
       // card, the global one in the deck, or the onec default, !
+      // NOTE: extn_code is char[1] (no null terminator), so use fputc not fputs.
       if(hasComment || hasOnec) {
         fputc(' ', file);
-        if(strlen(card->extn_code) > 0) {
-          fputs(card->extn_code, file);
-        } else if(deck->extn_code != 0 ){
+        if(card->extn_code[0] != '\0') {
+          fputc(card->extn_code[0], file);
+        } else if(deck->extn_code != 0) {
           fputc(deck->extn_code, file);
         } else {
           fputc('!', file);
