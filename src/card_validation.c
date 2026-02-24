@@ -84,12 +84,12 @@ static field_validation_t validate_FR_field(const card_t *c, int is_int, int idx
       RESULT(PROBLEM, "FR F1: base frequency is required and must be non-zero.");
   }
   if(is_int && idx == 2) {
-    if(c->i[2] != 0 && c->f[2] == 0.0)
-      RESULT(WARNING, "FR I2: step count is non-zero but F2 (frequency step) is zero.");
+    if(c->i[2] > 1 && c->f[2] == 0.0)
+      RESULT(WARNING, "FR I2: step count is I2 > 1,  but F2 (frequency step) is zero.");
   }
   if(!is_int && idx == 2) {
-    if(c->i[2] > 0 && c->f[2] <= 0.0)
-      RESULT(PROBLEM, "FR F2: step count I2 > 0 requires a positive frequency step.");
+    if(c->i[2] > 1 && c->f[2] <= 0.0)
+      RESULT(PROBLEM, "FR F2: step count I2 > 1 requires a positive frequency step.");
     if(c->i[2] == 0 && c->f[2] != 0.0)
       RESULT(WARNING, "FR F2: I2 is 0 (single frequency) but F2 is non-zero.");
   }
