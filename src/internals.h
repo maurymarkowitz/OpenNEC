@@ -590,6 +590,7 @@ struct nec_context_t
 	FILE *error_fp;
 	FILE *green_fp;
 	FILE *plot_fp;
+	char *source_filename;  /**< Path of the input deck file, used to derive default NGF filenames. NULL when reading stdin. */
 
 	/* Numerical Green's Function (NGF) state */
 	bool has_ngf;              /* True if NGF segments were loaded via GF card */

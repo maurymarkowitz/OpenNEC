@@ -26,6 +26,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
 static void reset_loading_buffers(nec_context_t *ctx);
 static void reset_network_buffers(nec_context_t *ctx);
 static void reset_coupling_buffers(nec_context_t *ctx);
+static void reset_vsorc_buffers(nec_context_t *ctx);
 static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start, int *batch_end);
 static int count_tag_segments(const nec_context_t *ctx, int tag);
 static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card, int field_idx, int tag);
@@ -167,6 +168,112 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
             }
         }
         
+        // Handle NX restart: flush section output, reset state, restart with next section
+        if (batch_result == 2) {
+            int nx_pos = batch_end;
+
+            /* Step 1: Scan forward from NX+1 for all new section boundaries. */
+            int new_comment_start = -1, new_comment_end = -1;
+            int new_sym_start = -1,     new_sym_end = -1;
+            int new_geom_start = -1,    new_geom_end = -1;
+            int new_deck_end   = -1;
+            bool in_new_geom   = false;
+
+            for (int i = nx_pos + 1; i < deck->num_cards; i++) {
+                card_t *c = &deck->cards[i];
+                if (c->ignore) continue;
+                if (is_comment(c)) {
+                    if (new_comment_start == -1) new_comment_start = i;
+                    new_comment_end = i;
+                    continue;
+                }
+                if (strcmp(c->card_code, "SY") == 0 && !in_new_geom) {
+                    if (new_sym_start == -1) new_sym_start = i;
+                    new_sym_end = i;
+                    continue;
+                }
+                if (is_geometry(c)) {
+                    in_new_geom = true;
+                    if (new_geom_start == -1) new_geom_start = i;
+                    new_geom_end = i;
+                    if (strcmp(c->card_code, "GE") == 0) break;
+                    continue;
+                }
+                if (!in_new_geom) continue; /* skip stray pre-geometry control cards */
+            }
+            if (new_geom_end >= 0) {
+                for (int i = new_geom_end + 1; i < deck->num_cards; i++) {
+                    card_t *c = &deck->cards[i];
+                    if (!c->ignore && strcmp(c->card_code, "EN") == 0)
+                        { new_deck_end = i; break; }
+                }
+            }
+
+            if (new_geom_start == -1 || new_geom_end == -1 ||
+                strcmp(deck->cards[new_geom_end].card_code, "GE") != 0) {
+                add_error(ctx, &ctx->errors,
+                    "NX card: next section has no geometry (expected CM + Gx...GE cards)", FATAL);
+                return -1;
+            }
+
+            /* Step 2: Flush output for the completed section.
+             * Temporarily set deck_end to the NX card so write_input_cards
+             * prints section 1's control cards (FR/EX/RP/NX range). */
+            if (ctx->output_fp != NULL &&
+                (ctx->save.nfrq > 0 || ctx->gnd.ifar != -1 ||
+                 ctx->fpat.near != -1 || ctx->rpat.num_points > 0)) {
+                deck->deck_end = nx_pos;
+                write_nec_output(ctx, deck, ctx->output_fp);
+                deck->deck_end = -1;  /* restore: section 1 has no EN */
+            }
+
+            /* Step 3: Reset all per-section simulation state. */
+            reset_loading_buffers(ctx);
+            reset_network_buffers(ctx);
+            reset_coupling_buffers(ctx);
+            reset_vsorc_buffers(ctx);
+
+            if (ctx->rpat.points != NULL) { free(ctx->rpat.points); ctx->rpat.points = NULL; }
+            ctx->rpat.num_points = 0;
+
+            if (ctx->yparm.coupling_rows != NULL) {
+                free(ctx->yparm.coupling_rows);
+                ctx->yparm.coupling_rows = NULL;
+                ctx->yparm.num_coupling_rows = 0;
+                ctx->yparm.coupling_rows_cap = 0;
+            }
+
+            if (ctx->ngf_cm != NULL) { free(ctx->ngf_cm); ctx->ngf_cm = NULL; }
+            ctx->has_ngf = false; ctx->ngf_n_segs = 0; ctx->ngf_neq = 0; ctx->ngf_fmhz = 0.0;
+
+            /* Step 4: Update deck section pointers to the new section and re-run geometry. */
+            deck->comment_start  = new_comment_start;
+            deck->comment_end    = new_comment_end;
+            deck->symbol_start   = new_sym_start;
+            deck->symbol_end     = new_sym_end;
+            deck->geometry_start = new_geom_start;
+            deck->geometry_end   = new_geom_end;
+            deck->deck_end       = new_deck_end;
+
+            errors_list_t nx_geom_errors = {0};
+            calculate_geometry(ctx, deck, &nx_geom_errors, &ctx->outputs);
+            if (nx_geom_errors.num_errors > 0) {
+                for (int i = 0; i < nx_geom_errors.num_errors; i++)
+                    add_error(ctx, &ctx->errors, nx_geom_errors.errors[i].message,
+                             nx_geom_errors.errors[i].severity);
+                return -1;
+            }
+            if (nec_calculation_defaults(ctx) != 0) {
+                add_error(ctx, &ctx->errors,
+                    "NX: failed to initialize calculation defaults for new section", FATAL);
+                return -1;
+            }
+
+            ctx->current_card_idx = new_geom_end + 1;
+            ctx->iflow = 0;
+            continue;
+        }
+
         // Check if we're done
         if (batch_result == 1) {
             deck_complete = true;
@@ -299,16 +406,38 @@ static void reset_coupling_buffers(nec_context_t *ctx)
 }
 
 /******************************************************************************
+ * reset_vsorc_buffers()
+ *
+ * Reset and free excitation source (vsorc) buffers. Called on NX restart.
+ */
+static void reset_vsorc_buffers(nec_context_t *ctx)
+{
+    if (ctx->vsorc.nsant > 0) {
+        mem_free(ctx, (void **)&ctx->vsorc.isant);
+        mem_free(ctx, (void **)&ctx->vsorc.vsant);
+        ctx->vsorc.nsant = 0;
+    }
+    if (ctx->vsorc.nvqd > 0) {
+        mem_free(ctx, (void **)&ctx->vsorc.ivqd);
+        mem_free(ctx, (void **)&ctx->vsorc.iqds);
+        mem_free(ctx, (void **)&ctx->vsorc.vqd);
+        mem_free(ctx, (void **)&ctx->vsorc.vqds);
+        ctx->vsorc.nvqd = 0;
+        ctx->vsorc.nqds = 0;
+    }
+}
+
+/******************************************************************************
  * process_next_batch()
  *
- * Process control cards from current position up to next XQ, EN, or XT card.
- * Updates batch boundaries in context and handles iflow state transitions.
+ * Process control cards from current position up to next XQ, EN, XT, or NX
+ * card. Updates batch boundaries in context and handles iflow state transitions.
  *
  * @param ctx          The NEC context
  * @param deck         The deck containing control cards
  * @param batch_start  Output: first card index of this batch (inclusive)
  * @param batch_end    Output: last card index of this batch (inclusive)
- * @return             0 on success, -1 on error, 1 if EN/XT reached (end of deck)
+ * @return             0 on success, -1 on error, 1 if EN/XT reached (end of deck), 2 if NX restart
  */
 static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start, int *batch_end)
 {
@@ -346,8 +475,8 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             found_batch_end = true;
             break;
         }
-        else if (strcmp(code, "EN") == 0 || strcmp(code, "XT") == 0) {
-            // EN/XT should be a separate batch by itself
+        else if (strcmp(code, "EN") == 0 || strcmp(code, "XT") == 0 || strcmp(code, "NX") == 0) {
+            // EN/XT/NX should be a separate batch by itself
             if (card_idx > ctx->current_card_idx) {
                 // There are cards before EN/XT, end batch before EN/XT
                 *batch_end = card_idx - 1;
@@ -448,8 +577,8 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             for (int j = 1; j <= MAX_FLT_FIELDS; j++) card->fv[j] = card->f[j];
         }
         
-        // Skip XQ, EN, XT cards (they don't configure anything)
-        if (strcmp(code, "XQ") == 0 || strcmp(code, "EN") == 0 || strcmp(code, "XT") == 0) {
+        // Skip XQ, EN, XT, NX cards (they don't configure anything)
+        if (strcmp(code, "XQ") == 0 || strcmp(code, "EN") == 0 || strcmp(code, "XT") == 0 || strcmp(code, "NX") == 0) {
             continue;
         }
         
@@ -710,8 +839,8 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             ctx->fpat.clt = f3;
             ctx->fpat.cht = f4;
         }
-        else if (strcmp(code, "NX") == 0 || strcmp(code, "PT") == 0 || strcmp(code, "PQ") == 0 || strcmp(code, "PL") == 0) {
-            // These cards are for print control or job control - skip in batch processing
+        else if (strcmp(code, "PT") == 0 || strcmp(code, "PQ") == 0 || strcmp(code, "PL") == 0) {
+            // These cards are print control - skip in batch processing
             continue;
         }
         else if (strcmp(code, "RP") == 0) {
@@ -766,13 +895,27 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             /* WG FILENAME: write Numerical Green's Function file after cmset.
              * Open the output file now; write_greens_binary() is called in
              * execute_frequency_loop() after the matrix is filled, then the
-             * frequency loop exits without factorizing or solving. */
+             * frequency loop exits without factorizing or solving.
+             * If no filename is given on the card, derive one from the input
+             * deck path by replacing the extension with .ngf (same directory). */
             const char *wg_filename = card->comment;
+            char wg_default[MAX_PATH_LEN + 1];
             if (!wg_filename || *wg_filename == '\0') {
-                char msg[MAX_ERROR_LEN];
-                snprintf(msg, sizeof(msg), "WG card %d has no filename.", card_idx + 1);
-                add_error(ctx, &ctx->errors, msg, FATAL);
-                return -1;
+                if (ctx->source_filename) {
+                    strncpy(wg_default, ctx->source_filename, MAX_PATH_LEN);
+                    wg_default[MAX_PATH_LEN] = '\0';
+                    char *dot   = strrchr(wg_default, '.');
+                    char *slash = strrchr(wg_default, '/');
+                    if (dot && (!slash || dot > slash))
+                        *dot = '\0';
+                    strncat(wg_default, ".ngf", MAX_PATH_LEN - strlen(wg_default));
+                    wg_filename = wg_default;
+                } else {
+                    char msg[MAX_ERROR_LEN];
+                    snprintf(msg, sizeof(msg), "WG card %d has no filename and no input file to derive one from.", card_idx + 1);
+                    add_error(ctx, &ctx->errors, msg, FATAL);
+                    return -1;
+                }
             }
             if (ctx->green_fp != NULL) {
                 fclose(ctx->green_fp);
@@ -790,7 +933,13 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
         }
     }
     
-    // Return 1 if this was the final batch (EN/XT), 0 to continue
+    // Return 2 for NX restart, 1 for final batch (EN/XT), 0 to continue
+    if (*batch_end >= 0 && *batch_end < deck->num_cards) {
+        card_t *term_card = &deck->cards[*batch_end];
+        if (!is_comment(term_card) && !term_card->ignore &&
+            strcmp(term_card->card_code, "NX") == 0)
+            return 2;  /* NX: start next section */
+    }
     return is_final_batch ? 1 : 0;
 }
 

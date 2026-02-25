@@ -521,10 +521,22 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         
       case 11: { // GF - load Numerical Green's Function file
         const char *ngf_filename = card->comment;
+        char gf_default[MAX_PATH_LEN + 1];
         if (!ngf_filename || *ngf_filename == '\0') {
-          snprintf(msg, sizeof(msg), "GF card on line %d has no filename specified.", i + 1);
-          add_error(ctx, errors, msg, FATAL);
-          return;
+          if (ctx->source_filename) {
+            strncpy(gf_default, ctx->source_filename, MAX_PATH_LEN);
+            gf_default[MAX_PATH_LEN] = '\0';
+            char *dot   = strrchr(gf_default, '.');
+            char *slash = strrchr(gf_default, '/');
+            if (dot && (!slash || dot > slash))
+              *dot = '\0';
+            strncat(gf_default, ".ngf", MAX_PATH_LEN - strlen(gf_default));
+            ngf_filename = gf_default;
+          } else {
+            snprintf(msg, sizeof(msg), "GF card on line %d has no filename and no input file to derive one from.", i + 1);
+            add_error(ctx, errors, msg, FATAL);
+            return;
+          }
         }
         FILE *gfp = fopen(ngf_filename, "rb");
         if (!gfp) {

@@ -553,7 +553,14 @@ bool write_greens_binary(FILE *file, const nec_context_t *ctx,
     AP4(N);   AP4(NP);  AP4(M);  AP4(MP);
     AP8(ctx->geometry.wlam);  AP8(ctx->save.fmhz);
     AP4(ctx->geometry.ipsym); AP4(ctx->gnd.ksymp);
-    AP4(ctx->gnd.iperf);      AP4(ctx->gnd.nradl);
+    /* Write IPERF <= 1: OpenNEC does not write a patch-coefficient record
+     * for finite-ground (iperf==2).  The reader will try to skip that record
+     * when IPERF==2 in the header, so cap it at 1 so the skip is never
+     * attempted when reading back an OpenNEC-written NGF file.
+     * (Fortran-generated .wgf files with IPERF==2 still work because they
+     *  contain the patch-coefficient record that the read-side fr_skip needs.) */
+    AP4(ctx->gnd.iperf > 1 ? 1 : ctx->gnd.iperf);
+    AP4(ctx->gnd.nradl);
     AP8(ctx->save.epsr);      AP8(ctx->save.sig);
     AP8(ctx->gnd.scrwl);      AP8(ctx->gnd.scrwr);
     AP4(0);   /* NLOAD — loads not stored in NGF */
@@ -622,6 +629,64 @@ bool write_greens_binary(FILE *file, const nec_context_t *ctx,
       IMAT           /* IMAT = NEQ * NPEQ */
     };
     if (!fw1(file, rec7, 32)) return false;
+  }
+
+  /* ---------- Optional symmetry submatrix (when NP < N) ----------------------
+   * Fortran NEC-2 GFOUT: IF(NOP.GT.1) WRITE(IGFL) ((SSX(I,J),I=1,NOP),J=1,NOP)
+   * Fortran NEC-2 GFIL:  IF(NOP.GT.1) READ (IGFL) ((SSX(I,J),I=1,NOP),J=1,NOP)
+   * where NOP = NEQ/NPEQ (number of symmetry copies) and SSX is the NOP×NOP
+   * scattering / DFT matrix used in the symmetry-expanded solve.
+   *
+   * OpenNEC's reader calls fr_skip() (size-agnostic), but Fortran NEC-2 does a
+   * typed READ of exactly NOP×NOP values.  We therefore write the real SSX matrix
+   * so that an OpenNEC-written .ngf is readable by Fortran NEC-2.
+   *
+   * Two cases, matching Fortran FBLOCK (lines 3936-3961 of nec2-1.2.1.2.f):
+   *   ipsym <= 0  (GR, rotational): SSX[i][j] = exp(2πi·i·j / NOP)  (full DFT)
+   *   ipsym >  0  (GX, plane):  Recursive Hadamard construction, NOP ∈ {2,4,8}
+   *
+   * Note: the Fortran loop (DO I=2,NOP; DO J=I,NOP) omits the first row/column,
+   * relying on COMMON-block zero-initialization.  The true DFT first row/col is
+   * all-ones; we fill the full NOP×NOP matrix correctly. */
+  if (NP > 0 && neq / NP > 1) {
+    int NOP = neq / NP;
+    complex double *ssx = (complex double *)calloc((size_t)NOP * (size_t)NOP,
+                                                    sizeof(complex double));
+    if (!ssx) return false;
+
+    if (ctx->geometry.ipsym <= 0) {
+      /* Rotational symmetry (GR): NOP-point DFT matrix.
+       * SSX[i][j] = exp(2πi * i * j / NOP)  for i,j = 0..NOP-1 (0-indexed). */
+      double phaz = 2.0 * M_PI / NOP;
+      for (int i = 0; i < NOP; i++) {
+        for (int j = 0; j < NOP; j++) {
+          double arg = phaz * i * j;
+          ssx[i * NOP + j] = cos(arg) + I * sin(arg);
+        }
+      }
+    } else {
+      /* Plane symmetry (GX, NOP = 2 / 4 / 8): Hadamard-like construction.
+       * Direct C port of Fortran FBLOCK lines 3947-3961. */
+      ssx[0] = 1.0 + 0.0 * I;   /* SSX(1,1) = (1,0) */
+      int KK = 1;
+      int KA = NOP / 2;
+      if (NOP == 8) KA = 3;
+      for (int K = 0; K < KA; K++) {
+        for (int ii = 0; ii < KK; ii++) {
+          for (int jj = 0; jj < KK; jj++) {
+            complex double d = ssx[ii * NOP + jj];
+            ssx[ ii         * NOP + (jj + KK)] =  d;   /* SSX(I,   J+KK) =  DETER */
+            ssx[(ii + KK)   * NOP + (jj + KK)] = -d;   /* SSX(I+KK,J+KK) = -DETER */
+            ssx[(ii + KK)   * NOP +  jj       ] =  d;  /* SSX(I+KK,J)    =  DETER */
+          }
+        }
+        KK *= 2;
+      }
+    }
+
+    bool ok = fw1(file, ssx, (int32_t)(NOP * NOP * 16));
+    free(ssx);
+    if (!ok) return false;
   }
 
   /* ---------- Record 8: IP[NEQ] + COM[100] — written as zeros ---------- */
@@ -885,11 +950,13 @@ static void write_header(const nec_context_t *ctx, const deck_t *deck, FILE *fil
           "                               "
           "---------------- COMMENTS ----------------\n" );
   
-  // write header comments to output file (only CM/CE cards before geometry)
-  for(int i = 0; i < deck->num_cards; i++) {
+  // write header comments to output file (CM/CE cards in the comment section only)
+  int cstart = (deck->comment_start >= 0) ? deck->comment_start : 0;
+  int cend   = (deck->comment_end   >= 0) ? deck->comment_end   : deck->geometry_start - 1;
+  for(int i = cstart; i <= cend && i < deck->num_cards; i++) {
     card_t *card = &deck->cards[i];
     if ((strcmp(card->card_code, "CM") == 0 || strcmp(card->card_code, "CE") == 0) && 
-        i < deck->geometry_start && card->comment) {
+        card->comment) {
       fprintf(ctx->output_fp, "                              %s\n", card->comment);
     }
   }

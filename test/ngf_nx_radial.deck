@@ -1,0 +1,17 @@
+CM EXAMPLE 10. Green's Function for Radial-Wire Screen over Finite Ground 
+CM Screen Radius = 30 m (1. wavelength radius)
+CE Screen height = .01 m  6 radial wires
+GW 0 12 0. 0. .01 30. 0. .01 .003
+GR 0 6
+GE 1
+FR 0 1 0 0 10.
+GN 2 0 0 0 4. .001
+WG ngf_nx_radial.ngf
+NX
+CE Monopole on radial wire ground screen from the NGF file.
+GF ngf_nx_radial.ngf
+GW 1 6 0. 0. 0.01 0. 0. 7.51 .003
+GE
+EX 0 1 1 0 1.
+RP 0 19 2 1001 0. 0. 5. 90.
+EN

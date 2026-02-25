@@ -195,7 +195,38 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
         add_error(ctx, errors, msg, 0);
       }
     }
-    
+
+    if(strcmp(code, "NX") == 0) {
+      /* NX must not carry numeric parameters (ONEC comment is allowed). */
+      bool nx_has_params = false;
+      for(int j = 1; j <= MAX_INT_FIELDS; j++) if(deck->cards[i].i[j] != 0) { nx_has_params = true; break; }
+      if(!nx_has_params)
+        for(int j = 1; j <= MAX_FLT_FIELDS; j++) if(deck->cards[i].f[j] != 0.0) { nx_has_params = true; break; }
+      if(nx_has_params) {
+        snprintf(msg, sizeof(msg),
+          "The NX card on line %d has numeric parameters; NX takes no parameters (they will be ignored).", i + 1);
+        add_error(ctx, errors, msg, WARNING);
+      }
+
+      /* The first non-ignored card after NX must be CM or CE. */
+      bool found_next_cm = false;
+      for(int j = i + 1; j < deck->num_cards; j++) {
+        if(deck->cards[j].ignore) continue;
+        if(is_comment(&deck->cards[j])) { found_next_cm = true; }
+        break;  /* first non-ignored card, comment or not */
+      }
+      if(!found_next_cm) {
+        snprintf(msg, sizeof(msg),
+          "The NX card on line %d must be immediately followed by a CM card to start the next section.", i + 1);
+        add_error(ctx, errors, msg, FATAL);
+      }
+
+      /* Reset per-section tracking so the next section is validated independently. */
+      sawCE = 0; sawGx = 0; sawGE = 0; sawEN = 0; sawGF = 0;
+      sawFR = 0; sawSC = 0; sawSP = 0; sawGN = 0; sawGD = 0;
+      sawRP = 0; sawGS = 0; sawLD = 0; sawEX = 0; sawSY = 0;
+    }
+
     // NOTE: does a deck really need a EX?
     
     // and also look for other cards where there can only be one

@@ -145,6 +145,10 @@ void recalculate_sections(deck_t *deck)
     if(strcmp(card->card_code, "EN") == 0) {
       deck->deck_end = i;
     }
+    // NX ends the first section; geometry/section indexes stop here
+    if(strcmp(card->card_code, "NX") == 0) {
+      break;
+    }
   } /* for loop over cards */
 }
 

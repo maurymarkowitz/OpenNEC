@@ -216,6 +216,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
   FILE *output_fp = NULL;
 
   ctx->error_fp = error_fp;
+  ctx->source_filename = (strlen(input_filename) > 0) ? (char *)input_filename : NULL;
 
   // open input file or use stdin
   if (strlen(input_filename) > 0)
