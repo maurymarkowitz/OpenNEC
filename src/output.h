@@ -37,16 +37,32 @@ void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *pfile);
 void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *pfile);
 
 /**
- * @brief Writes the Green's function matrix to a file.
- * 
- * Used for persistent storage of the interaction matrix for Numerical
- * Green's Function (NGF) calculations.
- * 
- * @param file Output file pointer.
- * @param ctx The simulation context.
- * @param nrow Number of rows in the matrix.
- * @param cm The complex interaction matrix.
+ * @brief Writes an OpenNEC binary NGF (Green's function) file.
+ *
+ * Stores all geometry and the unfactored CM interaction matrix so that a
+ * subsequent simulation run using a GF card can restore them without
+ * recomputing. Called by the WG control-card handler after cmset().
+ *
+ * @param file  Output file pointer (must be opened in binary mode).
+ * @param ctx   The simulation context.
+ * @param neq   Matrix dimension (number of equations).
+ * @param cm    Unfactored CM matrix, column-major, neq×neq complex doubles.
+ * @return      true on success, false on I/O error.
  */
-void write_greens_matrix(FILE *file, const nec_context_t *ctx, int nrow, const complex double *cm);
+bool write_greens_binary(FILE *file, const nec_context_t *ctx,
+                          int neq, const complex double *cm);
+
+/**
+ * @brief Reads an OpenNEC binary NGF (Green's function) file.
+ *
+ * Populates ctx->geometry with stored segment data and installs the cached
+ * CM matrix in ctx->ngf_cm. Sets ctx->has_ngf on success.
+ * Called by the GF geometry-card handler.
+ *
+ * @param file  Input file pointer (must be opened in binary mode).
+ * @param ctx   The simulation context to populate.
+ * @return      true on success, false on format/I/O error.
+ */
+bool read_greens_binary(FILE *file, nec_context_t *ctx);
 
 #endif /* OUTPUT_H */

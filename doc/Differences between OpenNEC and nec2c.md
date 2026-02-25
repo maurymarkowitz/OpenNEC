@@ -14,14 +14,17 @@ Changes in the code
 - nec2c parses the deck card-by-card from the input file.
 - onec parses the entire deck in one pass, which allows it to perform whole-deck checks.
 
-- nec2c can calculate only one file.
-- onec's command line can process multiple files, whole directories, and can recurse multiple directories.
+- nec2c can calculate only one file at a time.
+- onec's command line can process multiple files, whole directories, and can recurse through directories.
 
 - nec2c has considerable global state inherited from the original Fortran code's COMMON sections. This makes it non-reentrant and it cannot be used in a threaded fashion.
 - onec has been refactored so there is no global state and is completely thread-safe. Programs can use the library to work on multiple decks, and the command shell can run multiple input files at the same time.
 
 - nec2c uses the original Fortran matrix calculation code. A number of forks of nec2c support one matrix library or another.
 - onec supports a wide variety of well-known matrix libraries across multiple platforms. These offer major performance improvements on large files (3x on 1000 segments, 7x on 4000). You can compare the performance by running the script in the speed_tests folder. On Apple platforms, Accelerate will be linked by default as this is always available.
+
+- nec2c added initial support for green's files, but never implemented it internally
+- onec has complete green's file support, reading and writing the files in the original Fortran format
 
 Other basic changes
 -------------------
@@ -33,8 +36,6 @@ Other basic changes
 - OpenNEC also includes per-field validations that can be used by a GUI program to graphically indicate problems. For instance, if the user makes a new FR card, the validation functions will indicate that the empty value in the F2 field needs to be entered. If they enter a value in I2, which indicates steps, it will indicate that a value has to be entered in F2. There is an extensive suite of these validations.
 
   - Note: Many validations are emitted as warnings (non-fatal) to preserve compatibility with existing decks while highlighting potential issues.
-
-- OpenNEC provides a `-g` option to export Green's function data (NGF). When enabled, segment centers and the interaction matrix are written per frequency step.
 
 Additions from other systems
 ----------------------------

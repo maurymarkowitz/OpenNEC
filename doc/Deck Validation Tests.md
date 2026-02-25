@@ -1,5 +1,5 @@
-OpenNEC deck validation tests
-=============================
+OpenNEC validation tests
+========================
 
 This document summarizes the validation and guidance checks implemented in OpenNEC to help authors catch common deck issues early. These checks run in the tests-only mode and during normal processing, reporting warnings vs. error conditions with different severity codes.
 

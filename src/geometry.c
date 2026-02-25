@@ -10,6 +10,7 @@
 
 #include "internals.h"
 #include "geometry.h"
+#include "output.h"
 
 /* Forward declarations for internal functions */
 static void wire(nec_context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs, double xw1, double yw1, double zw1, double xw2, double yw2, double zsw2, double rad, double rdel, double rrad);
@@ -518,11 +519,31 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         helix(ctx, target_geom, i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, rad, outputs);
         continue;
         
-      case 11: // GF, not supported
-        // TODO: support this!
-            snprintf(msg, sizeof(msg), "The card on line %d is a GF card which is not supported.", i + 1);
-            add_error(ctx, errors, msg, FATAL);
-        return;
+      case 11: { // GF - load Numerical Green's Function file
+        const char *ngf_filename = card->comment;
+        if (!ngf_filename || *ngf_filename == '\0') {
+          snprintf(msg, sizeof(msg), "GF card on line %d has no filename specified.", i + 1);
+          add_error(ctx, errors, msg, FATAL);
+          return;
+        }
+        FILE *gfp = fopen(ngf_filename, "rb");
+        if (!gfp) {
+          snprintf(msg, sizeof(msg), "GF card on line %d: cannot open NGF file '%s'.", i + 1, ngf_filename);
+          add_error(ctx, errors, msg, FATAL);
+          return;
+        }
+        bool ngf_ok = read_greens_binary(gfp, ctx);
+        fclose(gfp);
+        if (!ngf_ok) {
+          /* error already recorded by read_greens_binary */
+          return;
+        }
+        snprintf(msg, sizeof(msg),
+                 "GF card on line %d: loaded %d segments from '%s'.",
+                 i + 1, ctx->ngf_n_segs, ngf_filename);
+        add_message(ctx, outputs, msg);
+        continue;
+      }
         
       case 12: // GC, geometry continuation - should only appear after GW
         snprintf(msg, sizeof(msg), "GC card on line %d found outside of GW tapering context.", i + 1);
@@ -1384,9 +1405,13 @@ void helix(nec_context_t *ctx, geometry_t *geom, int card_num, int tag_num, int 
  */
 void scale(nec_context_t *ctx, double xw1)
 {
+  /* GS card: NEC-2 spec says GS affects new structure only, not NGF segments.
+   * Start from ngf_n_segs so frozen NGF segments are left untouched. */
+  int scale_start = ctx->has_ngf ? ctx->ngf_n_segs : 0;
+
   // scale the wires
   if(ctx->geometry.n > 0) {
-    for(int i = 0; i < ctx->geometry.n; i++) {
+    for(int i = scale_start; i < ctx->geometry.n; i++) {
       ctx->geometry.x1[i] = ctx->geometry.x1[i] * xw1;
       ctx->geometry.y1[i] = ctx->geometry.y1[i] * xw1;
       ctx->geometry.z1[i] = ctx->geometry.z1[i] * xw1;
@@ -1465,6 +1490,11 @@ void reproduce(nec_context_t *ctx, double rox, double roy, double roz, double xs
     i1 = segment_number(ctx, its, 1);
     if(i1 < 1)
       i1 = 1;
+
+    /* GM card: NEC-2 spec says GM affects new structure only, not NGF segments.
+     * Clamp i1 so we never touch frozen NGF segments (indices 0..ngf_n_segs-1). */
+    if(ctx->has_ngf && i1 <= ctx->ngf_n_segs)
+      i1 = ctx->ngf_n_segs + 1;
 
     ix = i1;
     if(nrpt == 0)
@@ -1606,7 +1636,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
   int iti, i, nx, itagi;
   size_t mreq;
   double e1, e2;
-  
+
   // sanity check, formerly used nop>0 but we no longer pass that in
   if(ix == 0 && iy == 0 && iz == 0) {
     char msg[MAX_ERROR_LEN];
@@ -1614,13 +1644,20 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
     add_error(ctx, &ctx->geometry.errors, msg, 1);
     return;
   }
-  
+
+  /* GX card: NEC-2 spec says GX affects new structure only.
+   * n0 = number of frozen NGF segments at the start of the array.
+   * All loops start from n0 so NGF segments are left untouched.
+   * Per spec: "GX will not result in use of symmetry in the solution"
+   * when an NGF file is in use — ipsym is forced to 0 at the end. */
+  int n0 = ctx->has_ngf ? ctx->ngf_n_segs : 0;
+
   // we are going to create symmetry one way or the other,
   // so we copy down how much geometry is in the symmetry "cell"
-  ctx->geometry.np = ctx->geometry.n;
+  ctx->geometry.np = ctx->geometry.n - n0;
   ctx->geometry.mp = ctx->geometry.m;
   iti = tag_increment;
-  
+
   // both GR and GX cards use only the I1 and I2 inputs in the card. I1 is
   // passed in the tag_increment, and I2 in num_copies. However, the I2 value
   // means different things in the two cards, in the GR card is is the number
@@ -1628,25 +1665,28 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
   // axes to reflect along. Since the flag value is a value number of copies
   // value, the code that calls reflect copies the I2 value into the ix, iy and iz
   // so to indicate if we are performing
-  
+
   // we are now symmetric
   // FIXME: the original code for this is confusing, this should be reviewed
   ctx->geometry.ipsym = 1;
-  
+
   // reflect along z axis
   if(iz != 0) {
     ctx->geometry.ipsym = 2;
-    
+
     // copy existing wires if there are any
-    if(ctx->geometry.n > 0) {
+    if(ctx->geometry.n > n0) {
+      int nn = ctx->geometry.n;
+      int new_count = nn - n0;
+
       // reallocate cards and tags buffers
-      mreq = (size_t)(2 * ctx->geometry.n + ctx->geometry.m);
+      mreq = (size_t)(nn + new_count + ctx->geometry.m);
       mreq *= sizeof(int);
       mem_realloc(ctx, (void *)&ctx->geometry.tag_nums, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.card_nums, mreq);
-      
+
       // Reallocate wire buffers
-      mreq = (size_t)(2 * ctx->geometry.n);
+      mreq = (size_t)(nn + new_count);
       mreq *= sizeof(double);
       mem_realloc(ctx, (void *)&ctx->geometry.x1, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.y1, mreq);
@@ -1655,15 +1695,15 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
       mem_realloc(ctx, (void *)&ctx->geometry.y2, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.z2, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.bi, mreq);
-      
-      for(i = 0; i < ctx->geometry.n; i++) {
-        // get the existing segment number and
-        nx = i + ctx->geometry.n;
-        
+
+      for(i = n0; i < nn; i++) {
+        // pack copies right after existing segments
+        nx = nn + (i - n0);
+
         // get the existing z end points and test them
         e1 = ctx->geometry.z1[i];
         e2 = ctx->geometry.z2[i];
-        
+
         if((fabs(e1) + fabs(e2) <= 1.0e-12) || (e1 * e2 < -1.0e-12)) {
           char l_msg[MAX_ERROR_LEN];
           snprintf(l_msg, sizeof(l_msg),
@@ -1673,35 +1713,35 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
           add_error(ctx, &ctx->geometry.errors, l_msg, 1);
           return;
         }
-        
+
         ctx->geometry.x1[nx] = ctx->geometry.x1[i];
         ctx->geometry.y1[nx] = ctx->geometry.y1[i];
         ctx->geometry.z1[nx] = -e1;
         ctx->geometry.x2[nx] = ctx->geometry.x2[i];
         ctx->geometry.y2[nx] = ctx->geometry.y2[i];
         ctx->geometry.z2[nx] = -e2;
-        
+
         // get the last used tag num
         itagi = ctx->geometry.tag_nums[i];
-        
+
         // now set the tag of the new entries to zero or that offset
         if(itagi == 0)
           ctx->geometry.tag_nums[nx] = 0;
         if(itagi != 0)
           ctx->geometry.tag_nums[nx]= itagi + iti;
-        
+
         ctx->geometry.bi[nx]= ctx->geometry.bi[i];
-      } /* for( i = 0; i < data.n; i++ ) */
-      
-      // and that means the amount of geometry has doubled
-      ctx->geometry.n = ctx->geometry.n * 2;
-      
+      } /* for( i = n0; i < nn; i++ ) */
+
+      // new count doubles the new structure (not the frozen NGF segments)
+      ctx->geometry.n = nn + new_count;
+
       // and that if we make more entries they need to be
       // offset by a greater number
       iti = iti * 2;
-    } /* if( geomtry.n > 0) */
-    
-    // and now the patches, if there are any
+    } /* if( geometry.n > n0) */
+
+    // and now the patches, if there are any (patches are never NGF)
     if(ctx->geometry.m > 0) {
       /* Reallocate patch buffers */
       mreq = (size_t)(2 * ctx->geometry.m);
@@ -1717,7 +1757,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
       mem_realloc(ctx, (void *)&ctx->geometry.t2z, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.pbi, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.psalp, mreq);
-      
+
       for(i = 0; i < ctx->geometry.m; i++) {
         nx = i+ctx->geometry.m;
         if(fabs(ctx->geometry.pz[i]) <= 1.0e-10) {
@@ -1729,7 +1769,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
           add_error(ctx, &ctx->geometry.errors, l_msg, 1);
           return;
         }
-        
+
         ctx->geometry.px[nx]= ctx->geometry.px[i];
         ctx->geometry.py[nx]= ctx->geometry.py[i];
         ctx->geometry.pz[nx]= -ctx->geometry.pz[i];
@@ -1742,21 +1782,24 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
         ctx->geometry.psalp[nx]= -ctx->geometry.psalp[i];
         ctx->geometry.pbi[nx]= ctx->geometry.pbi[i];
       }
-      
+
       ctx->geometry.m= ctx->geometry.m*2;
     } /* if( data.m >= m2) */
   } /* if( iz != 0) */
-  
+
   // now repeat all of that for the y-axis
   if(iy != 0) {
-    if(ctx->geometry.n > 0) {
+    if(ctx->geometry.n > n0) {
+      int nn = ctx->geometry.n;
+      int new_count = nn - n0;
+
       /* Reallocate tags buffer */
-      mreq = (size_t)(2 * ctx->geometry.n + ctx->geometry.m);
+      mreq = (size_t)(nn + new_count + ctx->geometry.m);
       mreq *= sizeof(int);
       mem_realloc(ctx, (void *)&ctx->geometry.tag_nums, mreq);
-      
+
       /* Reallocate wire buffers */
-      mreq = (size_t)(2 * ctx->geometry.n);
+      mreq = (size_t)(nn + new_count);
       mreq *= sizeof(double);
       mem_realloc(ctx, (void *)&ctx->geometry.x1, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.y1, mreq);
@@ -1765,12 +1808,12 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
       mem_realloc(ctx, (void *)&ctx->geometry.y2, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.z2, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.bi, mreq);
-      
-      for(i = 0; i < ctx->geometry.n; i++) {
-        nx= i+ ctx->geometry.n;
+
+      for(i = n0; i < nn; i++) {
+        nx = nn + (i - n0);
         e1= ctx->geometry.y1[i];
         e2= ctx->geometry.y2[i];
-        
+
         if((fabs(e1)+fabs(e2) <= 1.0e-12) || (e1*e2 < -1.0e-12)) {
           char l_msg[MAX_ERROR_LEN];
           snprintf(l_msg, sizeof(l_msg),
@@ -1780,7 +1823,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
           add_error(ctx, &ctx->geometry.errors, l_msg, 1);
           return;
         }
-        
+
         ctx->geometry.x1[nx] = ctx->geometry.x1[i];
         ctx->geometry.y1[nx] = -e1;
         ctx->geometry.z1[nx] = ctx->geometry.z1[i];
@@ -1788,21 +1831,21 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
         ctx->geometry.y2[nx] = -e2;
         ctx->geometry.z2[nx] = ctx->geometry.z2[i];
         itagi = ctx->geometry.tag_nums[i];
-        
+
         if( itagi == 0)
           ctx->geometry.tag_nums[nx]=0;
         if( itagi != 0)
           ctx->geometry.tag_nums[nx]= itagi+ iti;
-        
+
         ctx->geometry.bi[nx]= ctx->geometry.bi[i];
-        
-      } /* for( i = n2-1; i < data.n; i++ ) */
-      
-      ctx->geometry.n= ctx->geometry.n*2;
+
+      } /* for( i = n0; i < nn; i++ ) */
+
+      ctx->geometry.n = nn + new_count;
       iti= iti*2;
-      
-    } /* if( data.n >= n2) */
-    
+
+    } /* if( geometry.n > n0) */
+
     // reflect any patches
     if(ctx->geometry.m > 0)  {
       // reflection doubles the number of patches, so we start
@@ -1820,7 +1863,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
       mem_realloc(ctx, (void *)&ctx->geometry.t2z, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.pbi, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.psalp, mreq);
-      
+
       for( i = 0; i < ctx->geometry.m; i++ ) {
         nx= i+ctx->geometry.m;
         if( fabs( ctx->geometry.py[i]) <= 1.0e-10) {
@@ -1832,7 +1875,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
           add_error(ctx, &ctx->geometry.errors, l_msg, 1);
           return;
         }
-        
+
         ctx->geometry.px[nx]= ctx->geometry.px[i];
         ctx->geometry.py[nx]= -ctx->geometry.py[i];
         ctx->geometry.pz[nx]= ctx->geometry.pz[i];
@@ -1844,25 +1887,32 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
         ctx->geometry.t2z[nx]= ctx->geometry.t2z[i];
         ctx->geometry.psalp[nx]= -ctx->geometry.psalp[i];
         ctx->geometry.pbi[nx]= ctx->geometry.pbi[i];
-        
+
       } /* for( i = m2; i <= ctx->geometry.m; i++ ) */
-      
+
       ctx->geometry.m= ctx->geometry.m * 2;
     } /* if( ctx->geometry.m >= m2) */
   } /* if( iy != 0) */
-  
+
   // and finally the x axis
-  if(ix == 0)
+  if(ix == 0) {
+    /* When NGF is active, clear symmetry flag — per NEC-2 spec GX does not
+     * result in use of symmetry in the solution when NGF is in use. */
+    if(ctx->has_ngf) ctx->geometry.ipsym = 0;
     return;
-  
-  if( ctx->geometry.n > 0 ) {
+  }
+
+  if( ctx->geometry.n > n0 ) {
+    int nn = ctx->geometry.n;
+    int new_count = nn - n0;
+
     /* Reallocate tags buffer */
-    mreq = (size_t)(2 * ctx->geometry.n + ctx->geometry.m);
+    mreq = (size_t)(nn + new_count + ctx->geometry.m);
     mreq *= sizeof(int);
     mem_realloc(ctx, (void *)&ctx->geometry.tag_nums, mreq);
-    
+
     /* Reallocate wire buffers */
-    mreq = (size_t)(2 * ctx->geometry.n);
+    mreq = (size_t)(nn + new_count);
     mreq *= sizeof(double);
     mem_realloc(ctx, (void *)&ctx->geometry.x1, mreq);
     mem_realloc(ctx, (void *)&ctx->geometry.y1, mreq);
@@ -1871,12 +1921,12 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
     mem_realloc(ctx, (void *)&ctx->geometry.y2, mreq);
     mem_realloc(ctx, (void *)&ctx->geometry.z2, mreq);
     mem_realloc(ctx, (void *)&ctx->geometry.bi, mreq);
-    
-    for(i = 0; i < ctx->geometry.n; i++) {
-      nx= i+ ctx->geometry.n;
+
+    for(i = n0; i < nn; i++) {
+      nx = nn + (i - n0);
       e1= ctx->geometry.x1[i];
       e2= ctx->geometry.x2[i];
-      
+
       if( (fabs(e1)+fabs(e2) <= 1.0e-12) || (e1*e2 < -1.0e-12) ) {
         char l_msg[MAX_ERROR_LEN];
         snprintf(l_msg, sizeof(l_msg),
@@ -1886,7 +1936,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
         add_error(ctx, &ctx->geometry.errors, l_msg, 1);
         return;
       }
-      
+
       ctx->geometry.x1[nx]= -e1;
       ctx->geometry.y1[nx]= ctx->geometry.y1[i];
       ctx->geometry.z1[nx]= ctx->geometry.z1[i];
@@ -1894,22 +1944,25 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
       ctx->geometry.y2[nx]= ctx->geometry.y2[i];
       ctx->geometry.z2[nx]= ctx->geometry.z2[i];
       itagi= ctx->geometry.tag_nums[i];
-      
+
       if(itagi == 0)
         ctx->geometry.tag_nums[nx]=0;
       if(itagi != 0)
         ctx->geometry.tag_nums[nx]= itagi + iti;
-      
+
       ctx->geometry.bi[nx]= ctx->geometry.bi[i];
     }
-    
-    ctx->geometry.n= ctx->geometry.n*2;
-    
-  } /* if( data.n > 0) */
-  
-  if(ctx->geometry.m == 0)
+
+    ctx->geometry.n = nn + new_count;
+
+  } /* if( data.n > n0) */
+
+  if(ctx->geometry.m == 0) {
+    /* When NGF is active, clear symmetry flag. */
+    if(ctx->has_ngf) ctx->geometry.ipsym = 0;
     return;
-  
+  }
+
   /* Reallocate patch buffers */
   mreq = (size_t)(2 * ctx->geometry.m);
   mreq *= sizeof(double);
@@ -1924,7 +1977,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
   mem_realloc(ctx, (void *)&ctx->geometry.t2z, mreq);
   mem_realloc(ctx, (void *)&ctx->geometry.pbi, mreq);
   mem_realloc(ctx, (void *)&ctx->geometry.psalp, mreq);
-  
+
   for( i = 0; i < ctx->geometry.m; i++ ) {
     nx = i+ctx->geometry.m;
     if(fabs(ctx->geometry.px[i]) <= 1.0e-10) {
@@ -1936,7 +1989,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
       add_error(ctx, &ctx->geometry.errors, l_msg, 1);
       return;
     }
-    
+
     ctx->geometry.px[nx]= -ctx->geometry.px[i];
     ctx->geometry.py[nx]= ctx->geometry.py[i];
     ctx->geometry.pz[nx]= ctx->geometry.pz[i];
@@ -1949,8 +2002,11 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
     ctx->geometry.psalp[nx]= -ctx->geometry.psalp[i];
     ctx->geometry.pbi[nx]= ctx->geometry.pbi[i];
   }
-  
+
   ctx->geometry.m= ctx->geometry.m * 2;
+
+  /* When NGF is active, clear symmetry flag. */
+  if(ctx->has_ngf) ctx->geometry.ipsym = 0;
 } /* end of reflect */
 
 /******************************************************************************
@@ -1974,30 +2030,39 @@ void rotate(nec_context_t *ctx, int card_num, int tag_increment, int num_copies)
   int nx, itagi, k;
   size_t mreq;
   double fnop, sam, cs, ss, xk, yk;
-  
+
+  /* GR card: NEC-2 spec says GR affects new structure only, not NGF segments.
+   * n0 = number of frozen NGF segments.  The symmetry period np is set to
+   * new_count (non-NGF segments).  Per spec: "GR will not result in use of
+   * symmetry in the solution" when NGF is in use — ipsym is forced to 0. */
+  int n0 = ctx->has_ngf ? ctx->ngf_n_segs : 0;
+  int new_count = ctx->geometry.n - n0;
+
   // we are going to create symmetry around the Z axis
-  ctx->geometry.np = ctx->geometry.n;
+  ctx->geometry.np = new_count;
   ctx->geometry.mp = ctx->geometry.m;
   ctx->geometry.ipsym = -1;      // rotational symmetry
-  
+
   // reproduce structure with rotation to form cylindrical structure
   fnop = (double)num_copies;
   sam = TP / fnop;
   cs = cos(sam);
   ss = sin(sam);
-  
-  if(ctx->geometry.n > 0) {
-    ctx->geometry.n *= num_copies;
-    nx = ctx->geometry.np;
-    
+
+  if(new_count > 0) {
+    // total segments after rotation: n0 frozen + new_count * num_copies
+    int n_new_total = n0 + new_count * num_copies;
+
+    nx = n0 + new_count;   // first copy starts here
+
     //r eallocate cards and tags buffers
-    mreq = (size_t)(ctx->geometry.n + ctx->geometry.m);
+    mreq = (size_t)(n_new_total + ctx->geometry.m);
     mreq *= sizeof(int);
     mem_realloc(ctx, (void *)&ctx->geometry.tag_nums, mreq);
     mem_realloc(ctx, (void *)&ctx->geometry.card_nums, mreq);
-    
+
     // reallocate wire buffers
-    mreq = (size_t)ctx->geometry.n;
+    mreq = (size_t)n_new_total;
     mreq *= sizeof(double);
     mem_realloc(ctx, (void *)&ctx->geometry.x1, mreq);
     mem_realloc(ctx, (void *)&ctx->geometry.y1, mreq);
@@ -2006,9 +2071,10 @@ void rotate(nec_context_t *ctx, int card_num, int tag_increment, int num_copies)
     mem_realloc(ctx, (void *)&ctx->geometry.y2, mreq);
     mem_realloc(ctx, (void *)&ctx->geometry.z2, mreq);
     mem_realloc(ctx, (void *)&ctx->geometry.bi, mreq);
-    
-    for(int i = nx; i < ctx->geometry.n; i++ ) {
-      k= i - ctx->geometry.np;
+
+    for(int i = nx; i < n_new_total; i++ ) {
+      // cycle through the original new segments
+      k = n0 + (i - n0) % new_count;
       xk = ctx->geometry.x1[k];
       yk = ctx->geometry.y1[k];
       ctx->geometry.x1[i]= xk* cs- yk* ss;
@@ -2021,15 +2087,20 @@ void rotate(nec_context_t *ctx, int card_num, int tag_increment, int num_copies)
       ctx->geometry.z2[i]= ctx->geometry.z2[k];
       ctx->geometry.bi[i]= ctx->geometry.bi[k];
       itagi= ctx->geometry.tag_nums[k];
-      
+
       if(itagi == 0)
         ctx->geometry.tag_nums[i] = 0;
       if( itagi != 0)
         ctx->geometry.tag_nums[i] = itagi + tag_increment;
-      
+
       ctx->geometry.card_nums[i] = card_num;
     }
-  } /* if( data.n >= n2) */
+
+    ctx->geometry.n = n_new_total;
+  } /* if( new_count > 0) */
+
+  /* When NGF is active, clear symmetry flag per NEC-2 spec. */
+  if(ctx->has_ngf) ctx->geometry.ipsym = 0;
   
   // now do it all again for the patches if there are any
   // FIXME: this doesn't see to record tag or card numbers, did that happen above?

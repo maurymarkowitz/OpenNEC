@@ -683,9 +683,58 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
   card->field_sep = detect_field_separator(card->card_str);
   char *trimmed = trim_start(card->card_str + 2);
   char *preprocessed = preprocess_line(trimmed);
-  
+
+  // WG and GF cards carry a filename that cannot be tokenized as a number.
+  // Extract the filename from the raw card string and store it in card->comment,
+  // then return immediately so the normal numeric field parser is not invoked.
+  if (strcmp(card->card_code, "WG") == 0) {
+    // WG FILENAME  — filename is the entire content after the mnemonic
+    if (trimmed && *trimmed != '\0') {
+      card->comment = strdup(trimmed);
+      // strip NEC apostrophe-style inline comment (e.g. ' this is a comment)
+      char *apos = strchr(card->comment, '\'');
+      if (apos) *apos = '\0';
+      // trim trailing whitespace
+      size_t flen = strlen(card->comment);
+      while (flen > 0 && isspace((unsigned char)card->comment[flen - 1]))
+        card->comment[--flen] = '\0';
+    }
+    free(preprocessed);
+    return;
+  }
+  if (strcmp(card->card_code, "GF") == 0) {
+    // GF [I1] FILENAME  — I1 is the optional NGF continuation flag (0 or 1).
+    // If the token after GF is not a number, treat the whole field as the filename.
+    if (trimmed && *trimmed != '\0') {
+      char *end_ptr2;
+      long i1_val = strtol(trimmed, &end_ptr2, 10);
+      char *fname_start;
+      if (end_ptr2 != trimmed) {
+        // Leading integer found — store it and advance past it
+        card->i[1] = (int)i1_val;
+        fname_start = trim_start(end_ptr2);
+      } else {
+        // No leading integer — filename starts immediately
+        fname_start = trimmed;
+      }
+      if (fname_start && *fname_start != '\0') {
+        card->comment = strdup(fname_start);
+        // strip NEC apostrophe-style inline comment
+        char *apos = strchr(card->comment, '\'');
+        if (apos) *apos = '\0';
+        // trim trailing whitespace
+        size_t flen = strlen(card->comment);
+        while (flen > 0 && isspace((unsigned char)card->comment[flen - 1]))
+          card->comment[--flen] = '\0';
+      }
+    }
+    free(preprocessed);
+    return;
+  }
+
   // tokenize the rest of the line on the remaining whitespace
   token = strtok(preprocessed, ONEC_WHITESPACE);
+
   while(token != NULL) {
     isFormula = false;  // assume it's a number until proven otherwise
 

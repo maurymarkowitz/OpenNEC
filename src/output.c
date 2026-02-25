@@ -16,6 +16,7 @@
 
 #include "internals.h"
 #include "output.h"
+#include <stdint.h>
 
 /* Forward declarations for internal write functions */
 static void write_header(const nec_context_t *ctx, const deck_t *deck, FILE *pfile);
@@ -407,60 +408,462 @@ void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *file)
 }
 
 /******************************************************************************
- * write_greens_matrix()
+ * NEC-2 Fortran NGF/WGF Format
  *
- * Writes a simple Greens Function file (NGF v1) containing the interaction
- * matrix (cm) as computed prior to factorization, along with basic metadata
- * and segment center coordinates. Format is human-readable text.
+ * OpenNEC reads and writes the original NEC-2 Fortran unformatted sequential
+ * binary format for Numerical Green's Function (NGF/WGF) files. This is the
+ * same format produced by the WG card in the original Fortran NEC-2 and is
+ * compatible with files from 4nec2, the Cebik collection, and other tools.
  *
- * Header:
- *   # OpenNEC NGF v1
- *   frequency_mhz: <fmhz>
- *   wave_number_k: <2*pi/wavelength>
- *   segments: <ctx->geometry.n>
- *   equations: <nrow>
+ * Fortran unformatted records: each WRITE statement produces one record:
+ *   [int32 N][...N bytes of data...][int32 N]
  *
- * Segment centers:
- *   SEG i x y z len radius
+ * Record sequence (Fortran NEC-2 NGFWRT subroutine):
  *
- * Matrix entries:
- *   CM i j re im
- */
-void write_greens_matrix(FILE *file, const nec_context_t *ctx, int nrow, const complex double *cm)
-{
-  if (!file || !cm || nrow <= 0) return;
+ *   Rec 1 (88 bytes):
+ *     N(i32), NP(i32), M(i32), MP(i32),
+ *     WLAM(f64), FMHZ(f64),
+ *     IPSYM(i32), KSYMP(i32), IPERF(i32), NRADL(i32),
+ *     EPSR(f64), SIG(f64), SCRWLT(f64), SCRWRT(f64),
+ *     NLOAD(i32), KCOM(i32)
+ *
+ *   Rec 2 (3*N*8 bytes, if N > 0):  X[N], Y[N], Z[N]  midpoints in wavelengths
+ *   Rec 3 (3*N*8 bytes, if N > 0):  SI[N], BI[N], ALP[N]  len/radius in lambda, cab
+ *   Rec 4 (2*N*8 bytes, if N > 0):  BET[N], SALP[N]  sab and salp direction cosines
+ *   Rec 5 (2*N*4 bytes, if N > 0):  ICON1[N], ICON2[N]
+ *   Rec 6 (  N*4 bytes, if N > 0):  ITAG[N]
+ *   (optional: ZARRAY[N] if NLOAD > 0 — skipped on read, not written)
+ *
+ *   Rec 7 (32 bytes): ICASE, NBLOKS, NPBLK, NLAST, NBLSYM, NPSYM, NLSYM, IMAT
+ *   (optional: patch coefficients if IPERF==2 — skipped on read, not written)
+ *   (optional: SSX block if NOP > 1 — skipped on read, not written)
+ *
+ *   Rec 8 (4*NEQ + 800 bytes): IP[NEQ] (pivots), COM[100] (comments)
+ *
+ *   Rec 9 (IOUT*16 bytes): CM matrix as COMPLEX*16 (= C double complex),
+ *          where IOUT = NEQ*NPEQ for ICASE <= 2
+ *
+ * On GF read, X/Y/Z/SI/BI are multiplied by WLAM (wavelengths -> metres),
+ * then wire endpoints are reconstructed from midpoint + direction cosines.
+ ******************************************************************************/
 
-  double fmhz = ctx->save.fmhz;
-  double wlam = ctx->geometry.wlam; // wavelength in meters
-  double k = (wlam > 0.0) ? (2.0 * PI / wlam) : 0.0;
+/* ---------------------------------------------------------------------------
+ * Fortran unformatted record I/O helpers
+ * -------------------------------------------------------------------------*/
 
-  fprintf(file, "# OpenNEC NGF v1\n");
-  fprintf(file, "frequency_mhz: %.6f\n", fmhz);
-  fprintf(file, "wave_number_k: %.9f\n", k);
-  fprintf(file, "segments: %d\n", ctx->geometry.n);
-  fprintf(file, "equations: %d\n", nrow);
-
-  // Segment centers (if available)
-  int nseg = ctx->geometry.n;
-  if (nseg > 0 && ctx->geometry.x && ctx->geometry.y && ctx->geometry.z) {
-    for (int i = 0; i < nseg; i++) {
-      double x = ctx->geometry.x[i];
-      double y = ctx->geometry.y[i];
-      double z = ctx->geometry.z[i];
-      double len = (ctx->geometry.si) ? ctx->geometry.si[i] : 0.0;
-      double rad = (ctx->geometry.bi) ? ctx->geometry.bi[i] : 0.0;
-      fprintf(file, "SEG %d %.9g %.9g %.9g %.9g %.9g\n", i+1, x, y, z, len, rad);
-    }
-  }
-
-  // Matrix entries (row-major by (i,j) pairs)
-  for (int j = 0; j < nrow; j++) {
-    for (int i = 0; i < nrow; i++) {
-      complex double v = cm[i + j * nrow];
-      fprintf(file, "CM %d %d %.15g %.15g\n", i+1, j+1, creal(v), cimag(v));
-    }
-  }
+/* Write a Fortran record from one buffer: [int32 len][data][int32 len] */
+static bool fw1(FILE *f, const void *data, int32_t nbytes) {
+  if (fwrite(&nbytes, 4, 1, f) != 1)                            return false;
+  if (fwrite(data, 1, (size_t)nbytes, f) != (size_t)nbytes)     return false;
+  if (fwrite(&nbytes, 4, 1, f) != 1)                            return false;
+  return true;
 }
+
+/* Write a Fortran record from two discontiguous buffers */
+static bool fw2(FILE *f,
+                const void *a, int32_t alen,
+                const void *b, int32_t blen) {
+  int32_t total = alen + blen;
+  if (fwrite(&total, 4, 1, f) != 1)                             return false;
+  if (fwrite(a, 1, (size_t)alen, f) != (size_t)alen)            return false;
+  if (fwrite(b, 1, (size_t)blen, f) != (size_t)blen)            return false;
+  if (fwrite(&total, 4, 1, f) != 1)                             return false;
+  return true;
+}
+
+/* Write a Fortran record from three discontiguous buffers */
+static bool fw3(FILE *f,
+                const void *a, int32_t alen,
+                const void *b, int32_t blen,
+                const void *c, int32_t clen) {
+  int32_t total = alen + blen + clen;
+  if (fwrite(&total, 4, 1, f) != 1)                             return false;
+  if (fwrite(a, 1, (size_t)alen, f) != (size_t)alen)            return false;
+  if (fwrite(b, 1, (size_t)blen, f) != (size_t)blen)            return false;
+  if (fwrite(c, 1, (size_t)clen, f) != (size_t)clen)            return false;
+  if (fwrite(&total, 4, 1, f) != 1)                             return false;
+  return true;
+}
+
+/* Read a Fortran record, validating that its length == expected bytes */
+static bool fr1(FILE *f, void *buf, int32_t expected) {
+  int32_t n, n2;
+  if (fread(&n,  4, 1, f) != 1)                                 return false;
+  if (n != expected)                                             return false;
+  if (fread(buf, 1, (size_t)n, f) != (size_t)n)                 return false;
+  if (fread(&n2, 4, 1, f) != 1)                                 return false;
+  return n2 == n;
+}
+
+/* Read a Fortran record of any length into a freshly allocated buffer.
+ * Caller must free *out on success. Returns false on I/O error. */
+static bool fr_alloc(FILE *f, void **out, int32_t *out_len) {
+  int32_t n, n2;
+  if (fread(&n, 4, 1, f) != 1)                                  return false;
+  *out_len = n;
+  *out = malloc((size_t)n);
+  if (!*out)                                                     return false;
+  if (fread(*out, 1, (size_t)n, f) != (size_t)n) { free(*out); return false; }
+  if (fread(&n2, 4, 1, f) != 1)                 { free(*out); return false; }
+  if (n2 != n)                                  { free(*out); return false; }
+  return true;
+}
+
+/* Skip a Fortran record entirely */
+static bool fr_skip(FILE *f) {
+  int32_t n, n2;
+  if (fread(&n, 4, 1, f) != 1)                                  return false;
+  if (fseek(f, (long)n, SEEK_CUR) != 0)                         return false;
+  if (fread(&n2, 4, 1, f) != 1)                                 return false;
+  return n2 == n;
+}
+
+/******************************************************************************
+ * write_greens_binary()
+ *
+ * Writes an NGF/WGF file in NEC-2 Fortran unformatted sequential format,
+ * compatible with the original NEC-2 Fortran WG card output.
+ *
+ * At call time the geometry arrays (x, y, z, si, bi) are in wavelength units
+ * (scaled by fr = fmhz/CVEL during the frequency loop). The Fortran NEC-2
+ * format stores them in wavelength units, so no conversion is needed here.
+ *
+ * @param file  Output file (opened in binary mode).
+ * @param ctx   Simulation context.
+ * @param neq   Number of equations (matrix dimension = N for wire-only).
+ * @param cm    Unfactored CM matrix, column-major, neq*neq complex doubles.
+ * @return      true on success, false on I/O error.
+ */
+bool write_greens_binary(FILE *file, const nec_context_t *ctx,
+                          int neq, const complex double *cm)
+{
+  if (!file || !cm || neq <= 0) return false;
+
+  const int N  = ctx->geometry.n;
+  const int NP = ctx->geometry.np;  /* segs per symmetry copy (= N for no symmetry) */
+  const int M  = ctx->geometry.m;
+  const int MP = ctx->geometry.mp;
+
+  /* ---------- Record 1: header (88 bytes) ---------- */
+  {
+    uint8_t rec[88];
+    uint8_t *p = rec;
+    #define AP4(v) do { int32_t _v = (int32_t)(v); memcpy(p, &_v, 4); p += 4; } while(0)
+    #define AP8(v) do { double  _v = (double)(v);  memcpy(p, &_v, 8); p += 8; } while(0)
+    AP4(N);   AP4(NP);  AP4(M);  AP4(MP);
+    AP8(ctx->geometry.wlam);  AP8(ctx->save.fmhz);
+    AP4(ctx->geometry.ipsym); AP4(ctx->gnd.ksymp);
+    AP4(ctx->gnd.iperf);      AP4(ctx->gnd.nradl);
+    AP8(ctx->save.epsr);      AP8(ctx->save.sig);
+    AP8(ctx->gnd.scrwl);      AP8(ctx->gnd.scrwr);
+    AP4(0);   /* NLOAD — loads not stored in NGF */
+    AP4(0);   /* KCOM  — comments not stored in NGF */
+    #undef AP4
+    #undef AP8
+    if (!fw1(file, rec, 88)) return false;
+  }
+
+  /* ---------- Records 2-6: segment geometry ----------
+   * x/y/z/si/bi are in wavelength units at call time — written as-is.
+   * Direction cosines (cab/sab/salp) are dimensionless — written as-is.
+   * ICON1/ICON2/ITAG cast to int32_t (= Fortran INTEGER*4). */
+  if (N > 0) {
+    int32_t n8 = (int32_t)(N * 8);  /* bytes in one double[N] array */
+    int32_t n4 = (int32_t)(N * 4);  /* bytes in one  int32[N] array */
+
+    /* Rec 2: X[N], Y[N], Z[N] */
+    if (!fw3(file, ctx->geometry.x,   n8,
+                   ctx->geometry.y,   n8,
+                   ctx->geometry.z,   n8)) return false;
+
+    /* Rec 3: SI[N], BI[N], ALP[N]  (ALP = cab = x-direction cosine) */
+    if (!fw3(file, ctx->geometry.si,  n8,
+                   ctx->geometry.bi,  n8,
+                   ctx->geometry.cab, n8)) return false;
+
+    /* Rec 4: BET[N], SALP[N]  (BET = sab, SALP = salp) */
+    if (!fw2(file, ctx->geometry.sab, n8,
+                   ctx->geometry.salp, n8)) return false;
+
+    /* Rec 5: ICON1[N], ICON2[N] — OpenNEC stores as int; cast to int32_t */
+    {
+      int32_t *tmp = (int32_t *)malloc(2 * (size_t)N * sizeof(int32_t));
+      if (!tmp) return false;
+      for (int i = 0; i < N; i++) tmp[i]     = (int32_t)ctx->geometry.icon1[i];
+      for (int i = 0; i < N; i++) tmp[N + i] = (int32_t)ctx->geometry.icon2[i];
+      bool ok = fw1(file, tmp, n4 * 2);
+      free(tmp);
+      if (!ok) return false;
+    }
+
+    /* Rec 6: ITAG[N] */
+    {
+      int32_t *tmp = (int32_t *)malloc((size_t)N * sizeof(int32_t));
+      if (!tmp) return false;
+      for (int i = 0; i < N; i++) tmp[i] = (int32_t)ctx->geometry.tag_nums[i];
+      bool ok = fw1(file, tmp, n4);
+      free(tmp);
+      if (!ok) return false;
+    }
+  }
+
+  /* ---------- Record 7: matrix blocking parameters (32 bytes) ----------
+   * ICASE=1: full complex in-core matrix (no symmetry, no patches). */
+  {
+    int32_t IMAT   = (int32_t)(neq * NP);
+    int32_t rec7[8] = {
+      1,             /* ICASE  = 1 */
+      1,             /* NBLOKS = 1 */
+      (int32_t)neq,  /* NPBLK */
+      (int32_t)neq,  /* NLAST */
+      1,             /* NBLSYM */
+      (int32_t)NP,   /* NPSYM */
+      (int32_t)NP,   /* NLSYM */
+      IMAT           /* IMAT = NEQ * NPEQ */
+    };
+    if (!fw1(file, rec7, 32)) return false;
+  }
+
+  /* ---------- Record 8: IP[NEQ] + COM[100] — written as zeros ---------- */
+  {
+    size_t  rec8_len = (size_t)neq * 4 + 100 * 8;
+    uint8_t *buf = (uint8_t *)calloc(rec8_len, 1);
+    if (!buf) return false;
+    bool ok = fw1(file, buf, (int32_t)rec8_len);
+    free(buf);
+    if (!ok) return false;
+  }
+
+  /* ---------- Record 9: CM matrix (IOUT = NEQ*NPEQ complex values) ----------
+   * C double complex and Fortran COMPLEX*16 have identical binary layout. */
+  {
+    int32_t iout = (int32_t)(neq * NP);
+    if (!fw1(file, cm, iout * 16)) return false;
+  }
+
+  fflush(file);
+  return true;
+}
+
+/******************************************************************************
+ * read_greens_binary()
+ *
+ * Reads a Fortran NEC-2 unformatted NGF/WGF file. Compatible with files
+ * written by write_greens_binary() and by the original Fortran NEC-2 WG card.
+ *
+ * Coordinates are stored in wavelength units in the file. On read they are
+ * multiplied by WLAM to convert to metres, then wire endpoints are
+ * reconstructed from midpoint + direction cosines (matching Fortran NEC-2
+ * GF read-back behaviour).
+ *
+ * @param file  Input file (opened in binary mode).
+ * @param ctx   Simulation context.
+ * @return      true on success, false on format error.
+ */
+bool read_greens_binary(FILE *file, nec_context_t *ctx)
+{
+  if (!file || !ctx) return false;
+
+  /* ---------- Record 1: header (88 bytes) ---------- */
+  int32_t N, NP, M, MP;
+  double  WLAM, FMHZ;
+  int32_t IPSYM, KSYMP, IPERF, NRADL;
+  double  EPSR, SIG, SCRWLT, SCRWRT;
+  int32_t NLOAD;
+  {
+    uint8_t rec[88];
+    if (!fr1(file, rec, 88)) goto err;
+    const uint8_t *p = rec;
+    #define GP4(v) do { int32_t _v; memcpy(&_v, p, 4); (v) = _v; p += 4; } while(0)
+    #define GP8(v) do { double  _v; memcpy(&_v, p, 8); (v) = _v; p += 8; } while(0)
+    GP4(N);   GP4(NP);  GP4(M);  GP4(MP);
+    GP8(WLAM); GP8(FMHZ);
+    GP4(IPSYM); GP4(KSYMP); GP4(IPERF); GP4(NRADL);
+    GP8(EPSR);  GP8(SIG); GP8(SCRWLT); GP8(SCRWRT);
+    GP4(NLOAD); /* KCOM not needed */
+    #undef GP4
+    #undef GP8
+  }
+
+  if (N < 0 || N > 1000000 || NP < 0 || M < 0 || MP < 0) goto err;
+
+  /* ---------- Records 2-6: segment geometry ---------- */
+  if (N > 0) {
+    size_t nd = (size_t)N * sizeof(double);
+    size_t ni = (size_t)N * sizeof(int);
+
+    mem_realloc(ctx, (void *)&ctx->geometry.x,         nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.y,         nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.z,         nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.si,        nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.bi,        nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.cab,       nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.sab,       nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.salp,      nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.icon1,     ni);
+    mem_realloc(ctx, (void *)&ctx->geometry.icon2,     ni);
+    mem_realloc(ctx, (void *)&ctx->geometry.tag_nums,  ni);
+    mem_realloc(ctx, (void *)&ctx->geometry.card_nums, ni);
+    mem_realloc(ctx, (void *)&ctx->geometry.x1,        nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.y1,        nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.z1,        nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.x2,        nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.y2,        nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.z2,        nd);
+
+    /* Rec 2: X[N], Y[N], Z[N] (wavelength units) */
+    {
+      void *buf; int32_t len;
+      if (!fr_alloc(file, &buf, &len)) goto err;
+      if (len != (int32_t)(3 * N * 8)) { free(buf); goto err; }
+      memcpy(ctx->geometry.x, (double *)buf,         N * sizeof(double));
+      memcpy(ctx->geometry.y, (double *)buf +     N, N * sizeof(double));
+      memcpy(ctx->geometry.z, (double *)buf + 2 * N, N * sizeof(double));
+      free(buf);
+    }
+
+    /* Rec 3: SI[N], BI[N], ALP[N] (= cab, x-direction cosine) */
+    {
+      void *buf; int32_t len;
+      if (!fr_alloc(file, &buf, &len)) goto err;
+      if (len != (int32_t)(3 * N * 8)) { free(buf); goto err; }
+      memcpy(ctx->geometry.si,  (double *)buf,         N * sizeof(double));
+      memcpy(ctx->geometry.bi,  (double *)buf +     N, N * sizeof(double));
+      memcpy(ctx->geometry.cab, (double *)buf + 2 * N, N * sizeof(double));
+      free(buf);
+    }
+
+    /* Rec 4: BET[N] (= sab), SALP[N] */
+    {
+      void *buf; int32_t len;
+      if (!fr_alloc(file, &buf, &len)) goto err;
+      if (len != (int32_t)(2 * N * 8)) { free(buf); goto err; }
+      memcpy(ctx->geometry.sab,  (double *)buf,     N * sizeof(double));
+      memcpy(ctx->geometry.salp, (double *)buf + N, N * sizeof(double));
+      free(buf);
+    }
+
+    /* Rec 5: ICON1[N], ICON2[N] (int32_t in file) */
+    {
+      int32_t *tmp = (int32_t *)malloc(2 * (size_t)N * sizeof(int32_t));
+      if (!tmp) goto err;
+      if (!fr1(file, tmp, (int32_t)(2 * N * 4))) { free(tmp); goto err; }
+      for (int i = 0; i < N; i++) ctx->geometry.icon1[i] = (int)tmp[i];
+      for (int i = 0; i < N; i++) ctx->geometry.icon2[i] = (int)tmp[N + i];
+      free(tmp);
+    }
+
+    /* Rec 6: ITAG[N] (int32_t in file) */
+    {
+      int32_t *tmp = (int32_t *)malloc((size_t)N * sizeof(int32_t));
+      if (!tmp) goto err;
+      if (!fr1(file, tmp, (int32_t)(N * 4))) { free(tmp); goto err; }
+      for (int i = 0; i < N; i++) ctx->geometry.tag_nums[i] = (int)tmp[i];
+      free(tmp);
+    }
+
+    /* Skip optional ZARRAY record if loads were saved */
+    if (NLOAD > 0) {
+      if (!fr_skip(file)) goto err;
+    }
+
+    /* Convert coordinates and lengths: wavelengths -> metres */
+    for (int i = 0; i < N; i++) {
+      ctx->geometry.x[i]  *= WLAM;
+      ctx->geometry.y[i]  *= WLAM;
+      ctx->geometry.z[i]  *= WLAM;
+      ctx->geometry.si[i] *= WLAM;
+      ctx->geometry.bi[i] *= WLAM;
+    }
+
+    /* Reconstruct wire endpoints from midpoint + direction cosines */
+    for (int i = 0; i < N; i++) {
+      double hs = ctx->geometry.si[i] * 0.5;
+      ctx->geometry.x1[i] = ctx->geometry.x[i] - hs * ctx->geometry.cab[i];
+      ctx->geometry.y1[i] = ctx->geometry.y[i] - hs * ctx->geometry.sab[i];
+      ctx->geometry.z1[i] = ctx->geometry.z[i] - hs * ctx->geometry.salp[i];
+      ctx->geometry.x2[i] = ctx->geometry.x[i] + hs * ctx->geometry.cab[i];
+      ctx->geometry.y2[i] = ctx->geometry.y[i] + hs * ctx->geometry.sab[i];
+      ctx->geometry.z2[i] = ctx->geometry.z[i] + hs * ctx->geometry.salp[i];
+      ctx->geometry.card_nums[i] = -1;  /* sourced from NGF file */
+    }
+  }
+
+  /* ---------- Record 7: matrix blocking parameters ---------- */
+  int32_t ICASE, IMAT;
+  int     NEQ, NPEQ;
+  {
+    int32_t rec7[8];
+    if (!fr1(file, rec7, 32)) goto err;
+    ICASE = rec7[0];
+    IMAT  = rec7[7];
+    /* NBLOKS=rec7[1], NPBLK=rec7[2], NLAST=rec7[3], NBLSYM=rec7[4],
+       NPSYM=rec7[5], NLSYM=rec7[6] — not needed beyond matrix size */
+  }
+  NEQ  = (int)(N  + 2 * M);
+  NPEQ = (int)(NP + 2 * MP);
+  if (NPEQ == 0) NPEQ = NEQ;  /* guard against unset NP in older files */
+
+  /* Skip optional patch coefficient record (IPERF == 2) */
+  if (IPERF == 2) {
+    if (!fr_skip(file)) goto err;
+  }
+
+  /* Skip optional symmetry submatrix (NOP > 1) */
+  if (NPEQ > 0 && NEQ / NPEQ > 1) {
+    if (!fr_skip(file)) goto err;
+  }
+
+  /* ---------- Record 8: IP[NEQ] + COM[100] — read and discard ---------- */
+  if (!fr_skip(file)) goto err;
+
+  /* ---------- Record 9: CM matrix ----------
+   * IOUT = NEQ * NPEQ for ICASE <= 2; use IMAT as fallback for out-of-core. */
+  int IOUT = (ICASE <= 2) ? NEQ * NPEQ : (int)IMAT;
+  if (IOUT <= 0 || IOUT > 100000000) goto err;
+
+  complex double *mat = (complex double *)malloc((size_t)IOUT * sizeof(complex double));
+  if (!mat) goto err;
+  if (!fr1(file, mat, (int32_t)(IOUT * 16))) { free(mat); goto err; }
+
+  /* Install NGF state */
+  if (ctx->ngf_cm != NULL) free(ctx->ngf_cm);
+  ctx->ngf_cm     = mat;
+  ctx->ngf_n_segs = (int)N;
+  ctx->ngf_neq    = NEQ;
+  ctx->ngf_fmhz   = FMHZ;
+  ctx->has_ngf    = true;
+
+  /* Update geometry bookkeeping */
+  ctx->geometry.n     = (int)N;
+  ctx->geometry.np    = (NP > 0) ? (int)NP : (int)N;
+  ctx->geometry.m     = (int)M;
+  ctx->geometry.mp    = (int)MP;
+  ctx->geometry.wlam  = WLAM;
+  ctx->geometry.ipsym = (int)IPSYM;
+  ctx->geometry.npm   = (int)(N + M);
+  ctx->geometry.np2m  = (int)(N + 2 * M);
+  ctx->geometry.np3m  = (int)(N + 3 * M);
+
+  /* Restore ground and frequency parameters from the NGF */
+  ctx->gnd.ksymp  = (int)KSYMP;
+  ctx->gnd.iperf  = (int)IPERF;
+  ctx->gnd.nradl  = (int)NRADL;
+  ctx->gnd.scrwl = SCRWLT;
+  ctx->gnd.scrwr = SCRWRT;
+  ctx->save.epsr  = EPSR;
+  ctx->save.sig   = SIG;
+  ctx->save.fmhz  = FMHZ;
+
+  return true;
+
+err:
+  add_error(ctx, &ctx->errors,
+            "Failed to read NGF/WGF file (not a valid Fortran NEC-2 unformatted "
+            "file, or file is truncated or corrupted)", FATAL);
+  return false;
+}
+
 
 /******************************************************************************
  * Writes the header area and comment cards to the standard NEC output file.

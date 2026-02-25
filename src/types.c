@@ -213,6 +213,12 @@ void nec_context_cleanup(nec_context_t *ctx)
     }
     ctx->yparm.num_coupling_rows = 0;
     ctx->yparm.coupling_rows_cap = 0;
+
+    /* Free NGF cached matrix */
+    if (ctx->ngf_cm != NULL) {
+        free(ctx->ngf_cm);
+        ctx->ngf_cm = NULL;
+    }
 }
 
 /* end of types.c */

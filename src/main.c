@@ -284,7 +284,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
     {
       path = "greens.ngf";
     }
-    ctx->green_fp = fopen(path, "w");
+    ctx->green_fp = fopen(path, "wb");
     if (!ctx->green_fp)
     {
       nec_report(ctx, ONEC_SEV_WARNING, "Could not open greens file '%s' for writing; skipping.", path);

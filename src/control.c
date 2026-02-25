@@ -103,15 +103,7 @@ static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card,
 int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
 {
     errors_list_t geometry_errors = {0};
-    /* if deck contains WG or GF cards, skip calculations as requested */
-    for (int ci = 0; ci < deck->num_cards; ++ci) {
-        card_t *c = &deck->cards[ci];
-        if (c && (strcmp(c->card_code, "WG") == 0 || strcmp(c->card_code, "GF") == 0)) {
-            add_message(ctx, &ctx->outputs, "Deck contains WG/GF card; calculations skipped");
-            return 0;
-        }
-    }
-    
+
     // Step 1: Calculate geometry
     calculate_geometry(ctx, deck, &geometry_errors, &ctx->outputs);
     
@@ -771,10 +763,30 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             ctx->dataj.rkh = f1;
         }
         else if (strcmp(code, "WG") == 0) {
-            char msg[MAX_ERROR_LEN];
-            snprintf(msg, sizeof(msg), "Card %d is a WG which is not supported.", card_idx + 1);
-            add_error(ctx, &ctx->errors, msg, FATAL);
-            return -1;
+            /* WG FILENAME: write Numerical Green's Function file after cmset.
+             * Open the output file now; write_greens_binary() is called in
+             * execute_frequency_loop() after the matrix is filled, then the
+             * frequency loop exits without factorizing or solving. */
+            const char *wg_filename = card->comment;
+            if (!wg_filename || *wg_filename == '\0') {
+                char msg[MAX_ERROR_LEN];
+                snprintf(msg, sizeof(msg), "WG card %d has no filename.", card_idx + 1);
+                add_error(ctx, &ctx->errors, msg, FATAL);
+                return -1;
+            }
+            if (ctx->green_fp != NULL) {
+                fclose(ctx->green_fp);
+                ctx->green_fp = NULL;
+            }
+            ctx->green_fp = fopen(wg_filename, "wb");
+            if (!ctx->green_fp) {
+                char msg[MAX_ERROR_LEN];
+                snprintf(msg, sizeof(msg),
+                         "WG card %d: cannot open '%s' for writing.", card_idx + 1, wg_filename);
+                add_error(ctx, &ctx->errors, msg, FATAL);
+                return -1;
+            }
+            ctx->wg_after_cmset = true;
         }
     }
     
@@ -973,14 +985,38 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         double tim1, tim2;
         nec_get_time_ms(ctx, &tim1);
         cmset(ctx, ctx->netcx.neq, cm, ctx->dataj.rkh, ctx->dataj.iexk);
-        // Export Greens matrix prior to factorization if requested
-        if (ctx->green_fp != NULL) {
-            write_greens_matrix(ctx->green_fp, ctx, ctx->netcx.neq, cm);
-            fflush(ctx->green_fp);
+
+        /* If NGF segments were loaded via a GF card, inject the cached matrix
+         * block into the upper-left ngf_neq × ngf_neq corner of cm.
+         * cmset just filled the entire matrix; overwriting the old-vs-old
+         * block with the stored values restores the higher-accuracy matrix
+         * from the prior WG run (which may have used a finer integration
+         * or different solver options). */
+        if (ctx->has_ngf && ctx->ngf_cm != NULL) {
+            int nn  = ctx->ngf_neq;
+            int neq = ctx->netcx.neq;
+            for (int col = 0; col < nn && col < neq; col++)
+                for (int row = 0; row < nn && row < neq; row++)
+                    cm[row + col * neq] = ctx->ngf_cm[row + col * nn];
         }
+
+        /* Export the (possibly NGF-injected) matrix if green_fp is open */
+        if (ctx->green_fp != NULL) {
+            write_greens_binary(ctx->green_fp, ctx, ctx->netcx.neq, cm);
+            fclose(ctx->green_fp);
+            ctx->green_fp = NULL;
+            if (ctx->wg_after_cmset) {
+                /* WG mode: write NGF file then stop — do not factorise or solve */
+                ctx->wg_after_cmset = false;
+                nec_get_time_ms(ctx, &tim2);
+                ctx->mat_fill_time = tim2 - tim1;
+                break;  /* exit frequency loop without solving */
+            }
+        }
+
         nec_get_time_ms(ctx, &tim2);
         ctx->mat_fill_time = tim2 - tim1;
-        
+
         factrs(ctx, ctx->netcx.npeq, ctx->netcx.neq, cm, ctx->save.ip);
         nec_get_time_ms(ctx, &tim1);
         ctx->mat_factor_time = tim1 - tim2;

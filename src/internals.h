@@ -590,6 +590,13 @@ struct nec_context_t
 	FILE *error_fp;
 	FILE *green_fp;
 	FILE *plot_fp;
+
+	/* Numerical Green's Function (NGF) state */
+	bool has_ngf;              /* True if NGF segments were loaded via GF card */
+	int ngf_n_segs;            /* Number of NGF segments loaded from GF file */
+	int ngf_neq;               /* Matrix size stored in the NGF file */
+	double ngf_fmhz;           /* Frequency (MHz) at which NGF was computed */
+	complex double *ngf_cm;    /* Cached CM matrix from NGF file (ngf_neq x ngf_neq, col-major) */
 	fpat_t fpat;
 	ggrid_t ggrid;
 	gnd_t gnd;
@@ -636,6 +643,7 @@ struct nec_context_t
 	int iflow;              /* Processing state: 1=FR, 2=CP, 3=LD, 6=NT/TL, 7-11=execution */
 	int eval_depth;         /* To track recursion depth during symbol evaluation */
 	bool xt_terminated;     /* True if simulation was halted by an XT card; no output is expected */
+	bool wg_after_cmset;    /* True if WG card opened green_fp: write binary NGF then stop */
 };
 
 /* Internal initialization and cleanup (called by nec_create_context/nec_destroy_context) */
