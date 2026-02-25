@@ -14,12 +14,14 @@ OpenNEC is an implementation of the NEC-2 code written in the C programming lang
 
 The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". Cards are physically represented by lines of text in a text file representing a deck. The deck files are normally saved with a `.nec` extension, or more rarely, `.deck`.
 
-OpenNEC will process the design in the deck and run a number of calculations to determine the antenna's performance. The results are written back out to a file with the same name but with the extension `.out`.
+OpenNEC will process the design in the deck and run a number of calculations to determine the antenna's performance.
 
 Running OpenNEC
 ---------------
 
-Although OpenNEC is primarily intended to be used embedded in other programs, it also includes a command-line interace that can be used to parse decks from the shell, and will write the calculated results (if desired) to an output text file. To run it, use a command similar to this example, replacing the "PATH" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
+Although OpenNEC is primarily intended to be used as a library embedded in other programs, it also includes a command-line interace that can be used to parse decks from the shell, and will write the calculated results (if desired) to an output text file with the extension `.out`.
+
+To run it, use a command similar to this example, replacing the "PATH" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
 
 ```./onec PATH...```
 

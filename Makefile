@@ -164,7 +164,21 @@ $(EXECUTABLE): src/main.o $(LIBRARY)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(LIB_OBJECTS) src/main.o $(LIBRARY) $(EXECUTABLE)
+	rm -f $(LIB_OBJECTS) src/main.o $(LIBRARY) $(EXECUTABLE) bench_estimate
+
+# ---- estimate benchmark -------------------------------------------------------
+# Build the estimate accuracy benchmarker (links libonec.a, walks 4nec2 examples)
+bench_estimate: test/bench_estimate.c $(LIBRARY)
+	$(CC) $(CFLAGS) test/bench_estimate.c $(LIBRARY) $(LDFLAGS) -o bench_estimate -lm
+
+# Run the benchmark, then plot the results
+# Usage: make benchmark          (uses default CSV / PNG paths)
+#        make benchmark ARGS=my.csv
+.PHONY: benchmark
+benchmark: bench_estimate
+	./bench_estimate test/estimate_benchmark.csv
+	@echo ""
+	@echo "To plot: python3 test/plot_estimate.py test/estimate_benchmark.csv test/estimate_plot.png"
 
 help:
 	@echo "OpenNEC Build System"

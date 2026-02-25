@@ -26,6 +26,23 @@ void nec_report(const nec_context_t *ctx, int level, const char *format, ...) __
 /** @brief Returns high-resolution monotonic time in milliseconds */
 void nec_get_time_ms(const nec_context_t *ctx, double *ms);
 
+/**
+ * @brief Returns a dimensionless complexity estimate proportional to run time.
+ *
+ * Based on the NEC-2 Part III performance formula (T1+T2+T3+T4) with unit
+ * coefficients.  T is not in seconds; compare against a platform-calibrated
+ * threshold to classify a run as fast or slow.
+ *
+ * T4 = 0 when no RP card is present; Nc (wire-surface junctions) is omitted.
+ * When a FR card is present, Nfreq multiplies the entire T (fill, factorisation,
+ * solve, and far-field all repeat for each frequency in NEC-2).
+ * See nec_estimate_time() in misc.c for the full formula and design notes.
+ *
+ * @param  deck  Parsed deck (calculate_geometry() need NOT have been called)
+ * @return       T >= 0.0, or 0.0 if deck is NULL
+ */
+double nec_estimate_time(const deck_t *deck);
+
 /* Error handling */
 int stop(const nec_context_t *ctx, int flag);
 void abort_on_error(const nec_context_t *ctx, int why);

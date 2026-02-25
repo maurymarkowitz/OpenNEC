@@ -656,6 +656,8 @@ int main(int argc, char **argv)
 
     // Process files (possibly in parallel)
     int failed_count = 0;
+    struct timespec _t0, _t1;
+    clock_gettime(CLOCK_MONOTONIC, &_t0);
     if (jobs <= 1 || num_files == 1)
     {
       // Serial path
@@ -688,9 +690,15 @@ int main(int argc, char **argv)
         free(file_list[i]);
         file_list[i] = NULL;
       }
-      if (failed_count > 0)
+      if (num_files > 1)
       {
-        fprintf(error_fp, "\nCompleted with %d error(s) out of %d file(s)\n", failed_count, num_files);
+        clock_gettime(CLOCK_MONOTONIC, &_t1);
+        double elapsed_s = (_t1.tv_sec - _t0.tv_sec) + (_t1.tv_nsec - _t0.tv_nsec) / 1.0e9;
+        if (failed_count > 0)
+          fprintf(error_fp, "\nCompleted %d file(s) in %.1fs with %d error(s)\n",
+                  num_files, elapsed_s, failed_count);
+        else
+          fprintf(error_fp, "\nCompleted %d file(s) in %.1fs\n", num_files, elapsed_s);
       }
     }
     else
@@ -754,10 +762,13 @@ int main(int argc, char **argv)
           failed_count++;
       }
       free(tasks);
+      clock_gettime(CLOCK_MONOTONIC, &_t1);
+      double elapsed_s = (_t1.tv_sec - _t0.tv_sec) + (_t1.tv_nsec - _t0.tv_nsec) / 1.0e9;
       if (failed_count > 0)
-      {
-        fprintf(error_fp, "\nCompleted with %d error(s) out of %d file(s)\n", failed_count, num_files);
-      }
+        fprintf(error_fp, "\nCompleted %d file(s) in %.1fs with %d error(s)\n",
+                num_files, elapsed_s, failed_count);
+      else
+        fprintf(error_fp, "\nCompleted %d file(s) in %.1fs\n", num_files, elapsed_s);
     }
 
     // Clean up file list

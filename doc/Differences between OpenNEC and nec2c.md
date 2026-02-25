@@ -24,7 +24,7 @@ Changes in the code
 - onec supports a wide variety of well-known matrix libraries across multiple platforms. These offer major performance improvements on larger files (3x on 1000 segments, 7x on 4000). You can compare the performance by running the script in the speed_tests folder. On Apple platforms, Accelerate will be linked by default as this is always available, on other platforms the library selection is manual.
 
 - nec2c added initial support for green's files, but never implemented it.
-- onec has complete green's file support, and a green's file can be written using the -g flag on the command line, bypassing the need to add a WG card to the deck.
+- OpenNEC has complete green's file support, and a green's file can be written using the -g flag on the command line, bypassing the need to add a WG card to the deck.
 
 Other basic changes
 -------------------
@@ -36,6 +36,8 @@ Other basic changes
 - OpenNEC also includes per-field validations that can be used by a GUI program to graphically indicate problems. For instance, if the user makes a new FR card, the validation functions will indicate that the base frequency value in the F1 field needs to be entered. If they enter a value in I2, which indicates steps, it will indicate that a step value has to be entered in F2. There is an extensive suite of these validations that can be tied to fields in the GUI and updated in real-time.
 
     - Note: Many validations are emitted as warnings (non-fatal) to preserve compatibility with existing decks while highlighting potential issues.
+
+- OpenNEC has a simple timing function that can be used to estimate the time it will take to run a calculation. this can be used in a GUI program to decide whether it can run these in real-time as the user edits the layout.
 
 Additions from other systems
 ----------------------------

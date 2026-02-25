@@ -676,3 +676,163 @@ char *preprocess_implicit_multiplication(const char *formula) {
   return result;
 }
 
+/*------------------------------------------------------------------------*/
+
+/******************************************************************************
+ * nec_estimate_setup  (private)
+ *
+ * Scans the parsed deck to extract the scalar parameters needed by the
+ * NEC-2 Part III performance formula.  No geometry computation is performed.
+ *
+ * @param deck    Parsed deck (symbols evaluated, geometry not yet built)
+ * @param ns      OUT: total wire segments in one symmetry sector
+ * @param np      OUT: total surface patches in one symmetry sector
+ * @param nf      OUT: total radiation-pattern evaluation points (NTH×NPH)
+ * @param m_sym   OUT: symmetry multiplier from GR/GX (1 if none)
+ * @param k_gnd   OUT: ground complexity factor (1=none, 2=approx/perfect, 4=Sommerfeld)
+ * @param nfreq   OUT: number of frequencies from FR card (1 if absent)
+ */
+static void nec_estimate_setup(const deck_t *deck,
+    int *ns, int *np, int *nf, int *m_sym, int *k_gnd, int *nfreq)
+{
+  *ns    = 0;
+  *np    = 0;
+  *nf    = 0;
+  *m_sym = 1;
+  *k_gnd = 2;  /* default: approximate ground, k=2 */
+  *nfreq = 1;  /* default: single frequency */
+
+  if (!deck || !deck->cards) return;
+
+  /* ---- geometry pass ---- */
+  for (int i = deck->geometry_start; i <= deck->geometry_end; i++) {
+    const card_t *c = &deck->cards[i];
+    if (c->ignore) continue;
+    const char *code = c->card_code;
+
+    if (strcmp(code, "GW") == 0 ||
+        strcmp(code, "GA") == 0 ||
+        strcmp(code, "GH") == 0) {
+      /* iv[2] = I2 = number of segments */
+      *ns += c->iv[2];
+    }
+    else if (strcmp(code, "SP") == 0) {
+      /* Each SP card (any shape flag) contributes 1 patch */
+      *np += 1;
+    }
+    else if (strcmp(code, "SM") == 0) {
+      /* iv[1]=I1 = patches along first axis, iv[2]=I2 = patches along second */
+      int m = c->iv[1], n = c->iv[2];
+      if (m > 0 && n > 0) *np += m * n;
+    }
+    else if (strcmp(code, "GR") == 0) {
+      /* iv[2] = number of rotational sectors */
+      int sectors = c->iv[2];
+      if (sectors > 1) *m_sym *= sectors;
+    }
+    else if (strcmp(code, "GX") == 0) {
+      /* iv[2] = three-digit bitmask: hundreds=x, tens=y, units=z */
+      int bitmask = c->iv[2];
+      int ix = (bitmask / 100) % 10 ? 1 : 0;
+      int iy = (bitmask / 10)  % 10 ? 1 : 0;
+      int iz =  bitmask        % 10 ? 1 : 0;
+      *m_sym *= (1 << (ix + iy + iz));
+    }
+  }
+
+  /* ---- control pass (cards after GE up to EN) ---- */
+  int ctrl_start = deck->geometry_end + 1;
+  int ctrl_end   = (deck->deck_end >= 0) ? deck->deck_end : deck->num_cards - 1;
+
+  for (int i = ctrl_start; i <= ctrl_end; i++) {
+    const card_t *c = &deck->cards[i];
+    if (c->ignore) continue;
+    const char *code = c->card_code;
+
+    if (strcmp(code, "GN") == 0) {
+      int iperf = c->iv[1];
+      if      (iperf == -1) *k_gnd = 1;  /* no ground */
+      else if (iperf ==  2) *k_gnd = 4;  /* Sommerfeld */
+      else                  *k_gnd = 2;  /* perfect / approximate */
+    }
+    else if (strcmp(code, "FR") == 0) {
+      /* iv[2] = I2 = NFRQ; 0 on card means 1 frequency */
+      int n = (c->iv[2] > 0) ? c->iv[2] : 1;
+      /* Take the maximum across multiple FR cards (conservative) */
+      if (n > *nfreq) *nfreq = n;
+    }
+    else if (strcmp(code, "RP") == 0) {
+      int nth = (c->iv[2] > 0) ? c->iv[2] : 1;
+      int nph = (c->iv[3] > 0) ? c->iv[3] : 1;
+      *nf += nth * nph;
+    }
+  }
+}
+
+/*------------------------------------------------------------------------*/
+
+/******************************************************************************
+ * nec_estimate_time
+ *
+ * Returns a dimensionless complexity value T proportional to the expected
+ * run time, based on the NEC-2 Part III performance formula:
+ *
+ *   T  =  Nfreq * (T1 + T2 + T3 + T4)
+ *
+ *   T1 = k * (Ns^2 + Ns*Np) / M         (impedance matrix fill)
+ *   T2 = (Ns + 2*Np)^3 / M^2            (matrix factorisation — dominates)
+ *   T3 = (Ns + 2*Np)^2 / M              (back-substitution for currents)
+ *   T4 = k * Nf * (Ns + 2*Np)           (far-field summation)
+ *
+ * where:
+ *   Ns    = wire segments in one symmetry sector
+ *   Np    = surface patches in one symmetry sector
+ *   M     = symmetry multiplier from GR / GX (1 if no symmetry)
+ *   k     = ground complexity (1 = no ground, 2 = approx/perfect, 4 = Sommerfeld)
+ *   Nf    = total radiation-pattern points (NTH * NPH from RP card)
+ *   Nfreq = number of frequencies from FR card (1 if absent)
+ *
+ * All coefficients are 1 (unit coefficients).  T is not in seconds; it is
+ * a dimensionless complexity number.  A GUI applies a platform-calibrated
+ * threshold to classify a run as "fast" or "slow".
+ *
+ * Design notes:
+ *   - T4 = 0 when no RP card is present.  No worst-case Nf is assumed.
+ *   - The Nc (wire-to-surface junction) correction term is omitted because
+ *     Nc cannot be determined from deck cards alone without running the full
+ *     geometry engine.
+ *   - The NEC-2 impedance matrix is frequency-dependent, so all four terms
+ *     (fill, factorisation, solve, far-field) repeat for each frequency.
+ *     Nfreq therefore multiplies the entire T, not just T4.
+ *
+ * @param  deck   Parsed deck (symbols evaluated; calculate_geometry() need
+ *                NOT have been called)
+ * @return        Dimensionless complexity estimate T >= 0.0, or 0.0 if the
+ *                deck pointer is NULL.
+ */
+double nec_estimate_time(const deck_t *deck)
+{
+  if (!deck) return 0.0;
+
+  int ns, np, nf, m_sym, k_gnd, nfreq;
+  nec_estimate_setup(deck, &ns, &np, &nf, &m_sym, &k_gnd, &nfreq);
+
+  if (m_sym  <= 0) m_sym  = 1;
+  if (nfreq  <= 0) nfreq  = 1;
+
+  double N     = (double)(ns + 2 * np);
+  double M     = (double)m_sym;
+  double k     = (double)k_gnd;
+  double Ns    = (double)ns;
+  double Np    = (double)np;
+  double Nf    = (double)nf;
+  double Nfreq = (double)nfreq;
+
+  double T1 = k * (Ns * Ns + Ns * Np) / M;
+  double T2 = (N * N * N) / (M * M);
+  double T3 = (N * N) / M;
+  double T4 = (nf > 0) ? k * Nf * N : 0.0;
+
+  return Nfreq * (T1 + T2 + T3 + T4);
+}
+
