@@ -224,9 +224,18 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
 
             if (new_geom_start == -1 || new_geom_end == -1 ||
                 strcmp(deck->cards[new_geom_end].card_code, "GE") != 0) {
-                add_error(ctx, &ctx->errors,
-                    "NX card: next section has no geometry (expected CM + Gx...GE cards)", FATAL);
-                return -1;
+                /* No geometry follows NX — treat as terminal (like EN).
+                 * This covers:
+                 *   - NX as the last card in the deck
+                 *   - NX followed only by EN (no new geometry section) */
+                if (ctx->output_fp != NULL && ctx->frequency_loop_ran) {
+                    deck->deck_end = nx_pos;
+                    write_nec_output(ctx, deck, ctx->output_fp);
+                    deck->deck_end = -1;
+                    ctx->frequency_loop_ran = false; /* prevent double write in main */
+                }
+                deck_complete = true;
+                break;
             }
 
             /* Step 2: Flush output for the completed section.
