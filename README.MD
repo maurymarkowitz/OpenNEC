@@ -19,7 +19,7 @@ OpenNEC will process the design in the deck and can run a number of calculations
 Running OpenNEC
 ---------------
 
-Although OpenNEC is primarily intended to be used as a library embedded in other programs, it also includes a command-line interace that can be used to parse decks from the shell, and will write the calculated results (if desired) to an output text file with the extension `.out`.
+Although OpenNEC is primarily intended to be used as a library embedded in other programs, it also includes a command-line interace that can be used to parse decks from the shell, and will write the calculated results (if desired) to `stdout`, or you can direct that to a specific file using the `-o` flag.
 
 To run it, use a command similar to this example, replacing the "PATH" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
 
@@ -40,6 +40,29 @@ Command-line options include:
 If you wish to use onec to simply check syntax or reformat a file, use the `-n` and `-t` switches.
 
 Short options with no parameters can be ganged, for instance, `-nt`.
+
+Examples
+--------
+
+To run against an example file:
+
+```./onec example.nec```
+
+To run against the same file and send the results to a file with the default name `example.out`:
+
+```./onec -o example.nec```
+
+Or you can change the output name:
+
+```./onec -oexample_output.out example.nec```
+
+Note: no space is allowed between the switches and any associated parameter.
+
+To run against a folder full of files, even in subdirectories:
+
+```./onec -t /example_files/```
+
+When using the `-r` switch, the output will always be sent to `<file>.out`, and stdout is used for reporting the filenames as they are processed, along with end-of-batch information.
 
 Build & Setup
 -------------

@@ -36,6 +36,7 @@ static bool run_simulation = true;
 static bool run_tests = false;
 static bool run_greens = false;
 static bool recursive = false;
+static bool force_out_extension = false; // -o with no filename: force <file>.out
 static char *input_file = "";
 static char *output_file = "";
 static char *error_file = "";
@@ -69,7 +70,8 @@ void print_usage(char *argv[])
   puts("  -v, --version: print version info");
   puts("  -n, --no-run: don't run the simulation after parsing");
   puts("  -t, --test-deck: run various sanity tests");
-  puts("  -o, --output-file: write output to this file; if omitted, single-file runs write to stdout, multiple files write to <file>.out");
+  puts("  -o[file], --output-file[=file]: write output to file; bare -o forces <file>.out beside input; omitted -o writes to stdout (single file) or <file>.out (multiple)");
+  puts("    Note: short form requires no space: -o/path/out.txt (not -o /path/out.txt)");
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -g, --greens[=file]: write a Green's function file; filename defaults to input path with .ngf extension");
   puts("  -j, --jobs N: process up to N files in parallel (default 1)");
@@ -106,7 +108,7 @@ static struct option program_options[] =
         {"test-deck", no_argument, NULL, 't'},
         {"recursive", no_argument, NULL, 'r'},
         {"input-file", required_argument, NULL, 'i'},
-        {"output-file", required_argument, NULL, 'o'},
+        {"output-file", optional_argument, NULL, 'o'},
         {"error-file", required_argument, NULL, 'e'},
         {"greens", optional_argument, NULL, 'g'},
         {"jobs", required_argument, NULL, 'j'},
@@ -127,7 +129,7 @@ void parse_options(int argc, char *argv[])
   {
     // eat an option and exit if we're done
     /* portable short options: 'g' has an optional argument */
-    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:", program_options, &option_index); // should match the items above
+    int c = getopt_long(argc, argv, "hvntri:o::e:g::j:", program_options, &option_index); // should match the items above
     if (c == -1)
       break;
 
@@ -153,7 +155,10 @@ void parse_options(int argc, char *argv[])
       break;
 
     case 'o':
-      output_file = optarg;
+      if (optarg)
+        output_file = optarg;  // -o<file> or --output-file=<file>
+      else
+        force_out_extension = true;  // -o alone: force <file>.out
       break;
 
     case 'e':
@@ -582,6 +587,45 @@ int main(int argc, char **argv)
       }
     }
 
+    // Validate option/argument combinations now that we know what was given
+    if (recursive && dir_count == 0)
+    {
+      fprintf(error_fp, "onec: '-r' requires a directory argument, not a file\n");
+      fprintf(error_fp, "Try 'onec --help' for more information.\n");
+      if (error_fp != stderr)
+        fclose(error_fp);
+      return EXIT_FAILURE;
+    }
+    if (!recursive && dir_count > 0)
+    {
+      // Report the first offending directory
+      fprintf(error_fp, "onec: '%s' is a directory (use -r to process directories)\n", dir_queue[0]);
+      fprintf(error_fp, "Try 'onec --help' for more information.\n");
+      if (error_fp != stderr)
+        fclose(error_fp);
+      return EXIT_FAILURE;
+    }
+    if (strlen(output_file) > 0)
+    {
+      // Explicit -o <path> is only meaningful for a single input file
+      if (recursive)
+      {
+        fprintf(error_fp, "onec: '-o' cannot be used with '-r' (multiple output files would be produced)\n");
+        fprintf(error_fp, "Try 'onec --help' for more information.\n");
+        if (error_fp != stderr)
+          fclose(error_fp);
+        return EXIT_FAILURE;
+      }
+      if (num_files > 1)
+      {
+        fprintf(error_fp, "onec: '-o' cannot be used with multiple input files\n");
+        fprintf(error_fp, "Try 'onec --help' for more information.\n");
+        if (error_fp != stderr)
+          fclose(error_fp);
+        return EXIT_FAILURE;
+      }
+    }
+
     // BFS for directories
     while (dir_head < dir_count)
     {
@@ -675,14 +719,14 @@ int main(int argc, char **argv)
           strncpy(output, output_file, sizeof(output) - 1);
           output[sizeof(output) - 1] = '\0';
         }
-        else if (num_files == 1 && !recursive)
+        else if (num_files == 1 && !recursive && !force_out_extension)
         {
           // Single file, no -o: write to stdout (nec2c-compatible)
           output[0] = '\0';
         }
         else
         {
-          // Multiple files or -r: write to <file>.out beside the input
+          // Multiple files, -r, or bare -o: write to <file>.out beside the input
           generate_output_filename(input, output, sizeof(output));
         }
         if (num_files > 1)
