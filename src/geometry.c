@@ -2068,8 +2068,10 @@ void rotate(nec_context_t *ctx, int card_num, int tag_increment, int num_copies)
 
       if(itagi == 0)
         ctx->geometry.tag_nums[i] = 0;
-      if( itagi != 0)
-        ctx->geometry.tag_nums[i] = itagi + tag_increment;
+      if( itagi != 0) {
+        int copy_num = (i - n0) / new_count;  /* 1 for first copy, 2 for second, etc. */
+        ctx->geometry.tag_nums[i] = itagi + copy_num * tag_increment;
+      }
 
       ctx->geometry.card_nums[i] = card_num;
     }

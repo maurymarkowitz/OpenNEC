@@ -1,5 +1,5 @@
---- /dev/fd/63	2026-02-26 11:51:44
-+++ /dev/fd/62	2026-02-26 11:51:44
+--- /dev/fd/63	2026-02-26 12:22:24
++++ /dev/fd/62	2026-02-26 12:22:24
 @@ -167,22 +167,22 @@
                            --------- STRUCTURE EXCITATION DATA AT NETWORK CONNECTION POINTS --------
    TAG   SEG       VOLTAGE (VOLTS)          CURRENT (AMPS)         IMPEDANCE (OHMS)       ADMITTANCE (MHOS)     POWER
