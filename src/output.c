@@ -221,12 +221,16 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
           fputs(",", file);
       }
       // is there also a comment?  Use the original separator char if known.
-      if (card->comment != NULL && strlen(card->comment) > 0)
+      // For SY cards the inline comment lands in extn_str (not comment), so check both.
+      const char *cmt_text = (card->comment != NULL && strlen(card->comment) > 0)
+                               ? card->comment
+                               : card->extn_str;
+      if (cmt_text != NULL && strlen(cmt_text) > 0)
       {
         char sep = (card->extn_code[0] != '\0') ? card->extn_code[0] : '!';
         fputc(' ', file);
         fputc(sep, file);
-        fputs(card->comment, file);
+        fputs(cmt_text, file);
       }
       fputc('\n', file);
       continue;
@@ -261,9 +265,9 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
       // other cards might have a formula
       else
       {
-        for (int j = 0; j <= card->ints_used && j <= MAX_INTS; j++)
+        for (int j = 1; j <= card->ints_used && j <= MAX_INTS; j++)
         {
-          // Look up formula for this integer field
+          // Look up formula for this integer field (fields are 1-based: I1..I4)
           char key[8];
           snprintf(key, sizeof(key), "I%d", j);
           const char *formula = lookup_formula(card, key);
@@ -279,8 +283,8 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
         }
       }
 
-      // floats are a number or a formula
-      for (int j = 0; j <= card->flts_used && j <= MAX_FLTS; j++)
+      // floats are a number or a formula (fields are 1-based: F1..F7)
+      for (int j = 1; j <= card->flts_used && j <= MAX_FLTS; j++)
       {
         // Look up formula for this float field
         char key[8];
@@ -298,8 +302,9 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
       }
 
       // the basic NEC fields are output, now see if there's anything after that
-      bool hasComment = (card->comment != NULL && strlen(card->comment) > 0);
 
+      // Compute hasOnec first — needed to decide whether extn_str is safe to use
+      // as a plain comment fallback (see comment_text below).
       bool hasOnec = false;
       // only treat ignore as an onec annotation if it's the annotated form (not prefix-commented)
       if (card->ignore && card->cmt_code[0] == '\0')
@@ -320,6 +325,18 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
           f = f->next;
         }
       }
+
+      // Determine the effective comment text.
+      // card->comment is set by parse_key_values() when a "comment:" key was found.
+      // card->extn_str holds the raw tail after any inline '!' / '\'' marker.
+      // When hasOnec == false a plain inline comment (e.g. "GW 1 5 ... 0.01 ! my dipole")
+      // lives only in extn_str — fall back to it so round-trips preserve plain comments.
+      // When hasOnec IS true, extn_str is the full raw extension string already parsed
+      // into individual pieces; do NOT re-emit it raw or fields will be duplicated.
+      const char *comment_text = (card->comment != NULL && strlen(card->comment) > 0)
+                                   ? card->comment
+                                   : (!hasOnec ? card->extn_str : NULL);
+      bool hasComment = (comment_text != NULL && strlen(comment_text) > 0);
 
       // if we found anything, print the comment marker found on this
       // card, the global one in the deck, or the onec default, !
@@ -345,7 +362,7 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
       // otherwise we have to export the fields one by one
       if (hasComment && !hasOnec)
       {
-        fputs(card->comment, file);
+        fputs(comment_text, file);
       }
       else
       {

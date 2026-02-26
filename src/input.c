@@ -919,10 +919,7 @@ void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
         // trim whitespace from key and value
         key = trim(key);
         value = trim(value);
-        
-        // Lowercase symbolic keys for case-insensitive matching in TinyExpr
-        for (char *k = key; *k; k++) *k = tolower((unsigned char)*k);
-        
+
         // parse it if there's anything left
         if(strlen(key) > 0 && strlen(value) > 0) {
           key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));

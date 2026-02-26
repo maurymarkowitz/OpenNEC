@@ -164,7 +164,17 @@ $(EXECUTABLE): src/main.o $(LIBRARY)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(LIB_OBJECTS) src/main.o $(LIBRARY) $(EXECUTABLE) bench_estimate
+	rm -f $(LIB_OBJECTS) src/main.o $(LIBRARY) $(EXECUTABLE) bench_estimate roundtrip_test
+
+# ---- round-trip test ---------------------------------------------------------
+# Build the read→parse→write round-trip tester (links libonec.a)
+roundtrip_test: test/roundtrip_test.c $(LIBRARY)
+	$(CC) $(CFLAGS) test/roundtrip_test.c $(LIBRARY) $(LDFLAGS) -o roundtrip_test -lm
+
+# Run the round-trip test on all .nec/.deck files in test/
+.PHONY: roundtrip
+roundtrip: roundtrip_test
+	./roundtrip_test $$(find test -maxdepth 1 \( -name '*.nec' -o -name '*.NEC' \) | sort)
 
 # ---- estimate benchmark -------------------------------------------------------
 # Build the estimate accuracy benchmarker (links libonec.a, walks 4nec2 examples)
