@@ -38,10 +38,11 @@ void nec_get_time_ms(const nec_context_t *ctx, double *ms);
  * solve, and far-field all repeat for each frequency in NEC-2).
  * See nec_estimate_time() in misc.c for the full formula and design notes.
  *
- * @param  deck  Parsed deck (calculate_geometry() need NOT have been called)
- * @return       T >= 0.0, or 0.0 if deck is NULL
+ * @param  ctx   NEC context (geometry is populated as a side effect if not already done)
+ * @param  deck  Parsed deck (symbols evaluated)
+ * @return       T >= 0.0, or 0.0 if ctx or deck is NULL
  */
-double nec_estimate_time(const deck_t *deck);
+double nec_estimate_time(nec_context_t *ctx, deck_t *deck);
 
 /* Error handling */
 int stop(const nec_context_t *ctx, int flag);

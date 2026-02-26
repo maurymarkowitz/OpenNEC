@@ -8,11 +8,14 @@ Usage:
 Defaults:
     csv_path   = test/estimate_benchmark.csv
     output_png = test/estimate_plot.png
+
+Two series are plotted:
+  • sim_ms   — nec_run_simulation() only (what T is supposed to predict)
+  • total_ms — full ./onec subprocess (shows the constant-overhead floor)
 """
 
 import sys
 import csv
-import math
 import pathlib
 
 try:
@@ -30,14 +33,16 @@ rows = []
 with open(csv_path, newline="") as f:
     for row in csv.DictReader(f):
         try:
-            T        = float(row["T"])
-            elapsed  = float(row["elapsed_ms"])
-            ok       = int(row["exit_code"]) == 0
+            T         = float(row["T"])
+            sim_ms    = float(row["sim_ms"])
+            total_ms  = float(row["total_ms"])
+            ok        = int(row["exit_code"]) == 0
             timed_out = int(row["timed_out"]) == 1
-            path     = row["path"]
+            path      = row["path"]
         except (ValueError, KeyError):
             continue
-        rows.append((T, elapsed, ok, timed_out, path))
+        rows.append(dict(T=T, sim_ms=sim_ms, total_ms=total_ms,
+                         ok=ok, timed_out=timed_out, path=path))
 
 if not rows:
     print(f"No usable rows in {csv_path}")
@@ -45,75 +50,75 @@ if not rows:
 
 print(f"Loaded {len(rows)} rows from {csv_path}")
 
-# ---- split into buckets -----------------------------------------------------
-def bucket(rows, pred):
-    return [(r[0], r[1]) for r in rows if pred(r)]
+# ---- helper -----------------------------------------------------------------
+def split_series(rows, y_col):
+    """Return (T, y) arrays for ok / fail / timeout, filtering T>0 and y>0."""
+    ok   = [(r["T"], r[y_col]) for r in rows if r["ok"] and not r["timed_out"]
+            and r["T"] > 0 and r[y_col] > 0]
+    fail = [(r["T"], r[y_col]) for r in rows if not r["ok"] and not r["timed_out"]
+            and r["T"] > 0 and r[y_col] > 0]
+    tmo  = [(r["T"], r[y_col]) for r in rows if r["timed_out"] and r["T"] > 0]
+    def unzip(pts):
+        if not pts: return [], []
+        a, b = zip(*pts); return list(a), list(b)
+    return unzip(ok), unzip(fail), unzip(tmo)
 
-pts_ok   = bucket(rows, lambda r: r[2] and not r[3] and r[0] > 0)
-pts_fail = bucket(rows, lambda r: not r[2] and not r[3] and r[0] > 0)
-pts_tmo  = bucket(rows, lambda r: r[3] and r[0] > 0)
-
-def unzip(pts):
-    if not pts:
-        return [], []
-    T, e = zip(*pts)
-    return list(T), list(e)
-
-T_ok,   e_ok   = unzip(pts_ok)
-T_fail, e_fail = unzip(pts_fail)
-T_tmo,  e_tmo  = unzip(pts_tmo)
-
-# ---- plot -------------------------------------------------------------------
-fig, ax = plt.subplots(figsize=(11, 7))
-
-ax.scatter(T_ok,   e_ok,   s=18, alpha=0.70, color="#2196F3",
-           label=f"OK ({len(T_ok)})",       zorder=3)
-ax.scatter(T_fail, e_fail, s=18, alpha=0.70, color="#F44336",
-           label=f"Failed ({len(T_fail)})", zorder=3)
-ax.scatter(T_tmo,  e_tmo,  s=18, alpha=0.70, color="#FF9800",
-           label=f"Timeout ({len(T_tmo)})", zorder=3)
-
-# ---- power-law fit on all non-timeout points --------------------------------
-all_pts = [(r[0], r[1]) for r in rows if not r[3] and r[0] > 0 and r[1] > 0]
-if len(all_pts) >= 10:
+def power_fit(all_pts):
+    if len(all_pts) < 10:
+        return None
     log_T = np.log10([p[0] for p in all_pts])
-    log_e = np.log10([p[1] for p in all_pts])
-    coeffs = np.polyfit(log_T, log_e, 1)
+    log_y = np.log10([p[1] for p in all_pts])
+    coeffs = np.polyfit(log_T, log_y, 1)
     slope, intercept = coeffs
-
+    resid  = log_y - np.polyval(coeffs, log_T)
+    ss_res = np.sum(resid ** 2)
+    ss_tot = np.sum((log_y - log_y.mean()) ** 2)
+    r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0
     x_fit = np.logspace(log_T.min() - 0.5, log_T.max() + 0.5, 300)
     y_fit = 10 ** (intercept + slope * np.log10(x_fit))
-    ax.plot(x_fit, y_fit, "--", color="#444", lw=1.5,
-            label=f"power-law fit  slope = {slope:.2f}")
+    return dict(slope=slope, r2=r2, x_fit=x_fit, y_fit=y_fit,
+                log_T=log_T, log_y=log_y, coeffs=coeffs)
 
-    print(f"\nPower-law fit (non-timeout): elapsed ∝ T^{slope:.3f}")
-    print(f"  (slope=1 → linear, slope=3 → cubic — expect ~1 since T² "
-          f"already captures cubic scaling)")
+# ---- two-subplot figure -----------------------------------------------------
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7),
+                                sharex=False, sharey=False)
 
-# ---- labels -----------------------------------------------------------------
-ax.set_xscale("log")
-ax.set_yscale("log")
-ax.set_xlabel("T  (nec_estimate_time, dimensionless complexity)", fontsize=12)
-ax.set_ylabel("Actual elapsed time  (ms)", fontsize=12)
-ax.set_title(
-    "nec_estimate_time() correlation with actual run time\n"
-    "4nec2 example models  •  log–log scale",
-    fontsize=13,
+for ax, y_col, title_suffix, fit_color, ok_color, fail_color in [
+    (ax1, "sim_ms",   "sim only  (nec_run_simulation)",  "#0D47A1", "#2196F3", "#EF9A9A"),
+    (ax2, "total_ms", "total process  (./onec overhead included)", "#1B5E20", "#4CAF50", "#EF9A9A"),
+]:
+    (T_ok, y_ok), (T_fail, y_fail), (T_tmo, y_tmo) = split_series(rows, y_col)
+
+    ax.scatter(T_ok,   y_ok,   s=18, alpha=0.70, color=ok_color,
+               label=f"OK ({len(T_ok)})",        zorder=3)
+    ax.scatter(T_fail, y_fail, s=18, alpha=0.70, color=fail_color,
+               label=f"Failed ({len(T_fail)})",  zorder=3)
+    if T_tmo:
+        ax.scatter(T_tmo, [1]*len(T_tmo), s=18, alpha=0.50, color="#FF9800",
+                   label=f"Timeout ({len(T_tmo)})", zorder=3, marker="^")
+
+    # power-law fit on OK + failed (non-timeout) rows with valid values
+    all_pts = [(r["T"], r[y_col]) for r in rows
+               if not r["timed_out"] and r["T"] > 0 and r[y_col] > 0]
+    fit = power_fit(all_pts)
+    if fit:
+        ax.plot(fit["x_fit"], fit["y_fit"], "--", color=fit_color, lw=1.8,
+                label=f"fit  slope={fit['slope']:.2f}  R²={fit['r2']:.3f}")
+        label = "sim_ms" if y_col == "sim_ms" else "total_ms"
+        print(f"\n[{label}]  slope={fit['slope']:.3f}  R²={fit['r2']:.4f}")
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("T  (nec_estimate_time, dimensionless complexity)", fontsize=11)
+    ax.set_ylabel("Time  (ms)", fontsize=11)
+    ax.set_title(f"T vs {title_suffix}", fontsize=12)
+    ax.legend(fontsize=10, loc="upper left")
+    ax.grid(True, which="both", alpha=0.25)
+
+fig.suptitle(
+    "nec_estimate_time() correlation  •  4nec2 example models  •  log–log scale",
+    fontsize=13, y=1.01,
 )
-ax.legend(fontsize=11, loc="upper left")
-ax.grid(True, which="both", alpha=0.25)
-
-# ---- Pearson r² in log space ------------------------------------------------
-if len(all_pts) >= 10:
-    resid  = log_e - np.polyval(coeffs, log_T)
-    ss_res = np.sum(resid ** 2)
-    ss_tot = np.sum((log_e - log_e.mean()) ** 2)
-    r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0
-    ax.text(0.97, 0.04, f"R² = {r2:.3f}", transform=ax.transAxes,
-            ha="right", fontsize=11, color="#444")
-    print(f"  R² (log-log) = {r2:.4f}")
-
 plt.tight_layout()
-plt.savefig(out_path, dpi=150)
+plt.savefig(out_path, dpi=150, bbox_inches="tight")
 print(f"\nSaved {out_path}")
-plt.show()

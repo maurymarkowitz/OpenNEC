@@ -105,17 +105,20 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
 {
     errors_list_t geometry_errors = {0};
 
-    // Step 1: Calculate geometry
-    calculate_geometry(ctx, deck, &geometry_errors, &ctx->outputs);
-    
-    // Check for geometry errors
-    if (geometry_errors.num_errors > 0) {
-        // Copy geometry errors to ctx->errors
-        for (int i = 0; i < geometry_errors.num_errors; i++) {
-            add_error(ctx, &ctx->errors, geometry_errors.errors[i].message, 
-                     geometry_errors.errors[i].severity);
+    // Step 1: Calculate geometry.
+    // Skip if already populated — nec_estimate_time() may have done this as a
+    // side effect (e.g. a GUI calling the estimator before launching the run).
+    if (ctx->geometry.n == 0 && ctx->geometry.m == 0) {
+        calculate_geometry(ctx, deck, &geometry_errors, &ctx->outputs);
+
+        // Check for geometry errors
+        if (geometry_errors.num_errors > 0) {
+            for (int i = 0; i < geometry_errors.num_errors; i++) {
+                add_error(ctx, &ctx->errors, geometry_errors.errors[i].message,
+                         geometry_errors.errors[i].severity);
+            }
+            return -1;
         }
-        return -1;
     }
     
     // Step 2: Initialize calculation defaults (requires valid geometry)

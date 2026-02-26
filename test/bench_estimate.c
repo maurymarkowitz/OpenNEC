@@ -2,8 +2,15 @@
  * bench_estimate.c — Benchmark nec_estimate_time() against real run times.
  *
  * Recursively walks test/4nec2 example models/, computes the dimensionless
- * complexity T for each .nec/.NEC file, runs ./onec on it with a configurable
- * timeout, and writes a CSV for plotting.
+ * complexity T for each .nec/.NEC file, then:
+ *
+ *   1. Calls nec_run_simulation() directly (output → /dev/null) and records
+ *      the simulation-only wall time in sim_ms.  This isolates the matrix
+ *      fill + factorisation + solve + far-field work that T models.
+ *
+ *   2. Forks ./onec with a hard timeout and records the total wall time in
+ *      total_ms (includes process start, deck I/O, parse, geometry, output).
+ *      This is kept for reference to show the constant-overhead floor.
  *
  * Build: see "make bench_estimate" in the root Makefile
  * Run:   ./bench_estimate [output.csv]
@@ -11,10 +18,11 @@
  *
  * CSV columns:
  *   path        – relative path to the .nec file
- *   T           – nec_estimate_time() value (dimensionless, -1 if parse failed)
- *   elapsed_ms  – wall-clock run time of ./onec (ms)
- *   exit_code   – process exit code (0 = success, 127 = exec failure)
- *   timed_out   – 1 if the process was killed after TIMEOUT_MS
+ *   T           – nec_estimate_time() (-1 if parse failed)
+ *   sim_ms      – nec_run_simulation() wall time (ms); -1 on error
+ *   total_ms    – ./onec subprocess wall time (ms)
+ *   exit_code   – subprocess exit code (0 = success)
+ *   timed_out   – 1 if the subprocess was killed after TIMEOUT_MS
  */
 
 #include <stdio.h>
@@ -30,8 +38,8 @@
 #include "internals.h"
 
 /* ---- tunables ---- */
-#define TIMEOUT_MS  5000   /* kill a run after this many ms */
-#define POLL_MS       20   /* waitpid poll interval (ms)     */
+#define TIMEOUT_MS  5000   /* kill a subprocess run after this many ms */
+#define POLL_MS       20   /* waitpid poll interval (ms)               */
 #define MAX_FILES   4096
 
 /* ---- file list (collected by nftw callback) ---- */
@@ -59,40 +67,31 @@ static double ms_now(void)
     return ts.tv_sec * 1000.0 + ts.tv_nsec / 1.0e6;
 }
 
-/* ---- run ./onec <path> with a hard timeout ---- */
+/* ---- run ./onec <path> as subprocess with a hard timeout ---- */
 typedef struct {
-    double elapsed_ms;
+    double total_ms;
     int    exit_code;
     int    timed_out;
-} run_result_t;
+} fork_result_t;
 
-static run_result_t run_with_timeout(const char *path)
+static fork_result_t run_subprocess(const char *path)
 {
-    run_result_t r = { 0.0, -1, 0 };
-
+    fork_result_t r = { 0.0, -1, 0 };
     int devnull = open("/dev/null", O_WRONLY);
     double t0 = ms_now();
-
     pid_t pid = fork();
     if (pid == 0) {
-        /* child: silence stdout/stderr, exec onec */
         if (devnull >= 0) {
             dup2(devnull, STDOUT_FILENO);
             dup2(devnull, STDERR_FILENO);
             close(devnull);
         }
         execlp("./onec", "onec", path, (char *)NULL);
-        exit(127); /* exec failed */
+        exit(127);
     }
     if (devnull >= 0) close(devnull);
+    if (pid < 0) { r.exit_code = -1; return r; }
 
-    if (pid < 0) {
-        /* fork failed */
-        r.exit_code = -1;
-        return r;
-    }
-
-    /* parent: poll every POLL_MS until done or timeout */
     int status = 0;
     int loops  = (TIMEOUT_MS + POLL_MS - 1) / POLL_MS;
     int done   = 0;
@@ -105,48 +104,87 @@ static run_result_t run_with_timeout(const char *path)
         waitpid(pid, &status, 0);
         r.timed_out = 1;
     }
-
-    r.elapsed_ms = ms_now() - t0;
-    r.exit_code  = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+    r.total_ms  = ms_now() - t0;
+    r.exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
     return r;
 }
 
-/* ---- null log callback: suppress console noise while parsing ---- */
+/* ---- null log callback: suppress console noise ---- */
 static void null_log(void *ud, int level, const char *msg)
 {
     (void)ud; (void)level; (void)msg;
 }
 
-/* ---- parse a deck and return T (-1 on failure) ---- */
+/* ---- load and parse a deck into *deck (caller must call free_deck()) ---- */
+static int load_deck_for_bench(nec_context_t *ctx, const char *path, deck_t *deck)
+{
+    memset(deck, 0, sizeof(*deck));
+    FILE *f = fopen(path, "r");
+    if (!f) return -1;
+    read_deck(ctx, deck, f);
+    fclose(f);
+    errors_list_t errs = {0};
+    parse_deck(ctx, deck, &errs);
+    initialize_symbol_table(deck, &errs);
+    update_deck_values(ctx, deck);
+    for (int i = 0; i < errs.num_errors; i++) free(errs.errors[i].message);
+    free(errs.errors);
+    return 0;
+}
+
+/* ---- compute T (-1.0 on failure) ---- */
 static double compute_T(const char *path)
 {
     nec_context_t *ctx = nec_create_context();
     nec_set_log_callback(ctx, null_log, NULL);
+    deck_t deck;
+    int rc = load_deck_for_bench(ctx, path, &deck);
+    /* nec_estimate_time() will call calculate_geometry() internally, so the
+     * geometry is built and T reflects the true post-expansion segment count. */
+    double T = (rc == 0) ? nec_estimate_time(ctx, &deck) : -1.0;
+    if (rc == 0) free_deck(&deck);
+    nec_destroy_context(ctx);
+    return T;
+}
+
+/* ---- run nec_run_simulation() directly, timing only that call ------------
+ *
+ * Deck load + parse are done before the timer starts so they are excluded.
+ * Output is directed to /dev/null so file I/O does not inflate the time.
+ * write_nec_output() is NOT called — output formatting is also excluded.
+ *
+ * Returns sim_ms, or -1.0 on load/parse error.
+ */
+static double run_sim_direct(const char *path, int *ok_out)
+{
+    *ok_out = 0;
+
+    nec_context_t *ctx = nec_create_context();
+    nec_set_log_callback(ctx, null_log, NULL);
+
+    /* redirect all output to /dev/null so ctx internals that write don't block */
+    FILE *devnull = fopen("/dev/null", "w");
+    ctx->output_fp = devnull ? devnull : stdout;
+    ctx->error_fp  = devnull ? devnull : stderr;
 
     deck_t deck;
-    memset(&deck, 0, sizeof(deck));
-
-    FILE *f = fopen(path, "r");
-    if (!f) {
+    if (load_deck_for_bench(ctx, path, &deck) != 0) {
+        if (devnull) fclose(devnull);
         nec_destroy_context(ctx);
         return -1.0;
     }
-    read_deck(ctx, &deck, f);
-    fclose(f);
 
-    errors_list_t errs = {0};
-    parse_deck(ctx, &deck, &errs);
-    initialize_symbol_table(&deck, &errs);
-    update_deck_values(ctx, &deck);
+    /* ---- start timer AFTER all deck setup ---- */
+    double t0 = ms_now();
+    int rc = nec_run_simulation(ctx, &deck);
+    double sim_ms = ms_now() - t0;
 
-    double T = nec_estimate_time(&deck);
+    *ok_out = (rc == 0 && ctx->errors.num_errors == 0) ? 1 : 0;
 
     free_deck(&deck);
-    for (int i = 0; i < errs.num_errors; i++) free(errs.errors[i].message);
-    free(errs.errors);
+    if (devnull) fclose(devnull);
     nec_destroy_context(ctx);
-
-    return T;
+    return sim_ms;
 }
 
 /* ---- main ---- */
@@ -155,43 +193,45 @@ int main(int argc, char *argv[])
     const char *csv_path = (argc > 1) ? argv[1] : "test/estimate_benchmark.csv";
     const char *scan_dir = "test/4nec2 example models";
 
-    /* collect .nec/.NEC files */
     nftw(scan_dir, collect_file, 32, FTW_PHYS);
     if (num_files == 0) {
         fprintf(stderr, "No .nec files found under '%s'\n", scan_dir);
         return 1;
     }
     fprintf(stderr, "Found %d files under '%s'\n", num_files, scan_dir);
-    fprintf(stderr, "CSV  → %s\n", csv_path);
-    fprintf(stderr, "Timeout per file: %d ms\n\n", TIMEOUT_MS);
+    fprintf(stderr, "CSV  → %s\n\n", csv_path);
 
     FILE *csv = fopen(csv_path, "w");
     if (!csv) { perror(csv_path); return 1; }
-    fprintf(csv, "path,T,elapsed_ms,exit_code,timed_out\n");
+    fprintf(csv, "path,T,sim_ms,total_ms,exit_code,timed_out\n");
 
     int n_ok = 0, n_fail = 0, n_tmo = 0;
 
     for (int i = 0; i < num_files; i++) {
         const char *path = file_list[i];
 
-        /* compute T (parses the deck) */
+        /* 1. T from deck scan (fast, no geometry) */
         double T = compute_T(path);
 
-        /* time ./onec on this file */
-        run_result_t run = run_with_timeout(path);
+        /* 2. simulation-only time via direct library call */
+        int sim_ok = 0;
+        double sim_ms = run_sim_direct(path, &sim_ok);
 
-        /* write CSV row (quote the path to handle commas/spaces) */
-        fprintf(csv, "\"%s\",%.6g,%.3f,%d,%d\n",
-                path, T, run.elapsed_ms, run.exit_code, run.timed_out);
+        /* 3. total subprocess time (keeps overhead-floor reference) */
+        fork_result_t frun = run_subprocess(path);
+
+        fprintf(csv, "\"%s\",%.6g,%.3f,%.3f,%d,%d\n",
+                path, T, sim_ms, frun.total_ms,
+                frun.exit_code, frun.timed_out);
         fflush(csv);
 
         const char *status_str;
-        if      (run.timed_out)          { status_str = "TIMEOUT"; n_tmo++;  }
-        else if (run.exit_code == 0)     { status_str = "OK";      n_ok++;   }
-        else                             { status_str = "FAIL";    n_fail++; }
+        if      (frun.timed_out)        { status_str = "TIMEOUT"; n_tmo++;  }
+        else if (frun.exit_code == 0)   { status_str = "OK";      n_ok++;   }
+        else                            { status_str = "FAIL";    n_fail++; }
 
-        fprintf(stderr, "[%3d/%3d]  T=%10.3e  %7.1f ms  %-7s  %s\n",
-                i + 1, num_files, T, run.elapsed_ms, status_str, path);
+        fprintf(stderr, "[%3d/%3d]  T=%10.3e  sim=%7.2f ms  total=%7.1f ms  %-7s  %s\n",
+                i + 1, num_files, T, sim_ms, frun.total_ms, status_str, path);
     }
 
     fclose(csv);

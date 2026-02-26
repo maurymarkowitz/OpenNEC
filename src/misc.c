@@ -8,6 +8,7 @@
  *****************************************************************************/
 
 #include "internals.h"
+#include "geometry.h"
 #include <unistd.h>
 #include <time.h>
 #include <stdarg.h>
@@ -810,12 +811,42 @@ static void nec_estimate_setup(const deck_t *deck,
  * @return        Dimensionless complexity estimate T >= 0.0, or 0.0 if the
  *                deck pointer is NULL.
  */
-double nec_estimate_time(const deck_t *deck)
+double nec_estimate_time(nec_context_t *ctx, deck_t *deck)
 {
-  if (!deck) return 0.0;
+  if (!ctx || !deck) return 0.0;
 
-  int ns, np, nf, m_sym, k_gnd, nfreq;
-  nec_estimate_setup(deck, &ns, &np, &nf, &m_sym, &k_gnd, &nfreq);
+  /* Ensure geometry is expanded so we get the post-GM segment count.
+   * calculate_geometry() is coordinate math only — no matrix work.
+   * If it was already called (e.g. by a preceding nec_run_simulation,
+   * or by a GUI that built the geometry view), we reuse the result. */
+  if (ctx->geometry.n == 0 && ctx->geometry.m == 0) {
+    errors_list_t tmp_errs = {0};
+    calculate_geometry(ctx, deck, &tmp_errs, &ctx->outputs);
+    for (int i = 0; i < tmp_errs.num_errors; i++) free(tmp_errs.errors[i].message);
+    free(tmp_errs.errors);
+  }
+
+  /* Scan control cards for FR / RP / GN — deck-scan is still needed for
+   * these because they live outside the geometry section. The geometry
+   * portion of nec_estimate_setup is now superseded by ctx->geometry. */
+  int ns_scan, np_scan, nf, m_sym_scan, k_gnd, nfreq;
+  nec_estimate_setup(deck, &ns_scan, &np_scan, &nf, &m_sym_scan, &k_gnd, &nfreq);
+
+  /* Derive ns / np / m_sym from the expanded geometry.
+   *  ctx->geometry.np  = segments in one symmetry cell (< .n when GR is used)
+   *  ctx->geometry.mp  = patches   in one symmetry cell
+   *  m_sym             = n / np  (>1 for GR; ==1 after GM expansion) */
+  int ns, np, m_sym;
+  if (ctx->geometry.n > 0 || ctx->geometry.m > 0) {
+    ns    = ctx->geometry.np;
+    np    = ctx->geometry.mp;
+    m_sym = (ctx->geometry.np > 0) ? ctx->geometry.n / ctx->geometry.np : 1;
+  } else {
+    /* Empty or failed geometry — fall back to deck-scan values. */
+    ns    = ns_scan;
+    np    = np_scan;
+    m_sym = m_sym_scan;
+  }
 
   if (m_sym  <= 0) m_sym  = 1;
   if (nfreq  <= 0) nfreq  = 1;
