@@ -19,7 +19,7 @@ It is highly recommended you run these tests on your platform after building to 
 
 Linux Setup
 -----------
-On Linux, you can use OpenBLAS for best performance, MKL, or the reference BLAS/LAPACK libraries. Auto-detection (a bare `make`) on Linux prefers OpenBLAS, then MKL (if `MKL_ROOT` is set), then reference BLAS/LAPACK via pkg-config, and finally the original Fortran backend.
+On Linux, you can use OpenBLAS for best performance, MKL, or the reference BLAS/LAPACK libraries. Auto-detection (a bare `make`) on Linux prefers OpenBLAS, then MKL (if `MKL_ROOT` is set), then reference BLAS/LAPACK via pkg-config, and finally the original built-in backend.
 
 - OpenBLAS (Debian/Ubuntu):
 
@@ -108,11 +108,11 @@ make BACKEND=openblas
 
 Performance Notes
 -----------------
-Recent timing runs on macOS (Apple Silicon) show that OpenBLAS is slightly faster than Accelerate overall, with the original Fortran backend being significantly slower on large models:
+Recent timing runs on macOS (Apple Silicon) show that OpenBLAS is slightly faster than Accelerate overall, with the original built-in backend being significantly slower on large models:
 
 - Accelerate: average real ≈ 0.477s across 7 decks
 - OpenBLAS: average real ≈ 0.383s across 7 decks
-- Custom (original): average real ≈ 3.139s across 7 decks
+- Original (internal): average real ≈ 3.139s across 7 decks
 
 
 Troubleshooting

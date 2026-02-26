@@ -43,8 +43,8 @@ if [ "$UNAME_S" = "Darwin" ]; then
   BACKENDS+=(accelerate)
 fi
 
-# Custom always available
-BACKENDS+=(custom)
+# Original (builtin) always available
+BACKENDS+=(original)
 
 # OpenBLAS: only include if pkg-config or Homebrew (arm64) is present
 OPENBLAS_OK=0
@@ -76,8 +76,8 @@ if [ -n "${MKL_ROOT:-}" ] && [ -d "$MKL_ROOT/lib" ]; then
   BACKENDS+=(mkl)
 fi
 
-# Reference backend: Accelerate on macOS, else custom
-REF_BACKEND="custom"
+# Reference backend: Accelerate on macOS, else original
+REF_BACKEND="original"
 if [ "$UNAME_S" = "Darwin" ]; then
   REF_BACKEND="accelerate"
 fi
