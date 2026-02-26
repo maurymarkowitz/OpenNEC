@@ -3,6 +3,4 @@
 
 check logic for setting location of .ngf files, it should be the same path as the original .nec
 
-the EN card should be part of the last batch in the printout, currently it goes to the end of the file. NX should work the same
-
 why is the custom build not working?

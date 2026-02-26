@@ -71,7 +71,7 @@ void print_usage(char *argv[])
   puts("  -t, --test-deck: run various sanity tests");
   puts("  -o, --output-file: (path/)name of the output file (single file only)");
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
-  puts("  -g, --greens: write a greens function file to *.ngf or provided filename");
+  puts("  -g, --greens[=file]: write a Green's function file; filename defaults to input path with .ngf extension");
   puts("  -j, --jobs N: process up to N files in parallel (default 1)");
   puts("  -r, --recursive: process directories recursively");
   puts("Multiple input files or folders can be specified; each file will generate a .out file.");
@@ -108,7 +108,7 @@ static struct option program_options[] =
         {"input-file", required_argument, NULL, 'i'},
         {"output-file", required_argument, NULL, 'o'},
         {"error-file", required_argument, NULL, 'e'},
-        {"greens", required_argument, NULL, 'g'},
+        {"greens", optional_argument, NULL, 'g'},
         {"jobs", required_argument, NULL, 'j'},
         {0, 0, 0, 0}};
 
@@ -126,8 +126,8 @@ void parse_options(int argc, char *argv[])
   while (1)
   {
     // eat an option and exit if we're done
-    /* portable short options: 'g' requires an argument */
-    int c = getopt_long(argc, argv, "hvntri:o:e:g:j:", program_options, &option_index); // should match the items above
+    /* portable short options: 'g' has an optional argument */
+    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:", program_options, &option_index); // should match the items above
     if (c == -1)
       break;
 
@@ -170,7 +170,7 @@ void parse_options(int argc, char *argv[])
 
     case 'g':
       run_greens = true;
-      greens_file = optarg;
+      greens_file = optarg ? optarg : "";
       break;
     case 'j':
       jobs = atoi(optarg);
