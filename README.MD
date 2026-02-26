@@ -19,7 +19,7 @@ OpenNEC will process the design in the deck and can run a number of calculations
 Running OpenNEC
 ---------------
 
-Although OpenNEC is primarily intended to be used as a library embedded in other programs, it also includes a command-line interace that can be used to parse decks from the shell, and will write the calculated results (if desired) to `stdout`, or you can direct that to a specific file using the `-o` flag.
+Although OpenNEC is primarily intended to be used as a library embedded in other programs, it also includes a command-line interace that can be used to parse decks from the shell, and will write the calculated results (if desired) to `stdout`, or to a specific file using the `-o` flag.
 
 To run it, use a command similar to this example, replacing the "PATH" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
 
@@ -34,7 +34,7 @@ Command-line options include:
 `-t`, `--test-deck`: run deck sanity checks (often used with -n)  
 `-j` <N>, `--jobs` <N>: if multiple files are passed in, run them in parallel up to <N> at a time  
 `-o`, `--output-file` <file>: write output to a specific file (single input only)  
-`-e`, `--error-file` <path>: write errors/logs to a file instead of stderr  
+`-e`, `--error-file` <path>: write errors/logs to a file instead of `stderr`  
 `-g`, `--greens` <file>: write Greens function output to the given file (or default .ngf)  
 
 If you wish to use onec to simply check syntax or reformat a file, use the `-n` and `-t` switches.

@@ -30,8 +30,10 @@ void nec_get_time_ms(const nec_context_t *ctx, double *ms);
  * @brief Returns a dimensionless complexity estimate proportional to run time.
  *
  * Based on the NEC-2 Part III performance formula (T1+T2+T3+T4) with unit
- * coefficients.  T is not in seconds; compare against a platform-calibrated
- * threshold to classify a run as fast or slow.
+ * coefficients. T is not in seconds; compare against a platform-calibrated
+ * threshold to classify a run as fast or slow. On an M2 Mac using Accelerate,
+ * anything with T < ~10^7 generally runs in about 1/10th of a second or less,
+ * while T > ~10^9 takes multiple seconds.
  *
  * T4 = 0 when no RP card is present; Nc (wire-surface junctions) is omitted.
  * When a FR card is present, Nfreq multiplies the entire T (fill, factorisation,

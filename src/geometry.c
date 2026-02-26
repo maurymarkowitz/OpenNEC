@@ -32,7 +32,7 @@ static void finish_geometry(nec_context_t *ctx);
  * continuation cards like SC or similar.
  * 
  */
-static int peek_next_geom(deck_t *deck, int current) {
+static int peek_next_geometry(deck_t *deck, int current) {
   for (int j = current + 1; j <= deck->geometry_end; j++) {
     if (!is_extension(&deck->cards[j]) && !is_comment(&deck->cards[j])) return j;
   }
@@ -163,7 +163,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           ys1 = 1.0;
         } else {
           // make sure the next card is a GC, although we should have already done that
-          int next_idx = peek_next_geom(deck, i);
+          int next_idx = peek_next_geometry(deck, i);
           if(next_idx == -1 || strcmp(deck->cards[next_idx].card_code, "GC") != 0) {
             snprintf(msg, sizeof(msg), "The card on line %d is a GW with a zero radius, but the next card is not a GC with the tapering info.", i + 1);
             add_error(ctx, errors, msg, WARNING);
@@ -368,7 +368,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         else {
           // make sure the next card is an SC
           // TODO: we should test the sanity of the inputs based on the ns
-          int next_idx = peek_next_geom(deck, i);
+          int next_idx = peek_next_geometry(deck, i);
           if(next_idx == -1 || strcmp(deck->cards[next_idx].card_code, "SC") != 0) {
             snprintf(msg, sizeof(msg), "The card on line %d is a SP with type %d, but the next card is not an SC, which it needs.", i + 1, segs);
             add_error(ctx, errors, msg, WARNING);
@@ -396,7 +396,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
             
             // if it was segs=1 we are done at this point, for segs=3 there's more,
             // so loop until we run out of following SC's
-            while((next_idx = peek_next_geom(deck, i)) != -1 && strcmp(deck->cards[next_idx].card_code, "SC") == 0) {
+            while((next_idx = peek_next_geometry(deck, i)) != -1 && strcmp(deck->cards[next_idx].card_code, "SC") == 0) {
               // copy the last set of end coords into this set's start coords
               xw1 = x3;
               yw1 = y3;
@@ -425,7 +425,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           add_error(ctx, errors, msg, 1);
           continue;
         }
-        int sm_next = peek_next_geom(deck, i);
+        int sm_next = peek_next_geometry(deck, i);
         if(sm_next == -1 || strcmp(deck->cards[sm_next].card_code, "SC") != 0) {
           snprintf(msg, sizeof(msg), "The card on line %d is a SM, but the next card is not an SC, which it needs.", i + 1);
           add_error(ctx, errors, msg, 1);

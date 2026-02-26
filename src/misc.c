@@ -274,7 +274,7 @@ char *preprocess_line(const char *line) {
 /******************************************************************************
  * convert_awg_to_meters
  *
- * convert_awg_to_meters returns the wire RADIUS in meters for a given AWG
+ * convert_awg_to_meters returns the wire *radius* in meters for a given AWG
  * gauge number. Supports standard gauges (0-40) and large wire gauges
  * (4/0 through 1/0). Large wire gauges are represented as negative values:
  * 4/0=-3, 3/0=-2, 2/0=-1, 1/0=0. Returns -1.0 for invalid gauge values.
@@ -289,7 +289,7 @@ double convert_awg_to_meters(double awg_value)
     return -1.0;
   }
 
-  // These are wire RADIUS in meters, computed as (diameter_mm / 2) / 1000.
+  // These are wire *RADIUS* in meters, computed as (diameter_mm / 2) / 1000.
   // Large gauge diameters are ASTM B258 standard values; AWG 1-40 use
   // the formula d_mm = 0.127 * 92^((36-n)/39).
   // NOTE: prior to this fix the table contained values 20x too large because
