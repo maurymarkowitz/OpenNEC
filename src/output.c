@@ -1571,14 +1571,9 @@ static void write_input_cards(FILE *file, const deck_t *deck, int batch_start, i
       continue; // Continue to include XT in batch, don't break
     }
 
-    /* Do not echo EN here; EN will be printed at the very end of output */
-    if (strncmp(card->card_code, "EN", 2) == 0)
-    {
-      continue;
-    }
-
-    /* Only echo control cards (skip geometry and comment cards, and the EN) */
-    if (strncmp(card->card_code, "FR", 2) == 0 ||
+    /* Only echo control cards (skip geometry and comment cards) */
+    if (strncmp(card->card_code, "EN", 2) == 0 ||
+        strncmp(card->card_code, "FR", 2) == 0 ||
         strncmp(card->card_code, "EX", 2) == 0 ||
         strncmp(card->card_code, "LD", 2) == 0 ||
         strncmp(card->card_code, "TL", 2) == 0 ||
@@ -2409,10 +2404,11 @@ static void write_normalized_gain(FILE *file, const nec_context_t *ctx)
  * write_footer
  *
  * Writes the footer with total run time.
- * Note: EN card is now written by write_input_cards as part of the final batch.
  */
 static void write_footer(FILE *file, const nec_context_t *ctx, const deck_t *deck)
 {
+  (void)deck; // unused — EN is echoed by write_input_cards in sequence
+
   // Output blank lines before footer
   fprintf(file, "\n\n\n");
 
@@ -2423,59 +2419,6 @@ static void write_footer(FILE *file, const nec_context_t *ctx, const deck_t *dec
     nec_get_time_ms(ctx, &current_time);
     double elapsed_ms = current_time - ctx->start_time;
     fprintf(file, "\n  TOTAL RUN TIME: %.0f msec", elapsed_ms);
-  }
-
-  // At the very end, echo the EN card (if present) as the final data card
-  // Compute the card number to assign by counting echoed control cards in the batch
-  if (deck != NULL && deck->deck_end >= 0 && deck->deck_end < deck->num_cards)
-  {
-    card_t *en = &deck->cards[deck->deck_end];
-    if (strncmp(en->card_code, "EN", 2) == 0)
-    {
-      int card_number = 0;
-      int start = deck->geometry_end + 1;
-      int end = deck->deck_end; // exclude EN from count
-      for (int i = start; i < end && i < deck->num_cards; i++)
-      {
-        card_t *card = &deck->cards[i];
-        // count XT (echoed) and control cards that are echoed in write_input_cards
-        if (strncmp(card->card_code, "XT", 2) == 0 ||
-            strncmp(card->card_code, "FR", 2) == 0 ||
-            strncmp(card->card_code, "EX", 2) == 0 ||
-            strncmp(card->card_code, "LD", 2) == 0 ||
-            strncmp(card->card_code, "TL", 2) == 0 ||
-            strncmp(card->card_code, "NT", 2) == 0 ||
-            strncmp(card->card_code, "RP", 2) == 0 ||
-            strncmp(card->card_code, "GN", 2) == 0 ||
-            strncmp(card->card_code, "EK", 2) == 0 ||
-            strncmp(card->card_code, "KH", 2) == 0 ||
-            strncmp(card->card_code, "NE", 2) == 0 ||
-            strncmp(card->card_code, "NH", 2) == 0 ||
-            strncmp(card->card_code, "NX", 2) == 0 ||
-            strncmp(card->card_code, "PT", 2) == 0 ||
-            strncmp(card->card_code, "PQ", 2) == 0 ||
-            strncmp(card->card_code, "CP", 2) == 0 ||
-            strncmp(card->card_code, "GD", 2) == 0 ||
-            strncmp(card->card_code, "WG", 2) == 0 ||
-            strncmp(card->card_code, "XQ", 2) == 0)
-        {
-          card_number++;
-        }
-      }
-      // EN takes the next card number
-      card_number++;
-      fprintf(file, "\n  DATA CARD No: %3d %s", card_number, en->card_code);
-      fprintf(file, " %3d", en->i[1]);
-      for (int j = 2; j <= 4; j++)
-      {
-        fprintf(file, " %5d", en->i[j]);
-      }
-      for (int j = 1; j <= 6; j++)
-      {
-        fprintf(file, " %12.5E", en->f[j]);
-      }
-      fprintf(file, "\n");
-    }
   }
 }
 

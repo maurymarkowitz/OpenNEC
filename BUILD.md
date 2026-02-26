@@ -1,7 +1,7 @@
 OpenNEC Build Notes
 ===================
 
-OpenNEC is designed to build on any system with a working makefile system. It uses standard ANSI-C, and has no *required* external dependencies.  It does not require a `make configure`, a simple `make` should produce a runnable binary. If it does not, please file bug reports and/or pull requests.
+OpenNEC is designed to build on any system with a working makefile system. It uses standard ANSI-C, and has no *required* external dependencies. It does not need a `make configure` or other setup, a simple `make` should produce a runnable binary. If it does not, please file bug reports and/or pull requests.
 
 The original NEC-2 used internal code to perform various matrix calculations. OpenNEC allows the optional use of a number of math libraries that can dramatically improve performance on large models, especially those over 1000 segments. These optional components can be specified during `make` using the `BACKEND` directive on the command line.
 
@@ -79,6 +79,14 @@ make BACKEND=accelerate
 ./onec test/example5.deck
 ```
 
+- As Accelerate is the default, this is equivalent to:
+
+```bash
+make clean
+make
+./onec test/example5.deck
+```
+
 - OpenBLAS via Homebrew (Apple Silicon):
 
 ```bash
@@ -113,7 +121,6 @@ Recent timing runs on macOS (Apple Silicon) show that OpenBLAS is slightly faste
 - Accelerate: average real ≈ 0.477s across 7 decks
 - OpenBLAS: average real ≈ 0.383s across 7 decks
 - Original (internal): average real ≈ 3.139s across 7 decks
-
 
 Troubleshooting
 ---------------
