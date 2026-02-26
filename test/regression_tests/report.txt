@@ -1,1 +1,41 @@
 
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/example5.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_gf_load.deck (accelerate vs original)
+DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_nx_radial.deck (accelerate vs original) -> ngf_nx_radial.deck.accelerate_vs_original.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_wg_write.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/simple.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_circular.deck (accelerate vs original)
+DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (accelerate vs original) -> test_ignore.deck.accelerate_vs_original.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_invalid.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_mixed_geometry.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_nx.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_xt.deck (accelerate vs original)
+DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_1001.deck (accelerate vs original) -> speed_1001.deck.accelerate_vs_original.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_101.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_21.deck (accelerate vs original)
+DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_4001.deck (accelerate vs original) -> speed_4001.deck.accelerate_vs_original.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_401.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/example5.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_gf_load.deck (accelerate vs openblas)
+DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_nx_radial.deck (accelerate vs openblas) -> ngf_nx_radial.deck.accelerate_vs_openblas.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_wg_write.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/simple.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_circular.deck (accelerate vs openblas)
+DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (accelerate vs openblas) -> test_ignore.deck.accelerate_vs_openblas.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_invalid.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_mixed_geometry.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_nx.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_xt.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_1001.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_101.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_21.deck (accelerate vs openblas)
+DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_4001.deck (accelerate vs openblas) -> speed_4001.deck.accelerate_vs_openblas.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_401.deck (accelerate vs openblas)

@@ -1,15 +1,6 @@
---- /dev/fd/63	2026-02-26 11:49:56
-+++ /dev/fd/62	2026-02-26 11:49:56
-@@ -141,7 +141,7 @@
- 
- 
-                              ---------- MATRIX TIMING ----------
--                               FILL: 387 msec  FACTOR: 100 msec
-+                               FILL: 372 msec  FACTOR: 66 msec
- 
- 
-                                             ---------- NETWORK DATA ----------
-@@ -168,22 +168,22 @@
+--- /dev/fd/63	2026-02-26 11:51:44
++++ /dev/fd/62	2026-02-26 11:51:44
+@@ -167,22 +167,22 @@
                            --------- STRUCTURE EXCITATION DATA AT NETWORK CONNECTION POINTS --------
    TAG   SEG       VOLTAGE (VOLTS)          CURRENT (AMPS)         IMPEDANCE (OHMS)       ADMITTANCE (MHOS)     POWER
    No:   No:     REAL      IMAGINARY     REAL      IMAGINARY     REAL      IMAGINARY     REAL      IMAGINARY   (WATTS)
@@ -43,7 +34,7 @@
  
  
                             -------- CURRENTS AND LOCATION --------
-@@ -191,73 +191,73 @@
+@@ -190,73 +190,73 @@
  
     SEG  TAG    COORDINATES OF SEGM CENTER     SEGM    ------------- CURRENT (AMPS) -------------
     No:  No:       X         Y         Z      LENGTH     REAL      IMAGINARY    MAGN        PHASE
@@ -180,7 +171,7 @@
  
  
                               ---------- RADIATION PATTERNS -----------
-@@ -265,65 +265,65 @@
+@@ -264,65 +264,65 @@
   ---- ANGLES -----     --- DIRECTIVE GAINS ---      ---- POLARIZATION ----   ---- E(THETA) ----    ----- E(PHI) ------
    THETA      PHI       VERTC    HORIZ    TOTAL       AXIAL      TILT  SENSE   MAGNITUDE    PHASE    MAGNITUDE     PHASE
   DEGREES   DEGREES        DB       DB       DB       RATIO   DEGREES            VOLTS/M   DEGREES     VOLTS/M   DEGREES

@@ -69,7 +69,7 @@ void print_usage(char *argv[])
   puts("  -v, --version: print version info");
   puts("  -n, --no-run: don't run the simulation after parsing");
   puts("  -t, --test-deck: run various sanity tests");
-  puts("  -o, --output-file: (path/)name of the output file (single file only)");
+  puts("  -o, --output-file: write output to this file; if omitted, single-file runs write to stdout, multiple files write to <file>.out");
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -g, --greens[=file]: write a Green's function file; filename defaults to input path with .ngf extension");
   puts("  -j, --jobs N: process up to N files in parallel (default 1)");
@@ -671,11 +671,18 @@ int main(int argc, char **argv)
         char output[512];
         if (strlen(output_file) > 0 && num_files == 1)
         {
+          // -o explicitly specified: use that path
           strncpy(output, output_file, sizeof(output) - 1);
           output[sizeof(output) - 1] = '\0';
         }
+        else if (num_files == 1 && !recursive)
+        {
+          // Single file, no -o: write to stdout (nec2c-compatible)
+          output[0] = '\0';
+        }
         else
         {
+          // Multiple files or -r: write to <file>.out beside the input
           generate_output_filename(input, output, sizeof(output));
         }
         if (num_files > 1)

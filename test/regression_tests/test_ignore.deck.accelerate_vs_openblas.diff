@@ -1,15 +1,6 @@
---- /dev/fd/63	2026-02-26 11:49:57
-+++ /dev/fd/62	2026-02-26 11:49:57
-@@ -141,7 +141,7 @@
- 
- 
-                              ---------- MATRIX TIMING ----------
--                               FILL: 387 msec  FACTOR: 100 msec
-+                               FILL: 372 msec  FACTOR: 54 msec
- 
- 
-                                             ---------- NETWORK DATA ----------
-@@ -170,7 +170,7 @@
+--- /dev/fd/63	2026-02-26 11:51:45
++++ /dev/fd/62	2026-02-26 11:51:45
+@@ -169,7 +169,7 @@
    No:   No:     REAL      IMAGINARY     REAL      IMAGINARY     REAL      IMAGINARY     REAL      IMAGINARY   (WATTS)
      2     8         NAN         NAN         NAN         NAN         NAN         NAN         NAN         NAN         NAN
      3    13         NAN         NAN         NAN         NAN         NAN         NAN         NAN         NAN         NAN
