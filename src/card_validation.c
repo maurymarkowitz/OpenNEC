@@ -312,13 +312,13 @@ static field_validation_t validate_GA_field(const card_t *c, int is_int, int idx
   }
   if (!is_int && idx == 1)
   {
-    double r = c->flt_form_inline[1] ? c->fv[1] : c->f[1];
+    double r = c->f[1];
     if (r <= 0.0)
       RESULT(PROBLEM, "GA F1: arc radius must be positive (got %.4g).", r);
   }
   if (!is_int && idx == 7)
   {
-    double r = c->flt_form_inline[7] ? c->fv[7] : c->f[7];
+    double r = c->f[7];
     if (r <= 0.0)
       RESULT(PROBLEM, "GA F7: wire radius must be positive (got %.4g).", r);
   }
@@ -339,7 +339,7 @@ static field_validation_t validate_GC_field(const card_t *c, int is_int, int idx
   }
   if (!is_int && (idx == 2 || idx == 3))
   {
-    double r = c->flt_form_inline[idx] ? c->fv[idx] : c->f[idx];
+    double r = c->f[idx];
     if (r <= 0.0)
       RESULT(PROBLEM, "GC F%d: wire radius must be positive (got %.4g).", idx, r);
   }
@@ -379,7 +379,7 @@ static field_validation_t validate_GH_field(const card_t *c, int is_int, int idx
   }
   if (!is_int && idx == 7)
   {
-    double r = c->flt_form_inline[7] ? c->fv[7] : c->f[7];
+    double r = c->f[7];
     if (r <= 0.0)
       RESULT(PROBLEM, "GH F7: wire radius must be positive (got %.4g).", r);
   }
@@ -451,20 +451,15 @@ static field_validation_t validate_GW_field(const card_t *c, int is_int, int idx
     if (c->i[2] <= 0)
       RESULT(PROBLEM, "GW I2: segment count must be positive (got %d).", c->i[2]);
   }
-  /* Report zero-length wire on the second endpoint fields (F4, F5, F6).
-   * Use fv[] (evaluated values) so formula-based coordinates are handled
-   * correctly — fv[] equals f[] when no formula is present. */
+  /* Report zero-length wire on the second endpoint fields (F4, F5, F6). */
   if (!is_int && idx >= 4 && idx <= 6)
   {
-    if (c->fv[1] == c->fv[4] && c->fv[2] == c->fv[5] && c->fv[3] == c->fv[6])
+    if (c->f[1] == c->f[4] && c->f[2] == c->f[5] && c->f[3] == c->f[6])
       RESULT(PROBLEM, "GW F4-F6: both endpoints are identical (zero-length wire).");
   }
   if (!is_int && idx == 7)
   {
-    /* When the radius was given as a formula (e.g. AWG notation or SY symbol),
-     * f[7]==0 but fv[7] holds the evaluated radius.  Always use fv[7] when a
-     * formula is present — update_deck_values has run before any validation. */
-    double radius = c->flt_form_inline[7] ? c->fv[7] : c->f[7];
+    double radius = c->f[7];
     if (radius <= 0.0)
       RESULT(PROBLEM, "GW F7: wire radius must be positive (got %.4g).", radius);
   }

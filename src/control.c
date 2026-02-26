@@ -55,12 +55,12 @@ static int count_tag_segments(const nec_context_t *ctx, int tag)
  *
  * If the I<field_idx> formula ends with '%', this computes:
  *   seg = round(pct / 100.0 * count_tag_segments(tag)), clamped to [1, count].
- * Otherwise returns card->iv[field_idx] unchanged.
+ * Otherwise returns card->i[field_idx] unchanged.
  */
 static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card,
                                int field_idx, int tag)
 {
-    if (!card->int_form_inline[field_idx]) return card->iv[field_idx];
+    if (!card->int_form_inline[field_idx]) return card->i[field_idx];
 
     char key[3] = { 'I', (char)('0' + field_idx), '\0' };
     const key_value_t *kv = card->formulas;
@@ -70,7 +70,7 @@ static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card,
             if (vlen > 1 && kv->value[vlen - 1] == '%') {
                 double pct = strtod(kv->value, NULL);
                 int count = count_tag_segments(ctx, tag);
-                if (count <= 0) return card->iv[field_idx];
+                if (count <= 0) return card->i[field_idx];
                 int seg = (int)round(pct / 100.0 * (double)count);
                 if (seg < 1) seg = 1;
                 if (seg > count) seg = count;
@@ -80,7 +80,7 @@ static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card,
         }
         kv = kv->next;
     }
-    return card->iv[field_idx];
+    return card->i[field_idx];
 }
 
 /******************************************************************************
@@ -540,55 +540,15 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             continue; // Skip to next card, SY cards don't configure anything
         }
         
-        // For non-SY cards, evaluate any formulas on the card before processing
-        if (card->formulas) {
-            // Copy original values to working arrays
-            for (int j = 1; j <= MAX_INT_FIELDS; j++) card->iv[j] = card->i[j];
-            for (int j = 1; j <= MAX_FLT_FIELDS; j++) card->fv[j] = card->f[j];
-            
-            // Evaluate formulas for this card
-            key_value_t *kv = card->formulas;
-            while (kv) {
-                // Determine if this is an integer or float field formula
-                if (kv->key && kv->key[0] == 'I' && strlen(kv->key) == 2) {
-                    int idx = kv->key[1] - '0';
-                    if (idx >= 1 && idx <= MAX_INT_FIELDS) {
-                        /* Skip percent-segment formulas (e.g. "50%") — they
-                         * cannot be evaluated by tinyexpr and are resolved
-                         * against the geometry by resolve_pct_segment() at
-                         * point-of-use (e.g. the EX handler below). */
-                        size_t vlen = kv->value ? strlen(kv->value) : 0;
-                        if (vlen > 1 && kv->value[vlen - 1] == '%') {
-                            /* leave card->iv[idx] = card->i[idx] (already copied) */
-                        } else {
-                            evaluate_formula(ctx, kv, deck, &ctx->errors);
-                            card->iv[idx] = (int)kv->fv;
-                        }
-                    }
-                } else if (kv->key && kv->key[0] == 'F' && strlen(kv->key) == 2) {
-                    int idx = kv->key[1] - '0';
-                    if (idx >= 1 && idx <= MAX_FLT_FIELDS) {
-                        evaluate_formula(ctx, kv, deck, &ctx->errors);
-                        card->fv[idx] = kv->fv;
-                    }
-                }
-                kv = kv->next;
-            }
-        } else {
-            // No formulas - just copy original values
-            for (int j = 1; j <= MAX_INT_FIELDS; j++) card->iv[j] = card->i[j];
-            for (int j = 1; j <= MAX_FLT_FIELDS; j++) card->fv[j] = card->f[j];
-        }
-        
         // Skip XQ, EN, XT, NX cards (they don't configure anything)
         if (strcmp(code, "XQ") == 0 || strcmp(code, "EN") == 0 || strcmp(code, "XT") == 0 || strcmp(code, "NX") == 0) {
             continue;
         }
         
         // Get field values for convenience
-        int i1 = card->iv[1], i2 = card->iv[2], i3 = card->iv[3], i4 = card->iv[4];
-        double f1 = card->fv[1], f2 = card->fv[2], f3 = card->fv[3];
-        double f4 = card->fv[4], f5 = card->fv[5], f6 = card->fv[6];
+        int i1 = card->i[1], i2 = card->i[2], i3 = card->i[3], i4 = card->i[4];
+        double f1 = card->f[1], f2 = card->f[2], f3 = card->f[3];
+        double f4 = card->f[4], f5 = card->f[5], f6 = card->f[6];
         
         // Process based on card type
         if (strcmp(code, "FR") == 0) {

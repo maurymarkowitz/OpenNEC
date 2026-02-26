@@ -714,26 +714,26 @@ static void nec_estimate_setup(const deck_t *deck,
     if (strcmp(code, "GW") == 0 ||
         strcmp(code, "GA") == 0 ||
         strcmp(code, "GH") == 0) {
-      /* iv[2] = I2 = number of segments */
-      *ns += c->iv[2];
+      /* i[2] = I2 = number of segments */
+      *ns += c->i[2];
     }
     else if (strcmp(code, "SP") == 0) {
       /* Each SP card (any shape flag) contributes 1 patch */
       *np += 1;
     }
     else if (strcmp(code, "SM") == 0) {
-      /* iv[1]=I1 = patches along first axis, iv[2]=I2 = patches along second */
-      int m = c->iv[1], n = c->iv[2];
+      /* i[1]=I1 = patches along first axis, i[2]=I2 = patches along second */
+      int m = c->i[1], n = c->i[2];
       if (m > 0 && n > 0) *np += m * n;
     }
     else if (strcmp(code, "GR") == 0) {
-      /* iv[2] = number of rotational sectors */
-      int sectors = c->iv[2];
+      /* i[2] = number of rotational sectors */
+      int sectors = c->i[2];
       if (sectors > 1) *m_sym *= sectors;
     }
     else if (strcmp(code, "GX") == 0) {
-      /* iv[2] = three-digit bitmask: hundreds=x, tens=y, units=z */
-      int bitmask = c->iv[2];
+      /* i[2] = three-digit bitmask: hundreds=x, tens=y, units=z */
+      int bitmask = c->i[2];
       int ix = (bitmask / 100) % 10 ? 1 : 0;
       int iy = (bitmask / 10)  % 10 ? 1 : 0;
       int iz =  bitmask        % 10 ? 1 : 0;
@@ -751,20 +751,20 @@ static void nec_estimate_setup(const deck_t *deck,
     const char *code = c->card_code;
 
     if (strcmp(code, "GN") == 0) {
-      int iperf = c->iv[1];
+      int iperf = c->i[1];
       if      (iperf == -1) *k_gnd = 1;  /* no ground */
       else if (iperf ==  2) *k_gnd = 4;  /* Sommerfeld */
       else                  *k_gnd = 2;  /* perfect / approximate */
     }
     else if (strcmp(code, "FR") == 0) {
-      /* iv[2] = I2 = NFRQ; 0 on card means 1 frequency */
-      int n = (c->iv[2] > 0) ? c->iv[2] : 1;
+      /* i[2] = I2 = NFRQ; 0 on card means 1 frequency */
+      int n = (c->i[2] > 0) ? c->i[2] : 1;
       /* Take the maximum across multiple FR cards (conservative) */
       if (n > *nfreq) *nfreq = n;
     }
     else if (strcmp(code, "RP") == 0) {
-      int nth = (c->iv[2] > 0) ? c->iv[2] : 1;
-      int nph = (c->iv[3] > 0) ? c->iv[3] : 1;
+      int nth = (c->i[2] > 0) ? c->i[2] : 1;
+      int nph = (c->i[3] > 0) ? c->i[3] : 1;
       *nf += nth * nph;
     }
   }

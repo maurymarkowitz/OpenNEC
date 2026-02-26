@@ -1168,7 +1168,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
   // and with the entire deck tested, make sure we got the key cards
   if (!sawCE)
   {
-    snprintf(msg, sizeof(msg), "A NEC-2 deck should have a CE card.");
+    snprintf(msg, sizeof(msg), "A deck should have a CE card.");
     add_error(ctx, errors, msg, 0);
   }
   if (!sawGx)
@@ -1181,11 +1181,6 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     snprintf(msg, sizeof(msg), "A deck has to have a GE card.");
     add_error(ctx, errors, msg, 1);
   }
-  if (!sawFR && !sawRP)
-  {
-    snprintf(msg, sizeof(msg), "A deck has to have an FR card.");
-    add_error(ctx, errors, msg, 1);
-  }
   if (!sawEN)
   {
     snprintf(msg, sizeof(msg), "A deck should end with a EN card.");
@@ -1196,6 +1191,11 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
   {
     snprintf(msg, sizeof(msg), "The EN card should be the final card in the deck (found earlier at card %d).", sawEN + 1);
     add_error(ctx, errors, msg, 0);
+  }
+  if (!sawFR && !sawRP)
+  {
+    snprintf(msg, sizeof(msg), "A deck has to have an FR card.");
+    add_error(ctx, errors, msg, 1);
   }
   if (!sawEX && !sawLD)
   {
@@ -1582,13 +1582,7 @@ void test_card_inputs(const nec_context_t *ctx, const deck_t *deck, errors_list_
         add_error(ctx, errors, msg, 0);
       }
       // Radius must be present and positive (F7).
-      // When the radius was given as a formula (e.g. AWG notation like #12),
-      // f[7] is 0 but fv[7] holds the evaluated radius — use that instead.
-      /* Always prefer fv[7] when F7 was given as a formula/AWG/unit —
-       * update_deck_values populates fv[7] before validate_deck is called. */
-      double gw_radius = deck->cards[i].flt_form_inline[7]
-                             ? deck->cards[i].fv[7]
-                             : deck->cards[i].f[7];
+      double gw_radius = deck->cards[i].f[7];
       if (deck->cards[i].flts_used < 7 && !deck->cards[i].flt_form_inline[7])
       {
         snprintf(msg, sizeof(msg), "The card on line %d is a GW but has no radius specified in F7.", i);

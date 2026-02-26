@@ -1278,14 +1278,14 @@ static int write_structure(nec_context_t *ctx, const deck_t *deck, FILE *file)
       fprintf(ctx->output_fp, "\n"
                               " %5d  %10.5f %10.5f %10.5f %10.5f"
                               " %10.5f %10.5f %10.5f %5d %5d %5d %4d",
-              num_wires, card.fv[1], card.fv[2], card.fv[3], card.fv[4], card.fv[5], card.fv[6], card.fv[7],
+              num_wires, card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6], card.f[7],
               card.num_segments, card.start_segment, card.end_segment, card.tag);
       break;
 
     case 1: // GX card, reflection or rotation
       // decode the flags stored in the I2 value on the card
-      iy = card.iv[2] / 10;
-      iz = card.iv[2] - iy * 10;
+      iy = card.i[2] / 10;
+      iz = card.i[2] - iy * 10;
       ix = iy / 10;
       iy = iy - ix * 10;
 
@@ -1304,7 +1304,7 @@ static int write_structure(nec_context_t *ctx, const deck_t *deck, FILE *file)
 
     case 3: // GS card, scale structure dimensions
       fprintf(ctx->output_fp,
-              "\n     STRUCTURE SCALED BY FACTOR: %10.5f", card.fv[1]);
+              "\n     STRUCTURE SCALED BY FACTOR: %10.5f", card.f[1]);
       break;
 
     case 4: // GE card, nothing to do
@@ -1314,14 +1314,14 @@ static int write_structure(nec_context_t *ctx, const deck_t *deck, FILE *file)
       fprintf(ctx->output_fp,
               "\n     THE STRUCTURE HAS BEEN MOVED, MOVE DATA CARD IS:\n"
               "   %3d %5d %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f",
-              card.iv[1], card.iv[2], card.fv[1], card.fv[2], card.fv[3], card.fv[4], card.fv[5], card.fv[6], card.fv[7]);
+              card.i[1], card.i[2], card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6], card.f[7]);
       break;
 
     case 6: // SP card, generate single surface patch
       /* num_patches++; */
       fprintf(ctx->output_fp, "\n"
                               " %5d%c %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f",
-              card.iv[1], 'R', card.fv[1], card.fv[2], card.fv[3], card.fv[4], card.fv[5], card.fv[6]);
+              card.i[1], 'R', card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6]);
       break;
 
     case 7: // SM card, multiple-patch surface
@@ -1339,7 +1339,8 @@ static int write_structure(nec_context_t *ctx, const deck_t *deck, FILE *file)
       fprintf(ctx->output_fp, "\n"
                               " %5d ARC RADIUS: %9.5f  FROM: %8.3f TO: %8.3f DEGREES"
                               "       %11.5f %5d %5d %5d %4d",
-              num_wires, card.fv[1], card.fv[2], card.fv[3], card.fv[4], card.tag, card.start_segment, card.end_segment, card.iv[1]);
+              num_wires, card.f[1], card.f[2], card.f[3], card.f[4],
+              card.tag, card.start_segment, card.end_segment, card.i[1]);
 
       // FIXME: this looks wrong, last input
       break;
@@ -1353,8 +1354,8 @@ static int write_structure(nec_context_t *ctx, const deck_t *deck, FILE *file)
                               " %5d HELIX STRUCTURE - SPACING OF TURNS: %8.3f AXIAL"
                               " LENGTH: %8.3f  %8.3f %5d %5d %5d %4d\n      "
                               " RADIUS X1:%8.3f Y1:%8.3f X2:%8.3f Y2:%8.3f ",
-              num_wires, card.fv[1], card.fv[2], card.fv[7], card.tag, card.start_segment, card.end_segment,
-              card.iv[1], card.fv[3], card.fv[4], card.fv[5], card.fv[6]);
+              num_wires, card.f[1], card.f[2], card.f[7], card.tag, card.start_segment, card.end_segment,
+              card.i[1], card.f[3], card.f[4], card.f[5], card.f[6]);
       break;
 
     } /* switch on the card type */
@@ -1556,14 +1557,14 @@ static void write_input_cards(FILE *file, const deck_t *deck, int batch_start, i
     {
       card_number++;
       fprintf(file, "  DATA CARD No: %3d %s", card_number, card->card_code);
-      fprintf(file, " %3d", card->iv[1]);
+      fprintf(file, " %3d", card->i[1]);
       for (int j = 2; j <= 4; j++)
       {
-        fprintf(file, " %5d", card->iv[j]);
+        fprintf(file, " %5d", card->i[j]);
       }
       for (int j = 1; j <= 6; j++)
       {
-        fprintf(file, " %12.5E", card->fv[j]);
+        fprintf(file, " %12.5E", card->f[j]);
       }
       fprintf(file, "\n");
       fprintf(file, "\nOpenNEC: Exiting after an XT command.\n");
@@ -1603,16 +1604,16 @@ static void write_input_cards(FILE *file, const deck_t *deck, int batch_start, i
       fprintf(file, "  DATA CARD No: %3d %s", card_number, card->card_code);
 
       /* Output 4 integer fields */
-      fprintf(file, " %3d", card->iv[1]);
+      fprintf(file, " %3d", card->i[1]);
       for (int j = 2; j <= 4; j++)
       {
-        fprintf(file, " %5d", card->iv[j]);
+        fprintf(file, " %5d", card->i[j]);
       }
 
       /* Output 7 float fields in scientific notation */
       for (int j = 1; j <= 6; j++)
       {
-        fprintf(file, " %12.5E", card->fv[j]);
+        fprintf(file, " %12.5E", card->f[j]);
       }
 
       fprintf(file, "\n");
@@ -2464,14 +2465,14 @@ static void write_footer(FILE *file, const nec_context_t *ctx, const deck_t *dec
       // EN takes the next card number
       card_number++;
       fprintf(file, "\n  DATA CARD No: %3d %s", card_number, en->card_code);
-      fprintf(file, " %3d", en->iv[1]);
+      fprintf(file, " %3d", en->i[1]);
       for (int j = 2; j <= 4; j++)
       {
-        fprintf(file, " %5d", en->iv[j]);
+        fprintf(file, " %5d", en->i[j]);
       }
       for (int j = 1; j <= 6; j++)
       {
-        fprintf(file, " %12.5E", en->fv[j]);
+        fprintf(file, " %12.5E", en->f[j]);
       }
       fprintf(file, "\n");
     }

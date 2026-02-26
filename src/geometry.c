@@ -105,37 +105,6 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
       continue; // Skip to next card, SY cards don't generate geometry
     }
     
-    // For non-SY cards, evaluate any formulas on the card before processing
-    if(card->formulas) {
-      // Copy original values to working arrays
-      for(int j = 1; j <= MAX_INT_FIELDS; j++) card->iv[j] = card->i[j];
-      for(int j = 1; j <= MAX_FLT_FIELDS; j++) card->fv[j] = card->f[j];
-      
-      // Evaluate formulas for this card
-      key_value_t *kv = card->formulas;
-      while (kv) {
-        // Determine if this is an integer or float field formula
-        if(kv->key && kv->key[0] == 'I' && strlen(kv->key) == 2) {
-          int idx = kv->key[1] - '0';
-          if(idx >= 1 && idx <= MAX_INT_FIELDS) {
-            evaluate_formula(ctx, kv, deck, errors);
-            card->iv[idx] = (int)kv->fv;
-          }
-        } else if(kv->key && kv->key[0] == 'F' && strlen(kv->key) == 2) {
-          int idx = kv->key[1] - '0';
-          if(idx >= 1 && idx <= MAX_FLT_FIELDS) {
-            evaluate_formula(ctx, kv, deck, errors);
-            card->fv[idx] = kv->fv;
-          }
-        }
-        kv = kv->next;
-      }
-    } else {
-      // No formulas - just copy original values
-      for(int j = 1; j <= MAX_INT_FIELDS; j++) card->iv[j] = card->i[j];
-      for(int j = 1; j <= MAX_FLT_FIELDS; j++) card->fv[j] = card->f[j];
-    }
-    
     // one of the few ways that onec modifies the original NEC code is by adding
     // a flag saying whether this card should be ignored. That makes it easy to
     // have a GUI with a switch to turn off a card during testing (for example)
@@ -162,15 +131,15 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
 
     // now read in the values that are the same for all the cards
     // NOTE: remember to read the VALUES, not the original inputs!
-    tag = card->iv[1];
-    segs = card->iv[2];
-    xw1 = card->fv[1];
-    yw1 = card->fv[2];
-    zw1 = card->fv[3];
-    xw2 = card->fv[4];
-    yw2 = card->fv[5];
-    zw2 = card->fv[6];
-    rad = card->fv[7];
+    tag = card->i[1];
+    segs = card->i[2];
+    xw1 = card->f[1];
+    yw1 = card->f[2];
+    zw1 = card->f[3];
+    xw2 = card->f[4];
+    yw2 = card->f[5];
+    zw2 = card->f[6];
+    rad = card->f[7];
     
     // set the card's tag number and number of segments
     // Only set card->tag for card types that actually assign an ITG (tag)
@@ -201,19 +170,16 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
             continue;
           }
           // and also that the values in it are valid
-          // Use the GC card tapering info. Do NOT blindly overwrite any
-          // previously-evaluated `fv[]` values -- those may contain unit
-          // conversions or formula results established earlier. Prefer
-          // `fv[]` and fall back to the raw `f[]` inputs only if necessary.
+          // Use the GC card tapering info.
           card_t *gc_card = &deck->cards[next_idx];
 
-            double gc_x1 = gc_card->fv[1] != 0.0 ? gc_card->fv[1] : gc_card->f[1];
+            double gc_x1 = gc_card->f[1];
             // In many decks a GC F1 value of 0 means "no tapering of spacing";
             // treat 0 the same as 1 (equal spacing) to avoid producing zero
             // rd values that collapse segment lengths to zero.
             if (gc_x1 == 0.0) gc_x1 = 1.0;
-            double gc_y1 = gc_card->fv[2] != 0.0 ? gc_card->fv[2] : gc_card->f[2];
-            double gc_z1 = gc_card->fv[3] != 0.0 ? gc_card->fv[3] : gc_card->f[3];
+            double gc_y1 = gc_card->f[2];
+            double gc_z1 = gc_card->f[3];
 
 
           if((gc_y1 == 0.0) || (gc_z1 == 0.0)) {
@@ -223,7 +189,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
             continue;
           }
 
-            // override the original inputs with the ones from the GC (prefer evaluated fv[])
+            // override the original inputs with the ones from the GC
             xs1 = gc_x1;
             ys1 = gc_y1;
             zs1 = gc_z1;
@@ -370,7 +336,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         yw1 = yw1 * TA;
         zw1 = zw1 * TA;
         // convert the original float value in F7 to int
-        int tag_increment = (int)(card->fv[7] + .5);
+        int tag_increment = (int)(card->f[7] + .5);
         if (!card->ignore) {
           reproduce(ctx, xw1, yw1, zw1, xw2, yw2, zw2, tag_increment, segs, tag);
         }
@@ -410,21 +376,21 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           }
           // if it's a triangle we just read one more point from the new card and go...
           if(segs == 2) {
-            x3 = deck->cards[next_idx].fv[1];
-            y3 = deck->cards[next_idx].fv[2];
-            z3 = deck->cards[next_idx].fv[3];
+            x3 = deck->cards[next_idx].f[1];
+            y3 = deck->cards[next_idx].f[2];
+            z3 = deck->cards[next_idx].f[3];
             i = next_idx; // skip the SC card next time through the main loop
             patch(ctx, target_geom, i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, 0.0, 0.0, 0.0);
           } /* ns == 2 */
           // if it's not a triangle, we have to loop over the following cards
           else {
             // there has to be at least one following...
-            x3 = deck->cards[next_idx].fv[1];
-            y3 = deck->cards[next_idx].fv[2];
-            z3 = deck->cards[next_idx].fv[3];
-            x4 = deck->cards[next_idx].fv[4];
-            y4 = deck->cards[next_idx].fv[5];
-            z4 = deck->cards[next_idx].fv[6];
+            x3 = deck->cards[next_idx].f[1];
+            y3 = deck->cards[next_idx].f[2];
+            z3 = deck->cards[next_idx].f[3];
+            x4 = deck->cards[next_idx].f[4];
+            y4 = deck->cards[next_idx].f[5];
+            z4 = deck->cards[next_idx].f[6];
             i = next_idx;
             patch(ctx, target_geom, i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
             
@@ -439,12 +405,12 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
               yw2 = y4;
               zw2 = z4;
               // and then get the next set of end coords
-              x3 = deck->cards[next_idx].fv[1];
-              y3 = deck->cards[next_idx].fv[2];
-              z3 = deck->cards[next_idx].fv[3];
-              x4 = deck->cards[next_idx].fv[4];
-              y4 = deck->cards[next_idx].fv[5];
-              z4 = deck->cards[next_idx].fv[6];
+              x3 = deck->cards[next_idx].f[1];
+              y3 = deck->cards[next_idx].f[2];
+              z3 = deck->cards[next_idx].f[3];
+              x4 = deck->cards[next_idx].f[4];
+              y4 = deck->cards[next_idx].f[5];
+              z4 = deck->cards[next_idx].f[6];
               i = next_idx;
               patch(ctx, target_geom, i, tag, segs, xw1, yw1, zw1, xw2, yw2, zw2, x3, y3, z3, x4, y4, z4);
             } /* while cards are SC's */
@@ -467,9 +433,9 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         }
         
         // read the sc and skip it
-        x3 = deck->cards[sm_next].fv[1];
-        y3 = deck->cards[sm_next].fv[2];
-        z3 = deck->cards[sm_next].fv[3];
+        x3 = deck->cards[sm_next].f[1];
+        y3 = deck->cards[sm_next].f[2];
+        z3 = deck->cards[sm_next].f[3];
         i = sm_next;
         
         // calculate corner 4
@@ -508,11 +474,11 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           yw2 = zw1;               // a2 = a1
           zw2 = xw2;               // b2 = b1
           rad = wire_rad;
-          // Update card fv[] so output display shows the converted NEC-2 values
-          card->fv[1] = xw1;
-          card->fv[5] = yw2;
-          card->fv[6] = zw2;
-          card->fv[7] = rad;
+          // Update card f[] so output display shows the converted NEC-2 values
+          card->f[1] = xw1;
+          card->f[5] = yw2;
+          card->f[6] = zw2;
+          card->f[7] = rad;
           snprintf(msg, sizeof(msg), "GH card on line %d: detected 4NEC2 format (%.0f turns, wire radius %.4g).", i + 1, fabs(turns), rad);
           add_message(ctx, outputs, msg);
         }

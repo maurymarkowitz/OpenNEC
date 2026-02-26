@@ -91,7 +91,7 @@ void free_card(card_t *card)
     free(temp);
   }
 
-  // Do NOT free(card) here; cards are part of an array and freed in free_deck
+  // do NOT free(card) here; cards are part of an array and freed in free_deck
 }
 
 /******************************************************************************
@@ -1329,16 +1329,6 @@ void update_card_values(deck_t *deck)
       continue;
     }
 
-    // first, copy any original input values into the value fields
-    for (int i = 1; i <= MAX_INT_FIELDS; i++)
-    {
-      card->iv[i] = card->i[i];
-    }
-    for (int i = 1; i <= MAX_FLT_FIELDS; i++)
-    {
-      card->fv[i] = card->f[i];
-    }
-
     // now run any calculations on the fields and copy those in instead
     if (card->formulas != NULL)
     {
@@ -1348,9 +1338,9 @@ void update_card_values(deck_t *deck)
       double fvals[MAX_FLT_FIELDS + 1];  // 1-based
       double ivals[MAX_INT_FIELDS + 1];  // 1-based
       for (int i = 1; i <= fcount; i++)
-        fvals[i] = card->fv[i];
+        fvals[i] = card->f[i];
       for (int i = 1; i <= icount; i++)
-        ivals[i] = (double)card->iv[i];
+        ivals[i] = (double)card->i[i];
 
       int num_syms = deck ? deck->num_symbols : 0;
 
@@ -1419,13 +1409,13 @@ void update_card_values(deck_t *deck)
 
             if (kind == 'F' && idx >= 1 && idx <= MAX_FLT_FIELDS)
             {
-              card->fv[idx] = val;
+              card->f[idx] = val;
               fvals[idx] = val; // keep variables in sync for subsequent formulas
             }
             else if (kind == 'I' && idx >= 1 && idx <= MAX_INT_FIELDS)
             {
               int ival = (int)val; // truncate; can switch to rounding if desired
-              card->iv[idx] = ival;
+              card->i[idx] = ival;
               ivals[idx] = (double)ival;
             }
           }

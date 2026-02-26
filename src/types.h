@@ -178,13 +178,10 @@ typedef struct card_t
   char *orig_str;     /**< The original raw string line from the file */
   char *card_str;     /**< The card content minus any inline comments */
   
-  char card_code[3];  /**< Two-letter NEC card mnemonic (e.g., "GW", "LD") */
+  char card_code[3];  /**< Two-letter NEC card mnemonic (e.g., "GW", "LD"), and the null terminator */
   
-  int i[5];           /**< Raw integer input fields (1-based: i[1]..i[4]) */
-  double f[8];        /**< Raw float input fields (1-based: f[1]..f[7]) */
-  
-  int iv[5];          /**< Calculated integer values after formula/unit evaluation */
-  double fv[8];       /**< Calculated float values after formula/unit evaluation */
+  int i[5];           /**< Integer input fields (1-based: i[1]..i[4]); formula results written here before use */
+  double f[8];        /**< Float input fields (1-based: f[1]..f[7]); formula results written here before use */
 
   int ints_used;      /**< Number of integer parameters found on this card */
   int flts_used;      /**< Number of float parameters found on this card */
