@@ -164,8 +164,18 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
             }
         }
         
-        // Execute frequency loop for this batch (unless EN/XT)
-        if (!is_termination) {
+        // Execute frequency loop only when an output request card is present in the batch.
+        // This matches Fortran/nec2c behavior: the frequency loop (and CALL LOAD) is only
+        // entered when RP, NE, NH, XQ, or WG is encountered. FR/LD/GN/EX-only batches
+        // (e.g., ending with EN) accumulate state but perform no computation.
+        bool has_xq = (!is_termination && batch_end >= 0 &&
+                       strcmp(deck->cards[batch_end].card_code, "XQ") == 0);
+        bool has_output_request = (ctx->gnd.ifar != -1 ||
+                                   ctx->fpat.near != -1 ||
+                                   has_xq ||
+                                   ctx->wg_after_cmset);
+        if (!is_termination && has_output_request) {
+            ctx->frequency_loop_ran = true;
             if (execute_frequency_loop(ctx, ctx->save.nfrq, ctx->save.ifrq, ctx->save.delfrq) != 0) {
                 return -1;
             }
@@ -222,9 +232,7 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
             /* Step 2: Flush output for the completed section.
              * Temporarily set deck_end to the NX card so write_input_cards
              * prints section 1's control cards (FR/EX/RP/NX range). */
-            if (ctx->output_fp != NULL &&
-                (ctx->save.nfrq > 0 || ctx->gnd.ifar != -1 ||
-                 ctx->fpat.near != -1 || ctx->rpat.num_points > 0)) {
+            if (ctx->output_fp != NULL && ctx->frequency_loop_ran) {
                 deck->deck_end = nx_pos;
                 write_nec_output(ctx, deck, ctx->output_fp);
                 deck->deck_end = -1;  /* restore: section 1 has no EN */
@@ -334,6 +342,7 @@ static int nec_calculation_defaults(nec_context_t *ctx)
     ctx->dataj.rkh = 1.0;  // Default matrix integration limit
     ctx->dataj.iexk = 0;   // Extended thin-wire kernel off by default
     ctx->gnd.ifar = -1;
+    ctx->frequency_loop_ran = false;
     
     // Note: The following old main.c local variables are not stored in ctx
     // as they were only used for local flow control:

@@ -357,17 +357,17 @@ static int process_single_file(const char *input_filename, const char *output_fi
   }
 
   // write out the results (only if simulation was configured and ran)
-  // Sentinels: gnd.ifar == -1 means no RP card; fpat.near == -1 means no NE/NH card.
-  // ifar==0 and near==0 are both valid calculation modes, so we check != -1.
+  // write out the results — only if the frequency loop actually ran (i.e., an output
+  // request card RP/NE/NH/XQ/WG was present). Matching Fortran/nec2c behaviour: a deck
+  // with FR/LD/EX/EN but no RP or NF card is valid and produces no output.
   if (run_simulation) {
-    if (ctx->save.nfrq > 0 || ctx->gnd.ifar != -1 || ctx->fpat.near != -1 || ctx->rpat.num_points > 0) {
+    if (ctx->frequency_loop_ran) {
       write_nec_output(ctx, &deck, output_fp);
     } else if (ctx->xt_terminated) {
-      // XT card halted execution before any FR/RP — this is expected, not an error
+      // XT card halted execution before any output request — expected, not an error
       nec_report(ctx, ONEC_SEV_WARNING, "Simulation halted by XT card; no output generated.");
-    } else {
-      nec_report(ctx, ONEC_SEV_FATAL, "No output cards found (FR, RP, NE/NH), skipping output generation");
     }
+    // else: valid deck with no output request card (no RP/NE/NH/XQ) — silent, matching nec2c
   }
 
   // close greens file if open
