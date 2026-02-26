@@ -1513,7 +1513,7 @@ void reproduce(nec_context_t *ctx, double rox, double roy, double roz, double xs
         ctx->geometry.bi[k]= ctx->geometry.bi[i];
         ctx->geometry.tag_nums[k]= ctx->geometry.tag_nums[i];
         if(ctx->geometry.tag_nums[i] != 0)
-          ctx->geometry.tag_nums[k]= ctx->geometry.tag_nums[i]+ tag_increment;
+          ctx->geometry.tag_nums[k]= ctx->geometry.tag_nums[i] + (ir + 1) * tag_increment;
 
         k++;
       } /* for( i = i1; i < data.n; i++ ) */
