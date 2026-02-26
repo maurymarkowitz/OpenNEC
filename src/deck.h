@@ -1,6 +1,6 @@
 /*
  * deck.h - Deck and card utilities for OpenNEC
- * 
+ *
  * Card type checking and deck lifecycle functions
  * used across input, output, control, and test modules.
  */
@@ -10,8 +10,9 @@
 
 #include "types.h"
 
-/* Card insertion and removal */
+/* Card insertion, removal, and reordering */
 int insert_card(deck_t *deck, card_t *card, int location);
+int move_card(deck_t *deck, int src, int dst);
 int remove_card(deck_t *deck, int location);
 
 /* Card enable/disable (comment out / uncomment) for GUI toggling */
@@ -24,7 +25,8 @@ void card_enable(deck_t *deck, card_t *card);
  * Geometry IS generated but goes to ignored_geometry rather than live geometry.
  * The card remains visible to the GUI and can be toggled back on.
  */
-static inline bool card_is_invisible(const card_t *card) {
+static inline bool card_is_invisible(const card_t *card)
+{
   return card->ignore && card->cmt_code[0] == '\0';
 }
 
@@ -32,7 +34,8 @@ static inline bool card_is_invisible(const card_t *card) {
  * card_is_commented_out - card has a leading comment marker (e.g. '!', '\'', '#').
  * Entirely skipped during geometry and calculation — no geometry is generated at all.
  */
-static inline bool card_is_commented_out(const card_t *card) {
+static inline bool card_is_commented_out(const card_t *card)
+{
   return card->ignore && card->cmt_code[0] != '\0';
 }
 
@@ -60,7 +63,6 @@ void evaluate_symbols_in_comments(nec_context_t *ctx, deck_t *deck, errors_list_
 
 /* Cross-module deck functions */
 void add_key_value(const card_t *card, key_value_t **list, char *key, char *value, char separator);
-const char* lookup_formula(const card_t *card, const char *key);
-
+const char *lookup_formula(const card_t *card, const char *key);
 
 #endif /* DECK_H */

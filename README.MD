@@ -14,7 +14,7 @@ OpenNEC is an implementation of the NEC-2 code written in the C programming lang
 
 The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". Cards are physically represented by lines of text in a text file representing a deck. The deck files are normally saved with a `.nec` extension, or more rarely, `.deck`.
 
-OpenNEC will process the design in the deck and run a number of calculations to determine the antenna's performance.
+OpenNEC will process the design in the deck and can run a number of calculations to determine the antenna's performance.
 
 Running OpenNEC
 ---------------
@@ -62,8 +62,7 @@ OpenNEC also adds many of the features found in the popular 4nec2 program on Win
 Known limitations
 -----------------
 
-* Formulas work differently than in 4nec2, so some entries will return weird results for "10 ft" vs "10ft" and so forth.
-* OpenNEC does not currently implement the IT and OP cards from 4nec2, although this is high on the list for implementation.
+* OpenNEC does not currently implement the IT and OP cards from 4nec2, although this is on the list for implementation.
 * NEC-4 cards like CW and IS are not currently supported.
 
 Acknowledgements

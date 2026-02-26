@@ -25,13 +25,14 @@
 #include "card_validation.h"
 
 /* Convenience macro for returning a result with a formatted message */
-#define RESULT(sev, ...) \
-  do { \
-    field_validation_t _r; \
-    _r.severity = (sev); \
+#define RESULT(sev, ...)                              \
+  do                                                  \
+  {                                                   \
+    field_validation_t _r;                            \
+    _r.severity = (sev);                              \
     snprintf(_r.message, MAX_ERROR_LEN, __VA_ARGS__); \
-    return _r; \
-  } while(0)
+    return _r;                                        \
+  } while (0)
 
 /* Return a clean "no problem" result */
 static field_validation_t ok(void)
@@ -55,18 +56,30 @@ static field_validation_t ok(void)
  *****************************************************************************/
 static int parse_field_name(const char *name, int *is_int, int *idx)
 {
-  if(!name || name[0] == '\0' || name[1] == '\0') return 0;
-  if ((name[0] == 'I' || name[0] == 'i') && name[2] == '\0') {
+  if (!name || name[0] == '\0' || name[1] == '\0')
+    return 0;
+  if ((name[0] == 'I' || name[0] == 'i') && name[2] == '\0')
+  {
     int n = name[1] - '0';
-    if(n >= 1 && n <= MAX_INT_FIELDS) { *is_int = 1; *idx = n; return 1; }
+    if (n >= 1 && n <= MAX_INT_FIELDS)
+    {
+      *is_int = 1;
+      *idx = n;
+      return 1;
+    }
   }
-  if ((name[0] == 'F' || name[0] == 'f') && name[2] == '\0') {
+  if ((name[0] == 'F' || name[0] == 'f') && name[2] == '\0')
+  {
     int n = name[1] - '0';
-    if(n >= 1 && n <= MAX_FLT_FIELDS) { *is_int = 0; *idx = n; return 1; }
+    if (n >= 1 && n <= MAX_FLT_FIELDS)
+    {
+      *is_int = 0;
+      *idx = n;
+      return 1;
+    }
   }
   return 0;
 }
-
 
 /******************************************************************************
  * Control card validators
@@ -79,18 +92,21 @@ static int parse_field_name(const char *name, int *is_int, int *idx)
  */
 static field_validation_t validate_FR_field(const card_t *c, int is_int, int idx)
 {
-  if(!is_int && idx == 1) {
-    if(c->f[1] == 0.0)
+  if (!is_int && idx == 1)
+  {
+    if (c->f[1] == 0.0)
       RESULT(PROBLEM, "FR F1: base frequency is required and must be non-zero.");
   }
-  if(is_int && idx == 2) {
-    if(c->i[2] > 1 && c->f[2] == 0.0)
+  if (is_int && idx == 2)
+  {
+    if (c->i[2] > 1 && c->f[2] == 0.0)
       RESULT(WARNING, "FR I2: step count is I2 > 1,  but F2 (frequency step) is zero.");
   }
-  if(!is_int && idx == 2) {
-    if(c->i[2] > 1 && c->f[2] <= 0.0)
+  if (!is_int && idx == 2)
+  {
+    if (c->i[2] > 1 && c->f[2] <= 0.0)
       RESULT(PROBLEM, "FR F2: step count I2 > 1 requires a positive frequency step.");
-    if(c->i[2] == 0 && c->f[2] != 0.0)
+    if (c->i[2] == 0 && c->f[2] != 0.0)
       RESULT(WARNING, "FR F2: I2 is 0 (single frequency) but F2 is non-zero.");
   }
   return ok();
@@ -102,12 +118,14 @@ static field_validation_t validate_FR_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_TL_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx >= 1 && idx <= 4) {
-    if(c->i[idx] <= 0)
+  if (is_int && idx >= 1 && idx <= 4)
+  {
+    if (c->i[idx] <= 0)
       RESULT(PROBLEM, "TL I%d: tag/segment locators must be positive (got %d).", idx, c->i[idx]);
   }
-  if(!is_int && idx == 1) {
-    if(c->f[1] == 0.0)
+  if (!is_int && idx == 1)
+  {
+    if (c->f[1] == 0.0)
       RESULT(PROBLEM, "TL F1: characteristic impedance Z0 is required and must be non-zero.");
   }
   return ok();
@@ -121,16 +139,19 @@ static field_validation_t validate_TL_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_EX_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx == 1) {
-    if(c->i[1] == 6 || c->i[1] == 7)
+  if (is_int && idx == 1)
+  {
+    if (c->i[1] == 6 || c->i[1] == 7)
       RESULT(WARNING, "EX I1: excitation type %d is not supported by OpenNEC.", c->i[1]);
   }
-  if(is_int && (idx == 2 || idx == 3)) {
-    if(c->i[idx] <= 0)
+  if (is_int && (idx == 2 || idx == 3))
+  {
+    if (c->i[idx] <= 0)
       RESULT(PROBLEM, "EX I%d: tag/segment locator must be positive (got %d).", idx, c->i[idx]);
   }
-  if(!is_int && idx == 1) {
-    if(c->f[1] == 0.0)
+  if (!is_int && idx == 1)
+  {
+    if (c->f[1] == 0.0)
       RESULT(PROBLEM, "EX F1: excitation amplitude is required and must be non-zero.");
   }
   return ok();
@@ -145,20 +166,24 @@ static field_validation_t validate_EX_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_LD_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx == 1) {
-    if(c->i[1] < -1)
+  if (is_int && idx == 1)
+  {
+    if (c->i[1] < -1)
       RESULT(WARNING, "LD I1: unexpected load type %d.", c->i[1]);
   }
-  if(is_int && (idx == 2 || idx == 3)) {
-    if(c->i[idx] <= 0)
+  if (is_int && (idx == 2 || idx == 3))
+  {
+    if (c->i[idx] <= 0)
       RESULT(PROBLEM, "LD I%d: tag/segment locator must be positive (got %d).", idx, c->i[idx]);
   }
-  if(is_int && idx == 4) {
-    if(c->i[4] != 0 && c->i[4] < c->i[3])
+  if (is_int && idx == 4)
+  {
+    if (c->i[4] != 0 && c->i[4] < c->i[3])
       RESULT(WARNING, "LD I4: end segment (%d) is less than start segment I3 (%d).", c->i[4], c->i[3]);
   }
-  if(!is_int && (idx == 1 || idx == 2 || idx == 3)) {
-    if(c->f[1] == 0.0 && c->f[2] == 0.0 && c->f[3] == 0.0)
+  if (!is_int && (idx == 1 || idx == 2 || idx == 3))
+  {
+    if (c->f[1] == 0.0 && c->f[2] == 0.0 && c->f[3] == 0.0)
       RESULT(WARNING, "LD F1-F3: all load values are zero; at least one should be non-zero.");
   }
   return ok();
@@ -174,28 +199,34 @@ static field_validation_t validate_LD_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_RP_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx == 2) {
-    if(c->i[2] <= 0)
+  if (is_int && idx == 2)
+  {
+    if (c->i[2] <= 0)
       RESULT(PROBLEM, "RP I2: NTHETA must be positive (got %d).", c->i[2]);
   }
-  if(is_int && idx == 3) {
-    if(c->i[3] <= 0)
+  if (is_int && idx == 3)
+  {
+    if (c->i[3] <= 0)
       RESULT(PROBLEM, "RP I3: NPHI must be positive (got %d).", c->i[3]);
   }
-  if(!is_int && idx == 1) {
-    if(c->f[1] < -180.0 || c->f[1] > 180.0)
+  if (!is_int && idx == 1)
+  {
+    if (c->f[1] < -180.0 || c->f[1] > 180.0)
       RESULT(WARNING, "RP F1: theta start %.4g is outside [-180, 180].", c->f[1]);
   }
-  if(!is_int && idx == 2) {
-    if(c->f[2] < -360.0 || c->f[2] > 360.0)
+  if (!is_int && idx == 2)
+  {
+    if (c->f[2] < -360.0 || c->f[2] > 360.0)
       RESULT(WARNING, "RP F2: phi start %.4g is outside [-360, 360].", c->f[2]);
   }
-  if(!is_int && idx == 3) {
-    if(c->i[2] > 1 && c->f[3] == 0.0)
+  if (!is_int && idx == 3)
+  {
+    if (c->i[2] > 1 && c->f[3] == 0.0)
       RESULT(PROBLEM, "RP F3: NTHETA > 1 requires a non-zero theta step.");
   }
-  if(!is_int && idx == 4) {
-    if(c->i[3] > 1 && c->f[4] == 0.0)
+  if (!is_int && idx == 4)
+  {
+    if (c->i[3] > 1 && c->f[4] == 0.0)
       RESULT(PROBLEM, "RP F4: NPHI > 1 requires a non-zero phi step.");
   }
   return ok();
@@ -206,8 +237,9 @@ static field_validation_t validate_RP_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_GN_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx == 1) {
-    if(c->ints_used < 1)
+  if (is_int && idx == 1)
+  {
+    if (c->ints_used < 1)
       RESULT(PROBLEM, "GN I1: ground type is required.");
   }
   return ok();
@@ -218,8 +250,9 @@ static field_validation_t validate_GN_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_EK_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx == 1) {
-    if(c->i[1] != 0 && c->i[1] != 1)
+  if (is_int && idx == 1)
+  {
+    if (c->i[1] != 0 && c->i[1] != 1)
       RESULT(WARNING, "EK I1: value %d is unusual; expected 0 (disable) or 1 (enable).", c->i[1]);
   }
   return ok();
@@ -230,8 +263,9 @@ static field_validation_t validate_EK_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_GD_field(const card_t *c, int is_int, int idx)
 {
-  if(!is_int && (idx == 1 || idx == 2)) {
-    if(c->f[1] == 0.0 && c->f[2] == 0.0)
+  if (!is_int && (idx == 1 || idx == 2))
+  {
+    if (c->f[1] == 0.0 && c->f[2] == 0.0)
       RESULT(WARNING, "GD F1/F2: both dielectric constant and conductivity are zero.");
   }
   return ok();
@@ -243,21 +277,22 @@ static field_validation_t validate_GD_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_NE_NH_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx >= 2 && idx <= 4) {
-    if(c->i[idx] <= 0)
+  if (is_int && idx >= 2 && idx <= 4)
+  {
+    if (c->i[idx] <= 0)
       RESULT(PROBLEM, "%s I%d: grid point count must be positive (got %d).",
              c->card_code, idx, c->i[idx]);
   }
   /* F4 corresponds to I2 count, F5 to I3, F6 to I4 */
-  if(!is_int && idx >= 4 && idx <= 6) {
-    int count_idx = idx - 2;  /* F4->I2, F5->I3, F6->I4 */
-    if(c->i[count_idx] > 1 && c->f[idx] == 0.0)
+  if (!is_int && idx >= 4 && idx <= 6)
+  {
+    int count_idx = idx - 2; /* F4->I2, F5->I3, F6->I4 */
+    if (c->i[count_idx] > 1 && c->f[idx] == 0.0)
       RESULT(PROBLEM, "%s F%d: grid spacing must be non-zero when count I%d > 1.",
              c->card_code, idx, count_idx);
   }
   return ok();
 }
-
 
 /******************************************************************************
  * Geometry card validators
@@ -270,18 +305,21 @@ static field_validation_t validate_NE_NH_field(const card_t *c, int is_int, int 
  */
 static field_validation_t validate_GA_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx == 2) {
-    if(c->i[2] <= 0)
+  if (is_int && idx == 2)
+  {
+    if (c->i[2] <= 0)
       RESULT(PROBLEM, "GA I2: segment count must be positive (got %d).", c->i[2]);
   }
-  if(!is_int && idx == 1) {
+  if (!is_int && idx == 1)
+  {
     double r = c->flt_form_inline[1] ? c->fv[1] : c->f[1];
-    if(r <= 0.0)
+    if (r <= 0.0)
       RESULT(PROBLEM, "GA F1: arc radius must be positive (got %.4g).", r);
   }
-  if(!is_int && idx == 7) {
+  if (!is_int && idx == 7)
+  {
     double r = c->flt_form_inline[7] ? c->fv[7] : c->f[7];
-    if(r <= 0.0)
+    if (r <= 0.0)
       RESULT(PROBLEM, "GA F7: wire radius must be positive (got %.4g).", r);
   }
   return ok();
@@ -294,13 +332,15 @@ static field_validation_t validate_GA_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_GC_field(const card_t *c, int is_int, int idx)
 {
-  if(!is_int && idx == 1) {
-    if(c->f[1] == 0.0)
+  if (!is_int && idx == 1)
+  {
+    if (c->f[1] == 0.0)
       RESULT(WARNING, "GC F1: taper ratio is zero; no taper will be applied.");
   }
-  if(!is_int && (idx == 2 || idx == 3)) {
+  if (!is_int && (idx == 2 || idx == 3))
+  {
     double r = c->flt_form_inline[idx] ? c->fv[idx] : c->f[idx];
-    if(r <= 0.0)
+    if (r <= 0.0)
       RESULT(PROBLEM, "GC F%d: wire radius must be positive (got %.4g).", idx, r);
   }
   return ok();
@@ -311,9 +351,10 @@ static field_validation_t validate_GC_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_GE_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx == 1) {
+  if (is_int && idx == 1)
+  {
     int v = c->i[1];
-    if(v != -1 && v != 0 && v != 1 && v != 2)
+    if (v != -1 && v != 0 && v != 1 && v != 2)
       RESULT(WARNING, "GE I1: value %d is not a recognised ground flag (-1, 0, 1, 2).", v);
   }
   return ok();
@@ -326,17 +367,20 @@ static field_validation_t validate_GE_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_GH_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx == 2) {
-    if(c->i[2] <= 0)
+  if (is_int && idx == 2)
+  {
+    if (c->i[2] <= 0)
       RESULT(PROBLEM, "GH I2: segment count must be positive (got %d).", c->i[2]);
   }
-  if(!is_int && idx == 1) {
-    if(c->f[1] == 0.0)
+  if (!is_int && idx == 1)
+  {
+    if (c->f[1] == 0.0)
       RESULT(PROBLEM, "GH F1: total axial length/spacing must be non-zero.");
   }
-  if(!is_int && idx == 7) {
+  if (!is_int && idx == 7)
+  {
     double r = c->flt_form_inline[7] ? c->fv[7] : c->f[7];
-    if(r <= 0.0)
+    if (r <= 0.0)
       RESULT(PROBLEM, "GH F7: wire radius must be positive (got %.4g).", r);
   }
   return ok();
@@ -348,11 +392,22 @@ static field_validation_t validate_GH_field(const card_t *c, int is_int, int idx
 static field_validation_t validate_GM_field(const card_t *c, int is_int, int idx)
 {
   /* Only report on F1 to avoid duplicating the warning on every field */
-  if(!is_int && idx == 1) {
+  if (!is_int && idx == 1)
+  {
     int all_zero = 1;
-    for(int n = 1; n <= MAX_INT_FIELDS; n++) if(c->i[n] != 0) { all_zero = 0; break; }
-    for(int n = 1; n <= MAX_FLT_FIELDS && all_zero; n++) if(c->f[n] != 0.0) { all_zero = 0; break; }
-    if(all_zero)
+    for (int n = 1; n <= MAX_INT_FIELDS; n++)
+      if (c->i[n] != 0)
+      {
+        all_zero = 0;
+        break;
+      }
+    for (int n = 1; n <= MAX_FLT_FIELDS && all_zero; n++)
+      if (c->f[n] != 0.0)
+      {
+        all_zero = 0;
+        break;
+      }
+    if (all_zero)
       RESULT(WARNING, "GM: all fields are zero; this transformation is a no-op.");
   }
   return ok();
@@ -363,8 +418,9 @@ static field_validation_t validate_GM_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_GR_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx == 2) {
-    if(c->i[2] <= 0)
+  if (is_int && idx == 2)
+  {
+    if (c->i[2] <= 0)
       RESULT(PROBLEM, "GR I2: number of copies must be positive (got %d).", c->i[2]);
   }
   return ok();
@@ -375,8 +431,9 @@ static field_validation_t validate_GR_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_GS_field(const card_t *c, int is_int, int idx)
 {
-  if(!is_int && idx == 1) {
-    if(c->f[1] <= 0.0)
+  if (!is_int && idx == 1)
+  {
+    if (c->f[1] <= 0.0)
       RESULT(PROBLEM, "GS F1: scale factor must be positive (got %.4g).", c->f[1]);
   }
   return ok();
@@ -389,23 +446,26 @@ static field_validation_t validate_GS_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_GW_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx == 2) {
-    if(c->i[2] <= 0)
+  if (is_int && idx == 2)
+  {
+    if (c->i[2] <= 0)
       RESULT(PROBLEM, "GW I2: segment count must be positive (got %d).", c->i[2]);
   }
   /* Report zero-length wire on the second endpoint fields (F4, F5, F6).
    * Use fv[] (evaluated values) so formula-based coordinates are handled
    * correctly — fv[] equals f[] when no formula is present. */
-  if(!is_int && idx >= 4 && idx <= 6) {
-    if(c->fv[1] == c->fv[4] && c->fv[2] == c->fv[5] && c->fv[3] == c->fv[6])
+  if (!is_int && idx >= 4 && idx <= 6)
+  {
+    if (c->fv[1] == c->fv[4] && c->fv[2] == c->fv[5] && c->fv[3] == c->fv[6])
       RESULT(PROBLEM, "GW F4-F6: both endpoints are identical (zero-length wire).");
   }
-  if(!is_int && idx == 7) {
+  if (!is_int && idx == 7)
+  {
     /* When the radius was given as a formula (e.g. AWG notation or SY symbol),
      * f[7]==0 but fv[7] holds the evaluated radius.  Always use fv[7] when a
      * formula is present — update_deck_values has run before any validation. */
     double radius = c->flt_form_inline[7] ? c->fv[7] : c->f[7];
-    if(radius <= 0.0)
+    if (radius <= 0.0)
       RESULT(PROBLEM, "GW F7: wire radius must be positive (got %.4g).", radius);
   }
   return ok();
@@ -416,8 +476,9 @@ static field_validation_t validate_GW_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_GX_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && idx == 2) {
-    if(c->i[2] == 0)
+  if (is_int && idx == 2)
+  {
+    if (c->i[2] == 0)
       RESULT(WARNING, "GX I2: no reflection axes selected (value is 0); GX will have no effect.");
   }
   return ok();
@@ -428,8 +489,9 @@ static field_validation_t validate_GX_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_SC_field(const card_t *c, int is_int, int idx)
 {
-  if(!is_int && (idx >= 1 && idx <= 3)) {
-    if(c->f[1] == 0.0 && c->f[2] == 0.0 && c->f[3] == 0.0)
+  if (!is_int && (idx >= 1 && idx <= 3))
+  {
+    if (c->f[1] == 0.0 && c->f[2] == 0.0 && c->f[3] == 0.0)
       RESULT(PROBLEM, "SC F1-F3: all corner coordinates are zero; a non-zero position is required.");
   }
   return ok();
@@ -441,8 +503,9 @@ static field_validation_t validate_SC_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_SM_field(const card_t *c, int is_int, int idx)
 {
-  if(is_int && (idx == 1 || idx == 2)) {
-    if(c->i[idx] <= 0)
+  if (is_int && (idx == 1 || idx == 2))
+  {
+    if (c->i[idx] <= 0)
       RESULT(PROBLEM, "SM I%d: patch count must be positive (got %d).", idx, c->i[idx]);
   }
   return ok();
@@ -453,13 +516,13 @@ static field_validation_t validate_SM_field(const card_t *c, int is_int, int idx
  */
 static field_validation_t validate_SP_field(const card_t *c, int is_int, int idx)
 {
-  if(!is_int && (idx >= 4 && idx <= 6)) {
-    if(c->f[4] == 0.0 && c->f[5] == 0.0 && c->f[6] == 0.0)
+  if (!is_int && (idx >= 4 && idx <= 6))
+  {
+    if (c->f[4] == 0.0 && c->f[5] == 0.0 && c->f[6] == 0.0)
       RESULT(PROBLEM, "SP F4-F6: all normal direction components are zero; a direction is required.");
   }
   return ok();
 }
-
 
 /******************************************************************************
  * validate_card_field — public dispatch entry point
@@ -467,45 +530,68 @@ static field_validation_t validate_SP_field(const card_t *c, int is_int, int idx
 
 field_validation_t validate_card_field(const card_t *card, const char *field_name)
 {
-  if(!card || !field_name) return ok();
+  if (!card || !field_name)
+    return ok();
 
   int is_int = 0, idx = 0;
-  if(!parse_field_name(field_name, &is_int, &idx)) return ok();
+  if (!parse_field_name(field_name, &is_int, &idx))
+    return ok();
 
   const char *code = card->card_code;
 
   /* Control cards */
-  if(strcmp(code, "FR") == 0) return validate_FR_field(card, is_int, idx);
-  if(strcmp(code, "TL") == 0) return validate_TL_field(card, is_int, idx);
-  if(strcmp(code, "EX") == 0) return validate_EX_field(card, is_int, idx);
-  if(strcmp(code, "LD") == 0) return validate_LD_field(card, is_int, idx);
-  if(strcmp(code, "RP") == 0) return validate_RP_field(card, is_int, idx);
-  if(strcmp(code, "GN") == 0) return validate_GN_field(card, is_int, idx);
-  if(strcmp(code, "EK") == 0) return validate_EK_field(card, is_int, idx);
-  if(strcmp(code, "GD") == 0) return validate_GD_field(card, is_int, idx);
-  if(strcmp(code, "NE") == 0) return validate_NE_NH_field(card, is_int, idx);
-  if(strcmp(code, "NH") == 0) return validate_NE_NH_field(card, is_int, idx);
+  if (strcmp(code, "FR") == 0)
+    return validate_FR_field(card, is_int, idx);
+  if (strcmp(code, "TL") == 0)
+    return validate_TL_field(card, is_int, idx);
+  if (strcmp(code, "EX") == 0)
+    return validate_EX_field(card, is_int, idx);
+  if (strcmp(code, "LD") == 0)
+    return validate_LD_field(card, is_int, idx);
+  if (strcmp(code, "RP") == 0)
+    return validate_RP_field(card, is_int, idx);
+  if (strcmp(code, "GN") == 0)
+    return validate_GN_field(card, is_int, idx);
+  if (strcmp(code, "EK") == 0)
+    return validate_EK_field(card, is_int, idx);
+  if (strcmp(code, "GD") == 0)
+    return validate_GD_field(card, is_int, idx);
+  if (strcmp(code, "NE") == 0)
+    return validate_NE_NH_field(card, is_int, idx);
+  if (strcmp(code, "NH") == 0)
+    return validate_NE_NH_field(card, is_int, idx);
 
   /* Geometry cards */
-  if(strcmp(code, "GA") == 0) return validate_GA_field(card, is_int, idx);
-  if(strcmp(code, "GC") == 0) return validate_GC_field(card, is_int, idx);
-  if(strcmp(code, "GE") == 0) return validate_GE_field(card, is_int, idx);
-  if(strcmp(code, "GH") == 0) return validate_GH_field(card, is_int, idx);
-  if(strcmp(code, "GM") == 0) return validate_GM_field(card, is_int, idx);
-  if(strcmp(code, "GR") == 0) return validate_GR_field(card, is_int, idx);
-  if(strcmp(code, "GS") == 0) return validate_GS_field(card, is_int, idx);
-  if(strcmp(code, "GW") == 0) return validate_GW_field(card, is_int, idx);
-  if(strcmp(code, "GX") == 0) return validate_GX_field(card, is_int, idx);
-  if(strcmp(code, "SC") == 0) return validate_SC_field(card, is_int, idx);
-  if(strcmp(code, "SM") == 0) return validate_SM_field(card, is_int, idx);
-  if(strcmp(code, "SP") == 0) return validate_SP_field(card, is_int, idx);
+  if (strcmp(code, "GA") == 0)
+    return validate_GA_field(card, is_int, idx);
+  if (strcmp(code, "GC") == 0)
+    return validate_GC_field(card, is_int, idx);
+  if (strcmp(code, "GE") == 0)
+    return validate_GE_field(card, is_int, idx);
+  if (strcmp(code, "GH") == 0)
+    return validate_GH_field(card, is_int, idx);
+  if (strcmp(code, "GM") == 0)
+    return validate_GM_field(card, is_int, idx);
+  if (strcmp(code, "GR") == 0)
+    return validate_GR_field(card, is_int, idx);
+  if (strcmp(code, "GS") == 0)
+    return validate_GS_field(card, is_int, idx);
+  if (strcmp(code, "GW") == 0)
+    return validate_GW_field(card, is_int, idx);
+  if (strcmp(code, "GX") == 0)
+    return validate_GX_field(card, is_int, idx);
+  if (strcmp(code, "SC") == 0)
+    return validate_SC_field(card, is_int, idx);
+  if (strcmp(code, "SM") == 0)
+    return validate_SM_field(card, is_int, idx);
+  if (strcmp(code, "SP") == 0)
+    return validate_SP_field(card, is_int, idx);
 
   /* GF: no field rules — filename lives in card_str, not i[]/f[] */
   /* CM, CE, EN, SY, and others: no per-field rules at this level */
 
   return ok();
 }
-
 
 /******************************************************************************
  * validate_card_all_fields — validate all 11 fields in one call
@@ -518,12 +604,12 @@ field_validation_t validate_card_field(const card_t *card, const char *field_nam
 void validate_card_all_fields(const card_t *card, field_validation_t results[11])
 {
   /* I1..I4 at indices 0..3 */
-  static const char *int_names[] = { "I1", "I2", "I3", "I4" };
-  for(int n = 0; n < 4; n++)
+  static const char *int_names[] = {"I1", "I2", "I3", "I4"};
+  for (int n = 0; n < 4; n++)
     results[n] = validate_card_field(card, int_names[n]);
 
   /* F1..F7 at indices 4..10 */
-  static const char *flt_names[] = { "F1", "F2", "F3", "F4", "F5", "F6", "F7" };
-  for(int n = 0; n < 7; n++)
+  static const char *flt_names[] = {"F1", "F2", "F3", "F4", "F5", "F6", "F7"};
+  for (int n = 0; n < 7; n++)
     results[4 + n] = validate_card_field(card, flt_names[n]);
 }

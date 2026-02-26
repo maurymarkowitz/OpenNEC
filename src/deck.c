@@ -16,7 +16,6 @@
  *
  *****************************************************************************/
 
-
 #include "internals.h"
 #include "deck.h"
 #include "tinyexpr.h"
@@ -39,14 +38,15 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
  * constructor mostly as a form of documentation and possible future changes.
  *
  */
-card_t* new_card(void) {
+card_t *new_card(void)
+{
   card_t *card = calloc(1, sizeof(card_t));
-  if (card) {
+  if (card)
+  {
     *card = (card_t){
-      .edited = false,
-      .ignore = false,
-      .extn_code = {0}
-    };
+        .edited = false,
+        .ignore = false,
+        .extn_code = {0}};
   }
   return card;
 }
@@ -59,30 +59,38 @@ card_t* new_card(void) {
  * @param card the card_t to free
  *
  */
-void free_card(card_t *card) {
-  if(card == NULL) return;
-  
+void free_card(card_t *card)
+{
+  if (card == NULL)
+    return;
+
   // start with the various strings
-  if(card->orig_str != NULL) free(card->orig_str);
-  if(card->card_str != NULL) free(card->card_str);
-  if(card->extn_str != NULL) free(card->extn_str);
-  if(card->comment != NULL) free(card->comment);
+  if (card->orig_str != NULL)
+    free(card->orig_str);
+  if (card->card_str != NULL)
+    free(card->card_str);
+  if (card->extn_str != NULL)
+    free(card->extn_str);
+  if (card->comment != NULL)
+    free(card->comment);
 
   // now the two lists
   key_value_t *head, *temp;
   head = card->formulas;
-  while(head != NULL) {
+  while (head != NULL)
+  {
     temp = head;
     head = head->next;
     free(temp);
   }
   head = card->extensns;
-  while(head != NULL) {
+  while (head != NULL)
+  {
     temp = head;
     head = head->next;
     free(temp);
   }
-  
+
   // Do NOT free(card) here; cards are part of an array and freed in free_deck
 }
 
@@ -98,7 +106,7 @@ void free_card(card_t *card) {
 void recalculate_sections(deck_t *deck)
 {
   card_t *card;
-  
+
   // reset the indexes
   deck->comment_start = -1;
   deck->comment_end = -1;
@@ -109,44 +117,51 @@ void recalculate_sections(deck_t *deck)
   deck->deck_end = -1;
 
   // re-calculate the section limits
-  for(int i = 0; i < deck->num_cards; i++) {
+  for (int i = 0; i < deck->num_cards; i++)
+  {
     card = &deck->cards[i];
 
     // commented-out (ignored) cards do not contribute to section boundaries
-    if(card->ignore) continue;
+    if (card->ignore)
+      continue;
 
     // the logic here is pretty simple: get the section this card belongs to,
     // if we haven't see a card in that section yet then it's the start, but
     // if we have, keep updating the end until we stop seeing them. that way
     // things like a missing CE won't cause the _end to be -1
     bool isCmt = is_comment(card);
-    if(isCmt) {
-      if(deck->comment_start == -1)
+    if (isCmt)
+    {
+      if (deck->comment_start == -1)
         deck->comment_start = i;
       deck->comment_end = i;
       continue;
     }
     // SY cards form an optional symbol section between CE and first geometry;
     // SY cards that appear elsewhere in the deck are not part of this section
-    if(strcmp(card->card_code, "SY") == 0 && deck->geometry_start == -1) {
-      if(deck->symbol_start == -1)
+    if (strcmp(card->card_code, "SY") == 0 && deck->geometry_start == -1)
+    {
+      if (deck->symbol_start == -1)
         deck->symbol_start = i;
       deck->symbol_end = i;
       continue;
     }
     bool isGeo = is_geometry(card);
-    if(isGeo) {
-      if(deck->geometry_start == -1)
+    if (isGeo)
+    {
+      if (deck->geometry_start == -1)
         deck->geometry_start = i;
       deck->geometry_end = i;
       continue;
     }
     // the oddball is the end, which is only at the EN card
-    if(strcmp(card->card_code, "EN") == 0) {
+    if (strcmp(card->card_code, "EN") == 0)
+    {
       deck->deck_end = i;
     }
     // NX ends the first section; geometry/section indexes stop here
-    if(strcmp(card->card_code, "NX") == 0) {
+    if (strcmp(card->card_code, "NX") == 0)
+    {
       break;
     }
   } /* for loop over cards */
@@ -158,7 +173,8 @@ void recalculate_sections(deck_t *deck)
  * creates and returns a new empty Deck
  *
  */
-deck_t* new_deck(void) {
+deck_t *new_deck(void)
+{
   deck_t *deck = (deck_t *)calloc(1, sizeof(deck_t));
   return deck;
 }
@@ -171,21 +187,26 @@ deck_t* new_deck(void) {
  * @param deck the deck_t to free
  *
  */
-void free_deck(deck_t *deck) {
-  if(deck == NULL) return;
+void free_deck(deck_t *deck)
+{
+  if (deck == NULL)
+    return;
 
   // free all of the cards first
-  for(int i = 0; i < deck->num_cards; i++) {
+  for (int i = 0; i < deck->num_cards; i++)
+  {
     free_card(&deck->cards[i]);
   }
 
   // then free the cards array itself
-  if (deck->cards) free(deck->cards);
+  if (deck->cards)
+    free(deck->cards);
 
   // Only free the symbols array (array of pointers), not the nodes themselves
   // INVARIANT: All key_value_t nodes referenced by deck->symbols are owned and
   //            freed by the cards, this is a list of them for easy access.
-  if (deck->symbols) {
+  if (deck->symbols)
+  {
     free(deck->symbols);
   }
 }
@@ -199,18 +220,22 @@ void free_deck(deck_t *deck) {
  * @param card the card_t to add
  *
  */
-int append_card(deck_t *deck, card_t *card) {
+int append_card(deck_t *deck, card_t *card)
+{
   // calloc/realloc the deck and add this card to it
   // there may be performance improvements possible by allocing blocks of 10 or 20 cards at a time
-  if(deck->num_cards == 0) {
+  if (deck->num_cards == 0)
+  {
     deck->num_cards++;
     deck->cards = calloc(1, sizeof(card_t));
-  } else {
+  }
+  else
+  {
     deck->num_cards++;
     deck->cards = realloc(deck->cards, deck->num_cards * sizeof(card_t));
   }
   deck->cards[deck->num_cards - 1] = *card;
-  
+
   // appending a card changes the deck and requires a recalc of that section
   // so we need to make the card edited so this will be noticed
   card->edited = true;
@@ -237,27 +262,33 @@ int append_card(deck_t *deck, card_t *card) {
  * @return 0 for success, 1 for any problem (currently only bad index)
  *
  */
-int insert_card(deck_t *deck, card_t *card, int location) {
+int insert_card(deck_t *deck, card_t *card, int location)
+{
   // sanity check the location
-  if(location < 0 || location > deck->num_cards) return 1;
-  
+  if (location < 0 || location > deck->num_cards)
+    return 1;
+
   // calloc/realloc space for another card
-  if(deck->num_cards == 0) {
+  if (deck->num_cards == 0)
+  {
     deck->num_cards++;
     deck->cards = calloc(1, sizeof(card_t));
-  } else {
+  }
+  else
+  {
     deck->num_cards++;
     deck->cards = realloc(deck->cards, deck->num_cards * sizeof(card_t));
   }
 
   // shift everything from location onward up one space to make room
-  for(int i = deck->num_cards - 1; i > location; i--) {
+  for (int i = deck->num_cards - 1; i > location; i--)
+  {
     deck->cards[i] = deck->cards[i - 1];
   }
-  
+
   // then insert the new one
   deck->cards[location] = *card;
-  
+
   // appending a card changes the deck and requires a recalc of that section
   // so we need to make the card edited so this will be noticed
   card->edited = true;
@@ -274,6 +305,53 @@ int insert_card(deck_t *deck, card_t *card, int location) {
 }
 
 /******************************************************************************
+ * move_card
+ *
+ * Moves the card at index src to insert-before position dst within the deck's
+ * card array.  dst is specified in the original (pre-move) coordinates.
+ *
+ * Pure in-place memmove: no allocation, no free_card, no ownership change.
+ * All internal pointer fields (formulas, comment, extn_str, etc.) are intact.
+ *
+ * dst == src or dst == src+1 is a no-op (card is already in place).
+ *
+ * @param deck  the deck_t to operate on
+ * @param src   current index of the card to move (0-based)
+ * @param dst   insert-before position in the original array (0-based, 0…num_cards)
+ * @return 0 on success, 1 if src or dst is out of range
+ */
+int move_card(deck_t *deck, int src, int dst)
+{
+  if (src < 0 || src >= deck->num_cards)
+    return 1;
+  if (dst < 0 || dst > deck->num_cards)
+    return 1;
+  if (dst == src || dst == src + 1)
+    return 0; // already in place
+
+  // dst > src → elements shift left  → card lands at dst-1
+  // dst < src → elements shift right → card lands at dst
+  int new_idx = (dst > src) ? dst - 1 : dst;
+
+  card_t moving = deck->cards[src]; // shallow copy — all pointers preserved
+
+  if (src < new_idx)
+  {
+    memmove(&deck->cards[src], &deck->cards[src + 1],
+            (size_t)(new_idx - src) * sizeof(card_t));
+  }
+  else
+  {
+    memmove(&deck->cards[new_idx + 1], &deck->cards[new_idx],
+            (size_t)(src - new_idx) * sizeof(card_t));
+  }
+
+  deck->cards[new_idx] = moving;
+  recalculate_sections(deck);
+  return 0;
+}
+
+/******************************************************************************
  * remove_card
  *
  * removes the card at the given location from the deck and deletes its memory
@@ -283,27 +361,30 @@ int insert_card(deck_t *deck, card_t *card, int location) {
  * @return 0 for success, 1 for any problem (currently only bad index)
  *
  */
-int remove_card(deck_t *deck, int location) {
+int remove_card(deck_t *deck, int location)
+{
   // sanity check the location
-  if(location < 0 || location >= deck->num_cards) return 1;
-  
+  if (location < 0 || location >= deck->num_cards)
+    return 1;
+
   // get a handle to the card for future references
   card_t temp = deck->cards[location];
-  
+
   // don't calloc/realloc the deck_t smaller, see
   // https://stackoverflow.com/questions/7078019/using-realloc-to-shrink-the-allocated-memory
   // shift everything after location down one space
-  for(int i = location; i < deck->num_cards - 1; i++) {
+  for (int i = location; i < deck->num_cards - 1; i++)
+  {
     deck->cards[i] = deck->cards[i + 1];
   }
   deck->num_cards--;
-  
+
   // free the card
   free_card(&temp);
-  
+
   // refresh the deck layout
   recalculate_sections(deck);
-  
+
   // and we're good to go
   return 0;
 }
@@ -317,8 +398,10 @@ int remove_card(deck_t *deck, int location) {
  * @param card the card_t to check
  * @return true if the card is geometry or control (can be enabled/disabled)
  */
-bool card_is_toggleable(const card_t *card) {
-  if(card == NULL) return false;
+bool card_is_toggleable(const card_t *card)
+{
+  if (card == NULL)
+    return false;
   return is_geometry(card) || is_control(card);
 }
 
@@ -332,9 +415,12 @@ bool card_is_toggleable(const card_t *card) {
  * @param deck the deck_t containing the card
  * @param card the card_t to disable
  */
-void card_disable(deck_t *deck, card_t *card) {
-  if(card == NULL || !card_is_toggleable(card)) return;
-  if(card->ignore) return; // already disabled
+void card_disable(deck_t *deck, card_t *card)
+{
+  if (card == NULL || !card_is_toggleable(card))
+    return;
+  if (card->ignore)
+    return; // already disabled
   card->ignore = true;
   card->cmt_code[0] = (deck->cmt_code != 0) ? deck->cmt_code : '!';
   card->edited = true;
@@ -350,9 +436,12 @@ void card_disable(deck_t *deck, card_t *card) {
  * @param deck the deck_t containing the card
  * @param card the card_t to enable
  */
-void card_enable(deck_t *deck, card_t *card) {
-  if(card == NULL) return;
-  if(!card->ignore) return; // already enabled
+void card_enable(deck_t *deck, card_t *card)
+{
+  if (card == NULL)
+    return;
+  if (!card->ignore)
+    return; // already enabled
   card->ignore = false;
   card->cmt_code[0] = '\0';
   card->edited = true;
@@ -375,24 +464,34 @@ void add_key_value(const card_t *card, key_value_t **list, char *key, char *valu
 {
   // ...removed add_key_value copied key debug print...
   key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
-  if(pair != NULL) {
+  if (pair != NULL)
+  {
     pair->key = (char *)calloc(strlen(key) + 1, sizeof(char));
     strcpy(pair->key, key);
     pair->value = (char *)calloc(strlen(value) + 1, sizeof(char));
     strcpy(pair->value, value);
-    if(separator != '\n') {
+    if (separator != '\n')
+    {
       pair->separator = separator;
-    } else if(*list == card->formulas) {
+    }
+    else if (*list == card->formulas)
+    {
       pair->separator = '=';
-    } else {
+    }
+    else
+    {
       pair->separator = ':';
     }
     pair->next = NULL;
-    if(*list == NULL) {
+    if (*list == NULL)
+    {
       *list = pair;
-    } else {
+    }
+    else
+    {
       key_value_t *tail = *list;
-      while(tail->next != NULL) tail = tail->next;
+      while (tail->next != NULL)
+        tail = tail->next;
       tail->next = pair;
     }
   }
@@ -403,14 +502,18 @@ void add_key_value(const card_t *card, key_value_t **list, char *key, char *valu
  *
  * Look up a formula value in the card's formulas list by key (e.g., "F3")
  * Returns the original formula string if found, NULL otherwise.
- * 
+ *
  */
-const char* lookup_formula(const card_t *card, const char *key) {
-  if (!card || !key) return NULL;
-  
+const char *lookup_formula(const card_t *card, const char *key)
+{
+  if (!card || !key)
+    return NULL;
+
   key_value_t *formula = card->formulas;
-  while (formula != NULL) {
-    if (strcmp(formula->key, key) == 0) {
+  while (formula != NULL)
+  {
+    if (strcmp(formula->key, key) == 0)
+    {
       return formula->value;
     }
     formula = formula->next;
@@ -422,31 +525,41 @@ const char* lookup_formula(const card_t *card, const char *key) {
  * add_symbol/remove_symbol
  *
  * Add or remove a symbol from the deck's symbol list and update num_symbols.
- * 
+ *
  */
-void add_symbol(deck_t *deck, key_value_t *new_sym) {
-  if (!deck || !new_sym) return;
+void add_symbol(deck_t *deck, key_value_t *new_sym)
+{
+  if (!deck || !new_sym)
+    return;
   // INVARIANT: Only add pointers to key_value_t nodes owned by cards (e.g., from card->formulas)
   // Never add separately allocated nodes (e.g., from add_default_symbols) to deck->symbols.
-  deck->symbols = realloc(deck->symbols, sizeof(key_value_t*) * (deck->num_symbols + 1));
+  deck->symbols = realloc(deck->symbols, sizeof(key_value_t *) * (deck->num_symbols + 1));
   deck->symbols[deck->num_symbols] = new_sym;
   deck->num_symbols++;
 }
 
-void remove_symbol(deck_t *deck, const char *key) {
-  if (!deck || !deck->symbols || !key) return;
-  for (int i = 0; i < deck->num_symbols; ++i) {
+void remove_symbol(deck_t *deck, const char *key)
+{
+  if (!deck || !deck->symbols || !key)
+    return;
+  for (int i = 0; i < deck->num_symbols; ++i)
+  {
     key_value_t *cur = deck->symbols[i];
-    if (cur && cur->key && strcmp(cur->key, key) == 0) {
+    if (cur && cur->key && strcmp(cur->key, key) == 0)
+    {
       // Shift the rest of the array down
-      for (int j = i; j < deck->num_symbols - 1; ++j) {
+      for (int j = i; j < deck->num_symbols - 1; ++j)
+      {
         deck->symbols[j] = deck->symbols[j + 1];
       }
       deck->num_symbols--;
       // Optionally shrink the array
-      if (deck->num_symbols > 0) {
-        deck->symbols = realloc(deck->symbols, sizeof(key_value_t*) * deck->num_symbols);
-      } else {
+      if (deck->num_symbols > 0)
+      {
+        deck->symbols = realloc(deck->symbols, sizeof(key_value_t *) * deck->num_symbols);
+      }
+      else
+      {
         free(deck->symbols);
         deck->symbols = NULL;
       }
@@ -466,8 +579,10 @@ void remove_symbol(deck_t *deck, const char *key) {
 bool is_comment(const card_t *card)
 {
   bool isCmt = false;
-  for(int i = 0; i < NUM_COMMENT_CODES; i++) {
-    if(strcmp(card->card_code, comment_codes[i]) == 0) {
+  for (int i = 0; i < NUM_COMMENT_CODES; i++)
+  {
+    if (strcmp(card->card_code, comment_codes[i]) == 0)
+    {
       isCmt = true;
       break;
     }
@@ -478,8 +593,10 @@ bool is_comment(const card_t *card)
 bool is_geometry(const card_t *card)
 {
   bool isGeo = false;
-  for(int i = 0; i < NUM_GEOMETRY_CODES; i++) {
-    if(strcmp(card->card_code, geometry_codes[i]) == 0) {
+  for (int i = 0; i < NUM_GEOMETRY_CODES; i++)
+  {
+    if (strcmp(card->card_code, geometry_codes[i]) == 0)
+    {
       isGeo = true;
       break;
     }
@@ -490,8 +607,10 @@ bool is_geometry(const card_t *card)
 bool is_control(const card_t *card)
 {
   bool isCtl = false;
-  for(int i = 0; i < NUM_CONTROL_CODES; i++) {
-    if(strcmp(card->card_code, control_codes[i]) == 0) {
+  for (int i = 0; i < NUM_CONTROL_CODES; i++)
+  {
+    if (strcmp(card->card_code, control_codes[i]) == 0)
+    {
       isCtl = true;
       break;
     }
@@ -502,15 +621,16 @@ bool is_control(const card_t *card)
 bool is_extension(const card_t *card)
 {
   bool isExt = false;
-  for(int i = 0; i < NUM_ONEC_CODES; i++) {
-    if(strcmp(card->card_code, onec_codes[i]) == 0) {
+  for (int i = 0; i < NUM_ONEC_CODES; i++)
+  {
+    if (strcmp(card->card_code, onec_codes[i]) == 0)
+    {
       isExt = true;
       break;
     }
   }
   return isExt;
 }
-
 
 /* card_has_itag
  *
@@ -521,10 +641,14 @@ bool is_extension(const card_t *card)
  */
 bool card_has_itag(const card_t *card)
 {
-  if (card == NULL) return false;
-  if (strcmp(card->card_code, "GW") == 0) return true;
-  if (strcmp(card->card_code, "GA") == 0) return true;
-  if (strcmp(card->card_code, "GH") == 0) return true;
+  if (card == NULL)
+    return false;
+  if (strcmp(card->card_code, "GW") == 0)
+    return true;
+  if (strcmp(card->card_code, "GA") == 0)
+    return true;
+  if (strcmp(card->card_code, "GH") == 0)
+    return true;
   return false;
 }
 
@@ -542,107 +666,157 @@ bool card_has_itag(const card_t *card)
  * is pretty much random.
  *
  */
-int min_int_fields(const card_t* card)
+int min_int_fields(const card_t *card)
 {
   // GE has zero minimum fields
-  if(strcmp(card->card_code, "GE") == 0) return 0; // the ground type is optional
-  if(strcmp(card->card_code, "GF") == 0) return 0; // there is an option to print extra data
-  if(strcmp(card->card_code, "GC") == 0) return 0; // tapers use I's from previous GW
+  if (strcmp(card->card_code, "GE") == 0)
+    return 0; // the ground type is optional
+  if (strcmp(card->card_code, "GF") == 0)
+    return 0; // there is an option to print extra data
+  if (strcmp(card->card_code, "GC") == 0)
+    return 0; // tapers use I's from previous GW
   // SP/SC uses only one int or none, but it's in position 2, so nothing to do here
-  
-  if(strcmp(card->card_code, "EK") == 0) return 1; // flag for on or off
-  if(strcmp(card->card_code, "EN") == 0) return 0;
+
+  if (strcmp(card->card_code, "EK") == 0)
+    return 1; // flag for on or off
+  if (strcmp(card->card_code, "EN") == 0)
+    return 0;
 
   // now the default cases
-  if(is_geometry(card)) {
+  if (is_geometry(card))
+  {
     return 2;
-  } else if (is_control(card)) {
+  }
+  else if (is_control(card))
+  {
     return 4;
-  } else {
+  }
+  else
+  {
     return 0; // need to check this!
   }
 }
 
-int max_int_fields(const card_t* card)
+int max_int_fields(const card_t *card)
 {
-  if(strcmp(card->card_code, "GF") == 0) return 1; // there is an option to print extra data
-  if(strcmp(card->card_code, "GC") == 0) return 2; // tapers use I's from previous GW
+  if (strcmp(card->card_code, "GF") == 0)
+    return 1; // there is an option to print extra data
+  if (strcmp(card->card_code, "GC") == 0)
+    return 2; // tapers use I's from previous GW
   // SP/SC uses only one int or none, but it's in position 2, so nothing to do here
 
-  if(strcmp(card->card_code, "EK") == 0) return 1; // flag for on or off
-  if(strcmp(card->card_code, "EN") == 0) return 0;
+  if (strcmp(card->card_code, "EK") == 0)
+    return 1; // flag for on or off
+  if (strcmp(card->card_code, "EN") == 0)
+    return 0;
 
   // now the default cases
-  if(is_geometry(card)) {
+  if (is_geometry(card))
+  {
     return 2;
-  } else if (is_control(card)) {
+  }
+  else if (is_control(card))
+  {
     return 4;
-  } else {
+  }
+  else
+  {
     return 0; // need to check this!
   }
 }
 
-int min_flt_fields(const card_t* card)
+int min_flt_fields(const card_t *card)
 {
   // these are taken from the NEC-2 dox unless noted otherwise
   // the dox indicate optional parameters with () around the name
-  if(strcmp(card->card_code, "GA") == 0) return 4; // arcs have four inputs
-  if(strcmp(card->card_code, "GE") == 0) return 0; // no floats
-  if(strcmp(card->card_code, "GR") == 0) return 0; // no floats
-  if(strcmp(card->card_code, "GS") == 0) return 1; // scale
-  if(strcmp(card->card_code, "GC") == 0) return 3; // tapers have three inputs
-  if(strcmp(card->card_code, "GX") == 0) return 0; // uses only the ints
-  if(strcmp(card->card_code, "SP") == 0) return 6; // last field unused
-  if(strcmp(card->card_code, "SM") == 0) return 6; // last field unused
-  if(strcmp(card->card_code, "SC") == 0) return 6; // this might only be three if it follows SM, but filled with zeros
+  if (strcmp(card->card_code, "GA") == 0)
+    return 4; // arcs have four inputs
+  if (strcmp(card->card_code, "GE") == 0)
+    return 0; // no floats
+  if (strcmp(card->card_code, "GR") == 0)
+    return 0; // no floats
+  if (strcmp(card->card_code, "GS") == 0)
+    return 1; // scale
+  if (strcmp(card->card_code, "GC") == 0)
+    return 3; // tapers have three inputs
+  if (strcmp(card->card_code, "GX") == 0)
+    return 0; // uses only the ints
+  if (strcmp(card->card_code, "SP") == 0)
+    return 6; // last field unused
+  if (strcmp(card->card_code, "SM") == 0)
+    return 6; // last field unused
+  if (strcmp(card->card_code, "SC") == 0)
+    return 6; // this might only be three if it follows SM, but filled with zeros
 
   // this one is annoying as the format depends on the value in I1
-  if(strcmp(card->card_code, "EX") == 0) {
-    if(card->i[1] == 0 || card->i[1] == 5)
+  if (strcmp(card->card_code, "EX") == 0)
+  {
+    if (card->i[1] == 0 || card->i[1] == 5)
       return 3;
     else
       return 6;
   }
-  
-  if(strcmp(card->card_code, "RF")) return 1; // can be a single frequency
+
+  if (strcmp(card->card_code, "RF"))
+    return 1; // can be a single frequency
 
   // now the default cases
-  if(is_geometry(card)) {
+  if (is_geometry(card))
+  {
     return 7;
-  } else if (is_control(card)) {
+  }
+  else if (is_control(card))
+  {
     return 4;
-  } else {
+  }
+  else
+  {
     return 0; // need to check this!
   }
 }
 
-int max_flt_fields(const card_t* card)
+int max_flt_fields(const card_t *card)
 {
-  if(strcmp(card->card_code, "GA") == 0) return 4; // arcs have four inputs
-  if(strcmp(card->card_code, "GE") == 0) return 0; // no floats
-  if(strcmp(card->card_code, "GR") == 0) return 0; // no floats
-  if(strcmp(card->card_code, "GS") == 0) return 1; // scale
-  if(strcmp(card->card_code, "GC") == 0) return 3; // tapers have three inputs
-  if(strcmp(card->card_code, "GX") == 0) return 0; // uses only the ints
-  if(strcmp(card->card_code, "SP") == 0) return 6; // last field unused
-  if(strcmp(card->card_code, "SC") == 0) return 6; // even in the three-input case, zeros are used
+  if (strcmp(card->card_code, "GA") == 0)
+    return 4; // arcs have four inputs
+  if (strcmp(card->card_code, "GE") == 0)
+    return 0; // no floats
+  if (strcmp(card->card_code, "GR") == 0)
+    return 0; // no floats
+  if (strcmp(card->card_code, "GS") == 0)
+    return 1; // scale
+  if (strcmp(card->card_code, "GC") == 0)
+    return 3; // tapers have three inputs
+  if (strcmp(card->card_code, "GX") == 0)
+    return 0; // uses only the ints
+  if (strcmp(card->card_code, "SP") == 0)
+    return 6; // last field unused
+  if (strcmp(card->card_code, "SC") == 0)
+    return 6; // even in the three-input case, zeros are used
 
   // EX format depends on the value in I1
-  if(strcmp(card->card_code, "EX") == 0) {
-    if(card->i[1] == 0 || card->i[1] == 5)
+  if (strcmp(card->card_code, "EX") == 0)
+  {
+    if (card->i[1] == 0 || card->i[1] == 5)
       return 3;
     else
       return 6;
   }
-  
-  if(strcmp(card->card_code, "FR") == 0) return 2; // can be stepped
+
+  if (strcmp(card->card_code, "FR") == 0)
+    return 2; // can be stepped
 
   // now the default cases
-  if(is_geometry(card)) {
+  if (is_geometry(card))
+  {
     return 7;
-  } else if (is_control(card)) {
+  }
+  else if (is_control(card))
+  {
     return 6;
-  } else {
+  }
+  else
+  {
     return 0; // need to check this!
   }
 }
@@ -660,8 +834,10 @@ int max_flt_fields(const card_t* card)
 bool isGeometryEdited(deck_t *deck)
 {
   bool isEdited = false;
-  for(int i = deck->geometry_start; i < deck->geometry_end; i++) {
-    if(deck->cards[i].edited) {
+  for (int i = deck->geometry_start; i < deck->geometry_end; i++)
+  {
+    if (deck->cards[i].edited)
+    {
       isEdited = true;
       break;
     }
@@ -683,16 +859,17 @@ bool isGeometryEdited(deck_t *deck)
 void initialize_symbol_table(deck_t *deck, errors_list_t *errors)
 {
   // Step 1: Initialize symbols array and add default symbols (pi, c, units)
-  if (deck->symbols) { 
-    free(deck->symbols); 
-    deck->symbols = NULL; 
+  if (deck->symbols)
+  {
+    free(deck->symbols);
+    deck->symbols = NULL;
   }
   deck->num_symbols = 0;
   add_default_symbols(deck);
-  
+
   // Step 2: Collect all SY symbols from deck (warns on override attempts)
   update_symbol_list(deck, errors);
-  
+
   // Step 3: Evaluate symbols in comment section sequentially
   // evaluate_symbols_in_comments(deck, errors);
 }
@@ -708,16 +885,17 @@ void initialize_symbol_table(deck_t *deck, errors_list_t *errors)
 void update_deck_values(nec_context_t *ctx, deck_t *deck)
 {
   // Reinitialize with defaults first
-  if (deck->symbols) { 
-    free(deck->symbols); 
-    deck->symbols = NULL; 
+  if (deck->symbols)
+  {
+    free(deck->symbols);
+    deck->symbols = NULL;
   }
   deck->num_symbols = 0;
   add_default_symbols(deck);
-  
+
   // then add symbols from the
   update_symbol_list(deck, &ctx->errors);
-  
+
   // Evaluate and update
   update_symbol_values(ctx, deck, &ctx->errors);
   update_card_values(deck);
@@ -730,19 +908,25 @@ void update_deck_values(nec_context_t *ctx, deck_t *deck)
  * key/value pairs to the deck's symbol list. Assumes default symbols have
  * already been added, and warns if a deck symbol tries to override a default.
  */
-static void update_symbol_list(deck_t *deck, errors_list_t *errors) {
+static void update_symbol_list(deck_t *deck, errors_list_t *errors)
+{
   // Count how many default symbols exist before adding user symbols
   int num_defaults = deck->num_symbols;
-  
+
   // INVARIANT: only add pointers to key_value_t nodes owned by cards (e.g., from card->formulas)
-  for (int i = 0; i < deck->num_cards; i++) {
+  for (int i = 0; i < deck->num_cards; i++)
+  {
     card_t *card = &deck->cards[i];
-    if (strcmp(card->card_code, "SY") == 0 && card->formulas) {
+    if (strcmp(card->card_code, "SY") == 0 && card->formulas)
+    {
       key_value_t *kv = card->formulas;
-      while (kv) {
+      while (kv)
+      {
         // Check if this symbol name conflicts with any existing symbol (case-insensitive)
-        for (int j = 0; j < num_defaults; j++) {
-          if (deck->symbols[j] && strcasecmp(deck->symbols[j]->key, kv->key) == 0) {
+        for (int j = 0; j < num_defaults; j++)
+        {
+          if (deck->symbols[j] && strcasecmp(deck->symbols[j]->key, kv->key) == 0)
+          {
             // if (errors) {
             //   char msg[256];
             //   snprintf(msg, sizeof(msg), "The symbol '%s' conflicts with existing symbol '%s'. The user symbol will take precedence.", kv->key, deck->symbols[j]->key);
@@ -754,7 +938,7 @@ static void update_symbol_list(deck_t *deck, errors_list_t *errors) {
             break;
           }
         }
-        
+
         add_symbol(deck, kv);
         kv = kv->next;
       }
@@ -771,45 +955,50 @@ static void update_symbol_list(deck_t *deck, errors_list_t *errors) {
  */
 static void add_unit_constants(deck_t *deck)
 {
-  const struct {
+  const struct
+  {
     const char *name;
     double value;
   } units[] = {
-    // length units (meters)
-    {"m", 1.0},
-    {"cm", 0.01},
-    {"mm", 0.001},
-    {"ft", 0.3048},
-    {"in", 0.0254},
-    {"mil", 0.0000254},  // 1 mil = 0.001 inch
-    
-    // capacitance units (farads)
-    {"pF", 1e-12},
-    {"nF", 1e-9},
-    {"uF", 1e-6},
-    
-    // inductance units (henries)
-    {"nH", 1e-9},
-    {"uH", 1e-6},
-    {"mH", 1e-3}
-  };
-  
+      // length units (meters)
+      {"m", 1.0},
+      {"cm", 0.01},
+      {"mm", 0.001},
+      {"ft", 0.3048},
+      {"in", 0.0254},
+      {"mil", 0.0000254}, // 1 mil = 0.001 inch
+
+      // capacitance units (farads)
+      {"pF", 1e-12},
+      {"nF", 1e-9},
+      {"uF", 1e-6},
+
+      // inductance units (henries)
+      {"nH", 1e-9},
+      {"uH", 1e-6},
+      {"mH", 1e-3}};
+
   const int num_units = sizeof(units) / sizeof(units[0]);
-  
-  for (int u = 0; u < num_units; ++u) {
+
+  for (int u = 0; u < num_units; ++u)
+  {
     bool found = false;
-    for (int s = 0; s < deck->num_symbols; ++s) {
+    for (int s = 0; s < deck->num_symbols; ++s)
+    {
       key_value_t *sym = deck->symbols[s];
-      if (sym && sym->key && strcasecmp(sym->key, units[u].name) == 0) {
+      if (sym && sym->key && strcasecmp(sym->key, units[u].name) == 0)
+      {
         found = true;
         break;
       }
     }
-    if (!found) {
+    if (!found)
+    {
       key_value_t *unit_sym = (key_value_t *)malloc(sizeof(key_value_t));
       unit_sym->key = strdup(units[u].name);
       // Lowercase for case-insensitive matching
-      for (char *k = unit_sym->key; *k; k++) *k = tolower((unsigned char)*k);
+      for (char *k = unit_sym->key; *k; k++)
+        *k = tolower((unsigned char)*k);
       char value_str[32];
       snprintf(value_str, sizeof(value_str), "%.12g", units[u].value);
       unit_sym->value = strdup(value_str);
@@ -819,23 +1008,28 @@ static void add_unit_constants(deck_t *deck)
       add_symbol(deck, unit_sym);
     }
   }
-  
+
   // add AWG wire gauge constants (awg0 through awg40)
-  for (int awg = 0; awg <= 40; ++awg) {
+  for (int awg = 0; awg <= 40; ++awg)
+  {
     char name[8];
     snprintf(name, sizeof(name), "awg%d", awg);
-    
+
     bool found = false;
-    for (int s = 0; s < deck->num_symbols; ++s) {
+    for (int s = 0; s < deck->num_symbols; ++s)
+    {
       key_value_t *sym = deck->symbols[s];
-      if (sym && sym->key && strcasecmp(sym->key, name) == 0) {
+      if (sym && sym->key && strcasecmp(sym->key, name) == 0)
+      {
         found = true;
         break;
       }
     }
-    if (!found) {
+    if (!found)
+    {
       double radius = convert_awg_to_meters((double)awg);
-      if (radius > 0) {
+      if (radius > 0)
+      {
         key_value_t *awg_sym = (key_value_t *)malloc(sizeof(key_value_t));
         awg_sym->key = strdup(name);
         char value_str[32];
@@ -870,9 +1064,11 @@ void add_default_symbols(deck_t *deck)
   for (int d = 0; d < 2; ++d)
   {
     bool found = false;
-    for (int s = 0; s < deck->num_symbols; ++s) {
+    for (int s = 0; s < deck->num_symbols; ++s)
+    {
       key_value_t *sym = deck->symbols[s];
-      if (sym && sym->key && strcasecmp(sym->key, defaults[d].name) == 0) {
+      if (sym && sym->key && strcasecmp(sym->key, defaults[d].name) == 0)
+      {
         found = true;
         break;
       }
@@ -884,13 +1080,13 @@ void add_default_symbols(deck_t *deck)
       def_sym->value = strdup(defaults[d].value);
       def_sym->separator = '=';
       def_sym->next = NULL;
-       add_symbol(deck, def_sym);
+      add_symbol(deck, def_sym);
     }
   }
-  
+
   // add unit conversion constants
   add_unit_constants(deck);
-} 
+}
 
 /******************************************************************************
  * update_symbol_values
@@ -899,176 +1095,217 @@ void add_default_symbols(deck_t *deck)
  * Symbols are calculated in dependency order: if a symbol's formula references
  * other symbols, those referenced symbols are evaluated first.
  */
-void update_symbol_values(nec_context_t *ctx, deck_t *deck, errors_list_t *errors) 
+void update_symbol_values(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   key_value_t **syms = deck->symbols;
   bool *evaluated = calloc(deck->num_symbols, sizeof(bool));
-  if (ctx) ctx->eval_depth = 0;
-  for (int i = 0; i < deck->num_symbols; i++) if (eval_symbol(i, deck->num_symbols, syms, evaluated, deck, ctx, errors) != 0) {
-    // error already added
-  }
+  if (ctx)
+    ctx->eval_depth = 0;
+  for (int i = 0; i < deck->num_symbols; i++)
+    if (eval_symbol(i, deck->num_symbols, syms, evaluated, deck, ctx, errors) != 0)
+    {
+      // error already added
+    }
   free(evaluated);
 }
 
 // helper: check if formula references a symbol
-static bool references(const char *expr, const char *symname) {
-    if (!expr || !symname) return false;
-    size_t len = strlen(symname);
-    const char *p = expr;
-    while ((p = strstr(p, symname))) {
-        if ((p == expr || !isalnum((unsigned char)p[-1])) && (!isalnum((unsigned char)p[len]))) {
-            return true;
-        }
-        p += len;
-    }
+static bool references(const char *expr, const char *symname)
+{
+  if (!expr || !symname)
     return false;
+  size_t len = strlen(symname);
+  const char *p = expr;
+  while ((p = strstr(p, symname)))
+  {
+    if ((p == expr || !isalnum((unsigned char)p[-1])) && (!isalnum((unsigned char)p[len])))
+    {
+      return true;
+    }
+    p += len;
+  }
+  return false;
 }
 
 // Helper function for better formula error messages
-static char *get_formula_error_description(const char *formula, int error_pos) {
-  if (!formula || error_pos < 0 || error_pos >= (int)strlen(formula)) {
+static char *get_formula_error_description(const char *formula, int error_pos)
+{
+  if (!formula || error_pos < 0 || error_pos >= (int)strlen(formula))
+  {
     return NULL;
   }
-  
+
   // look for function-like patterns around the error position
   const char *pos = formula + error_pos;
-  
+
   // look backwards from the error position to find the start of a potential function name
-  const char *start = pos - 1;  // Start from the character before the error
-  while (start >= formula && (isalnum((unsigned char)*start) || *start == '_')) {
+  const char *start = pos - 1; // Start from the character before the error
+  while (start >= formula && (isalnum((unsigned char)*start) || *start == '_'))
+  {
     start--;
   }
   start++; // Move past the non-alphanumeric character we stopped at
-  
+
   // check if this looks like a function call (we have a function name followed by '(')
-  if (pos > start && *pos == '(') {
+  if (pos > start && *pos == '(')
+  {
     // extract the function name
     size_t name_len = pos - start;
-    if (name_len > 0 && name_len < 50) {
+    if (name_len > 0 && name_len < 50)
+    {
       char func_name[64];
       strncpy(func_name, start, name_len);
       func_name[name_len] = '\0';
-      
+
       // check if it looks like a valid identifier
-      if (isalpha((unsigned char)func_name[0]) || func_name[0] == '_') {
+      if (isalpha((unsigned char)func_name[0]) || func_name[0] == '_')
+      {
         char error_msg[128];
         snprintf(error_msg, sizeof(error_msg), "unknown function '%s'", func_name);
         return strdup(error_msg);
       }
     }
   }
-  
+
   return NULL; // no specific error description available
 }
 
 // Recursive evaluation for symbol dependencies
-static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, nec_context_t *ctx, errors_list_t *errors) {
-    // Check recursion depth to prevent infinite loops using ctx->eval_depth
-    if (ctx) ctx->eval_depth++;
-    if (ctx && ctx->eval_depth > 100) {
-        char err_msg[256];
-        snprintf(err_msg, sizeof(err_msg), "Maximum recursion depth exceeded evaluating symbol '%s'", syms[i]->key);
-        add_error(ctx, errors, err_msg, FATAL);
-        ctx->eval_depth--;
-        return -1;
-    }
-    
-    // Check if already evaluated to prevent infinite recursion
-    if (evaluated[i]) {
-      if (ctx) ctx->eval_depth--;
-      return 0;
-    }
-    
-    // Mark as evaluated immediately to prevent infinite recursion on circular dependencies
-    evaluated[i] = true;
-    
-    key_value_t *sym = syms[i];
-    
-    // Recursively evaluate all referenced symbols first
-    for (int j = 0; j < sym_count; j++) {
-      if (i == j) continue;
-      if (references(sym->value, syms[j]->key)) {
-        if (eval_symbol(j, sym_count, syms, evaluated, deck, ctx, errors) != 0)
-          return -1;
-      }
-    }
-    
-    // Now evaluate this symbol's formula
-    if (sym->value && sym->value[0] != '\0') {
-      // Use original case for tinyexpr variables to avoid conflicts
-      te_variable *vars = calloc(sym_count, sizeof(te_variable));
-      for (int k = 0; k < sym_count; k++) {
-        vars[k].name = syms[k]->key;
-        vars[k].address = &syms[k]->fv;
-        vars[k].type = TE_VARIABLE;
-        vars[k].context = NULL;
-      }
-      
-      // Preprocess AWG syntax (#14 -> awg value)
-      char *temp_formula = preprocess_awg(sym->value);
-      
-      // Preprocess feet/inches syntax (10 ft / 2 in -> 10*ft + 2*in)
-      char *temp_formula2 = preprocess_feet_inches(temp_formula);
-      free(temp_formula);
-      
-      // Preprocess implicit multiplication (135 ft -> 135*ft)
-      char *processed_formula = preprocess_implicit_multiplication(temp_formula2);
-      free(temp_formula2);
-      
-      int err = 0;
-      te_expr *expr = te_compile(processed_formula, vars, sym_count, &err);
-      if (expr) {
-        sym->fv = te_eval(expr);
-        te_free(expr);
-        
-        // DEBUG: Show symbol evaluation
-        // fprintf(stderr, "DEBUG: Evaluated symbol '%s' = '%s' -> %g\n", sym->key, processed_formula, sym->fv);
-        
-      } else {
-        // Find which card this symbol belongs to
-        int card_num = -1;
-        for (int c = 0; c < deck->num_cards; c++) {
-          card_t *card = &deck->cards[c];
-          if (strcmp(card->card_code, "SY") == 0 && card->formulas) {
-            key_value_t *kv = card->formulas;
-            while (kv) {
-              if (kv == sym) {
-                card_num = c + 1;
-                break;
-              }
-              kv = kv->next;
-            }
-            if (card_num > 0) break;
-          }
-        }
-        char err_msg[256];
-        // Try to provide a more descriptive error message
-        char *error_desc = get_formula_error_description(processed_formula, err);
-        if (card_num > 0) {
-          if (error_desc) {
-            snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' on card %d: %s", processed_formula, card_num, error_desc);
-            free(error_desc);
-          } else {
-            snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d on card %d", processed_formula, err, card_num);
-          }
-        } else {
-          if (error_desc) {
-            snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s': %s", processed_formula, error_desc);
-            free(error_desc);
-          } else {
-            snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d", processed_formula, err);
-          }
-        }
-        add_error(ctx, errors, err_msg, FATAL);
-        free(processed_formula);
-        free(vars);
-        if (ctx) ctx->eval_depth--;
-        return -1;
-      }
-      free(vars);
-    }
-    if (ctx) ctx->eval_depth--;
+static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, nec_context_t *ctx, errors_list_t *errors)
+{
+  // Check recursion depth to prevent infinite loops using ctx->eval_depth
+  if (ctx)
+    ctx->eval_depth++;
+  if (ctx && ctx->eval_depth > 100)
+  {
+    char err_msg[256];
+    snprintf(err_msg, sizeof(err_msg), "Maximum recursion depth exceeded evaluating symbol '%s'", syms[i]->key);
+    add_error(ctx, errors, err_msg, FATAL);
+    ctx->eval_depth--;
+    return -1;
+  }
+
+  // Check if already evaluated to prevent infinite recursion
+  if (evaluated[i])
+  {
+    if (ctx)
+      ctx->eval_depth--;
     return 0;
+  }
+
+  // Mark as evaluated immediately to prevent infinite recursion on circular dependencies
+  evaluated[i] = true;
+
+  key_value_t *sym = syms[i];
+
+  // Recursively evaluate all referenced symbols first
+  for (int j = 0; j < sym_count; j++)
+  {
+    if (i == j)
+      continue;
+    if (references(sym->value, syms[j]->key))
+    {
+      if (eval_symbol(j, sym_count, syms, evaluated, deck, ctx, errors) != 0)
+        return -1;
+    }
+  }
+
+  // Now evaluate this symbol's formula
+  if (sym->value && sym->value[0] != '\0')
+  {
+    // Use original case for tinyexpr variables to avoid conflicts
+    te_variable *vars = calloc(sym_count, sizeof(te_variable));
+    for (int k = 0; k < sym_count; k++)
+    {
+      vars[k].name = syms[k]->key;
+      vars[k].address = &syms[k]->fv;
+      vars[k].type = TE_VARIABLE;
+      vars[k].context = NULL;
+    }
+
+    // Preprocess AWG syntax (#14 -> awg value)
+    char *temp_formula = preprocess_awg(sym->value);
+
+    // Preprocess feet/inches syntax (10 ft / 2 in -> 10*ft + 2*in)
+    char *temp_formula2 = preprocess_feet_inches(temp_formula);
+    free(temp_formula);
+
+    // Preprocess implicit multiplication (135 ft -> 135*ft)
+    char *processed_formula = preprocess_implicit_multiplication(temp_formula2);
+    free(temp_formula2);
+
+    int err = 0;
+    te_expr *expr = te_compile(processed_formula, vars, sym_count, &err);
+    if (expr)
+    {
+      sym->fv = te_eval(expr);
+      te_free(expr);
+
+      // DEBUG: Show symbol evaluation
+      // fprintf(stderr, "DEBUG: Evaluated symbol '%s' = '%s' -> %g\n", sym->key, processed_formula, sym->fv);
+    }
+    else
+    {
+      // Find which card this symbol belongs to
+      int card_num = -1;
+      for (int c = 0; c < deck->num_cards; c++)
+      {
+        card_t *card = &deck->cards[c];
+        if (strcmp(card->card_code, "SY") == 0 && card->formulas)
+        {
+          key_value_t *kv = card->formulas;
+          while (kv)
+          {
+            if (kv == sym)
+            {
+              card_num = c + 1;
+              break;
+            }
+            kv = kv->next;
+          }
+          if (card_num > 0)
+            break;
+        }
+      }
+      char err_msg[256];
+      // Try to provide a more descriptive error message
+      char *error_desc = get_formula_error_description(processed_formula, err);
+      if (card_num > 0)
+      {
+        if (error_desc)
+        {
+          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' on card %d: %s", processed_formula, card_num, error_desc);
+          free(error_desc);
+        }
+        else
+        {
+          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d on card %d", processed_formula, err, card_num);
+        }
+      }
+      else
+      {
+        if (error_desc)
+        {
+          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s': %s", processed_formula, error_desc);
+          free(error_desc);
+        }
+        else
+        {
+          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d", processed_formula, err);
+        }
+      }
+      add_error(ctx, errors, err_msg, FATAL);
+      free(processed_formula);
+      free(vars);
+      if (ctx)
+        ctx->eval_depth--;
+      return -1;
+    }
+    free(vars);
+  }
+  if (ctx)
+    ctx->eval_depth--;
+  return 0;
 }
 
 /******************************************************************************
@@ -1081,32 +1318,39 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
  */
 void update_card_values(deck_t *deck)
 {
-  for(int c = 0; c < deck->num_cards; c++) {
+  for (int c = 0; c < deck->num_cards; c++)
+  {
     card_t *card = &deck->cards[c];
-    
+
     // Skip SY cards - their formulas define symbols, not field values
     // Symbol formulas are evaluated separately in update_symbol_values
-    if(strcmp(card->card_code, "SY") == 0) {
+    if (strcmp(card->card_code, "SY") == 0)
+    {
       continue;
     }
-    
+
     // first, copy any original input values into the value fields
-    for(int i = 1; i <= MAX_INT_FIELDS; i++) {
+    for (int i = 1; i <= MAX_INT_FIELDS; i++)
+    {
       card->iv[i] = card->i[i];
     }
-    for(int i = 1; i <= MAX_FLT_FIELDS; i++) {
+    for (int i = 1; i <= MAX_FLT_FIELDS; i++)
+    {
       card->fv[i] = card->f[i];
     }
 
     // now run any calculations on the fields and copy those in instead
-    if(card->formulas != NULL) {
+    if (card->formulas != NULL)
+    {
       // Prepare variable bindings for tinyexpr: F1..F8, I1..I4, and all deck symbols
-      const int icount = MAX_INT_FIELDS;    // 4
-      const int fcount = MAX_FLT_FIELDS;    // number of float fields (NEC: 7)
-      double fvals[MAX_FLT_FIELDS + 1];     // 1-based
-      double ivals[MAX_INT_FIELDS + 1];     // 1-based
-      for(int i = 1; i <= fcount; i++) fvals[i] = card->fv[i];
-      for(int i = 1; i <= icount; i++) ivals[i] = (double)card->iv[i];
+      const int icount = MAX_INT_FIELDS; // 4
+      const int fcount = MAX_FLT_FIELDS; // number of float fields (NEC: 7)
+      double fvals[MAX_FLT_FIELDS + 1];  // 1-based
+      double ivals[MAX_INT_FIELDS + 1];  // 1-based
+      for (int i = 1; i <= fcount; i++)
+        fvals[i] = card->fv[i];
+      for (int i = 1; i <= icount; i++)
+        ivals[i] = (double)card->iv[i];
 
       int num_syms = deck ? deck->num_symbols : 0;
 
@@ -1114,20 +1358,23 @@ void update_card_values(deck_t *deck)
       int max_vars = MAX_FLT_FIELDS + MAX_INT_FIELDS + num_syms;
       te_variable *vars = calloc(max_vars, sizeof(te_variable));
       int v = 0;
-      for(int i = 1; i <= fcount; i++) {
+      for (int i = 1; i <= fcount; i++)
+      {
         vars[v].name = fnames[i];
         vars[v].address = &fvals[i];
         vars[v].type = TE_VARIABLE;
         v++;
       }
-      for(int i = 1; i <= icount; i++) {
+      for (int i = 1; i <= icount; i++)
+      {
         vars[v].name = inames[i];
         vars[v].address = &ivals[i];
         vars[v].type = TE_VARIABLE;
         v++;
       }
 
-      for(int i = 0; i < num_syms; i++) {
+      for (int i = 0; i < num_syms; i++)
+      {
         vars[v].name = deck->symbols[i]->key;
         vars[v].address = &deck->symbols[i]->fv;
         vars[v].type = TE_VARIABLE;
@@ -1136,40 +1383,47 @@ void update_card_values(deck_t *deck)
 
       // Iterate formulas and evaluate each assignment (float/int targets)
       key_value_t *kv = card->formulas;
-      while(kv != NULL) {
+      while (kv != NULL)
+      {
         const char *key = kv->key;
         const char *expr_str = kv->value;
-        if(key != NULL && expr_str != NULL && key[0] != '\0') {
+        if (key != NULL && expr_str != NULL && key[0] != '\0')
+        {
           char kind = key[0];
           int idx = atoi(key + 1);
           int err = 0;
-          
+
           // Preprocess AWG syntax in the expression
           char *temp_expr = preprocess_awg(expr_str);
-          
+
           // Preprocess feet/inches syntax
           char *temp_expr2 = preprocess_feet_inches(temp_expr);
           free(temp_expr);
-          
+
           // Preprocess implicit multiplication
           char *processed_expr = preprocess_implicit_multiplication(temp_expr2);
           free(temp_expr2);
-          
+
           // Normalize to lowercase for case-insensitive symbol matching
-          for (char *p = processed_expr; *p; p++) {
+          for (char *p = processed_expr; *p; p++)
+          {
             *p = tolower((unsigned char)*p);
           }
-          
+
           te_expr *expr = te_compile(processed_expr, vars, v, &err);
-          
-          if(expr != NULL) {
+
+          if (expr != NULL)
+          {
             double val = te_eval(expr);
             te_free(expr);
-            
-            if(kind == 'F' && idx >= 1 && idx <= MAX_FLT_FIELDS) {
+
+            if (kind == 'F' && idx >= 1 && idx <= MAX_FLT_FIELDS)
+            {
               card->fv[idx] = val;
               fvals[idx] = val; // keep variables in sync for subsequent formulas
-            } else if(kind == 'I' && idx >= 1 && idx <= MAX_INT_FIELDS) {
+            }
+            else if (kind == 'I' && idx >= 1 && idx <= MAX_INT_FIELDS)
+            {
               int ival = (int)val; // truncate; can switch to rounding if desired
               card->iv[idx] = ival;
               ivals[idx] = (double)ival;
@@ -1181,7 +1435,7 @@ void update_card_values(deck_t *deck)
       }
       free(vars);
     }
-    
+
     // Unit conversions are now handled through formula evaluation
     // with unit constants in the symbol table (mm=0.001, ft=0.3048, etc.)
     // No post-processing needed here.
@@ -1205,58 +1459,67 @@ void evaluate_formula(nec_context_t *ctx, key_value_t *formula, deck_t *deck, er
   // Prepare variables for tinyexpr - bind all current symbols (original case)
   int num_syms = deck ? deck->num_symbols : 0;
   te_variable *vars = calloc(num_syms, sizeof(te_variable));
-  
-  for (int k = 0; k < num_syms; k++) {
+
+  for (int k = 0; k < num_syms; k++)
+  {
     vars[k].name = deck->symbols[k]->key;
     vars[k].address = &deck->symbols[k]->fv;
     vars[k].type = TE_VARIABLE;
     vars[k].context = NULL;
   }
-  
+
   // Preprocess AWG syntax (#14 -> awg value)
   char *temp_formula = preprocess_awg(formula->value);
-  
+
   // Preprocess feet/inches syntax (10 ft / 2 in -> 10*ft + 2*in)
   char *temp_formula2 = preprocess_feet_inches(temp_formula);
   free(temp_formula);
-  
+
   // Preprocess implicit multiplication (135 ft -> 135*ft)
   char *processed_formula = preprocess_implicit_multiplication(temp_formula2);
   free(temp_formula2);
-  
+
   // Normalize to lowercase for case-insensitive symbol matching
-  for (char *p = processed_formula; *p; p++) {
+  for (char *p = processed_formula; *p; p++)
+  {
     *p = tolower((unsigned char)*p);
   }
 
-    // (debug removed)
-  
+  // (debug removed)
+
   // Compile and evaluate
   int err = 0;
   te_expr *expr = te_compile(processed_formula, vars, num_syms, &err);
-  
-  if (expr) {
+
+  if (expr)
+  {
     formula->fv = te_eval(expr);
-    
+
     te_free(expr);
-  } else {
+  }
+  else
+  {
     // Report error if compilation failed
-    if (errors) {
+    if (errors)
+    {
       char msg[MAX_ERROR_LEN];
       // Try to provide a more descriptive error message
       char *error_desc = get_formula_error_description(processed_formula, err);
-      if (error_desc) {
-        snprintf(msg, sizeof(msg), "Error evaluating formula '%s = %s': %s", 
+      if (error_desc)
+      {
+        snprintf(msg, sizeof(msg), "Error evaluating formula '%s = %s': %s",
                  formula->key, formula->value, error_desc);
         free(error_desc);
-      } else {
-        snprintf(msg, sizeof(msg), "Error evaluating formula '%s = %s' at position %d", 
+      }
+      else
+      {
+        snprintf(msg, sizeof(msg), "Error evaluating formula '%s = %s' at position %d",
                  formula->key, formula->value, err);
       }
       add_error(ctx, errors, msg, WARNING);
     }
   }
-  
+
   free(processed_formula);
   free(vars);
 }
@@ -1273,10 +1536,11 @@ void evaluate_formula(nec_context_t *ctx, key_value_t *formula, deck_t *deck, er
  */
 void evaluate_symbols_in_comments(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
-  if (!deck || deck->num_cards == 0) {
+  if (!deck || deck->num_cards == 0)
+  {
     return;
   }
-  
+
   // SY symbols are evaluated separately in update_symbol_values
   // No need to evaluate them here
 }

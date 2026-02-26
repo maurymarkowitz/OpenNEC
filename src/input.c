@@ -266,7 +266,7 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
   char type_buff[3];
   char hidden_type_buff[3];
   bool isCmt, isGeo, isCtl, isExt; // cache these so we can do the string compare only once
-  bool sawCM = false, sawCE = false, sawGx = false, sawGE = false, sawEN = false; // keep track of where we are
+  bool sawCM = false, sawCE = false, sawSY = false, sawGx = false, sawGE = false, sawEN = false; // keep track of where we are
 
   // First pass: merge comment-only lines with onec extensions into the previous non-comment line
   for(int i = 1; i < deck->num_cards; i++) {
@@ -366,6 +366,10 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     }
   }
 
+  // initialize section markers that won't be set if their cards are absent
+  deck->symbol_start = -1;
+  deck->symbol_end   = -1;
+
   for(int i = 0; i < deck->num_cards; i++) {
     card = &deck->cards[i];
     // get the card and the original string length
@@ -434,6 +438,14 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     if(strcmp(type_buff, "CE") == 0 && !sawCE && !sawGx && !sawGE && !sawEN) {
       deck->comment_end = i;
       sawCE = true;
+    }
+    // SY (symbol) cards between the comment section and the first geometry card
+    if(strcmp(type_buff, "SY") == 0 && !sawGx && !sawGE && !sawEN && !card->ignore) {
+      if(!sawSY) {
+        deck->symbol_start = i;
+        sawSY = true;
+      }
+      deck->symbol_end = i;
     }
     // if this is the first geo card, including GE (but not commented-out cards)...
     if(isGeo && !sawGx && !sawEN && !card->ignore) {
