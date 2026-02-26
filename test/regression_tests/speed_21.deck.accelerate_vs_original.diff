@@ -1,0 +1,11 @@
+--- /dev/fd/63	2026-02-26 11:49:56
++++ /dev/fd/62	2026-02-26 11:49:56
+@@ -80,7 +80,7 @@
+ 
+ 
+                              ---------- MATRIX TIMING ----------
+-                               FILL: 58 msec  FACTOR: 45 msec
++                               FILL: 60 msec  FACTOR: 4 msec
+ 
+ 
+                         --------- ANTENNA INPUT PARAMETERS ---------

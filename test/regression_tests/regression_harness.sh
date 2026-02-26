@@ -103,7 +103,7 @@ run_deck() {
   echo "    Running $deck (backend=$backend) -> $(basename "$out_file")"
   if [ -n "$TIME_BIN" ]; then
     local ttmp="$REG_DIR/.time_${deck_base}.${backend}.txt"
-    if ! "$TIME_BIN" -p "$ROOT_DIR/onec" "$deck" >"$out_file" 2>"$ttmp"; then
+    if ! "$TIME_BIN" -p "$ROOT_DIR/onec" -o "$out_file" "$deck" 2>"$ttmp"; then
       echo "    Execution failed for $deck (backend=$backend)" >&2
       echo "$deck_base,$backend,NA,NA,NA" >>"$TIMING_CSV"
       rm -f "$ttmp"
@@ -116,7 +116,7 @@ run_deck() {
     echo "$deck_base,$backend,$real,$user,$sys" >>"$TIMING_CSV"
     rm -f "$ttmp"
   else
-    if ! "$ROOT_DIR/onec" "$deck" >"$out_file" 2>&1; then
+    if ! "$ROOT_DIR/onec" -o "$out_file" "$deck" 2>&1; then
       echo "    Execution failed for $deck (backend=$backend)" >&2
       return 1
     fi
@@ -127,7 +127,7 @@ run_deck() {
 normalize() {
   # Normalize output for diff: remove non-deterministic timing lines.
   # Writes to stdout.
-  sed -E '/TOTAL RUN TIME:/d' "$1"
+  sed -E '/TOTAL RUN TIME:/d; /FILL:.*msec.*FACTOR:.*msec/d' "$1"
 }
 
 compare_outputs() {

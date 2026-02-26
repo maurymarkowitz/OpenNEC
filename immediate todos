@@ -1,6 +1,4 @@
 /Volumes/Bigger/Users/maury/Developer/nec2-1.2.1.2.f
 /Volumes/Bigger/Users/maury/Developer/nec2c-1.3
 
-check logic for setting location of .ngf files, it should be the same path as the original .nec
-
 why is the custom build not working?

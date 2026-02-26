@@ -1,0 +1,11 @@
+--- /dev/fd/63	2026-02-26 11:49:56
++++ /dev/fd/62	2026-02-26 11:49:56
+@@ -65,7 +65,7 @@
+ 
+ 
+                              ---------- MATRIX TIMING ----------
+-                               FILL: 93 msec  FACTOR: 0 msec
++                               FILL: 79 msec  FACTOR: 0 msec
+ 
+ 
+                            -------- CURRENTS AND LOCATION --------

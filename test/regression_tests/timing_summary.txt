@@ -1,5 +1,5 @@
-accelerate: 20 decks, avg real 0.1695s
-original: 20 decks, avg real 1.1535s
-openblas: 20 decks, avg real 0.1325s
+accelerate: 20 decks, avg real 0.1665s
+original: 20 decks, avg real 1.1280s
+openblas: 20 decks, avg real 0.1375s
 \nTiming summary:
 (per-deck real seconds; averages exclude NA)
