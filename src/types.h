@@ -159,7 +159,8 @@ typedef enum {
   FSEP_SPACE,           /**< Single space between fields */
   FSEP_COLUMN_ALIGNED,  /**< Two or more spaces (column-aligned style) */
   FSEP_TAB,             /**< Tab character between fields */
-  FSEP_COMMA,           /**< Comma between fields */
+  FSEP_COMMA,           /**< Comma between fields, starting right after the mnemonic */
+  FSEP_SPACE_COMMA,     /**< Space after mnemonic, then commas between fields (e.g. "GW 1,299,...") */
 } field_sep_t;
 
 /*** card_t encapsulates a single card ***/

@@ -1,6 +1,6 @@
 Items still to be implemented:
 
-* cebik files have "IS" and "PS" cards
+* add an iteration counter so things like nec2++'s "hang.nec" don't hang
 
 * add in the cebik collection and get the EZnec examples working
 
@@ -15,6 +15,10 @@ Items still to be implemented:
 * add TIA-804-B (.adf) pattern output, which is simply a standard way of writing the NEC pattern
 
 * add a -f(ormat) flag to the CLI version to specify an output format so it can write NEC, 4nec2, etc.
+
+* cebik files have "IS" and "PS" cards
+
+* nec2++ examples/medium_test.nec has an "MP" card type
 
 * at some point, handle 4nec2 current sources, EX 6 and 7 (UA3SFH.nec, W2EEY.NEC, calvin.nec, class.NEC)
 

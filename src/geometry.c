@@ -552,7 +552,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
 int segment_number(nec_context_t *ctx, int tag, int seg)
 {
   int icnt, iseg;
-  char msg[MAX_ERROR_LEN];
+  char msg[MAX_ERROR_LEN]; // used for seg <= 0 error below
   
   if (seg <= 0) {
     snprintf(msg, sizeof(msg), "segment_number was called with a segment number less or equal to zero.");
@@ -581,11 +581,7 @@ int segment_number(nec_context_t *ctx, int tag, int seg)
     } /* for( i = 0; i < ctx->geometry.n; i++ ) */
   } /* if( ctx->geometry.n > 0) */
   
-  // if we didn't find it, report the error and return 0
-  {
-    snprintf(msg, sizeof(msg), "segment_number was called with an unknown tag %d", tag);
-    add_error(ctx, &ctx->geometry.errors, msg, 1);
-  }
+  // if we didn't find it, return 0 (caller is responsible for reporting)
   return(0);
 } /* end of segment_number */
 

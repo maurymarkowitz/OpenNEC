@@ -658,6 +658,11 @@ void parse_comment_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
   }
 }
 
+/* Formula tokens are stored verbatim from the source so that round-trip output
+ * preserves the user's original notation. preprocess_implicit_multiplication
+ * and preprocess_awg are applied by the calculation layer in deck.c immediately
+ * before formula evaluation with tinyexpr. */
+
 /******************************************************************************
  * parse_geometry_or_command_card()
  *
@@ -694,7 +699,7 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
   // we'll use this as the pointer to the current start location
   card->field_sep = detect_field_separator(card->card_str);
   char *trimmed = trim_start(card->card_str + 2);
-  char *preprocessed = preprocess_line(trimmed);
+  char *preprocessed = strdup(trimmed);
 
   // WG and GF cards carry a filename that cannot be tokenized as a number.
   // Extract the filename from the raw card string and store it in card->comment,

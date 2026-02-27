@@ -767,7 +767,19 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             }
             
             ctx->netcx.iseg1[idx] = segment_number(ctx, i1, i2);
+            if (ctx->netcx.iseg1[idx] == 0) {
+                char msg[MAX_ERROR_LEN];
+                snprintf(msg, sizeof(msg), "Card %d is a %s that references invalid tag %d, segment %d", card_idx + 1, code, i1, i2);
+                add_error(ctx, &ctx->errors, msg, FATAL);
+                return -1;
+            }
             ctx->netcx.iseg2[idx] = segment_number(ctx, i3, i4);
+            if (ctx->netcx.iseg2[idx] == 0) {
+                char msg[MAX_ERROR_LEN];
+                snprintf(msg, sizeof(msg), "Card %d is a %s that references invalid tag %d, segment %d", card_idx + 1, code, i3, i4);
+                add_error(ctx, &ctx->errors, msg, FATAL);
+                return -1;
+            }
             ctx->netcx.x11r[idx] = f1;
             ctx->netcx.x11i[idx] = f2;
             ctx->netcx.x12r[idx] = f3;

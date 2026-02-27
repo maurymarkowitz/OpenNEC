@@ -1226,13 +1226,9 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
     // Preprocess AWG syntax (#14 -> awg value)
     char *temp_formula = preprocess_awg(sym->value);
 
-    // Preprocess feet/inches syntax (10 ft / 2 in -> 10*ft + 2*in)
-    char *temp_formula2 = preprocess_feet_inches(temp_formula);
-    free(temp_formula);
-
     // Preprocess implicit multiplication (135 ft -> 135*ft)
-    char *processed_formula = preprocess_implicit_multiplication(temp_formula2);
-    free(temp_formula2);
+    char *processed_formula = preprocess_implicit_multiplication(temp_formula);
+    free(temp_formula);
 
     int err = 0;
     te_expr *expr = te_compile(processed_formula, vars, sym_count, &err);
@@ -1386,13 +1382,9 @@ void update_card_values(deck_t *deck)
           // Preprocess AWG syntax in the expression
           char *temp_expr = preprocess_awg(expr_str);
 
-          // Preprocess feet/inches syntax
-          char *temp_expr2 = preprocess_feet_inches(temp_expr);
-          free(temp_expr);
-
           // Preprocess implicit multiplication
-          char *processed_expr = preprocess_implicit_multiplication(temp_expr2);
-          free(temp_expr2);
+          char *processed_expr = preprocess_implicit_multiplication(temp_expr);
+          free(temp_expr);
 
           // Normalize to lowercase for case-insensitive symbol matching
           for (char *p = processed_expr; *p; p++)
@@ -1461,13 +1453,9 @@ void evaluate_formula(nec_context_t *ctx, key_value_t *formula, deck_t *deck, er
   // Preprocess AWG syntax (#14 -> awg value)
   char *temp_formula = preprocess_awg(formula->value);
 
-  // Preprocess feet/inches syntax (10 ft / 2 in -> 10*ft + 2*in)
-  char *temp_formula2 = preprocess_feet_inches(temp_formula);
-  free(temp_formula);
-
   // Preprocess implicit multiplication (135 ft -> 135*ft)
-  char *processed_formula = preprocess_implicit_multiplication(temp_formula2);
-  free(temp_formula2);
+  char *processed_formula = preprocess_implicit_multiplication(temp_formula);
+  free(temp_formula);
 
   // Normalize to lowercase for case-insensitive symbol matching
   for (char *p = processed_formula; *p; p++)

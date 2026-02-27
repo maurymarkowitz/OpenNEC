@@ -25,7 +25,7 @@
 #include "internals.h"
 #include "deck_validations.h"
 
-// Local structs for structural geometry validations
+// local structs for structural geometry validations
 typedef struct
 {
   int tag;
@@ -105,8 +105,7 @@ static bool is_geometry_tag_ignored(const deck_t *deck, int tag)
  */
 void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
 {
-  // A short list of the minimum structure is found in the 4nec2
-  // documentation:
+  // A short list of the minimum structure is found in the 4nec2 documentation:
   //
   // zero or more CM (comment) cards
   // one CE (comment end) card
@@ -118,21 +117,24 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
   // zero or more LD (loading) cards
   // one EN (end of file) card
   //
-  // There are minor issues with this list:
+  // There are a number of issues with this list:
   //
   // 1) some decks lack any comments, although we consider that fatal
   // 2) you don't need a GW card specifically, any geometry will do
   // 3) the EN is not really required, many decks lack it
+  // 4) the FR and EX are not really required, there are other cards that can
+  //    trigger the output, and decks producing GF don't need them at all
   //
-  // as a result, this code demands a minimum deck of five cards,
-  // one comment, two geometry cards, an FX, and an EX.
+  // For now, this code demands a minimum deck of five cards, at least one
+  // comment, two geometry cards, an FX, and an EX. This will be better tuned
+  // as we see more decks in the wild, but it should be enough to catch most
+  // of the really broken ones that would cause problems in the processing.
   //
   // TODO: do you need an EX? what about transmission?
   //
-  // There are also a number of additional tests performed
-  // below for other issues like duplicates of cards that should
-  // only exist once, cards in the wrong section of the deck, and
-  // similar issues.
+  // There are also a number of additional tests performed below for other
+  // issues like duplicates of cards that should only exist once, cards in the
+  // wrong section of the deck, and similar issues.
 
   // although these look like they should be bools, we use int
   // so we can report the card number where the duplicate was seen
@@ -244,7 +246,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
 
     if (strcmp(code, "NX") == 0)
     {
-      /* NX must not carry numeric parameters (ONEC comment is allowed). */
+      // NX must not carry numeric parameters (ONEC comment is allowed)
       bool nx_has_params = false;
       for (int j = 1; j <= MAX_INT_FIELDS; j++)
         if (deck->cards[i].i[j] != 0)
@@ -266,7 +268,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
         add_error(ctx, errors, msg, WARNING);
       }
 
-      /* The first non-ignored card after NX must be CM or CE. */
+      // the first non-ignored card after NX must be CM or CE
       bool found_next_cm = false;
       for (int j = i + 1; j < deck->num_cards; j++)
       {
@@ -285,7 +287,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
         add_error(ctx, errors, msg, FATAL);
       }
 
-      /* Reset per-section tracking so the next section is validated independently. */
+      /* reset per-section tracking so the next section is validated independently. */
       sawCE = 0;
       sawGx = 0;
       sawGE = 0;
@@ -336,14 +338,14 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     }
     if (strcmp(code, "EK") == 0)
     {
-      // Any non-zero I1 enables extended thin-wire kernel
+      // any non-zero I1 enables extended thin-wire kernel
       if (deck->cards[i].ints_used >= 1 && deck->cards[i].i[1] != 0)
       {
         ek_enabled = 1;
       }
     }
 
-    // Warn if control cards appear before GE (except CE and cards with specific messages below)
+    // warn if control cards appear before GE (except CE and cards with specific messages below)
     if (sawGE == false)
     {
       if (is_control(&deck->cards[i]) && strcmp(code, "CE") != 0 &&
@@ -355,7 +357,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
       }
     }
 
-    // Specific placement warnings for common control cards
+    // specific placement warnings for common control cards
     if (sawGE == false)
     {
       if (strcmp(code, "EX") == 0)
@@ -421,7 +423,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
       }
     }
 
-    // TL: expects 4 integer locators (tags/segments) and Z0 in F1
+    // TL expects 4 integer locators (tags/segments) and Z0 in F1
     if (strcmp(code, "TL") == 0)
     {
       if (deck->cards[i].ints_used < 4)
@@ -457,7 +459,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
       }
     }
 
-    // EX: typical voltage source requires 4 integers and non-zero amplitude in F1
+    // EX, typical voltage source requires 4 integers and non-zero amplitude in F1
     if (strcmp(code, "EX") == 0)
     {
       if (deck->cards[i].ints_used < 4)
@@ -475,7 +477,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
         snprintf(msg, sizeof(msg), "The card on line %d is an EX with zero amplitude in F1.", i);
         add_error(ctx, errors, msg, 0);
       }
-      // Basic locator sanity: tag and segment positive
+      // basic locator sanity: tag and segment positive
       if (deck->cards[i].ints_used >= 3)
       {
         if (deck->cards[i].i[2] <= 0 || deck->cards[i].i[3] <= 0)
@@ -484,7 +486,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
           add_error(ctx, errors, msg, 0);
         }
       }
-      // Check for unsupported EX types
+      // check for unsupported EX types
       if (deck->cards[i].ints_used >= 1)
       {
         int ex_type = deck->cards[i].i[1];
@@ -494,7 +496,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
           add_error(ctx, errors, msg, 0);
         }
       }
-      // Record for open-end placement validation later
+      // record for open-end placement validation later
       if (deck->cards[i].ints_used >= 3)
       {
         ref_info_t r = {
@@ -521,7 +523,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     // LD: loading — require type, tag, segment and at least one non-zero value
     if (strcmp(code, "LD") == 0)
     {
-      // At minimum: I1 (type), I2 (tag), I3 (segment)
+      // at minimum we need I1 (type), I2 (tag), I3 (segment)
       if (deck->cards[i].ints_used < 3)
       {
         snprintf(msg, sizeof(msg), "The card on line %d is an LD but has fewer than 3 integer inputs (type, tag, segment).", i);
@@ -561,7 +563,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
         add_error(ctx, errors, msg, 0);
       }
     }
-    // Record for open-end placement validation later (only for LD cards)
+    // record for open-end placement validation later (only for LD cards)
     if (strcmp(code, "LD") == 0 && deck->cards[i].ints_used >= 3)
     {
       int segStart = deck->cards[i].i[3];
@@ -731,7 +733,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
       add_error(ctx, errors, msg, 1);
     }
 
-    // Modifiers must follow normal geometry: GM/GR/GX after GA/GH/GW/SP/CW
+    // modifiers must follow normal geometry: GM/GR/GX after GA/GH/GW/SP/CW
     if (strcmp(code, "GM") == 0 || strcmp(code, "GR") == 0 || strcmp(code, "GX") == 0)
     {
       if (!(strcmp(last_code, "GA") == 0 || strcmp(last_code, "GH") == 0 || strcmp(last_code, "GW") == 0 ||
@@ -749,7 +751,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
       snprintf(msg, sizeof(msg), "The card on line %d is an SC, but the card above it is not an SP, SM or another SC.", i + 1);
       add_error(ctx, errors, msg, 1);
     }
-    // If SC follows another SC, ensure there was an SP or SM earlier in the deck
+    // if SC follows another SC, ensure there was an SP or SM earlier in the deck
     if (strcmp(code, "SC") == 0 && strcmp(last_code, "SC") == 0)
     {
       int hasAncestor = 0;
@@ -760,7 +762,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
           hasAncestor = 1;
           break;
         }
-        // Stop if we reach a GE; SC ancestry should be within geometry section
+        // stop if we reach a GE; SC ancestry should be within geometry section
         if (strcmp(deck->cards[j].card_code, "GE") == 0)
           break;
       }
@@ -805,7 +807,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     // advance last_code to current card for next-iteration pair checks
     last_code = code;
 
-    // Warn about unsupported cards
+    // warn about unsupported cards
     if (strcmp(code, "WG") == 0)
     {
       snprintf(msg, sizeof(msg), "The card on line %d is a WG (Wire Grid), which is not supported by OpenNEC.", i + 1);
@@ -813,12 +815,12 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     }
     if (strcmp(code, "IT") == 0)
     {
-      snprintf(msg, sizeof(msg), "The card on line %d is an IT (Iteration), which is not supported by OpenNEC.", i + 1);
+      snprintf(msg, sizeof(msg), "The card on line %d is an IT (ITeration), which is not supported by OpenNEC.", i + 1);
       add_error(ctx, errors, msg, 0);
     }
     if (strcmp(code, "OP") == 0)
     {
-      snprintf(msg, sizeof(msg), "The card on line %d is an OP (Optimization), which is not supported by OpenNEC.", i + 1);
+      snprintf(msg, sizeof(msg), "The card on line %d is an OP (OPtimization), which is not supported by OpenNEC.", i + 1);
       add_error(ctx, errors, msg, 0);
     }
     // Also warn for any other extension cards that are not supported
@@ -828,7 +830,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
       add_error(ctx, errors, msg, 0);
     }
 
-    // After recording last_code, validate that certain control cards reference existing geometry tags seen so far
+    // after recording last_code, validate that certain control cards reference existing geometry tags seen so far
     if (strcmp(code, "EX") == 0 && deck->cards[i].ints_used >= 3)
     {
       int tag = deck->cards[i].i[2];
@@ -932,7 +934,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     }
   } /* loop over cards */
 
-  // Validate EX/LD not located at open wire ends
+  // validate EX/LD not located at open wire ends
   for (int wi = 0; wi < wire_count; wi++)
   {
     wire_info_t w = wires[wi];
@@ -951,7 +953,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
         end2_connected = 1;
       }
     }
-    // Check EX references to this wire
+    // check EX references to this wire
     for (int er = 0; er < ex_ref_count; er++)
     {
       if (ex_refs[er].tag == w.tag)
@@ -969,7 +971,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
         }
       }
     }
-    // Check LD references to this wire (consider start/end segments)
+    // check LD references to this wire (consider start/end segments)
     for (int lr = 0; lr < ld_ref_count; lr++)
     {
       if (ld_refs[lr].tag == w.tag)
@@ -992,7 +994,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     }
   }
 
-  // Parallel wire segmentation check (0.05 wavelengths threshold)
+  // parallel wire segmentation check (0.05 wavelengths threshold)
   if (freq_mhz > 0.0 && wire_count > 1)
   {
     check_parallel_wire_segmentation(ctx, errors, wires, wire_count, freq_mhz);
@@ -1071,7 +1073,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     }
   }
 
-  // Duplicate wire endpoints: overlapping wires
+  // duplicate wire endpoints: overlapping wires
   for (int i = 0; i < wire_count; i++)
   {
     for (int j = i + 1; j < wire_count; j++)
@@ -1109,7 +1111,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     }
   }
 
-  // Wires that are connected must contact at segment ends (connection separation < len/1000)
+  // wires that are connected must contact at segment ends (connection separation < len/1000)
   for (int ai = 0; ai < wire_count; ai++)
   {
     wire_info_t a = wires[ai];
@@ -1207,7 +1209,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     snprintf(msg, sizeof(msg), "We found SY cards in the deck, but there is no CE in the deck. SYs should follow the CE.");
     add_error(ctx, errors, msg, 0);
   }
-  // Warn if GD appears without any preceding GN
+  // warn if GD appears without any preceding GN
   if (sawGD && !sawGN)
   {
     snprintf(msg, sizeof(msg), "A GD card appears in the deck, but there is no GN card.");
@@ -1220,8 +1222,6 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     snprintf(msg, sizeof(msg), "The GE is set to -1, but there is no GN card in the deck.");
     add_error(ctx, errors, msg, 1);
   }
-
-  // and get rid of the local string
 }
 
 // Helper: point-to-segment distance in 3D

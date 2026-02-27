@@ -248,28 +248,20 @@ field_sep_t detect_field_separator(const char *card_str) {
   if (*p == ' ') {
     int count = 0;
     while (*p == ' ') { count++; p++; }
+
+    // Scan past the first field token to check if the inter-field separator
+    // is a comma.  This catches "GW 1,299,..." style (space after mnemonic,
+    // commas between fields) which is common in hand-edited NEC files.
+    const char *q = p;
+    while (*q && *q != ',' && *q != ' ' && *q != '\t' && *q != '\0') q++;
+    if (*q == ',') return FSEP_SPACE_COMMA;
+
     return (count >= 2) ? FSEP_COLUMN_ALIGNED : FSEP_SPACE;
   }
   return FSEP_UNKNOWN;
 }
 
-/******************************************************************************
- * preprocess_line
- *
- * Applies all 4nec2 preprocessing steps to a card line.
- * Returns a new allocated string that must be freed by the caller.
- */
-char *preprocess_line(const char *line) {
-  // NOTE: AWG notation (#12, 12awg) is intentionally NOT preprocessed here.
-  // It is detected as a formula token in parse_geometry_or_control_card(),
-  // stored as e.g. F7=#12 in card->formulas, and converted to a numeric
-  // radius by preprocess_awg() during formula evaluation in update_card_values().
-  // This preserves the original notation so the GUI can display and round-trip it.
-  char *t1 = preprocess_feet_inches(line);
-  char *t2 = preprocess_implicit_multiplication(t1);
-  free(t1);
-  return t2;
-}
+
 
 /******************************************************************************
  * convert_awg_to_meters
@@ -463,123 +455,7 @@ char *preprocess_awg(const char *formula) {
   return result;
 }
 
-/******************************************************************************
- * preprocess_feet_inches
- *
- * Preprocesses feet/inches syntax in formulas:
- * - "N ft / M in" -> "N*ft + M*in" (feet and inches combined)
- * - "Nft/in" -> "N*ft/in" (feet divided by inches for unit conversion)
- */
-char *preprocess_feet_inches(const char *formula) {
-  char *result = strdup(formula);
-  char *p = result;
-  
-  while (*p) {
-    // Look for "ft" pattern, ignoring case and optional spaces
-    if (strncasecmp(p, "ft", 2) == 0) {
-      char *ft_pos = p;
-      char *slash_pos = p + 2;
-      while (*slash_pos && isspace((unsigned char)*slash_pos)) slash_pos++;
-      
-      if (*slash_pos == '/') {
-        char *after_slash = slash_pos + 1;
-        while (*after_slash && isspace((unsigned char)*after_slash)) after_slash++;
-        
-        // Check what comes after the slash: "in" or a number
-        if (strncasecmp(after_slash, "in", 2) == 0) {
-          // Pattern: N ft / in -> N*ft/in
-          char *feet_num_end = ft_pos;
-          while (feet_num_end > result && isspace((unsigned char)*(feet_num_end-1))) feet_num_end--;
-          
-          char *feet_start = feet_num_end;
-          while (feet_start > result && (isdigit((unsigned char)*(feet_start-1)) || *(feet_start-1) == '.' || *(feet_start-1) == '-')) feet_start--;
-          
-          if (feet_start < feet_num_end) {
-            char *endptr;
-            double feet_value = strtod(feet_start, &endptr);
-            if (endptr >= feet_num_end) {
-              char replacement[128];
-              snprintf(replacement, sizeof(replacement), "%.10g*ft/in", feet_value);
-              
-              size_t prefix_len = feet_start - result;
-              size_t replacement_len = strlen(replacement);
-              const char *suffix_start = after_slash + 2; 
-              size_t suffix_len = strlen(suffix_start);
-              
-              // Handle potential digit following "in"
-              bool separate = isdigit((unsigned char)*suffix_start);
-              
-              char *new_result = malloc(prefix_len + replacement_len + suffix_len + (separate ? 1 : 0) + 1);
-              memcpy(new_result, result, prefix_len);
-              memcpy(new_result + prefix_len, replacement, replacement_len);
-              if (separate) {
-                new_result[prefix_len + replacement_len] = ' ';
-                strcpy(new_result + prefix_len + replacement_len + 1, suffix_start);
-              } else {
-                strcpy(new_result + prefix_len + replacement_len, suffix_start);
-              }
-              
-              free(result);
-              result = new_result;
-              p = result + prefix_len + replacement_len + (separate ? 1 : 0);
-              continue;
-            }
-          }
-        } else if (isdigit((unsigned char)*after_slash) || *after_slash == '.' || *after_slash == '-') {
-          // Pattern: N ft / M in
-          char *inches_start = after_slash;
-          char *endptr;
-          double inches_value = strtod(inches_start, &endptr);
-          if (endptr > inches_start) {
-            char *after_inches_num = endptr;
-            while (*after_inches_num && isspace((unsigned char)*after_inches_num)) after_inches_num++;
-            
-            if (strncasecmp(after_inches_num, "in", 2) == 0) {
-              char *feet_num_end = ft_pos;
-              while (feet_num_end > result && isspace((unsigned char)*(feet_num_end-1))) feet_num_end--;
-              
-              char *feet_start = feet_num_end;
-              while (feet_start > result && (isdigit((unsigned char)*(feet_start-1)) || *(feet_start-1) == '.' || *(feet_start-1) == '-')) feet_start--;
-              
-              if (feet_start < feet_num_end) {
-                double feet_value = strtod(feet_start, &endptr);
-                if (endptr >= feet_num_end) {
-                  char replacement[128];
-                  snprintf(replacement, sizeof(replacement), "%.10g*ft+%.10g*in", feet_value, inches_value);
-                  
-                  size_t prefix_len = feet_start - result;
-                  size_t replacement_len = strlen(replacement);
-                  const char *suffix_start = after_inches_num + 2;
-                  size_t suffix_len = strlen(suffix_start);
-                  
-                  bool separate = isdigit((unsigned char)*suffix_start);
-                  
-                  char *new_result = malloc(prefix_len + replacement_len + suffix_len + (separate ? 1 : 0) + 1);
-                  memcpy(new_result, result, prefix_len);
-                  memcpy(new_result + prefix_len, replacement, replacement_len);
-                  if (separate) {
-                    new_result[prefix_len + replacement_len] = ' ';
-                    strcpy(new_result + prefix_len + replacement_len + 1, suffix_start);
-                  } else {
-                    strcpy(new_result + prefix_len + replacement_len, suffix_start);
-                  }
-                  
-                  free(result);
-                  result = new_result;
-                  p = result + prefix_len + replacement_len + (separate ? 1 : 0);
-                  continue;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    p++;
-  }
-  
-  return result;
-}
+
 
 /******************************************************************************
  * preprocess_implicit_multiplication

@@ -246,6 +246,24 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
     // start with the card code
     fputs(card->card_code, file);
 
+    // Determine the field separator to use for this card.
+    // Priority: card's own detected style, then deck-wide consensus.
+    // FSEP_COLUMN_ALIGNED uses a tab — an approximation that is visually similar
+    // and better than collapsing everything to a single space.
+    // FSEP_SPACE_COMMA: space before first field, commas between the rest.
+    field_sep_t fsep_type = (card->field_sep != FSEP_UNKNOWN)
+                              ? card->field_sep : deck->field_sep;
+    const char *fsep_first = " ";  // separator between mnemonic and field 1
+    const char *fsep_rest  = " ";  // separator between subsequent fields
+    if (fsep_type == FSEP_TAB || fsep_type == FSEP_COLUMN_ALIGNED) {
+      fsep_first = fsep_rest = "\t";
+    } else if (fsep_type == FSEP_COMMA) {
+      fsep_first = fsep_rest = ",";
+    } else if (fsep_type == FSEP_SPACE_COMMA) {
+      fsep_first = " ";
+      fsep_rest  = ",";
+    }
+
     // get the number of fields for this sort of card
     MAX_INTS = max_int_fields(card);
     MAX_FLTS = max_flt_fields(card);
@@ -257,16 +275,16 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
       // integer has to writen as a three digit number
       if (strcmp(card->card_code, "GX") == 0)
       {
-        fputc(' ', file);
-        fprintf(file, " %d", card->i[1]);
-        fputc(' ', file);
-        fprintf(file, " %3d", card->i[2]);
+        fprintf(file, "%s%d", fsep_first, card->i[1]);
+        fprintf(file, "%s%3d", fsep_rest, card->i[2]);
       }
       // other cards might have a formula
       else
       {
+        int field_num = 0;
         for (int j = 1; j <= card->ints_used && j <= MAX_INTS; j++)
         {
+          const char *fsep = (field_num++ == 0) ? fsep_first : fsep_rest;
           // Look up formula for this integer field (fields are 1-based: I1..I4)
           char key[8];
           snprintf(key, sizeof(key), "I%d", j);
@@ -274,30 +292,34 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
 
           if (formula != NULL)
           {
-            fprintf(file, " %s", formula);
+            fprintf(file, "%s%s", fsep, formula);
           }
           else
           {
-            fprintf(file, " %d", card->i[j]);
+            fprintf(file, "%s%d", fsep, card->i[j]);
           }
         }
       }
 
       // floats are a number or a formula (fields are 1-based: F1..F7)
-      for (int j = 1; j <= card->flts_used && j <= MAX_FLTS; j++)
       {
-        // Look up formula for this float field
-        char key[8];
-        snprintf(key, sizeof(key), "F%d", j);
-        const char *formula = lookup_formula(card, key);
+        int field_num = (card->ints_used > 0 || strcmp(card->card_code, "GX") == 0) ? 1 : 0;
+        for (int j = 1; j <= card->flts_used && j <= MAX_FLTS; j++)
+        {
+          const char *fsep = (field_num++ == 0) ? fsep_first : fsep_rest;
+          // Look up formula for this float field
+          char key[8];
+          snprintf(key, sizeof(key), "F%d", j);
+          const char *formula = lookup_formula(card, key);
 
-        if (formula != NULL)
-        {
-          fprintf(file, " %s", formula);
-        }
-        else
-        {
-          fprintf(file, " %G", card->f[j]);
+          if (formula != NULL)
+          {
+            fprintf(file, "%s%s", fsep, formula);
+          }
+          else
+          {
+            fprintf(file, "%s%G", fsep, card->f[j]);
+          }
         }
       }
 
