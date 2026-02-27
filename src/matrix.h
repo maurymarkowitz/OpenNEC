@@ -11,7 +11,7 @@
 #include "types.h"
 
 /* Matrix setup - called from control.c */
-void cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, double rkhx, int iexkx);
+int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, double rkhx, int iexkx);
 void factrs(nec_context_t *restrict ctx, int np, int nrow, complex double *restrict a, int *restrict ip);
 int fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym);
 void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double p4, double p5, double p6, int ipr, complex double *restrict e);

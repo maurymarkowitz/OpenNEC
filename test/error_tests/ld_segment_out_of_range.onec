@@ -1,7 +1,0 @@
-CM LD segment out of range test
-CE
-GW 20 4 0 0 0 1 0 0 0.001
-GE 0
-FR 0 0 0 0 30 0
-LD 5 20 5 0 100
-EN

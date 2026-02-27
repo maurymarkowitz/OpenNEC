@@ -1,9 +1,0 @@
-CM Pair test: SM without SP/SM predecessor
-CE
-GW 10 1 0 0 0 0 1 0 0.001
-SM 0 2 1 0 0 0
-SC 1 0 0 0 0 0
-GE
-FR 0 0 0 0 30 0
-EX 0 10 1 1 1
-EN

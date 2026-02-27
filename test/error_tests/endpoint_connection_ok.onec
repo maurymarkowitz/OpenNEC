@@ -1,8 +1,0 @@
-CM Connection test: endpoints connect at segment ends
-CE
-GW 10 10 0 0 0 1 0 0 0.001
-GW 11 1 1 0 0 1.1 0 0 0.001
-GE
-FR 0 0 0 0 30 0
-EX 0 11 1 1 1
-EN

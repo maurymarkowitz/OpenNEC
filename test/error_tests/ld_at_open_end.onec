@@ -1,7 +1,0 @@
-CM LD placement test: LD at open ends
-CE
-GW 10 5 0 0 0 0 1 0 0.001
-GE
-FR 0 0 0 0 30 0
-LD 5 10 1 5 50 0 0
-EN

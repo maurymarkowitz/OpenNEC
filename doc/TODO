@@ -1,6 +1,6 @@
 Items still to be implemented:
 
-* add an iteration counter so things like nec2++'s "hang.nec" don't hang
+* add support for the nec-2 style calling convention, using a tmp file with the input and output file names on separate lines
 
 * add in the cebik collection and get the EZnec examples working
 

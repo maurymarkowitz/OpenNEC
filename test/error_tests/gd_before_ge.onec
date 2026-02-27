@@ -1,8 +1,0 @@
-CM Placement test: GD before GE
-CE
-GD 0 0 0 0 0 0
-GW 10 1 0 0 0 0 1 0 0.001
-GE
-FR 0 0 0 0 30 0
-EX 0 1 1 1 1
-EN

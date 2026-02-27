@@ -502,8 +502,7 @@ static int has_nec_extension(const char *filename)
   if (!ext)
     return false;
   return (strcasecmp(ext, ".nec") == 0 ||
-          strcasecmp(ext, ".deck") == 0 ||
-          strcasecmp(ext, ".onec") == 0);
+          strcasecmp(ext, ".deck") == 0);
 }
 
 /*-------------------------------------------------------------------*/

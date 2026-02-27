@@ -1,7 +1,0 @@
-CM Segment length too small relative to wavelength
-CE
-GW 10 10000 0 0 0 1 0 0 0.001
-GE
-FR 0 0 0 0 30 0
-EX 0 10 5000 1 1
-EN

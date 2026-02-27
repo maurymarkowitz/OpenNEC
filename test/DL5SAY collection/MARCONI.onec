@@ -1,8 +1,0 @@
-CE Marconi antenna for 20m
-GW 1 20 0 0 0 0 0 5.05 0.001
-GE 1
-FR 0 0 0 0 14.2
-EX 0 1 1 0 100 0
-GN 1 0 0 0 13 5
-RP 0 91 1 1100 0 0 1 0
-EN

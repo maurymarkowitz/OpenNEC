@@ -909,7 +909,7 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
       if(++sbf_hops > ctx->geometry.n) {
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg),
-            "SBF - segment connection cycle detected at segment %d — geometry is degenerate", i);
+            "Segment connection cycle detected at segment %d — geometry is degenerate", i);
         add_error(ctx, &ctx->errors, err_msg, FATAL);
         return -1;
       }

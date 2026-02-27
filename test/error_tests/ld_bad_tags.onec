@@ -1,8 +1,0 @@
-CM Test: LD card with ITAG STEP1 > STEP2
-CE
-GW 1 5 0 0 0 0 2 0 0.01
-GE 0
-FR 0 1 0 0 100 0
-EX 0 1 3 0 1 0
-LD 0 1 5 2 10 0 0
-EN

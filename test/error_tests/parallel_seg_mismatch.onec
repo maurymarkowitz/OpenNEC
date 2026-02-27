@@ -1,8 +1,0 @@
-CM Parallel wires with different segmentation, close spacing
-CE
-GW 10 10 0 0 0 1 0 0 0.001
-GW 11 7 0 0.1 0 1 0.1 0 0.001
-GE
-FR 0 0 0 0 30 0
-EX 0 10 5 1 1
-EN

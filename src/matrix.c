@@ -61,7 +61,7 @@ extern void zgetrs_(char*, int*, int*, double _Complex*, int*, int*, double _Com
 /*-------------------------------------------------------------------*/
 
 /* cmset sets up the complex structure matrix in the array cm */
-void cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, double rkhx, int iexkx)
+int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, double rkhx, int iexkx)
 {
   int mp2, neq, npeq, it, i, j, i1, i2, in2;
   int im1, im2, ist, ij, ipr, jss, jm1, jm2, jst, k, ka, kk;
@@ -103,7 +103,7 @@ void cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, d
 	for( j = 1; j <= ctx->geometry.n; j++ )
 	{
 	  if (trio(ctx, j) != 0)
-	    return;
+	    return -1;
 	  for( i = 0; i < ctx->segj.jsno; i++ )
 	  {
 		ij = ctx->segj.jco[i];
@@ -162,7 +162,7 @@ void cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, d
   } /* if( m != 0) */
 
   if( ctx->matpar.icase == 1)
-	return;
+	return 0;
 
   /* Allocate to scratch memory */
   size_t mreq = (size_t)ctx->geometry.np2m;
@@ -206,7 +206,7 @@ void cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, d
 
   mem_free(ctx, (void *)&scm );
 
-  return;
+  return 0;
 }
 
 /*-----------------------------------------------------------------------*/

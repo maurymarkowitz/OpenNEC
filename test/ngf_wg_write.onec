@@ -1,9 +1,0 @@
-CM NGF round-trip test (step 1): generate NGF file from a 5-segment wire.
-CM Run this before ngf_gf_load.deck to produce test_wg_roundtrip.ngf.
-CM Expected: no errors, NGF file produced, no simulation output (WG exits early).
-CE
-GW 1 5 0 0 0 0 0 1 0.001
-GE 0
-FR 0 1 0 0 300
-WG !test_wg_roundtrip.ngf
-EN

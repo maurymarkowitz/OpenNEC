@@ -1126,7 +1126,10 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         // Fill and factor primary interaction matrix
         double tim1, tim2;
         nec_get_time_ms(ctx, &tim1);
-        cmset(ctx, ctx->netcx.neq, cm, ctx->dataj.rkh, ctx->dataj.iexk);
+        if (cmset(ctx, ctx->netcx.neq, cm, ctx->dataj.rkh, ctx->dataj.iexk) != 0) {
+            mem_free(ctx, (void *)&cm);
+            return -1;
+        }
 
         /* If NGF segments were loaded via a GF card, inject the cached matrix
          * block into the upper-left ngf_neq × ngf_neq corner of cm.

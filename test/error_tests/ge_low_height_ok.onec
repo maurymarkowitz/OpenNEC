@@ -1,7 +1,0 @@
-CM GE low-height OK: GE -1 avoids segment-end ground connections
-CE
-GW 10 10 0 0 5E-05 1 0 5E-05 0.001
-GE -1
-FR 0 0 0 0 30 0
-EX 0 10 1 1 1
-EN

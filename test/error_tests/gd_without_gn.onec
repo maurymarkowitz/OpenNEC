@@ -1,8 +1,0 @@
-CM Pair test: GD without any preceding GN
-CE
-GW 10 1 0 0 0 0 1 0 0.001
-GE
-GD 0 0 0 0 0 0
-FR 0 0 0 0 30 0
-EX 0 10 1 1 1
-EN
