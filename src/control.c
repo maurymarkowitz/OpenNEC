@@ -124,7 +124,31 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
         add_error(ctx, &ctx->errors, "Failed to initialize calculation defaults (no valid geometry)", FATAL);
         return -1;
     }
-    
+
+    // Step 2b: Complexity pre-check — warn before starting expensive work.
+    // nec_estimate_time() reuses the geometry already computed above (no re-calc).
+    {
+        double T = nec_estimate_time(ctx, deck);
+        int n_total = ctx->geometry.n;
+        int n_cell  = ctx->geometry.np > 0 ? ctx->geometry.np : n_total;
+        int m_sym   = (n_cell > 0) ? n_total / n_cell : 1;
+        if (T >= 1.0e11) {
+            char cmsg[256];
+            if (m_sym > 1)
+                snprintf(cmsg, sizeof(cmsg),
+                         "WARNING: large model detected: %d total segments "
+                         "(%d in symmetry cell, x%d symmetry). "
+                         "Complexity T=%.2e — this may run for several minutes.",
+                         n_total, n_cell, m_sym, T);
+            else
+                snprintf(cmsg, sizeof(cmsg),
+                         "WARNING: large model detected: %d segments, no symmetry. "
+                         "Complexity T=%.2e — this may run for several minutes.",
+                         n_total, T);
+            nec_report(ctx, ONEC_SEV_WARNING, "%s", cmsg);
+        }
+    }
+
     // Step 3: Initialize batch processing state
     ctx->current_card_idx = deck->geometry_end + 1;  // Start after GE card
     if (ctx->current_card_idx >= deck->num_cards) {

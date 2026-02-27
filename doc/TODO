@@ -1,5 +1,9 @@
 Items still to be implemented:
 
+* can we track which card created various geometry, so we can have more accurate warnings?
+
+* you should not need -r to process directories, only to recurse into them
+
 * add support for the nec-2 style calling convention, using a tmp file with the input and output file names on separate lines
 
 * add in the cebik collection and get the EZnec examples working
@@ -16,13 +20,15 @@ Items still to be implemented:
 
 * add a -f(ormat) flag to the CLI version to specify an output format so it can write NEC, 4nec2, etc.
 
-* cebik files have "IS" and "PS" cards
+* 4nec2's NEC4 example, Catenary.nec, has "CW", "IS", "VC" and "UM"
+
+* cebik's NEC4 files have "UM", "IS" and "PS" cards
 
 * nec2++ examples/medium_test.nec has an "MP" card type
 
 * at some point, handle 4nec2 current sources, EX 6 and 7 (UA3SFH.nec, W2EEY.NEC, calvin.nec, class.NEC)
 
-* add support for LD type 7 from 4nec2 ()
+* add support for LD type 7 from 4nec2
 
 * files to examine:
 - 63-2.nec, 63-1.nec, 17-10-nec4.nec, radius too small
