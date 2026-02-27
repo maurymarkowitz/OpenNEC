@@ -36,7 +36,6 @@ static bool run_simulation = true;
 static bool run_tests = false;
 static bool run_greens = false;
 static bool recursive = false;
-static bool force_out_extension = false; // -o with no filename: force <file>.out
 static char *input_file = "";
 static char *output_file = "";
 static char *error_file = "";
@@ -64,14 +63,14 @@ static void print_version(void)
  */
 void print_usage(char *argv[])
 {
-  printf("Usage: %s [-hvntgr] [-o output_file] [-e error_file] [source_file...]\n", argv[0]);
+  printf("Usage: %s [-hvntgr] [-i input_file] [-o output_file] [-e error_file] [source_file...]\n", argv[0]);
   puts("Options:");
   puts("  -h, --help: print this description");
   puts("  -v, --version: print version info");
   puts("  -n, --no-run: don't run the simulation after parsing");
   puts("  -t, --test-deck: run various sanity tests");
-  puts("  -o[file], --output-file[=file]: write output to file; bare -o forces <file>.out beside input; omitted -o writes to stdout (single file) or <file>.out (multiple)");
-  puts("    Note: short form requires no space: -o/path/out.txt (not -o /path/out.txt)");
+  puts("  -i file, --input-file=file: input file. this is not required if source_file is provided. if neither is provided, input is read from stdin");
+  puts("  -o file, --output-file=file: write output to file; omitted -o writes to stdout (single file) or <file>.out (multiple files)");
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -g, --greens[=file]: write a Green's function file; filename defaults to input path with .ngf extension");
   puts("  -j, --jobs N: process up to N files in parallel (default 1)");
@@ -108,7 +107,7 @@ static struct option program_options[] =
         {"test-deck", no_argument, NULL, 't'},
         {"recursive", no_argument, NULL, 'r'},
         {"input-file", required_argument, NULL, 'i'},
-        {"output-file", optional_argument, NULL, 'o'},
+        {"output-file", required_argument, NULL, 'o'},
         {"error-file", required_argument, NULL, 'e'},
         {"greens", optional_argument, NULL, 'g'},
         {"jobs", required_argument, NULL, 'j'},
@@ -129,7 +128,7 @@ void parse_options(int argc, char *argv[])
   {
     // eat an option and exit if we're done
     /* portable short options: 'g' has an optional argument */
-    int c = getopt_long(argc, argv, "hvntri:o::e:g::j:", program_options, &option_index); // should match the items above
+    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:", program_options, &option_index); // should match the items above
     if (c == -1)
       break;
 
@@ -154,11 +153,12 @@ void parse_options(int argc, char *argv[])
       recursive = true;
       break;
 
+    case 'i':
+      input_file = optarg;
+      break;
+
     case 'o':
-      if (optarg)
-        output_file = optarg;  // -o<file> or --output-file=<file>
-      else
-        force_out_extension = true;  // -o alone: force <file>.out
+      output_file = optarg;
       break;
 
     case 'e':
@@ -224,7 +224,8 @@ static int process_single_file(const char *input_filename, const char *output_fi
   ctx->source_filename = (strlen(input_filename) > 0) ? (char *)input_filename : NULL;
 
   // open input file or use stdin
-  if (strlen(input_filename) > 0)
+  // empty string or "-" both mean stdin
+  if (strlen(input_filename) > 0 && strcmp(input_filename, "-") != 0)
   {
     if ((input_fp = fopen(input_filename, "r")) == NULL)
     {
@@ -243,7 +244,8 @@ static int process_single_file(const char *input_filename, const char *output_fi
   }
 
   // open output file or use stdout
-  if (strlen(output_filename) > 0)
+  // empty string or "-" both mean stdout
+  if (strlen(output_filename) > 0 && strcmp(output_filename, "-") != 0)
   {
     if ((output_fp = fopen(output_filename, "w")) == NULL)
     {
@@ -496,6 +498,31 @@ static void add_to_string_list(char ***list, int *count, int *cap, const char *s
   (*list)[(*count)++] = strdup(str);
 }
 
+/* Compute the output path for a given input file and -o option value.
+ * Rules:
+ *   out_opt == "-"    → stdout (pass "-" through)
+ *   out_opt non-empty  → use as-is
+ *   out_opt empty + real input file → generate <input>.out
+ *   out_opt empty + stdin input ("")  → stdout ("")
+ */
+static void resolve_output(const char *input, const char *out_opt,
+                           char *buf, size_t bufsz)
+{
+  if (strlen(out_opt) > 0)
+  {
+    strncpy(buf, out_opt, bufsz - 1);
+    buf[bufsz - 1] = '\0';
+  }
+  else if (strlen(input) > 0 && strcmp(input, "-") != 0)
+  {
+    generate_output_filename(input, buf, bufsz);
+  }
+  else
+  {
+    buf[0] = '\0'; // stdin input → stdout
+  }
+}
+
 static int has_nec_extension(const char *filename)
 {
   const char *ext = strrchr(filename, '.');
@@ -536,10 +563,23 @@ int main(int argc, char **argv)
 
   if (optind >= argc)
   {
-    if (!isatty(STDIN_FILENO))
+    // If -i was given, treat it like a single positional file argument
+    if (strlen(input_file) > 0)
+    {
+      char out[512];
+      resolve_output(input_file, output_file, out, sizeof(out));
+      if (process_single_file(input_file, out, error_fp) != 0)
+      {
+        if (error_fp != stderr)
+          fclose(error_fp);
+        return EXIT_FAILURE;
+      }
+    }
+    else if (!isatty(STDIN_FILENO))
     {
       // Stdin is redirected, process it
-      const char *out = (strlen(output_file) > 0) ? output_file : "";
+      char out[512];
+      resolve_output("", output_file, out, sizeof(out));
       if (process_single_file("", out, error_fp) != 0)
       {
         fprintf(error_fp, "Error processing stdin\n");
@@ -712,22 +752,7 @@ int main(int argc, char **argv)
       {
         const char *input = file_list[i];
         char output[512];
-        if (strlen(output_file) > 0 && num_files == 1)
-        {
-          // -o explicitly specified: use that path
-          strncpy(output, output_file, sizeof(output) - 1);
-          output[sizeof(output) - 1] = '\0';
-        }
-        else if (num_files == 1 && !recursive && !force_out_extension)
-        {
-          // Single file, no -o: write to stdout (nec2c-compatible)
-          output[0] = '\0';
-        }
-        else
-        {
-          // Multiple files, -r, or bare -o: write to <file>.out beside the input
-          generate_output_filename(input, output, sizeof(output));
-        }
+        resolve_output(input, (num_files == 1) ? output_file : "", output, sizeof(output));
         if (num_files > 1)
         {
           fprintf(error_fp, "Processing %d of %d: %s...\n", i + 1, num_files, input);

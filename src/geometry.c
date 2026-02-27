@@ -506,7 +506,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         }
         FILE *gfp = fopen(ngf_filename, "rb");
         if (!gfp) {
-          snprintf(msg, sizeof(msg), "GF card on line %d: cannot open NGF file '%s'.", i + 1, ngf_filename);
+          snprintf(msg, sizeof(msg), "GF card on line %d cannot open theNGF file '%s'.", i + 1, ngf_filename);
           add_error(ctx, errors, msg, FATAL);
           return;
         }
