@@ -74,7 +74,7 @@ void print_usage(char *argv[])
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -g, --greens[=file]: write a Green's function file; filename defaults to input path with .ngf extension");
   puts("  -j, --jobs N: process up to N files in parallel (default 1)");
-  puts("  -r, --recursive: process directories recursively");
+  puts("  -r, --recursive: recurse into subdirectories");
   puts("Multiple input files or folders can be specified; each file will generate a .out file.");
   puts("If no source_file is provided, input is read from stdin and output goes to stdout.");
   exit(0);
@@ -628,29 +628,12 @@ int main(int argc, char **argv)
     }
 
     // Validate option/argument combinations now that we know what was given
-    if (recursive && dir_count == 0)
-    {
-      fprintf(error_fp, "onec: '-r' requires a directory argument, not a file\n");
-      fprintf(error_fp, "Try 'onec --help' for more information.\n");
-      if (error_fp != stderr)
-        fclose(error_fp);
-      return EXIT_FAILURE;
-    }
-    if (!recursive && dir_count > 0)
-    {
-      // Report the first offending directory
-      fprintf(error_fp, "onec: '%s' is a directory (use -r to process directories)\n", dir_queue[0]);
-      fprintf(error_fp, "Try 'onec --help' for more information.\n");
-      if (error_fp != stderr)
-        fclose(error_fp);
-      return EXIT_FAILURE;
-    }
     if (strlen(output_file) > 0)
     {
       // Explicit -o <path> is only meaningful for a single input file
-      if (recursive)
+      if (dir_count > 0)
       {
-        fprintf(error_fp, "onec: '-o' cannot be used with '-r' (multiple output files would be produced)\n");
+        fprintf(error_fp, "onec: '-o' cannot be used with a directory argument (multiple output files would be produced)\n");
         fprintf(error_fp, "Try 'onec --help' for more information.\n");
         if (error_fp != stderr)
           fclose(error_fp);
