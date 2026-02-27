@@ -82,7 +82,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
   
   // make sure there's cards to process
   // TODO: should this be an error/warning? or just in test?
-  if(deck->num_cards == 0 || deck->geometry_start == 0 || deck->geometry_end == 0) {
+  if(deck->num_cards == 0 || deck->geometry_start == -1 || deck->geometry_end == -1) {
     return;
   }
   
@@ -601,7 +601,13 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
   double slen, xa, ya, za, xs, ys, zs;
   size_t mreq;
   char msg[MAX_ERROR_LEN * 64];
-  
+
+  // Default: np/mp span the full geometry (symmetry commands may reduce them).
+  // Matches nec2c conect() lines 39-41.
+  ctx->geometry.np = ctx->geometry.n;
+  ctx->geometry.mp = ctx->geometry.m;
+  ctx->geometry.ipsym = 0;
+
   ctx->segj.maxcon = 1;
   
   if(ignd != 0) {
