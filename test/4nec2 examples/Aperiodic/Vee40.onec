@@ -1,0 +1,25 @@
+CM Extended arm Vee (171
+CM L. B. Cebik, W4RNL
+CM modified to optimize.
+CE  
+'GW 1 40 -98 140 40 -1 0 40 0.0320472
+'GW 2 1 -1 0 40 1 0 40 0.0320472
+'GW 3 40 1 0 40 98 140 40 0.0320472
+'
+SY len=170.89
+SY ang=70
+SY ang=47
+SY hgh=40
+SY x=len*sin(ang/2), y=len*cos(ang/2)
+'
+GW 1 40 -x y hgh -1 0 hgh 0.0320472
+GW 2 1 -1 0 hgh 1 0 hgh 0.0320472
+GW 3 40 1 0 hgh x y hgh 0.0320472
+'
+GS 0 0 0.3048
+GE 1
+GN 0 0 0 0 13 0.005
+EX 0 2 1 0 1 0
+LD 5 0 0 0 5.8001E+07 ' Copper
+FR 0 1 0 0 7.15 1
+EN

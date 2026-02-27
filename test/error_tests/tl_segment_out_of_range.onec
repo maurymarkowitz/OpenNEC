@@ -1,0 +1,7 @@
+CM TL segment out of range test
+CE
+GW 10 5 0 0 0 1 0 0 0.001
+GE 0
+FR 0 0 0 0 30 0
+TL 10 6 10 3 50
+EN

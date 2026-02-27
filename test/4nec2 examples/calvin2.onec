@@ -1,0 +1,18 @@
+CM 
+CE
+SY leglen=63.57261
+SY apex=65
+SY wirerad=.004
+SY srclen=1
+SY xmax=0.707*leglen+srclen/2
+SY zmin=apex-.707*leglen
+GW	1	62	-xmax	0	zmin	-srclen/2	0	apex	wirerad 'leg1
+GW	2	1	-srclen/2	0	apex	srclen/2	0	apex	wirerad
+GW	3	62	srclen/2	0	apex	xmax	0	zmin	wirerad
+GS	0	0	0.3048
+GE	1
+GN	2	0	0	0	17	0.007
+EK
+EX	0	2	1	0	1	0	0
+FR	0	0	0	0	3.75	0
+EN

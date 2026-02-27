@@ -1,0 +1,5 @@
+CM Test invalid tag reference
+GW 1 1 0 0 0 0 0 1 0.01
+GE
+EX 0 99 1 0 1
+EN

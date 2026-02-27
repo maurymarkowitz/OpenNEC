@@ -1,0 +1,9 @@
+CM Test case for SEGMENT LIES IN GROUND PLANE error
+CM This deck has a wire that lies exactly in the ground plane (z=0)
+CE
+GW 1 9 0 0 0 0.5 0 0 0.001
+GN 1
+GE 0
+FR 0 1 0 0 299.8 0
+EX 0 1 5 0 1 0
+EN

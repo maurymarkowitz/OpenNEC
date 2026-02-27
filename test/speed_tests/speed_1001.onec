@@ -1,0 +1,8 @@
+CM Speed test: extra large dipole (1001 segments)
+CE
+GW 1 1001 0 0 0 0 1 0 0.005
+GE 0
+FR 0 1 0 0 14 0
+EX 0 1 501 0 1
+RP 0 10 1 1110 0 0 10 0
+EN

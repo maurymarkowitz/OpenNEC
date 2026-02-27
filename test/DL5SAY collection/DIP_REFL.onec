@@ -1,0 +1,14 @@
+CM *** Lambda 0.5 Dipol 20 mm 100 MHz vor Reflektor (KATHREIN) ***
+CM *** Aktives Element in y-Achse ***
+CM *** ( = vertikal ) ***
+CE
+GW 1,8,-0.675,0,0,0.675,0,0,0.01
+GW 2,10,-1.5,-0.45,0,1,-0.45,0,0.03
+GE
+FR 0,1,0,0,100
+EX 0,1,4,0,1,0
+LD 5,0,0,0,3.72E+07
+PT -1
+PL 3,1,0,3
+RP 0,37,37,1000,270,0,10,5
+EN

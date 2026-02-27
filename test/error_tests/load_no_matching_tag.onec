@@ -1,0 +1,9 @@
+CM Test case for LOADING DATA CARD ERROR (no segment with matching tag)
+CM This deck tries to load a non-existent tag
+CE
+GW 1 9 0 0 0 0 0 0.5 0.001
+GE 0
+FR 0 1 0 0 299.8 0
+LD 0 999 0 0 50 0 0
+EX 0 1 5 0 1 0
+EN

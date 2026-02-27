@@ -1,0 +1,12 @@
+CM NEC Input File of a 3 el. Vert. yagi
+CM  9 = reflector , 2 = driven , 5 = reflector , 6 = reflector
+CE   
+GW	9	11	-0.4	0	-0.535	-0.4	0	0.535	0.01
+GW	2	11	0	0	-0.5	0	0	0.5	0.01
+GW	5	11	-0.34	-0.2	-0.535	-0.34	-0.2	0.535	0.01
+GW	6	11	-0.34	0.2	-0.535	-0.34	0.2	0.535	0.01
+GE	0
+FR	0	1	0	0	140	0
+EX	0	2	6	1	1	0	0
+FR 0 20 0 0 140 0.5
+EN

@@ -667,7 +667,10 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
   ns= nx;
   nt=0;
   gh(ctx, z, &g1r, &g1i);
-  
+
+  int intx2_iters = 0;
+  const int intx2_max = 65536 * 64;
+
   while( true )
   {
     if( flag )
@@ -767,6 +770,14 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
     nt++;
     
     z += dz;
+    if( !isfinite(z) || ++intx2_iters > intx2_max )
+    {
+      nec_report(ctx, ONEC_SEV_WARNING,
+        "intx2: integration did not converge (degenerate geometry?); results may be inaccurate");
+      *sgr= *sgr* rhk*.5;
+      *sgi= *sgi* rhk*.5;
+      return;
+    }
     if( z >= zend)
     {
       *sgr= *sgr* rhk*.5;

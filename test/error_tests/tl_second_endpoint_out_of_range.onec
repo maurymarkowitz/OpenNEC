@@ -1,0 +1,8 @@
+CM TL second endpoint out of range
+CE
+GW 40 4 0 0 0 1 0 0 0.001
+GE 0
+FR 0 0 0 0 30 0
+TL 40 2 40 6 50
+EX 0 40 2 0 1
+EN

@@ -685,7 +685,13 @@ void intx(nec_context_t *ctx, double el1, double el2, double b,
   ns= nx;
   nt=0;
   gf(ctx,  z, &g1r, &g1i);
-  
+
+  /* Safety cap: the Romberg loop halves dz up to nma times then advances z;
+   * worst-case iterations = nma (halvings) * nma (steps) — if we exceed that,
+   * something has gone NaN and we would loop forever. */
+  int intx_iters = 0;
+  const int intx_max = 65536 * 64;
+
   while( true )
   {
     if( flag )
@@ -800,6 +806,12 @@ void intx(nec_context_t *ctx, double el1, double el2, double b,
     nt++;
     
     z += dz;
+    if( !isfinite(z) || ++intx_iters > intx_max )
+    {
+      nec_report(ctx, ONEC_SEV_WARNING,
+        "intx: integration did not converge (degenerate geometry?); results may be inaccurate");
+      return;
+    }
     if( z >= zend)
     {
       /* add contribution of near singularity for diagonal term */
@@ -888,11 +900,20 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
   jend=-1;
   iend=-1;
   sig=-1.;
+  int sbf_hops = 0;
   
   do
   {
     if( jcox != 0 )
     {
+      if(++sbf_hops > ctx->geometry.n) {
+        char err_msg[256];
+        snprintf(err_msg, sizeof(err_msg),
+            "SBF - segment connection cycle detected at segment %d — geometry is degenerate", i);
+        add_error(ctx, &ctx->errors, err_msg, FATAL);
+        return -1;
+      }
+
       if( jcox < 0 )
         jcox= -jcox;
       else
@@ -968,6 +989,7 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
     jend=1;
     iend=1;
     sig=-1.;
+    sbf_hops = 0; /* reset for second pass (icon2 chain) */
     
   } /* do */
   while( jcox != 0 );

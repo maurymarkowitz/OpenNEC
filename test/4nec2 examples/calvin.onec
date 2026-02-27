@@ -1,0 +1,18 @@
+CM 
+CE
+SY len=206
+SY high=50
+SY wirerad=#14
+SY highend=100
+GW	1	61	-len/2	0	highend	-0.5	0	high	wirerad
+GW	2	1	-0.5	0	high	0.5	0	high	wirerad
+GW	3	61	0.5	0	high	len/2	0	highend	wirerad
+GS	0	0	0.3048
+GE	1
+LD	5	0	0	0	5.8E+07
+LD	7	0	0	0	4.5	#14+.0033
+GN	2	0	0	0	17	0.007
+EK
+EX	0	2	1	0	1	0	0
+FR	0	0	0	0	24.93	0
+EN

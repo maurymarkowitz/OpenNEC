@@ -1,0 +1,8 @@
+CM TL self-loop test
+CE
+GW 30 3 0 0 0 0 0 1 0.001
+GE 0
+FR 0 0 0 0 30 0
+TL 30 2 30 2 50
+EX 0 30 2 0 1
+EN

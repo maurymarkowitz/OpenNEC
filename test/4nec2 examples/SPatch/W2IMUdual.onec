@@ -1,0 +1,53 @@
+' Like the coffee-can feed, the W2IMU dual-mode feed starts with a strip of surface patches
+' Down one edge
+CM Dish-Feed W2IMU.NEC (short version)
+CM Dipole feed for test
+CM Horn is 610mm long, narrow end 168mm diameter
+CM 30 degree increase up to 302mm diameter
+CM Cylinder 302mm diameter, 305mm long
+CM by PA3AEF
+CE *********************************************
+' Start of large aperture 151 mm radius
+SP 0 3 0.151 -0.02392 0.61 0.151 0.02392 0.61
+SC 0 3 0.151 0.02392 0.585 0.151 -0.02392 0.585
+SC 0 3 0.151 0.02392 0.55 0.151 -0.02392 0.55
+SC 0 3 0.151 0.02392 0.515 0.151 -0.02392 0.515
+SC 0 3 0.151 0.02392 0.48 0.151 -0.02392 0.48
+SC 0 3 0.151 0.02392 0.445 0.151 -0.02392 0.445
+SC 0 3 0.151 0.02392 0.41 0.151 -0.02392 0.41
+SC 0 3 0.151 0.02392 0.375 0.151 -0.02392 0.375
+SC 0 3 0.151 0.02392 0.34 0.151 -0.02392 0.34
+SC 0 3 0.151 0.02392 0.305 0.151 -0.02392 0.305
+' Diameter decreases at 30 degree angle 
+' both X and Y dimensions change for flare
+SC 0 3 0.13643 0.02161 0.28 0.13643 -0.02161 0.28
+SC 0 3 0.12187 0.0193 0.255 0.12187 -0.0193 0.255
+SC 0 3 0.10439 0.01653 0.225 0.10439 -0.01653 0.225
+' To 84 mm diameter waveguide section 
+' rest of file is like coffee-can feed
+SC 0 3 0.08396 0.01324 0.19 0.08396 -0.01324 0.19
+SC 0 3 0.08396 0.01324 0.16 0.08396 -0.01324 0.16
+SC 0 3 0.08396 0.01324 0.13 0.08396 -0.01324 0.13
+SC 0 3 0.08396 0.01324 0.1 0.08396 -0.01324 0.1
+SC 0 3 0.08396 0.01324 0.066 0.08396 -0.01324 0.066
+SC 0 3 0.08396 0.01324 0.044 0.08396 -0.01324 0.044
+SC 0 3 0.08396 0.01324 0.022 0.08396 -0.01324 0.022
+SC 0 3 0.08396 0.01324 0 0.08396 -0.01324 0
+SC 0 3 0.0655 0.01037 0 0.0655 -0.01037 0
+SC 0 3 0.03 0.00475 0 0.03 -0.00475 0
+GM 0 4 0 0 18
+GM 0 0 0 0 9
+SP 0 0 0.015 0.015 0 90 0 0.00071273
+GX 0 110
+GM 0 0 0 0 -45
+' Except for dipole feed in E-plane after rotations complete
+GW 1 15 0 0.047 0.04 0 -0.047 0.04 0.002
+GM 0 0 0 0 0 0 0 -0.61
+GE
+FR 0 1 0 0 1296
+'EX excitation at segment 8 of 15 of
+EX 0 1 8 0 1 0
+LD 5 0 0 0 3.72E+07
+PT -1
+RP 0 19 3 1500 0 0 10 45
+EN

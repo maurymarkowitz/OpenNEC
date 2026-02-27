@@ -814,7 +814,18 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
     
     while(true) {
       if((ix != 0) && (ix != (j+1)) && (ix <= PCHCON)) {
+        /* chain_limit: a valid connection chain can visit each segment at most
+         * once before terminating (ix==0).  If we exceed ctx->geometry.n hops
+         * the graph has a cycle and we would loop forever. */
+        int chain_hops = 0;
         do {
+          if(++chain_hops > ctx->geometry.n) {
+            snprintf(msg, sizeof(msg),
+              "Segment connection cycle detected at segment %d — geometry is degenerate", j + 1);
+            add_error(ctx, &ctx->geometry.errors, msg, FATAL);
+            return -1;
+          }
+
           if(ix < 0)
             ix = -ix;
           else

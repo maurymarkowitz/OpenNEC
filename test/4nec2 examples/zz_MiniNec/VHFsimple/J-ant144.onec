@@ -1,0 +1,20 @@
+CM  J-antenna 144MHz
+CE
+SY H=7.12 ' Height
+SY l1=0.47, la=H+l1
+SY l2=1.483, lb=H+l2
+GW 1 20 0 0 la 0 0 lb 0.003
+GW 2 10 0 0 la 0 0 H 0.003
+SY d=0.0354, dd=H-d
+GW 3 1 0 0 H 0 0 dd 0.003
+GW 4 1 0 0 dd 0 0.01 dd 0.003
+GW 5 1 0 0.01 dd 0 0.01 H 0.003
+GW 6 10 0 0.01 H 0 0.01 la 0.003
+GW 7 1 0 0 H 0 0.01 H 0.003
+GE 1
+EK
+LD 5 0 0 0 2.5E+07
+GN 2 0 0 0 13 0.005 0 0
+EX 0 7 1 0 1 0
+FR 0 1 0 0 145 1
+EN

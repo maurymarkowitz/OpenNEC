@@ -1,0 +1,11 @@
+CM Test TL referencing ignored geometry tag
+CE
+GW 1 10 0 0 0 1 0 0 0.001
+GW 2 5 1 0 0 2 0 0 0.001 ! ignore:true
+GW 3 10 2 0 0 3 0 0 0.001
+GE
+GN -1
+FR 0 0 0 0 100 0
+EX 0 1 5 0 1
+TL 2 3 3 5 50
+EN
