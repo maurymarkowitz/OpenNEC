@@ -36,6 +36,37 @@ void add_error(const nec_context_t *ctx, errors_list_t *errors, char *message, i
   errors->num_errors++;
 }
 
+/* Resolve path relative to source file's directory (see misc.h for docs). */
+void resolve_path_relative_to_input(const char *path, const char *source_filename,
+                                    char *buf, size_t bufsz)
+{
+  if (!path || *path == '\0') {
+    buf[0] = '\0';
+    return;
+  }
+  /* Absolute path: use as-is */
+  if (path[0] == '/') {
+    strncpy(buf, path, bufsz - 1);
+    buf[bufsz - 1] = '\0';
+    return;
+  }
+  /* Relative path with a source file that has a directory component */
+  if (source_filename && *source_filename != '\0') {
+    const char *slash = strrchr(source_filename, '/');
+    if (slash) {
+      size_t dir_len = (size_t)(slash - source_filename) + 1; /* include trailing / */
+      if (dir_len >= bufsz) dir_len = bufsz - 1;
+      strncpy(buf, source_filename, dir_len);
+      buf[dir_len] = '\0';
+      strncat(buf, path, bufsz - dir_len - 1);
+      return;
+    }
+  }
+  /* No directory component or no source: use path relative to CWD */
+  strncpy(buf, path, bufsz - 1);
+  buf[bufsz - 1] = '\0';
+}
+
 /* Transfer already-logged errors from src into dst without re-emitting them via nec_report. */
 void transfer_errors(errors_list_t *src, errors_list_t *dst)
 {

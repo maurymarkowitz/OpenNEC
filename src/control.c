@@ -891,6 +891,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
              * deck path by replacing the extension with .ngf (same directory). */
             const char *wg_filename = card->comment;
             char wg_default[MAX_PATH_LEN + 1];
+            char wg_resolved[MAX_PATH_LEN + 1];
             if (!wg_filename || *wg_filename == '\0') {
                 if (ctx->source_filename) {
                     strncpy(wg_default, ctx->source_filename, MAX_PATH_LEN);
@@ -907,6 +908,11 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     add_error(ctx, &ctx->errors, msg, FATAL);
                     return -1;
                 }
+            } else {
+                /* Explicit filename: resolve relative to input file's directory */
+                resolve_path_relative_to_input(wg_filename, ctx->source_filename,
+                                               wg_resolved, sizeof(wg_resolved));
+                wg_filename = wg_resolved;
             }
             if (ctx->green_fp != NULL) {
                 fclose(ctx->green_fp);

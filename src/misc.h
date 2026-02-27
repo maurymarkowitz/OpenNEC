@@ -20,6 +20,18 @@ void add_error(const nec_context_t *ctx, errors_list_t *errors, char *message, i
 void add_message(const nec_context_t *ctx, outputs_list_t *outputs, char *message);
 void transfer_errors(errors_list_t *src, errors_list_t *dst);
 
+/* Path utilities */
+/**
+ * Resolve path relative to a source file's directory.
+ * Absolute paths are returned as-is. Relative paths are anchored to the
+ * directory of source_filename so that NEC deck files referencing NGF/WGF
+ * files by bare name or relative path resolve to the same directory as the
+ * deck, not the process CWD.  When source_filename has no directory component
+ * (bare name) or is NULL/empty, path is used as-is (CWD-relative).
+ */
+void resolve_path_relative_to_input(const char *path, const char *source_filename,
+                                    char *buf, size_t bufsz);
+
 /* Unified logging and reporting */
 void nec_report(const nec_context_t *ctx, int level, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
 

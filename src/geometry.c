@@ -488,6 +488,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
       case 11: { // GF - load Numerical Green's Function file
         const char *ngf_filename = card->comment;
         char gf_default[MAX_PATH_LEN + 1];
+        char gf_resolved[MAX_PATH_LEN + 1];
         if (!ngf_filename || *ngf_filename == '\0') {
           if (ctx->source_filename) {
             strncpy(gf_default, ctx->source_filename, MAX_PATH_LEN);
@@ -503,10 +504,15 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
             add_error(ctx, errors, msg, FATAL);
             return;
           }
+        } else {
+          /* Explicit filename: resolve relative to input file's directory */
+          resolve_path_relative_to_input(ngf_filename, ctx->source_filename,
+                                         gf_resolved, sizeof(gf_resolved));
+          ngf_filename = gf_resolved;
         }
         FILE *gfp = fopen(ngf_filename, "rb");
         if (!gfp) {
-          snprintf(msg, sizeof(msg), "GF card on line %d cannot open theNGF file '%s'.", i + 1, ngf_filename);
+          snprintf(msg, sizeof(msg), "GF card on line %d cannot open the NGF file '%s'.", i + 1, ngf_filename);
           add_error(ctx, errors, msg, FATAL);
           return;
         }
