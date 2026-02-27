@@ -113,10 +113,8 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
 
         // Check for geometry errors
         if (geometry_errors.num_errors > 0) {
-            for (int i = 0; i < geometry_errors.num_errors; i++) {
-                add_error(ctx, &ctx->errors, geometry_errors.errors[i].message,
-                         geometry_errors.errors[i].severity);
-            }
+            // Transfer already-logged errors without re-printing them
+            transfer_errors(&geometry_errors, &ctx->errors);
             return -1;
         }
     }

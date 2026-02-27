@@ -560,6 +560,7 @@ int main(int argc, char **argv)
   char **file_list = NULL;
   int num_files = 0;
   int file_cap = 4096;
+  int failed_count = 0;
 
   if (optind >= argc)
   {
@@ -738,7 +739,6 @@ int main(int argc, char **argv)
     }
 
     // Process files (possibly in parallel)
-    int failed_count = 0;
     struct timespec _t0, _t1;
     clock_gettime(CLOCK_MONOTONIC, &_t0);
     if (jobs <= 1 || num_files == 1)
@@ -857,7 +857,7 @@ int main(int argc, char **argv)
 
   if (error_fp != stderr)
     fclose(error_fp);
-  return EXIT_SUCCESS;
+  return (failed_count > 0) ? EXIT_FAILURE : EXIT_SUCCESS;
 } /* main */
 
 /*-----------------------------------------------------------------------*/

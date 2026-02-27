@@ -36,6 +36,24 @@ void add_error(const nec_context_t *ctx, errors_list_t *errors, char *message, i
   errors->num_errors++;
 }
 
+/* Transfer already-logged errors from src into dst without re-emitting them via nec_report. */
+void transfer_errors(errors_list_t *src, errors_list_t *dst)
+{
+  for (int i = 0; i < src->num_errors; i++) {
+    error_t *e = &src->errors[i];
+    error_t copy;
+    copy.severity = e->severity;
+    copy.message = calloc(strlen(e->message) + 1, sizeof(char));
+    strcpy(copy.message, e->message);
+    if (dst->num_errors == 0)
+      dst->errors = calloc(1, sizeof(error_t));
+    else
+      dst->errors = realloc(dst->errors, (dst->num_errors + 1) * sizeof(error_t));
+    dst->errors[dst->num_errors] = copy;
+    dst->num_errors++;
+  }
+}
+
 void add_message(const nec_context_t *ctx, outputs_list_t *outputs, char *message)
 {
   // Trigger callback and logging via unified helper
