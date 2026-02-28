@@ -165,7 +165,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           // make sure the next card is a GC, although we should have already done that
           int next_idx = peek_next_geometry(deck, i);
           if(next_idx == -1 || strcmp(deck->cards[next_idx].card_code, "GC") != 0) {
-            snprintf(msg, sizeof(msg), "The card on line %d is a GW with a zero radius, but the next card is not a GC with the tapering info.", i + 1);
+            snprintf(msg, sizeof(msg), "GW on line %d: has zero radius, but the next card is not a GC with the tapering info.", i + 1);
             add_error(ctx, errors, msg, WARNING);
             continue;
           }
@@ -183,7 +183,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
 
 
           if((gc_y1 == 0.0) || (gc_z1 == 0.0)) {
-            snprintf(msg, sizeof(msg), "The card on line %d is a GC with tapering info for GW in card %d, but there is a zero in Y1 or Z1.", next_idx + 1, i + 1);
+            snprintf(msg, sizeof(msg), "GC on line %d: has tapering info for GW in card %d, but there is a zero in Y1 or Z1.", next_idx + 1, i + 1);
             add_error(ctx, errors, msg, WARNING);
             i = next_idx; // skip the invalid GC card
             continue;

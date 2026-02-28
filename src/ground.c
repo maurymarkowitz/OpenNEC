@@ -23,6 +23,7 @@
  *****************************************************************************/
 
 #include "internals.h"
+#include <assert.h>
 #include "ground.h"
 #include "calculations.h"
 #include "fields.h"
@@ -49,11 +50,7 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
   ze= b;
   s= b- a;
   
-  if( s < 0.)
-  {
-    add_error(ctx, &ctx->errors, "ERROR - B LESS THAN A IN ROM2", FATAL);
-    return -1;
-  }
+  assert(s >= 0. && "INTERNAL: rom2() called with b < a; segment length is negative (geometry corruption)");
   
   ep= s/(1.e4* ctx->geometry.npm);
   zend= ze- ep;
