@@ -95,19 +95,19 @@ static field_validation_t validate_FR_field(const card_t *c, int is_int, int idx
   if (!is_int && idx == 1)
   {
     if (c->f[1] == 0.0)
-      RESULT(PROBLEM, "FR F1: base frequency is required and must be non-zero.");
+      RESULT(PROBLEM, "FR on line %d: base frequency in F1 is required and must be non-zero.", c->card_num);
   }
   if (is_int && idx == 2)
   {
     if (c->i[2] > 1 && c->f[2] == 0.0)
-      RESULT(WARNING, "FR I2: step count is I2 > 1,  but F2 (frequency step) is zero.");
+      RESULT(WARNING, "FR on line %d: I2 step count is > 1 but F2 (frequency step) is zero.", c->card_num);
   }
   if (!is_int && idx == 2)
   {
     if (c->i[2] > 1 && c->f[2] <= 0.0)
-      RESULT(PROBLEM, "FR F2: step count I2 > 1 requires a positive frequency step.");
+      RESULT(PROBLEM, "FR on line %d: F2 step count I2 > 1 requires a positive frequency step.", c->card_num);
     if (c->i[2] == 0 && c->f[2] != 0.0)
-      RESULT(WARNING, "FR F2: I2 is 0 (single frequency) but F2 is non-zero.");
+      RESULT(WARNING, "FR on line %d: F2 I2 is 0 (single frequency) but F2 is non-zero.", c->card_num);
   }
   return ok();
 }
@@ -121,12 +121,12 @@ static field_validation_t validate_TL_field(const card_t *c, int is_int, int idx
   if (is_int && idx >= 1 && idx <= 4)
   {
     if (c->i[idx] <= 0)
-      RESULT(PROBLEM, "TL I%d: tag/segment locators must be positive (got %d).", idx, c->i[idx]);
+      RESULT(PROBLEM, "TL on line %d: I%d tag/segment locators must be positive (got %d).", c->card_num, idx, c->i[idx]);
   }
   if (!is_int && idx == 1)
   {
     if (c->f[1] == 0.0)
-      RESULT(PROBLEM, "TL F1: characteristic impedance Z0 is required and must be non-zero.");
+      RESULT(PROBLEM, "TL on line %d: F1 characteristic impedance Z0 is required and must be non-zero.", c->card_num);
   }
   return ok();
 }
@@ -142,17 +142,17 @@ static field_validation_t validate_EX_field(const card_t *c, int is_int, int idx
   if (is_int && idx == 1)
   {
     if (c->i[1] == 6 || c->i[1] == 7)
-      RESULT(WARNING, "EX I1: excitation type %d is not supported by OpenNEC.", c->i[1]);
+      RESULT(WARNING, "EX on line %d: I1 excitation type %d is not supported by OpenNEC.", c->card_num, c->i[1]);
   }
   if (is_int && (idx == 2 || idx == 3))
   {
     if (c->i[idx] <= 0)
-      RESULT(PROBLEM, "EX I%d: tag/segment locator must be positive (got %d).", idx, c->i[idx]);
+      RESULT(PROBLEM, "EX on line %d: I%d tag/segment locator must be positive (got %d).", c->card_num, idx, c->i[idx]);
   }
   if (!is_int && idx == 1)
   {
     if (c->f[1] == 0.0)
-      RESULT(PROBLEM, "EX F1: excitation amplitude is required and must be non-zero.");
+      RESULT(PROBLEM, "EX on line %d: F1 excitation amplitude is required and must be non-zero.", c->card_num);
   }
   return ok();
 }
@@ -169,22 +169,22 @@ static field_validation_t validate_LD_field(const card_t *c, int is_int, int idx
   if (is_int && idx == 1)
   {
     if (c->i[1] < -1)
-      RESULT(WARNING, "LD I1: unexpected load type %d.", c->i[1]);
+      RESULT(WARNING, "LD on line %d: I1 unexpected load type %d.", c->card_num, c->i[1]);
   }
   if (is_int && (idx == 2 || idx == 3))
   {
     if (c->i[idx] <= 0)
-      RESULT(PROBLEM, "LD I%d: tag/segment locator must be positive (got %d).", idx, c->i[idx]);
+      RESULT(PROBLEM, "LD on line %d: I%d tag/segment locator must be positive (got %d).", c->card_num, idx, c->i[idx]);
   }
   if (is_int && idx == 4)
   {
     if (c->i[4] != 0 && c->i[4] < c->i[3])
-      RESULT(WARNING, "LD I4: end segment (%d) is less than start segment I3 (%d).", c->i[4], c->i[3]);
+      RESULT(WARNING, "LD on line %d: I4 end segment (%d) is less than start segment I3 (%d).", c->card_num, c->i[4], c->i[3]);
   }
   if (!is_int && (idx == 1 || idx == 2 || idx == 3))
   {
     if (c->f[1] == 0.0 && c->f[2] == 0.0 && c->f[3] == 0.0)
-      RESULT(WARNING, "LD F1-F3: all load values are zero; at least one should be non-zero.");
+      RESULT(WARNING, "LD on line %d: F1-F3 all load values are zero; at least one should be non-zero.", c->card_num);
   }
   return ok();
 }
@@ -202,32 +202,32 @@ static field_validation_t validate_RP_field(const card_t *c, int is_int, int idx
   if (is_int && idx == 2)
   {
     if (c->i[2] <= 0)
-      RESULT(PROBLEM, "RP I2: NTHETA must be positive (got %d).", c->i[2]);
+      RESULT(PROBLEM, "RP on line %d: I2 NTHETA must be positive (got %d).", c->card_num, c->i[2]);
   }
   if (is_int && idx == 3)
   {
     if (c->i[3] <= 0)
-      RESULT(PROBLEM, "RP I3: NPHI must be positive (got %d).", c->i[3]);
+      RESULT(PROBLEM, "RP on line %d: I3 NPHI must be positive (got %d).", c->card_num, c->i[3]);
   }
   if (!is_int && idx == 1)
   {
     if (c->f[1] < -180.0 || c->f[1] > 180.0)
-      RESULT(WARNING, "RP F1: theta start %.4g is outside [-180, 180].", c->f[1]);
+      RESULT(WARNING, "RP on line %d: F1 theta start %.4g is outside [-180, 180].", c->card_num, c->f[1]);
   }
   if (!is_int && idx == 2)
   {
     if (c->f[2] < -360.0 || c->f[2] > 360.0)
-      RESULT(WARNING, "RP F2: phi start %.4g is outside [-360, 360].", c->f[2]);
+      RESULT(WARNING, "RP on line %d: F2 phi start %.4g is outside [-360, 360].", c->card_num, c->f[2]);
   }
   if (!is_int && idx == 3)
   {
     if (c->i[2] > 1 && c->f[3] == 0.0)
-      RESULT(PROBLEM, "RP F3: NTHETA > 1 requires a non-zero theta step.");
+      RESULT(PROBLEM, "RP on line %d: F3 NTHETA > 1 requires a non-zero theta step.", c->card_num);
   }
   if (!is_int && idx == 4)
   {
     if (c->i[3] > 1 && c->f[4] == 0.0)
-      RESULT(PROBLEM, "RP F4: NPHI > 1 requires a non-zero phi step.");
+      RESULT(PROBLEM, "RP on line %d: F4 NPHI > 1 requires a non-zero phi step.", c->card_num);
   }
   return ok();
 }
@@ -240,7 +240,7 @@ static field_validation_t validate_GN_field(const card_t *c, int is_int, int idx
   if (is_int && idx == 1)
   {
     if (c->ints_used < 1)
-      RESULT(PROBLEM, "GN I1: ground type is required.");
+      RESULT(PROBLEM, "GN on line %d: I1 ground type is required.", c->card_num);
   }
   return ok();
 }
@@ -253,7 +253,7 @@ static field_validation_t validate_EK_field(const card_t *c, int is_int, int idx
   if (is_int && idx == 1)
   {
     if (c->i[1] != 0 && c->i[1] != 1)
-      RESULT(WARNING, "EK I1: value %d is unusual; expected 0 (disable) or 1 (enable).", c->i[1]);
+      RESULT(WARNING, "EK on line %d: I1 value %d is unusual; expected 0 (disable) or 1 (enable).", c->card_num, c->i[1]);
   }
   return ok();
 }
@@ -266,7 +266,7 @@ static field_validation_t validate_GD_field(const card_t *c, int is_int, int idx
   if (!is_int && (idx == 1 || idx == 2))
   {
     if (c->f[1] == 0.0 && c->f[2] == 0.0)
-      RESULT(WARNING, "GD F1/F2: both dielectric constant and conductivity are zero.");
+      RESULT(WARNING, "GD on line %d: F1/F2 both dielectric constant and conductivity are zero.", c->card_num);
   }
   return ok();
 }
@@ -280,16 +280,16 @@ static field_validation_t validate_NE_NH_field(const card_t *c, int is_int, int 
   if (is_int && idx >= 2 && idx <= 4)
   {
     if (c->i[idx] <= 0)
-      RESULT(PROBLEM, "%s I%d: grid point count must be positive (got %d).",
-             c->card_code, idx, c->i[idx]);
+      RESULT(PROBLEM, "%s on line %d: I%d grid point count must be positive (got %d).",
+             c->card_code, c->card_num, idx, c->i[idx]);
   }
   /* F4 corresponds to I2 count, F5 to I3, F6 to I4 */
   if (!is_int && idx >= 4 && idx <= 6)
   {
     int count_idx = idx - 2; /* F4->I2, F5->I3, F6->I4 */
     if (c->i[count_idx] > 1 && c->f[idx] == 0.0)
-      RESULT(PROBLEM, "%s F%d: grid spacing must be non-zero when count I%d > 1.",
-             c->card_code, idx, count_idx);
+      RESULT(PROBLEM, "%s on line %d: F%d grid spacing must be non-zero when count I%d > 1.",
+             c->card_code, c->card_num, idx, count_idx);
   }
   return ok();
 }
@@ -308,19 +308,19 @@ static field_validation_t validate_GA_field(const card_t *c, int is_int, int idx
   if (is_int && idx == 2)
   {
     if (c->i[2] <= 0)
-      RESULT(PROBLEM, "GA I2: segment count must be positive (got %d).", c->i[2]);
+      RESULT(PROBLEM, "GA on line %d: I2 segment count must be positive (got %d).", c->card_num, c->i[2]);
   }
   if (!is_int && idx == 1)
   {
     double r = c->f[1];
     if (r <= 0.0)
-      RESULT(PROBLEM, "GA F1: arc radius must be positive (got %.4g).", r);
+      RESULT(PROBLEM, "GA on line %d: F1 arc radius must be positive (got %.4g).", c->card_num, r);
   }
   if (!is_int && idx == 7)
   {
     double r = c->f[7];
     if (r <= 0.0)
-      RESULT(PROBLEM, "GA F7: wire radius must be positive (got %.4g).", r);
+      RESULT(PROBLEM, "GA on line %d: F7 wire radius must be positive (got %.4g).", c->card_num, r);
   }
   return ok();
 }
@@ -335,13 +335,13 @@ static field_validation_t validate_GC_field(const card_t *c, int is_int, int idx
   if (!is_int && idx == 1)
   {
     if (c->f[1] == 0.0)
-      RESULT(WARNING, "GC F1: taper ratio is zero; no taper will be applied.");
+      RESULT(WARNING, "GC on line %d: F1 taper ratio is zero; no taper will be applied.", c->card_num);
   }
   if (!is_int && (idx == 2 || idx == 3))
   {
     double r = c->f[idx];
     if (r <= 0.0)
-      RESULT(PROBLEM, "GC F%d: wire radius must be positive (got %.4g).", idx, r);
+      RESULT(PROBLEM, "GC on line %d: F%d wire radius must be positive (got %.4g).", c->card_num, idx, r);
   }
   return ok();
 }
@@ -355,7 +355,7 @@ static field_validation_t validate_GE_field(const card_t *c, int is_int, int idx
   {
     int v = c->i[1];
     if (v != -1 && v != 0 && v != 1 && v != 2)
-      RESULT(WARNING, "GE I1: value %d is not a recognised ground flag (-1, 0, 1, 2).", v);
+      RESULT(WARNING, "GE on line %d: I1 value %d is not a recognised ground flag (-1, 0, 1, 2).", c->card_num, v);
   }
   return ok();
 }
@@ -370,18 +370,18 @@ static field_validation_t validate_GH_field(const card_t *c, int is_int, int idx
   if (is_int && idx == 2)
   {
     if (c->i[2] <= 0)
-      RESULT(PROBLEM, "GH I2: segment count must be positive (got %d).", c->i[2]);
+      RESULT(PROBLEM, "GH on line %d: I2 segment count must be positive (got %d).", c->card_num, c->i[2]);
   }
   if (!is_int && idx == 1)
   {
     if (c->f[1] == 0.0)
-      RESULT(PROBLEM, "GH F1: total axial length/spacing must be non-zero.");
+      RESULT(PROBLEM, "GH on line %d: F1 total axial length/spacing must be non-zero.", c->card_num);
   }
   if (!is_int && idx == 7)
   {
     double r = c->f[7];
     if (r <= 0.0)
-      RESULT(PROBLEM, "GH F7: wire radius must be positive (got %.4g).", r);
+      RESULT(PROBLEM, "GH on line %d: F7 wire radius must be positive (got %.4g).", c->card_num, r);
   }
   return ok();
 }
@@ -408,7 +408,7 @@ static field_validation_t validate_GM_field(const card_t *c, int is_int, int idx
         break;
       }
     if (all_zero)
-      RESULT(WARNING, "GM: all fields are zero; this transformation is a no-op.");
+      RESULT(WARNING, "GM on line %d: all fields are zero; this transformation is a no-op.", c->card_num);
   }
   return ok();
 }
@@ -421,7 +421,7 @@ static field_validation_t validate_GR_field(const card_t *c, int is_int, int idx
   if (is_int && idx == 2)
   {
     if (c->i[2] <= 0)
-      RESULT(PROBLEM, "GR I2: number of copies must be positive (got %d).", c->i[2]);
+      RESULT(PROBLEM, "GR on line %d: I2 number of copies must be positive (got %d).", c->card_num, c->i[2]);
   }
   return ok();
 }
@@ -434,7 +434,7 @@ static field_validation_t validate_GS_field(const card_t *c, int is_int, int idx
   if (!is_int && idx == 1)
   {
     if (c->f[1] <= 0.0)
-      RESULT(PROBLEM, "GS F1: scale factor must be positive (got %.4g).", c->f[1]);
+      RESULT(PROBLEM, "GS on line %d: F1 scale factor must be positive (got %.4g).", c->card_num, c->f[1]);
   }
   return ok();
 }
@@ -449,19 +449,19 @@ static field_validation_t validate_GW_field(const card_t *c, int is_int, int idx
   if (is_int && idx == 2)
   {
     if (c->i[2] <= 0)
-      RESULT(PROBLEM, "GW I2: segment count must be positive (got %d).", c->i[2]);
+      RESULT(PROBLEM, "GW on line %d: I2 segment count must be positive (got %d).", c->card_num, c->i[2]);
   }
   /* Report zero-length wire on the second endpoint fields (F4, F5, F6). */
   if (!is_int && idx >= 4 && idx <= 6)
   {
     if (c->f[1] == c->f[4] && c->f[2] == c->f[5] && c->f[3] == c->f[6])
-      RESULT(PROBLEM, "GW F4-F6: both endpoints are identical (zero-length wire).");
+      RESULT(PROBLEM, "GW on line %d: F4-F6 both endpoints are identical (zero-length wire).", c->card_num);
   }
   if (!is_int && idx == 7)
   {
     double radius = c->f[7];
     if (radius <= 0.0)
-      RESULT(PROBLEM, "GW F7: wire radius must be positive (got %.4g).", radius);
+      RESULT(PROBLEM, "GW on line %d: F7 wire radius must be positive (got %.4g).", c->card_num, radius);
   }
   return ok();
 }
@@ -474,7 +474,7 @@ static field_validation_t validate_GX_field(const card_t *c, int is_int, int idx
   if (is_int && idx == 2)
   {
     if (c->i[2] == 0)
-      RESULT(WARNING, "GX I2: no reflection axes selected (value is 0); GX will have no effect.");
+      RESULT(WARNING, "GX on line %d: I2 no reflection axes selected (value is 0); GX will have no effect.", c->card_num);
   }
   return ok();
 }
@@ -487,7 +487,7 @@ static field_validation_t validate_SC_field(const card_t *c, int is_int, int idx
   if (!is_int && (idx >= 1 && idx <= 3))
   {
     if (c->f[1] == 0.0 && c->f[2] == 0.0 && c->f[3] == 0.0)
-      RESULT(PROBLEM, "SC F1-F3: all corner coordinates are zero; a non-zero position is required.");
+      RESULT(PROBLEM, "SC on line %d: F1-F3 all corner coordinates are zero; a non-zero position is required.", c->card_num);
   }
   return ok();
 }
@@ -501,7 +501,7 @@ static field_validation_t validate_SM_field(const card_t *c, int is_int, int idx
   if (is_int && (idx == 1 || idx == 2))
   {
     if (c->i[idx] <= 0)
-      RESULT(PROBLEM, "SM I%d: patch count must be positive (got %d).", idx, c->i[idx]);
+      RESULT(PROBLEM, "SM on line %d: I%d patch count must be positive (got %d).", c->card_num, idx, c->i[idx]);
   }
   return ok();
 }
@@ -514,7 +514,7 @@ static field_validation_t validate_SP_field(const card_t *c, int is_int, int idx
   if (!is_int && (idx >= 4 && idx <= 6))
   {
     if (c->f[4] == 0.0 && c->f[5] == 0.0 && c->f[6] == 0.0)
-      RESULT(PROBLEM, "SP F4-F6: all normal direction components are zero; a direction is required.");
+      RESULT(PROBLEM, "SP on line %d: F4-F6 all normal direction components are zero; a direction is required.", c->card_num);
   }
   return ok();
 }

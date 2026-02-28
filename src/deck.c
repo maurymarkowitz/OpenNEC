@@ -119,6 +119,7 @@ void recalculate_sections(deck_t *deck)
   // re-calculate the section limits
   for (int i = 0; i < deck->num_cards; i++)
   {
+    deck->cards[i].card_num = i + 1;
     card = &deck->cards[i];
 
     // commented-out (ignored) cards do not contribute to section boundaries

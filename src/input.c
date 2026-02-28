@@ -106,7 +106,8 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
     card_t *dest = &deck->cards[deck->num_cards - 1];
     *dest = (card_t){
       .edited = false,
-      .ignore = false
+      .ignore = false,
+      .card_num = line_num
     };
 
     dest->orig_str = calloc(line_len + 1, sizeof(char));
