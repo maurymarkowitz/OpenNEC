@@ -550,10 +550,11 @@ typedef struct
 	int nload;	/* Number of loading networks */
 	
 	int
-		*ldtyp,	/* Type of loading (0=series RLC, 1=parallel RLC, etc.) */
-		*ldtag,	/* Tag number for loading */
+		*ldtyp,	    /* Type of loading (0=series RLC, 1=parallel RLC, etc.) */
+		*ldtag,	    /* Tag number for loading */
 		*ldtagf,	/* Segment start for loading */
-		*ldtagt;	/* Segment end for loading */
+		*ldtagt,	/* Segment end for loading */
+		*ldcard_num;	/* Deck line number of the originating LD card */
 	
 	double
 		*zlr,	/* Loading resistance or impedance (real) */

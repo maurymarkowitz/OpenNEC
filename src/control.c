@@ -401,6 +401,7 @@ static void reset_loading_buffers(nec_context_t *ctx)
         mem_free(ctx, (void **)&ctx->zload.ldtag);
         mem_free(ctx, (void **)&ctx->zload.ldtagf);
         mem_free(ctx, (void **)&ctx->zload.ldtagt);
+        mem_free(ctx, (void **)&ctx->zload.ldcard_num);
         mem_free(ctx, (void **)&ctx->zload.zlr);
         mem_free(ctx, (void **)&ctx->zload.zli);
         mem_free(ctx, (void **)&ctx->zload.zlc);
@@ -627,6 +628,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             mem_realloc(ctx, (void **)&ctx->zload.ldtag, mreq);
             mem_realloc(ctx, (void **)&ctx->zload.ldtagf, mreq);
             mem_realloc(ctx, (void **)&ctx->zload.ldtagt, mreq);
+            mem_realloc(ctx, (void **)&ctx->zload.ldcard_num, mreq);
             
             mreq = (size_t)ctx->zload.nload * sizeof(double);
             mem_realloc(ctx, (void **)&ctx->zload.zlr, mreq);
@@ -636,6 +638,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             int idx = ctx->zload.nload - 1;
             ctx->zload.ldtyp[idx] = i1;
             ctx->zload.ldtag[idx] = i2;
+            ctx->zload.ldcard_num[idx] = card_idx + 1;
             ctx->zload.ldtagf[idx] = (i4 == 0) ? i3 : i3;
             ctx->zload.ldtagt[idx] = (i4 == 0) ? i3 : i4;
             

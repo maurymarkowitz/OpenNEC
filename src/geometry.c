@@ -510,9 +510,35 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
                                          gf_resolved, sizeof(gf_resolved));
           ngf_filename = gf_resolved;
         }
+        /* Determine whether to show full path or just the basename.
+         * Only show the full path when the NGF file resides in a different
+         * directory than the input deck; otherwise show the basename to
+         * avoid repeating the deck's directory. */
+        char ngf_display[MAX_PATH_LEN + 1];
+        if (ctx->source_filename && ctx->source_filename[0]) {
+          const char *deck_slash = strrchr(ctx->source_filename, '/');
+          const char *ngf_slash  = strrchr(ngf_filename, '/');
+          size_t deck_dir_len = deck_slash ? (size_t)(deck_slash - ctx->source_filename) : 0;
+          size_t ngf_dir_len  = ngf_slash ? (size_t)(ngf_slash - ngf_filename) : 0;
+          if (deck_dir_len == ngf_dir_len &&
+              (deck_dir_len == 0 || strncmp(ctx->source_filename, ngf_filename, deck_dir_len) == 0)) {
+            /* Same directory: show basename only */
+            const char *base = ngf_slash ? ngf_slash + 1 : ngf_filename;
+            strncpy(ngf_display, base, sizeof(ngf_display) - 1);
+            ngf_display[sizeof(ngf_display) - 1] = '\0';
+          } else {
+            /* Different directory: show full resolved path */
+            strncpy(ngf_display, ngf_filename, sizeof(ngf_display) - 1);
+            ngf_display[sizeof(ngf_display) - 1] = '\0';
+          }
+        } else {
+          strncpy(ngf_display, ngf_filename, sizeof(ngf_display) - 1);
+          ngf_display[sizeof(ngf_display) - 1] = '\0';
+        }
+
         FILE *gfp = fopen(ngf_filename, "rb");
         if (!gfp) {
-          snprintf(msg, sizeof(msg), "GF card on line %d cannot open the NGF file '%s'.", i + 1, ngf_filename);
+          snprintf(msg, sizeof(msg), "GF card on line %d cannot open the NGF file '%s'.", i + 1, ngf_display);
           add_error(ctx, errors, msg, FATAL);
           return;
         }
@@ -523,8 +549,8 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           return;
         }
         snprintf(msg, sizeof(msg),
-                 "GF card on line %d: loaded %d segments from '%s'.",
-                 i + 1, ctx->ngf_n_segs, ngf_filename);
+           "GF card on line %d: loaded %d segments from '%s'.",
+           i + 1, ctx->ngf_n_segs, ngf_display);
         add_message(ctx, outputs, msg);
         continue;
       }
@@ -832,8 +858,11 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
         int chain_hops = 0;
         do {
           if(++chain_hops > ctx->geometry.n) {
+            int other_seg = (ix < 0) ? -ix : ix;
             snprintf(msg, sizeof(msg),
-              "Segment connection cycle detected at segment %d — geometry is degenerate", j + 1);
+              "Segment connection cycle: segment %d (card %d) chains into segment %d (card %d) — geometry is degenerate",
+              j + 1, ctx->geometry.card_nums[j],
+              other_seg, ctx->geometry.card_nums[other_seg - 1]);
             add_error(ctx, &ctx->geometry.errors, msg, FATAL);
             return -1;
           }

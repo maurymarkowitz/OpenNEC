@@ -63,20 +63,20 @@ static void print_version(void)
  */
 void print_usage(char *argv[])
 {
-  printf("Usage: %s [-hvntgr] [-i input_file] [-o output_file] [-e error_file] [source_file...]\n", argv[0]);
+  printf("Usage: %s [-hvntgr] [-i input_file] [-o output_file] [-e error_file] <input_file...>\n", argv[0]);
   puts("Options:");
   puts("  -h, --help: print this description");
   puts("  -v, --version: print version info");
   puts("  -n, --no-run: don't run the simulation after parsing");
   puts("  -t, --test-deck: run various sanity tests");
-  puts("  -i file, --input-file=file: input file. this is not required if source_file is provided. if neither is provided, input is read from stdin");
-  puts("  -o file, --output-file=file: write output to file; omitted -o writes to stdout (single file) or <file>.out (multiple files)");
+  puts("  -i file, --input-file=file: read input file. this is not required if input_file is provided. if neither is provided, input is read from stdin");
+  puts("  -o file, --output-file=file: write output to file. omitted -o writes to stdout (single file) or <file>.out (multiple files)");
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -g, --greens[=file]: write a Green's function file; filename defaults to input path with .ngf extension");
-  puts("  -j, --jobs N: process up to N files in parallel (default 1)");
   puts("  -r, --recursive: recurse into subdirectories");
+  puts("  -j, --jobs N: process up to N files in parallel (default 1)");
   puts("Multiple input files or folders can be specified; each file will generate a .out file.");
-  puts("If no source_file is provided, input is read from stdin and output goes to stdout.");
+  puts("If no input_file is provided, input is read from stdin and output goes to stdout.");
   exit(0);
 }
 

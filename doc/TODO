@@ -1,12 +1,12 @@
 Items still to be implemented:
 
-* can we track which card created various geometry, so we can have more accurate warnings?
+* unify the error messages and always print a card number if possible
 
-* you should not need -r to process directories, only to recurse into them
+* can we track which card created various geometry, so we can have more accurate warnings?
 
 * add support for the nec-2 style calling convention, using a tmp file with the input and output file names on separate lines
 
-* add in the cebik collection and get the EZnec examples working
+* get the cebik EZnec examples working
 
 * does anything in card.c really need ctx?
 
@@ -22,7 +22,7 @@ Items still to be implemented:
 
 * 4nec2's NEC4 example, Catenary.nec, has "CW", "IS", "VC" and "UM"
 
-* cebik's NEC4 files have "UM", "IS" and "PS" cards
+* cebik's NEC4 files have "VC", "CW", "UM", "IS", "LE", "LH" and "PS" cards
 
 * nec2++ examples/medium_test.nec has an "MP" card type
 

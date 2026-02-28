@@ -8,6 +8,7 @@
  *
  *******************************************************************/
 
+#include <assert.h>
 #include "internals.h"
 #include "calculations.h"
 #include "geometry.h"
@@ -300,15 +301,9 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
       
     } /* if( istep > ctx->zload.nload) */
     
-    if( ldtyp[istepx] > 5 )
-    {
-      char err_msg[256];
-      snprintf(err_msg, sizeof(err_msg), 
-              "INTERNAL ERROR: IMPROPER LOAD TYPE %d processed in load().", ldtyp[istepx]);
-
-      add_error(ctx, &ctx->errors, err_msg, FATAL);
-      return -1;
-    }
+    /* ldtyp is validated (0–5) by control.c before storage; this should
+     * never fire. If it does, it is a programming error, not a user error. */
+    assert(ldtyp[istepx] <= 5 && "INTERNAL: IMPROPER LOAD TYPE stored in zload.ldtyp");
     
     /* search segments for proper itags */
     ldtags= ldtag[istepx];
@@ -398,7 +393,8 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
     {
       char err_msg[256];
       snprintf(err_msg, sizeof(err_msg),
-              "LOADING DATA CARD ERROR, NO SEGMENT HAS AN ITAG = %d", ldtags);
+              "The LD card on line %d references tag %d, but no segment has that tag.",
+              ctx->zload.ldcard_num[istepx], ldtags);
       add_error(ctx, &ctx->errors, err_msg, FATAL);
       return -1;
     }
@@ -907,9 +903,12 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
     if( jcox != 0 )
     {
       if(++sbf_hops > ctx->geometry.n) {
+        int other_seg = (jcox < 0) ? -jcox : jcox;
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg),
-            "Segment connection cycle detected at segment %d — geometry is degenerate", i);
+            "Segment connection cycle: segment %d (card %d) chains into segment %d (card %d) — geometry is degenerate",
+            i, ctx->geometry.card_nums[i-1],
+            other_seg, ctx->geometry.card_nums[other_seg - 1]);
         add_error(ctx, &ctx->errors, err_msg, FATAL);
         return -1;
       }
