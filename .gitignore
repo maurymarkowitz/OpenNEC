@@ -43,3 +43,9 @@ tmp/*
 # project metadata
 *.plist
 src/types.h
+
+# cebik files
+*.WGF
+*-VP
+*-AVE
+*-VG
