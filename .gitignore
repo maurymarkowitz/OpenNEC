@@ -52,3 +52,6 @@ src/types.h
 *-ave
 *-vg
 *-vp
+
+# Local cebik test files
+test/cebik collection/
