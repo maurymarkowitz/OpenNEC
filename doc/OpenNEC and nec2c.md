@@ -1,4 +1,4 @@
-Differences between OpenNEC, NEC-2 and nec2c
+OpenNEC, NEC-2 and nec2c
 ============================================
 
 OpenNEC is a re-implementation of the nec2c code, which is a reimplementation of the original Fortran NEC-2 code. The differences between onec and nec2c are much greater than those between nec2c and NEC-2.
@@ -32,19 +32,20 @@ Other basic changes
 - OpenNEC includes extensive input validations that test for errors in the deck setup, like a missing `GE` card, `FR`s lacking a frequency, or a `GN` that is not followed by `GD`. These tests can be run against any NEC-2 compatible deck. These are emitted as warnings and do not prevent calculation in cases where other engines are permissive, but they help make decks more portable across implementations.
 
 - The tests also include a geometry and calculation sanity check system that looks for common errors like overlapping wires or wires touching ground. This is currently limited in scope, but will be expanded over time.
+    - Note: Many validations are emitted as warnings (non-fatal) to preserve compatibility with existing decks while highlighting potential issues.
 
 - OpenNEC also includes per-field validations that can be used by a GUI program to graphically indicate problems. For instance, if the user makes a new FR card, the validation functions will indicate that the base frequency value in the F1 field needs to be entered. If they enter a value in I2, which indicates steps, it will indicate that a step value has to be entered in F2. There is an extensive suite of these validations that can be tied to fields in the GUI and updated in real-time.
 
-    - Note: Many validations are emitted as warnings (non-fatal) to preserve compatibility with existing decks while highlighting potential issues.
+- OpenNEC has extensively updated error reporting that, wherever possible, reports the card and tag that caused the issue. This makes debugging stacks much easier.
 
-- OpenNEC has a simple timing function that can be used to estimate the time it will take to run a calculation. this can be used in a GUI program to decide whether it can run these in real-time as the user edits the layout.
+- OpenNEC fixes the notorious bug that caused loops in the geometry to cause the program to go into an infinite loop. The program exits gracefully in this case, with a clear error message.
+
+- OpenNEC has a simple timing function inspired by the original NEC-2 user manual that can be used to estimate the time it will take to run a calculation. This can be used in a GUI program to decide whether it can run these in real-time as the user edits the layout.
 
 Additions from other systems
 ----------------------------
 
 A number of features commonly found in other popular NEC-based programs have been added:
-
-* OpenNEC notices cards using the 4nec2 convention with tag numbers from 9800 to 9899 and sets `invisible=true` on those cards. 
 
 * OpenNEC supports the `SY` card type from 4nec2. This is used to define variables, or SYmbols, which can be used in place of numbers in the rest of the deck. These are useful for defining the radius of wires and similar tasks, as well as making the deck more self-documented. A common example is to use something like `SY rad=0.01` to define a 1 cm radius, and then use the variable `rad` instead of typing `0.01` everywhere. The advantage is that you can experiment with changing the radius by editing a single card.
 
@@ -62,25 +63,16 @@ OpenNEC additions
 OpenNEC also includes a number of additions to the basic NEC-2 system:
 
 - OpenNEC adds a generic extension mechanism using key/value pairs that can be used by 3rd party software to add functionality without changing the underlying deck format. For instance, one could add "material:copper" to a card, and a GUI application using OpenNEC could then apply a copper color in a 3D model. These extensions are stored within an inline comment, so they have no effect on the NEC-2 code. A utility method allows these to be stripped out to produce a new deck that is compatible with generic NEC implementations.
-
     - Extension keys should always be compared in a case-insensitive manner. Keys should always be *written* in lower-case no matter how they were entered.
 
 - Four extensions are known to the basic OpenNEC system: `name`, `group`, `ignored` and `invisible`.
     - `name` and `group` are free-form strings intended to allow GUI-based applications to provide richer information and/or group related sections of the deck together.
     - `ignore` is used to calculate the object's geometry but ignore it during calculations. This can be used, for instance, to add a boom that is displayed in the GUI to more closely represent a real antenna, but has no effect on the calculations.
     - `invisible` is used to suppress the element in GUI displays of the geometry, while still being used in calculations. This is useful when there are elements placed a long distance from the main antenna, which might otherwise cause the GUI to zoom out too far when rendering.
+        - OpenNEC notices cards using the 4nec2 convention with tag numbers from 9800 to 9899 and sets `invisible=true` on those cards.
 
-- Additionally, 3rd party software using OpenNEC should be aware of these non-required GUI-related extensions: `material` and `shape`. `material` is a free-form field but a number of common materials are defined. `shape` is used to control the cross section in the display, for instance `shape=square` might be used when defining a boom on a Yagi antenna.
+- 3rd party software using OpenNEC should be aware of these non-required GUI-related extensions: `material` and `shape`.
+    - `material` is a free-form field but a number of common materials are defined.
+    - `shape` is used to control the cross section in the display, for instance `shape=square` might be used when defining a boom on a Yagi antenna.
 
 - The key/value entries can be entered in a variety of formats, see the "OpenNEC file format" document for details.
-
-Defined constants
------------------
-
-OpenNEC defines a number of constants used in the extensions that 3rd party software should be aware of.
-
-- `invisible` is an example of a boolean value which is indicated using `true` and `false`. During reading, the values `yes` and `no` or `1` and `0` may also be used, but these will be converted to `true` and `false` on write. As always, these are all case insensitive.
-
-- the `material` may be any value, but the following values should be expected; `silver`, `copper`, `aluminum`, `6061-T6`, `6063-T832`, `brass`, `phosphor bronze` and `steel`. This list was based on the materials from Yagi Optimizer.
-
-- `shape` may also be any value, but `circle` and `square` should be expected.

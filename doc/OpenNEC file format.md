@@ -21,36 +21,28 @@ For example, almost all deck formats allow comments to be placed at the end of a
 
 On top of all this, new card types like `SY` have been added by 3rd party software which add useful functionality but make the decks incompatible with other software.
 
-Impetus
--------
-
-OpenNEC is an attempt to solve (some of) these problems. It does so by defining a single canonical format for the files. It also includes an extension mechanism that allows the addition of arbitrary data to any card, in a way that will be safely ignored by (most) modern NEC implementations. onec also supports the SY card type, as this feature is both common and very useful in practice.
-
-The inclusion of these new features means the onec format is not fully compatible with the original NEC format. However, onec defines a simple mechanism to convert any onec deck into a fully compatible form with no loss of information. This makes onec files easy to use in the traditional role where the NEC code is in an external library or executable that communicates only through files.
-
 Design decisions
 ----------------
 
-The design of the onec format started as part of an effort to canvas the internet looking for the most popular NEC editing tools. This revealed that there were a number of common extensions to the NEC format. Some of these were identical across various applications, so a single format would be able to support many of them. The key would be to include these in a new format in such a way that older software would still be able to open and use the decks, and potentially edit them.
+Individual fields on the cards are read using a flexible field separation parser that recognizes things like tabs, single or multiple spaces, and even decks where spaces are used to produce lined up columns. This means that if you read a deck and immediately write it, you should get a new file that is significantly similar to the original.
 
-The simplest solution would be to use the NEC comment card, `CM`, as a prefix on all extensions. Any data on a `CM` card is simply ignored by the NEC processor. This has been used by some programs to include additional parameters which only they notice. One could extend this mechanism to add new features; for instance, have a comment that states the 3rd measurement on a particular card is in millimetres, not the deck's default of inches set on an `GS` card later in the deck.
+Like 4nec2, the values in the fields are treated as strings until calculations start. This is used to retain formulas in their original format, both so they can be written back in the same layout, as well as to ensure any other changed in the deck are always reflected in the values. For instance, changing the value on an SY card earlier in the deck will always update the formulas that use it, without the need for complex change tracking.
 
-The basic idea is sound, but the original NEC-2 allows comment cards to be placed only at the start of a file. Using this mechanism would separate the extensions from the cards they applied to, which would make it more difficult to implement and harder to read. NEC-4 allows `CM` cards to be placed anywhere, but 3rd party implementations written before the release of NEC-4 generally don't support this. NEC-4 also introduced the `!` character to allow comments to be added to the end of any line, but other implementations had already selected other characters for this, and very few of them, if any, support the `!` marker. Among the popular alternatives are nec2c and 4nec2, which use the `#` and `'` symbols in the same way NEC-4 uses `!`.
+The nec2c code allowed the use of `#` as in-line comment markers. This conflicts with the much more widespread use of `#` to indicate AWG wire sizes. As the `#` was used as a comment in some nec2c decks, OpenNEC allows this character, but only at the front of the line. Comments further into the deck will need to use some other marker, with `!` being the most widely used in modern software.
 
 None of these inline comment systems are compatible with software supporting the original NEC format, which would see them either as extraneous data, or bad data in the last field on the card. Such a deck can be converted to NEC compatible format by simply deleting any characters on a given line from the position of the comment character on. Hiding data behind an end-of-line comment means things like measurements can be defined on the same card, but stripping them off would require the system to convert the numeric values in the NEC fields.
 
-Another decision was whether or not to directly support the `SY` card type. This card was introduced in the 4nec2 program, allowing the user to define a SYmbol, a variable. The name of the symbol can then be used in places where numbers would normally appear, the height of the antenna over the ground for instance. It would be possible to include the `SY` cards using the commented-out format, starting the line with `!SY` for example, but this alone would not make the resulting deck compatible with NEC because the *references* to the symbols in the card fields would still cause errors. One could place those references in a trailing comment, but they would still have to be calculated and copied into the appropriate field before sending it to NEC. For that reason, the decision was made to also treat `SY` as a formally supported card type in onec. 
-
-NEC was designed to measure everything in meters, but this is not convenient for many antenna designs, like those in a cell phone that might be only a few millimeters long. Most GUI-based NEC programs allow values to be input using other units, and then convert them on entry to meters. Some add the ability to choose a default measurement type, and convert that to meters using NEC's scaling factor card (`GS`). All of these have the disadvantage that the original measurement type is lost on input. For instance, if the user selects `#14` for the wire radius in a GUI program, this would be converted to 0.000814 meters in the NEC deck. While this is technically sufficient, it loses the original intent of the user and reduces the readability of the deck. The inclusion of measurement markers, like `mm`, is another 4nec2 feature that seems too useful to ignore.
-
 NOTE: The short-form symbols for feet, ', and AWG, #, are used for comment markers in common NEC software like nec2c. For this reason, onec stores these as `ft`, `in` and `awg` in the file. User-facing software should convert this *only in the display*, if desired by the user, and should *never save these symbols to the file*. 4nec2 files do allow `#` as the AWG marker in files, so onec treats `#` as the comment marker only at the start of the line.
 
-Finally, onec was being built with the assumption it would not normally be used as a stand-alone program, but as part of a GUI application. These often add additional data to aid with the graphical display of the antenna design. onec includes a new feature that allows key/value pairs to be inserted on any line as a trailing comment. These will be parsed out separately and presented to the client software without being visible to the underlying NEC implementation. Examples include `!material=copper` which an application might use to appropriately color a particular element on the display.
+OpenNEC extensions
+------------------
+
+OpenNEC was being built with the assumption it would not normally be used as a stand-alone program, but as part of a GUI application. These often add additional data to aid with the graphical display of the antenna design.
+
+To support this use, onec includes a new feature that allows key/value pairs to be inserted on any line as a trailing comment. These will be parsed out separately and presented to the client software without being visible to the underlying NEC implementation. Examples include `material:copper` which an application might use to appropriately color a particular element on the display.
 
 As this mechanism uses the inline comment system, and users will likely mix comments and key/value pairs on a single card, the system allows multiple entries to be separated by commas or semicolons. Inline comments are first separated by these delimiters, and then each result is examined for an `=` or `:`. Those entires containing such a value are assumed to be key/values, everything else is concatenated into a single comment.
 
-Defined extensions
-------------------
 The onec extension system is intended to be largely free-form, edited by the user or applications calling the onec library. There are a small number of defined extensions all 3rd party software should support:
 
 - `name` allows a single element to be given a name. This is typically used in the geometry section and might have values like `reflector` or `boom`.

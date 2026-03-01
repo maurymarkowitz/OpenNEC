@@ -1188,14 +1188,33 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     snprintf(msg, sizeof(msg), "A deck should contain an EN card.");
     add_error(ctx, errors, msg, 0);
   }
-  // EN should be the last card when present
-  // NOTE: this is not true, you can put anything you want after it
-  // TODO: but maybe check that there are no geometry or control cards after EN
-  // if (sawEN && sawEN != deck->num_cards - 1)
-  // {
-  //   snprintf(msg, sizeof(msg), "EN on line %d: should be the final card in the deck (found earlier at card %d).", sawEN + 1, sawEN + 1);
-  //   add_error(ctx, errors, msg, 0);
-  // }
+  // EN should be the last *active* card in the deck. Any subsequent
+  // non-comment, non-ignored cards (i.e., real geometry/control/extension
+  // cards that are not explicitly commented out) are likely user errors.
+  // Free-form text after EN is allowed, and commented-out cards (leading
+  // '!', '#', or '\'') are permitted. Iterate any cards after deck->deck_end
+  // and report an error if a valid, non-commented card is found.
+  if (deck->deck_end >= 0)
+  {
+    for (int ci = deck->deck_end + 1; ci < deck->num_cards; ci++)
+    {
+      const card_t *c = &deck->cards[ci];
+      // skip cards that are explicitly ignored (commented-out or invisible)
+      if (c->ignore)
+        continue;
+      // skip explicit comment cards
+      if (is_comment(c))
+        continue;
+      // if this looks like a geometry, control, or onec-extension card,
+      // report it as an error: valid active cards should not appear after EN
+      if (is_geometry(c) || is_control(c) || is_extension(c))
+      {
+        snprintf(msg, sizeof(msg), "Card on line %d: '%s' appears after EN; non-comment cards after EN are not allowed.", ci + 1, c->card_code);
+        add_error(ctx, errors, msg, 1);
+      }
+      // otherwise treat as freeform text (allowed)
+    }
+  }
   if (!sawFR && !sawRP)
   {
     snprintf(msg, sizeof(msg), "A deck has to have an FR card.");
