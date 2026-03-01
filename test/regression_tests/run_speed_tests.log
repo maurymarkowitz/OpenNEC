@@ -1,0 +1,153 @@
+Backends: accelerate original openblas
+Reference: accelerate
+Decks:
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/example5.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_gf_load.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_nx_radial.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_wg_write.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/simple.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_circular.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_invalid.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_mixed_geometry.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_nx.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_xt.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_1001.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_101.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_21.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_4001.deck
+  - /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_401.deck
+==> Building backend: accelerate
++ make -C /Volumes/Bigger/Users/maury/Desktop/OpenNEC clean
++ make -C /Volumes/Bigger/Users/maury/Desktop/OpenNEC BACKEND=accelerate
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/example5.deck (backend=accelerate) -> example5.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_gf_load.deck (backend=accelerate) -> ngf_gf_load.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_nx_radial.deck (backend=accelerate) -> ngf_nx_radial.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_wg_write.deck (backend=accelerate) -> ngf_wg_write.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/simple.deck (backend=accelerate) -> simple.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck (backend=accelerate) -> test_bad_formula.deck.accelerate.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck (backend=accelerate)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_circular.deck (backend=accelerate) -> test_circular.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (backend=accelerate) -> test_ignore.deck.accelerate.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (backend=accelerate)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck (backend=accelerate) -> test_ignored_ref.deck.accelerate.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck (backend=accelerate)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck (backend=accelerate) -> test_ignored_tl.deck.accelerate.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck (backend=accelerate)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck (backend=accelerate) -> test_ignored.deck.accelerate.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck (backend=accelerate)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_invalid.deck (backend=accelerate) -> test_invalid.deck.accelerate.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_invalid.deck (backend=accelerate)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_mixed_geometry.deck (backend=accelerate) -> test_mixed_geometry.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_nx.deck (backend=accelerate) -> test_nx.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_xt.deck (backend=accelerate) -> test_xt.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_1001.deck (backend=accelerate) -> speed_1001.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_101.deck (backend=accelerate) -> speed_101.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_21.deck (backend=accelerate) -> speed_21.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_4001.deck (backend=accelerate) -> speed_4001.deck.accelerate.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_401.deck (backend=accelerate) -> speed_401.deck.accelerate.out
+==> Building backend: original
++ make -C /Volumes/Bigger/Users/maury/Desktop/OpenNEC clean
++ make -C /Volumes/Bigger/Users/maury/Desktop/OpenNEC BACKEND=original
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/example5.deck (backend=original) -> example5.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_gf_load.deck (backend=original) -> ngf_gf_load.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_nx_radial.deck (backend=original) -> ngf_nx_radial.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_wg_write.deck (backend=original) -> ngf_wg_write.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/simple.deck (backend=original) -> simple.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck (backend=original) -> test_bad_formula.deck.original.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck (backend=original)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_circular.deck (backend=original) -> test_circular.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (backend=original) -> test_ignore.deck.original.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (backend=original)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck (backend=original) -> test_ignored_ref.deck.original.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck (backend=original)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck (backend=original) -> test_ignored_tl.deck.original.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck (backend=original)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck (backend=original) -> test_ignored.deck.original.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck (backend=original)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_invalid.deck (backend=original) -> test_invalid.deck.original.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_invalid.deck (backend=original)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_mixed_geometry.deck (backend=original) -> test_mixed_geometry.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_nx.deck (backend=original) -> test_nx.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_xt.deck (backend=original) -> test_xt.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_1001.deck (backend=original) -> speed_1001.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_101.deck (backend=original) -> speed_101.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_21.deck (backend=original) -> speed_21.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_4001.deck (backend=original) -> speed_4001.deck.original.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_401.deck (backend=original) -> speed_401.deck.original.out
+==> Building backend: openblas
++ make -C /Volumes/Bigger/Users/maury/Desktop/OpenNEC clean
++ make -C /Volumes/Bigger/Users/maury/Desktop/OpenNEC BACKEND=openblas
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/example5.deck (backend=openblas) -> example5.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_gf_load.deck (backend=openblas) -> ngf_gf_load.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_nx_radial.deck (backend=openblas) -> ngf_nx_radial.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_wg_write.deck (backend=openblas) -> ngf_wg_write.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/simple.deck (backend=openblas) -> simple.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck (backend=openblas) -> test_bad_formula.deck.openblas.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck (backend=openblas)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_circular.deck (backend=openblas) -> test_circular.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (backend=openblas) -> test_ignore.deck.openblas.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (backend=openblas)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck (backend=openblas) -> test_ignored_ref.deck.openblas.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck (backend=openblas)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck (backend=openblas) -> test_ignored_tl.deck.openblas.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck (backend=openblas)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck (backend=openblas) -> test_ignored.deck.openblas.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck (backend=openblas)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_invalid.deck (backend=openblas) -> test_invalid.deck.openblas.out
+    Execution failed for /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_invalid.deck (backend=openblas)
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_mixed_geometry.deck (backend=openblas) -> test_mixed_geometry.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_nx.deck (backend=openblas) -> test_nx.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_xt.deck (backend=openblas) -> test_xt.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_1001.deck (backend=openblas) -> speed_1001.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_101.deck (backend=openblas) -> speed_101.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_21.deck (backend=openblas) -> speed_21.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_4001.deck (backend=openblas) -> speed_4001.deck.openblas.out
+    Running /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_401.deck (backend=openblas) -> speed_401.deck.openblas.out
+Summary:
+
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/example5.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_gf_load.deck (accelerate vs original)
+DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_nx_radial.deck (accelerate vs original) -> ngf_nx_radial.deck.accelerate_vs_original.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_wg_write.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/simple.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_circular.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_invalid.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_mixed_geometry.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_nx.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_xt.deck (accelerate vs original)
+DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_1001.deck (accelerate vs original) -> speed_1001.deck.accelerate_vs_original.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_101.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_21.deck (accelerate vs original)
+DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_4001.deck (accelerate vs original) -> speed_4001.deck.accelerate_vs_original.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_401.deck (accelerate vs original)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/example5.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_gf_load.deck (accelerate vs openblas)
+DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_nx_radial.deck (accelerate vs openblas) -> ngf_nx_radial.deck.accelerate_vs_openblas.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_wg_write.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/simple.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_circular.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_invalid.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_mixed_geometry.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_nx.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_xt.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_1001.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_101.deck (accelerate vs openblas)
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_21.deck (accelerate vs openblas)
+DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_4001.deck (accelerate vs openblas) -> speed_4001.deck.accelerate_vs_openblas.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/speed_tests/speed_401.deck (accelerate vs openblas)
+\nArtifacts in: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/regression_tests

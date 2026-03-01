@@ -144,6 +144,7 @@ void couple(nec_context_t *ctx, complex double *cur, double wlam )
   complex double y11, y12, y22, yl, yin, zl, zin, rho;
   size_t mreq;
   
+  
   if( (ctx->vsorc.nsant != 1) || (ctx->vsorc.nvqd != 0) )
     return;
   

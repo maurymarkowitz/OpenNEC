@@ -6,7 +6,7 @@ OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_wg_write.deck (accelera
 OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/simple.deck (accelerate vs original)
 OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck (accelerate vs original)
 OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_circular.deck (accelerate vs original)
-DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (accelerate vs original) -> test_ignore.deck.accelerate_vs_original.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (accelerate vs original)
 OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck (accelerate vs original)
 OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck (accelerate vs original)
 OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck (accelerate vs original)
@@ -26,7 +26,7 @@ OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/ngf_wg_write.deck (accelera
 OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/simple.deck (accelerate vs openblas)
 OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_bad_formula.deck (accelerate vs openblas)
 OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_circular.deck (accelerate vs openblas)
-DIFF: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (accelerate vs openblas) -> test_ignore.deck.accelerate_vs_openblas.diff
+OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignore.deck (accelerate vs openblas)
 OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_ref.deck (accelerate vs openblas)
 OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored_tl.deck (accelerate vs openblas)
 OK: /Volumes/Bigger/Users/maury/Desktop/OpenNEC/test/test_ignored.deck (accelerate vs openblas)
