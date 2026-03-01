@@ -292,7 +292,7 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
           snprintf(key, sizeof(key), "I%d", j);
           const char *formula = lookup_formula(card, key);
 
-          if (formula != NULL)
+          if (formula != NULL && is_inline_formula(card, key))
           {
             fprintf(file, "%s%s", fsep, formula);
           }
@@ -314,7 +314,7 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
           snprintf(key, sizeof(key), "F%d", j);
           const char *formula = lookup_formula(card, key);
 
-          if (formula != NULL)
+          if (formula != NULL && is_inline_formula(card, key))
           {
             fprintf(file, "%s%s", fsep, formula);
           }

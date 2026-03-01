@@ -72,6 +72,8 @@ Out-of-band formulas
 
 For systems where NEC-2 compatibility is important, onec also allows formulas to be written "out-of-band" in the comments section. For instance, if a GW card wants to specify the radius of the wire in AWG, it can put the numeric value in the proper field, and then add an extension like "F7=#12". During parsing the formula in the extension will be copied into the field. If this concept is used, the parser notes this, and during writing the numeric value is put back into the field and the formula added in the extensions again. This makes the deck usable on any parser that understands trailing comments.
 
+**NOTE:** *Generally* speaking, the `=` key:value separator should be used primarily for formulas, and `:` otherwise. This makes it easier to pick out the formuals visually.
+
 Converting from onec to NEC
 ---------------------------
 
@@ -80,13 +82,8 @@ An major design goal for the onec format is to have a simple way to convert the 
 ### parse and replace SY assignments
 SY's are a simple "replacement" system in which any entry of an SY name in a data card is replaced with the string defined on the SY card. This is a two-step process:
 
-1) scan the deck and extract all SY assignments, and remove those cards from the deck
-2) find any use of those SY variable names, and replace them with the calculated value from (1)
-
-### parse and replace measurement units
-onec adds the ability to define units on a field-by-field basis, so you can have elements that are 10ft long and 1cm in radius. These need to be converted to a common unit, and the unit markers removed:
-
-1) scan the geometry cards for any unit indicators, like `cm` or `in`, replace those values with ones converted to meters
+1) scan the deck and extract all SY assignments, calculate them, and remove those cards from the deck
+2) find any use of inline formulas, calculate it, and write that value in the field
 
 ### remove inline comments and unused cards
 NEC does not allow empty cards in the deck, but other formats allow this or some variation on the theme. These should all be removed during the conversion to NEC-compatible format. There are several cases:
@@ -95,7 +92,7 @@ NEC does not allow empty cards in the deck, but other formats allow this or some
 2) remove any card that is empty, consisting solely of a CR, LF or CR/LF
 3) remove any card that starts with a non-NEC comment marker like `'`, `!` or `#`
 4) scan the deck for leading comments, any card at the top of the deck marked with `CM` or `CE`. this section ends with the first card that starts with a `G`, or the `CE` card if present.
-5) remove any cards that start with `CM` *after* that point. The original NEC format only supports comments at the top.
+5) remove any cards that start with `CM` *after* that point. The original NEC format only supports comments at the top, but NEC-4 allowed these to be added.
 6) scan the geometry section and remove any cards containing upper or lower case versions of strings `ignore=true`, `ignore=yes`, etc. (see below for details). Also remove any cards with a tag value >=9700.
 7) remove any remaining cards that are not part of the NEC standard. This would include any cards like `IT`.
 
