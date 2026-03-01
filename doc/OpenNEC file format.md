@@ -24,9 +24,9 @@ On top of all this, new card types like `SY` have been added by 3rd party softwa
 Design decisions
 ----------------
 
-Individual fields on the cards are read using a flexible field separation parser that recognizes things like tabs, single or multiple spaces, and even decks where spaces are used to produce lined up columns. This means that if you read a deck and immediately write it, you should get a new file that is significantly similar to the original.
+Individual fields on the cards are read using a flexible field separation parser that recognizes things like tabs, single or multiple spaces, and even decks where spaces are used to produce lined up columns. This means that if you read a deck and immediately write it, you should get a new file that is significantly similar to the original. This does not work every time, as these decks come in every format you might imagine, but it does work in most cases.
 
-Like 4nec2, the values in the fields are treated as strings until calculations start. This is used to retain formulas in their original format, both so they can be written back in the same layout, as well as to ensure any other changed in the deck are always reflected in the values. For instance, changing the value on an SY card earlier in the deck will always update the formulas that use it, without the need for complex change tracking.
+The values in the fields are treated as strings until calculations start. This is used to retain formulas in their original format, both so they can be written back in the same layout, as well as to ensure any other changes in the deck are always reflected in the values. For instance, changing the value on an SY card earlier in the deck will always update the formulas that use it, without the need for complex change tracking.
 
 The nec2c code allowed the use of `#` as in-line comment markers. This conflicts with the much more widespread use of `#` to indicate AWG wire sizes. As the `#` was used as a comment in some nec2c decks, OpenNEC allows this character, but only at the front of the line. Comments further into the deck will need to use some other marker, with `!` being the most widely used in modern software.
 

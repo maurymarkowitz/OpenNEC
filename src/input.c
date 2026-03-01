@@ -985,112 +985,111 @@ void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors)
   strncpy(str, card->extn_str, extn_len);
   str[extn_len] = '\0';
   
-  // strtok should be perfect for this one because we don't want the delimiters
-  // to be handed back ...but this will split up comments on their whitespace,
-  // which is why comments have to be at the end because they're the only thing
-  // that can have spaces inside them
-  char *token, *split;
-  token = strtok(str, ONEC_WHITESPACE ONEC_SEPARATORS); // note the "concat the string literals" trick
-  while(token != NULL) {
-    // make sure there's a equals or colon in it - note you can't nest another strtok!
-    split = strpbrk(token, "=:");
-    if(split != NULL) {
-      // if the split was successful, meaning we found an = or : somewhere,
-      // the split char is still on the front so let's kill it
-      if (split[0] == '=') split++;
-      if (split[0] == ':') split++;
-      
-      // and split these out for ease of use
-      strncpy(key, token, split - token - 1); // move back over the delimiter
-      key[split - token - 1] = '\0'; // add the missing null, strncpy doesn't
-      strcpy(value, split); // this has a null at the end so we're ok
-      
-      // now check that both sides are >0 len, otherwise skip this one
-      if(strlen(key) == 0 && strlen(value) == 0)
-        goto NEXT_TOKEN;
-      
-      // getting here means we did find a valid key/value of some
-      // sort, so record that we got it
-      hasExtensions = true;
-      
-      // there are a couple of cases here:
-      // 1) the key is "name", "group", "material", "visible" or "ignore", which are stored separately
-      // 2) the key is "comment" - copy everything after it into comment string and exit
-      // 3) the key is a formula - make a key_value_t pair and add it to the formulas list
-      // 4) the key is anything else - make a key_value_t pair and add it to the pairs list
-      
-      // handle known
-      if(strcasecmp(key, "ignore") == 0) {
-        card->ignore = (strcasecmp(value, "true") == 0 || strcasecmp(value, "yes") == 0 || strcasecmp(value, "1") == 0);
-        goto NEXT_TOKEN;
+  // We'll parse tokens manually to support quoted values (single or
+  // double-quoted) so extension values can contain spaces. Tokens are
+  // separated by commas/semicolons or whitespace when not quoted.
+  char *p = str;
+  while (*p != '\0') {
+    // skip leading whitespace and separators (comma/semicolon)
+    while (*p != '\0' && (isspace((unsigned char)*p) || *p == ',' || *p == ';'))
+      p++;
+    if (*p == '\0')
+      break;
+
+    // extract one token (respecting quotes)
+    char token[MAX_LINE_LEN];
+    int ti = 0;
+    if (*p == '"' || *p == '\'') {
+      char q = *p++;
+      while (*p != '\0' && *p != q && ti < (int)sizeof(token) - 1) {
+        // allow escaped quotes inside quoted string (\" or \\')
+        if (*p == '\\' && p[1] != '\0') {
+          token[ti++] = *p++;
+          token[ti++] = *p++;
+          continue;
+        }
+        token[ti++] = *p++;
       }
-      // and comments, which cause us to exit because we have to be at the end of the line
-      // we can't just loop again because the comment might have whitespace and would still
-      // generate more tokens which are just bits of the comment
-      if(strcasecmp(key, "comment") == 0) {
+      if (*p == q) p++; // skip closing quote
+    } else {
+      while (*p != '\0' && !isspace((unsigned char)*p) && *p != ',' && *p != ';' && ti < (int)sizeof(token) - 1) {
+        token[ti++] = *p++;
+      }
+    }
+    token[ti] = '\0';
+
+    if (ti == 0)
+      continue;
+
+    // find delimiter = or : inside token
+    char *split = strpbrk(token, "=:");
+    if (split != NULL) {
+      // separate key and value
+      *split = '\0';
+      char *keyptr = token;
+      char *valptr = split + 1;
+      // trim whitespace around key and value
+      char *k = trim(keyptr);
+      char *v = trim(valptr);
+
+      // strip surrounding quotes on value if present
+      size_t vlen = strlen(v);
+      if ((vlen >= 2) && ((v[0] == '"' && v[vlen - 1] == '"') || (v[0] == '\'' && v[vlen - 1] == '\''))) {
+        v[vlen - 1] = '\0';
+        v = v + 1;
+      }
+
+      if (strlen(k) == 0 && strlen(v) == 0)
+        continue;
+
+      hasExtensions = true;
+
+      if (strcasecmp(k, "ignore") == 0) {
+        card->ignore = (strcasecmp(v, "true") == 0 || strcasecmp(v, "yes") == 0 || strcasecmp(v, "1") == 0);
+        continue;
+      }
+      if (strcasecmp(k, "comment") == 0) {
         char *leftover = strstr(card->extn_str, "comment");
-        leftover += 8; // 7 chars for 'comment' and 1 for the delimiter
-        size_t len = strlen(leftover);
-        card->comment = (char *)calloc(len + 1, sizeof(char));
-        if (card->comment) {
-          strcpy(card->comment, leftover);
+        if (leftover) {
+          leftover += 7; // point to delimiter or following char
+          // skip a delimiter if present
+          if (*leftover == ':' || *leftover == '=') leftover++;
+          while (*leftover && isspace((unsigned char)*leftover)) leftover++;
+          size_t len = strlen(leftover);
+          card->comment = (char *)calloc(len + 1, sizeof(char));
+          if (card->comment) {
+            strcpy(card->comment, leftover);
+          }
         }
         return;
       }
-      
-      // now see if it's a formula
+
+      // now decide if key is a formula name
       bool isFormula = false;
-      for(int i = 0; i < NUM_FIELD_NAMES; i++) {
-        if(strcasestr(key, field_names[i]) == 0) {
+      for (int i = 0; i < NUM_FIELD_NAMES; i++) {
+        if (strcasestr(k, field_names[i]) == 0) {
           isFormula = true;
           break;
         }
       }
-      
-      // formulas and any other tags not pulled out above are handled
-      // in the same fashion - we make a key_value_t pair to hold it.
-      // They differ only in where we put them in the end
+
       key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
-      if(pair != NULL) {
-        // calloc the strings and store them...
-        pair->key = calloc(split - token, sizeof(char));
-        strncpy(pair->key, token, split - token - 1);
-        pair->value = calloc(strlen(split) + 1, sizeof(char)); // add one for a trailing null
-        strcpy(pair->value, split);
-        // and store the original separator so we can recreate it on output
-        pair->separator = token[split - token - 1];
-        // and null this out, as its going on the end
+      if (pair != NULL) {
+        pair->key = strdup(k);
+        pair->value = strdup(v);
+        pair->separator = (strchr("=:", token[strlen(k)]) != NULL) ? token[strlen(k)] : '=';
         pair->next = NULL;
-        
-        // now decide which list to add it to
-        key_value_t *head, *tail;
-        if(isFormula) {
-          head = card->formulas;
+
+        key_value_t **headp = isFormula ? &card->formulas : &card->extensns;
+        if (*headp == NULL) {
+          *headp = pair;
         } else {
-          head = card->extensns;
-        }
-        tail = head;
-        
-        // and then add it to the end of the list
-        if(tail == NULL) {
-          head = pair;
-        } else {
-          while(tail->next != NULL)
-            tail = tail->next;
+          key_value_t *tail = *headp;
+          while (tail->next) tail = tail->next;
           tail->next = pair;
         }
-        if(isFormula) {
-          card->formulas = head;
-        } else {
-          card->extensns = head;
-        }
-
-      } // there should be else's for all the mallocs and callocs!
-    } // split != NULL
-    
-  NEXT_TOKEN:
-    // and get the next token
-    token = strtok(NULL, ONEC_WHITESPACE ONEC_SEPARATORS);
+      }
+    }
   }
   
   // if we entered this func we had to have *some* sort of trailing
