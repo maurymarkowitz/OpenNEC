@@ -41,30 +41,41 @@ OpenNEC was being built with the assumption it would not normally be used as a s
 
 To support this use, onec includes a new feature that allows key/value pairs to be inserted on any line as a trailing comment. These will be parsed out separately and presented to the client software without being visible to the underlying NEC implementation. Examples include `material:copper` which an application might use to appropriately color a particular element on the display.
 
-As this mechanism uses the inline comment system, and users will likely mix comments and key/value pairs on a single card, the system allows multiple entries to be separated by commas or semicolons. Inline comments are first separated by these delimiters, and then each result is examined for an `=` or `:`. Those entires containing such a value are assumed to be key/values, everything else is concatenated into a single comment.
+As this mechanism uses the inline comment system, and users will likely mix comments and key/value pairs on a single card, the system allows multiple entries to be separated by spaces, commas or semicolons. Inline comments are first separated by these delimiters, and then each result is examined for an `=` or `:`. Those entires containing such a value are assumed to be key/values, everything else is concatenated into a single comment.
+
+**NOTE:** as spaces are considered valid separators, strings with spaces or other delimiters in them have to be quoted with either single quotes, `'this is a string'`, or double quotes, `"this is a string, with a comma"`.
 
 The onec extension system is intended to be largely free-form, edited by the user or applications calling the onec library. There are a small number of defined extensions all 3rd party software should support:
 
 - `name` allows a single element to be given a name. This is typically used in the geometry section and might have values like `reflector` or `boom`.
 
-- `group` is used to collect multiple elements together. In a GUI application, this might be used with a disclosure widget to allow sections to be collapsed down to the group name, like `upper reflector`.
+- `group` is used to collect multiple elements together. In a GUI application, this might be used with a disclosure widget to allow sections to be collapsed down to the group name, like `"upper reflector"`.
 
-- `ignore` indicates whether or not the card should take part in the calculations. Setting this to `true` causes that card to be ignored during processing. This is useful during the development or testing of a deck, as a card can be ignored in the calculations without having to physically remove it or mark it as a comment card. 4nec2 has a similar feature that ignores all cards with tag values between 9800 and 9899, and onec also follows this rule this as well, but the explicit `ignore` tag is more obvious and doesn't require you to change the original tag number.
+- `ignore` indicates whether or not the card should take part in the calculations. Setting this to `true` causes that card to be ignored during processing. This is useful during the development or testing of a deck, as a card can be ignored in the calculations without having to physically remove it or mark it as a comment card.
 
  - `comment` marks everything after that point on the line (and the following separator) to be a comment. This may seem redundant as it would be placed within an in-line comment, but it included to allow key/value pairs and comments to be placed on the same card, although the `comment` has to be the last value on the line.
  
  Additionally, a number of additional extensions are expected to be supported by programs that provide a graphical display.
  
- - `visible` indicates whether the geometry on the card should be visible onscreen. The default is `true`. Changing this to `false` indicates it should not be drawn on-screen. This does not remove it from the calculations, it is a visual effect only. This is generally used to limit the bounding box of the resulting design, so the GUI can calculate a useful camera position in the case when there are elements placed a long distance from the "main" antenna.
+ - `invisible` indicates whether the geometry on the card should be visible onscreen. The default is `false`. Changing this to `true` indicates it should not be drawn on-screen. This does not remove it from the calculations, it is a visual effect only. This is generally used to limit the bounding box of the resulting design, so the GUI can calculate a useful camera position in the case when there are elements placed a long distance from the "main" antenna.
+
+ **NOTE:** 4nec2 has a similar feature that ignores all cards with tag values between 9800 and 9899, and onec also follows this rule this as well, but the explicit `ignore` tag is more obvious and doesn't require you to change the original tag number.
 
 - `shape` is used to change the shape of the geometry for GUI programs. The calculation engine does not care about the shape of the elements, but the user of a GUI program might. By adding something like `name=boom, ignore=true, shape=square`, the boom on a Yagi antenna can be added to the file to make the display of the antenna more accurate without effecting the output. At a minimum, `circle` and `square` should be supported, along with any other shapes the GUI software might wish to add.
 
 - `material`  is a similar display-only extension and may be any value, but the following values should be expected; `silver`, `copper`, `aluminum`, `6061-T6`, `6063-T832`, `brass`, `phosphor bronze` and `steel`. This list was based on the materials from Yagi Optimizer.
 
+Out-of-band formulas
+--------------------
+
+4nec2 introduced the idea of allowing formulas in data fields, which makes the construction of decks simpler and is especially useful for doing measurement conversions like a wire radius from millimeters into the deck-wide default, meters. However, if such a deck is sent to a NEC-2 parser, the formulas will cause errors as the non-numeric values will not parse properly.
+
+For systems where NEC-2 compatibility is important, onec also allows formulas to be written "out-of-band" in the comments section. For instance, if a GW card wants to specify the radius of the wire in AWG, it can put the numeric value in the proper field, and then add an extension like "F7=#12". During parsing the formula in the extension will be copied into the field. If this concept is used, the parser notes this, and during writing the numeric value is put back into the field and the formula added in the extensions again. This makes the deck usable on any parser that understands trailing comments.
+
 Converting from onec to NEC
 ---------------------------
 
-The overriding design goal for the onec format is to have a simple way to convert the stack into a format that is fully compatible with NEC-2. This can be accomplished by removing certain bits of text from the deck, although individual programs may wish to apply additional logic to improve this process. There are three basic steps:
+An major design goal for the onec format is to have a simple way to convert the stack into a format that is fully compatible with NEC-2. This can be accomplished by removing certain bits of text from the deck, although individual programs may wish to apply additional logic to improve this process. There are three basic steps:
 
 ### parse and replace SY assignments
 SY's are a simple "replacement" system in which any entry of an SY name in a data card is replaced with the string defined on the SY card. This is a two-step process:
