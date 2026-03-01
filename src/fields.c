@@ -748,7 +748,7 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
     {
       nt=0;
       if( ns >= nma)
-        fprintf( ctx->output_fp, "\n  STEP SIZE LIMITED AT Z= %10.5f", z );
+        nec_report(ctx, ONEC_SEV_WARNING, "Step size limited at Z= %10.5f", z);
       else
       {
         ns= ns*2;
@@ -1515,28 +1515,18 @@ void nfpat(nec_context_t *ctx)
 {
   int i, j, kk;
   double znrt, cth=0., sth=0., ynrt, cph=0., sph=0., xnrt, xob, yob;
-  double zob, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, xxx;
+  double zob, tmp1, tmp2, tmp3;
   complex double ex, ey, ez;
   
-  if( ctx->fpat.nfeh != 1)
+  /* Free any previous near-field data */
+  if (ctx->nfr.points != NULL)
   {
-    fprintf( ctx->output_fp,	"\n\n\n"
-            "                             "
-            "-------- NEAR ELECTRIC FIELDS --------\n"
-            "     ------- LOCATION -------     ------- EX ------    ------- EY ------    ------- EZ ------\n"
-            "      X         Y         Z       MAGNITUDE   PHASE    MAGNITUDE   PHASE    MAGNITUDE   PHASE\n"
-            "    METERS    METERS    METERS     VOLTS/M  DEGREES    VOLTS/M   DEGREES     VOLTS/M  DEGREES" );
+    free(ctx->nfr.points);
+    ctx->nfr.points = NULL;
+    ctx->nfr.num_points = 0;
   }
-  else
-  {
-    fprintf( ctx->output_fp,	"\n\n\n"
-            "                                   "
-            "-------- NEAR MAGNETIC FIELDS ---------\n\n"
-            "     ------- LOCATION -------     ------- HX ------    ------- HY ------    ------- HZ ------\n"
-            "      X         Y         Z       MAGNITUDE   PHASE    MAGNITUDE   PHASE    MAGNITUDE   PHASE\n"
-            "    METERS    METERS    METERS      AMPS/M  DEGREES      AMPS/M  DEGREES      AMPS/M  DEGREES" );
-  }
-  
+  ctx->nfr.nfeh = ctx->fpat.nfeh;
+
   znrt= ctx->fpat.znr- ctx->fpat.dznr;
   for( i = 0; i < ctx->fpat.nrz; i++ )
   {
@@ -1583,66 +1573,17 @@ void nfpat(nec_context_t *ctx)
         else
           nhfld(ctx,  tmp1, tmp2, tmp3, &ex, &ey, &ez);
         
-        tmp1= cabs( ex);
-        tmp2= cang(ctx, ex);
-        tmp3= cabs( ey);
-        tmp4= cang(ctx, ey);
-        tmp5= cabs( ez);
-        tmp6= cang(ctx, ez);
+        /* Accumulate into near-field results for output.c */
+        ctx->nfr.points = realloc(ctx->nfr.points,
+                (ctx->nfr.num_points + 1) * sizeof(near_field_point_t));
+        near_field_point_t *nfpt = &ctx->nfr.points[ctx->nfr.num_points++];
+        nfpt->xob = xob;
+        nfpt->yob = yob;
+        nfpt->zob = zob;
+        nfpt->ex  = ex;
+        nfpt->ey  = ey;
+        nfpt->ez  = ez;
 
-        fprintf( ctx->output_fp, "\n"
-                " %9.4f %9.4f %9.4f  %11.4E %7.2f  %11.4E %7.2f  %11.4E %7.2f",
-                xob, yob, zob, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6 );
-        
-        if( ctx->plot.iplp1 != 2)
-          continue;
-        
-        if( ctx->plot.iplp4 < 0 )
-          xxx= xob;
-        else
-          if( ctx->plot.iplp4 == 0 )
-            xxx= yob;
-          else
-            xxx= zob;
-        
-        if( ctx->plot.iplp2 == 2)
-        {
-          switch( ctx->plot.iplp3 )
-          {
-            case 1:
-              fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp1, tmp2 );
-              break;
-            case 2:
-              fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp3, tmp4 );
-              break;
-            case 3:
-              fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp5, tmp6 );
-              break;
-            case 4:
-              fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E %12.4E %12.4E %12.4E %12.4E\n",
-                      xxx, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6 );
-          }
-          continue;
-        }
-        
-        if( ctx->plot.iplp2 != 1)
-          continue;
-        
-        switch( ctx->plot.iplp3 )
-        {
-          case 1:
-            fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, creal(ex), cimag(ex) );
-            break;
-          case 2:
-            fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, creal(ey), cimag(ey) );
-            break;
-          case 3:
-            fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, creal(ez), cimag(ez) );
-            break;
-          case 4:
-            fprintf( ctx->plot_fp, "%12.4E %12.4E %12.4E %12.4E %12.4E %12.4E %12.4E\n",
-                    xxx,creal(ex),cimag(ex),creal(ey),cimag(ey),creal(ez),cimag(ez) );
-        }
       } /* for( kk = 0; kk < ctx->fpat.nrx; kk++ ) */
       
     } /* for( j = 0; j < ctx->fpat.nry; j++ ) */

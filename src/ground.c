@@ -27,6 +27,7 @@
 #include "ground.h"
 #include "calculations.h"
 #include "fields.h"
+#include "misc.h"
 
 /*-------------------------------------------------------------------*/
 
@@ -174,8 +175,7 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
         
       } /* if( ns < npm) */
       
-      fprintf( ctx->output_fp,
-              "\n  ROM2 -- STEP SIZE LIMITED AT Z = %12.5E", z );
+      nec_report(ctx, ONEC_SEV_WARNING, "Step size limited at Z= %12.5E", z);
       
     } /* if( tr > rx) */
     

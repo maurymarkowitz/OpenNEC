@@ -4,6 +4,8 @@ OpenNEC
 **Copyright © 2026 Maury Markowitz**
 
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)
+[![NEC-2](https://img.shields.io/badge/NEC2-engine-orange?style=flat-square)
 
 This software is released under the MIT license. See [LICENSE](LICENSE) for details.
 

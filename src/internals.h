@@ -219,6 +219,21 @@ typedef struct
 	char ground_cliff_type[20]; /* "LINEAR" or "CIRCULAR" for cliff */
 } rpat_results_t;
 
+/* Near-field data point (E or H field at one observation location) */
+typedef struct
+{
+	double xob, yob, zob;       /* observation point coordinates (metres) */
+	complex double ex, ey, ez;  /* field components (E or H) */
+} near_field_point_t;
+
+/* Near-field results accumulated by nfpat() */
+typedef struct
+{
+	int num_points;
+	near_field_point_t *points;
+	int nfeh;   /* 0 = E-field, 1 = H-field */
+} near_field_results_t;
+
 /*common  /ggrid/ */
 typedef struct
 {
@@ -623,6 +638,9 @@ struct nec_context_t
 	
 	/* Radiation pattern results */
 	rpat_results_t rpat;
+	
+	/* Near-field results */
+	near_field_results_t nfr;
 	
 	/* Error and message tracking */
 	errors_list_t errors;

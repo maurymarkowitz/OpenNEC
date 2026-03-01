@@ -278,6 +278,9 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
             if (ctx->rpat.points != NULL) { free(ctx->rpat.points); ctx->rpat.points = NULL; }
             ctx->rpat.num_points = 0;
 
+            if (ctx->nfr.points != NULL) { free(ctx->nfr.points); ctx->nfr.points = NULL; }
+            ctx->nfr.num_points = 0;
+
             if (ctx->yparm.coupling_rows != NULL) {
                 free(ctx->yparm.coupling_rows);
                 ctx->yparm.coupling_rows = NULL;

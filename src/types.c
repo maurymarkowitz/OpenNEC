@@ -181,6 +181,12 @@ void nec_context_cleanup(nec_context_t *ctx)
         free(ctx->rpat.points);
         ctx->rpat.points = NULL;
     }
+
+    // Free near-field data
+    if (ctx->nfr.points != NULL) {
+        free(ctx->nfr.points);
+        ctx->nfr.points = NULL;
+    }
     
     // Free error list
     if (ctx->errors.errors != NULL) {

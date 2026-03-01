@@ -40,6 +40,8 @@ static void write_radiation_pattern_data(FILE *file, const nec_context_t *ctx);
 static void write_average_power_gain(FILE *file, const nec_context_t *ctx);
 static void write_normalized_gain(FILE *file, const nec_context_t *ctx);
 static void write_footer(FILE *file, const nec_context_t *ctx, const deck_t *deck);
+static void write_near_field_data(FILE *file, const nec_context_t *ctx);
+static void write_near_field_plot(const nec_context_t *ctx);
 
 /******************************************************************************
  * write_deck_nec
@@ -509,6 +511,8 @@ void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *file)
   write_radiation_pattern_data(file, ctx);
   write_average_power_gain(file, ctx);
   write_normalized_gain(file, ctx);
+  write_near_field_data(file, ctx);
+  write_near_field_plot(ctx);
   write_footer(file, ctx, deck);
 }
 
@@ -2436,6 +2440,127 @@ static void write_normalized_gain(FILE *file, const nec_context_t *ctx)
 
     idx1++;
     idx2++;
+  }
+}
+
+/******************************************************************************
+ * write_near_field_data
+ *
+ * Writes the near electric or magnetic field results accumulated in
+ * ctx->nfr by nfpat().  No-op if no points were recorded.
+ */
+static void write_near_field_data(FILE *file, const nec_context_t *ctx)
+{
+  if (ctx->nfr.num_points == 0 || ctx->nfr.points == NULL)
+    return;
+
+  if (ctx->nfr.nfeh != 1)
+  {
+    fprintf(file, "\n\n\n"
+            "                             "
+            "-------- NEAR ELECTRIC FIELDS --------\n"
+            "     ------- LOCATION -------     ------- EX ------    ------- EY ------    ------- EZ ------\n"
+            "      X         Y         Z       MAGNITUDE   PHASE    MAGNITUDE   PHASE    MAGNITUDE   PHASE\n"
+            "    METERS    METERS    METERS     VOLTS/M  DEGREES    VOLTS/M   DEGREES     VOLTS/M  DEGREES");
+  }
+  else
+  {
+    fprintf(file, "\n\n\n"
+            "                                   "
+            "-------- NEAR MAGNETIC FIELDS ---------\n\n"
+            "     ------- LOCATION -------     ------- HX ------    ------- HY ------    ------- HZ ------\n"
+            "      X         Y         Z       MAGNITUDE   PHASE    MAGNITUDE   PHASE    MAGNITUDE   PHASE\n"
+            "    METERS    METERS    METERS      AMPS/M  DEGREES      AMPS/M  DEGREES      AMPS/M  DEGREES");
+  }
+
+  for (int i = 0; i < ctx->nfr.num_points; i++)
+  {
+    near_field_point_t *pt = &ctx->nfr.points[i];
+    double tmp1 = cabs(pt->ex);
+    double tmp2 = cang(ctx, pt->ex);
+    double tmp3 = cabs(pt->ey);
+    double tmp4 = cang(ctx, pt->ey);
+    double tmp5 = cabs(pt->ez);
+    double tmp6 = cang(ctx, pt->ez);
+    fprintf(file, "\n"
+            " %9.4f %9.4f %9.4f  %11.4E %7.2f  %11.4E %7.2f  %11.4E %7.2f",
+            pt->xob, pt->yob, pt->zob, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6);
+  }
+}
+
+/******************************************************************************
+ * write_near_field_plot
+ *
+ * Writes near-field data to the plot file (ctx->plot_fp) if PT/PQ plot output
+ * was requested.  No-op if no data, no plot file, or iplp1 != 2.
+ */
+static void write_near_field_plot(const nec_context_t *ctx)
+{
+  if (ctx->nfr.num_points == 0 || ctx->nfr.points == NULL)
+    return;
+  if (ctx->plot.iplp1 != 2 || ctx->plot_fp == NULL)
+    return;
+
+  for (int i = 0; i < ctx->nfr.num_points; i++)
+  {
+    near_field_point_t *pt = &ctx->nfr.points[i];
+
+    double xxx;
+    if (ctx->plot.iplp4 < 0)
+      xxx = pt->xob;
+    else if (ctx->plot.iplp4 == 0)
+      xxx = pt->yob;
+    else
+      xxx = pt->zob;
+
+    double tmp1 = cabs(pt->ex);
+    double tmp2 = cang(ctx, pt->ex);
+    double tmp3 = cabs(pt->ey);
+    double tmp4 = cang(ctx, pt->ey);
+    double tmp5 = cabs(pt->ez);
+    double tmp6 = cang(ctx, pt->ez);
+
+    if (ctx->plot.iplp2 == 2)
+    {
+      switch (ctx->plot.iplp3)
+      {
+        case 1:
+          fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp1, tmp2);
+          break;
+        case 2:
+          fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp3, tmp4);
+          break;
+        case 3:
+          fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp5, tmp6);
+          break;
+        case 4:
+          fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E %12.4E %12.4E %12.4E %12.4E\n",
+                  xxx, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6);
+      }
+    }
+    else if (ctx->plot.iplp2 == 1)
+    {
+      switch (ctx->plot.iplp3)
+      {
+        case 1:
+          fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E\n",
+                  xxx, creal(pt->ex), cimag(pt->ex));
+          break;
+        case 2:
+          fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E\n",
+                  xxx, creal(pt->ey), cimag(pt->ey));
+          break;
+        case 3:
+          fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E\n",
+                  xxx, creal(pt->ez), cimag(pt->ez));
+          break;
+        case 4:
+          fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E %12.4E %12.4E %12.4E %12.4E\n",
+                  xxx, creal(pt->ex), cimag(pt->ex),
+                  creal(pt->ey), cimag(pt->ey),
+                  creal(pt->ez), cimag(pt->ez));
+      }
+    }
   }
 }
 
