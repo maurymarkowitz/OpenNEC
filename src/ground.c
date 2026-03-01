@@ -22,12 +22,11 @@
  * coefficients and accumulate results for near-field and radiation calculations.
  *****************************************************************************/
 
-#include "internals.h"
 #include <assert.h>
+#include "internals.h"
 #include "ground.h"
 #include "calculations.h"
 #include "fields.h"
-
 
 /*-------------------------------------------------------------------*/
 
