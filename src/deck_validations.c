@@ -1024,12 +1024,12 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
       }
       if (segs1 > 0 && (tl_refs[r].seg1 <= 0 || tl_refs[r].seg1 > segs1))
       {
-        snprintf(msg, sizeof(msg), "TL on line %d (tag %d): references an invalid segment on the first endpoint; segment index out of range for the wire tag %d.", tl_refs[r].line, tl_refs[r].tag1);
+        snprintf(msg, sizeof(msg), "TL on line %d (tag %d): references an invalid segment on the first endpoint; segment index out of range for the wire tag %d.", tl_refs[r].line, tl_refs[r].tag1, tl_refs[r].tag1);
         add_error(ctx, errors, msg, 0);
       }
       if (segs2 > 0 && (tl_refs[r].seg2 <= 0 || tl_refs[r].seg2 > segs2))
       {
-        snprintf(msg, sizeof(msg), "TL on line %d (tag %d): references an invalid segment on the second endpoint; segment index out of range for the wire tag %d.", tl_refs[r].line, tl_refs[r].tag2);
+        snprintf(msg, sizeof(msg), "TL on line %d (tag %d): references an invalid segment on the second endpoint; segment index out of range for the wire tag %d.", tl_refs[r].line, tl_refs[r].tag2, tl_refs[r].tag2);
         add_error(ctx, errors, msg, 0);
       }
       // TL self-loop: same tag+segment on both ends
@@ -1061,12 +1061,12 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
         int e = ld_refs[r].segEnd == 0 ? ld_refs[r].segStart : ld_refs[r].segEnd;
         if (s <= 0 || s > segs)
         {
-          snprintf(msg, sizeof(msg), "LD on line %d (tag %d): references an invalid start segment; out of range for wire tag %d.", ld_refs[r].line, ld_refs[r].tag);
+          snprintf(msg, sizeof(msg), "LD on line %d (tag %d): references an invalid start segment; out of range for wire tag %d.", ld_refs[r].line, ld_refs[r].tag, ld_refs[r].tag);
           add_error(ctx, errors, msg, 0);
         }
         if (e <= 0 || e > segs)
         {
-          snprintf(msg, sizeof(msg), "LD on line %d (tag %d): references an invalid end segment; out of range for wire tag %d.", ld_refs[r].line, ld_refs[r].tag);
+          snprintf(msg, sizeof(msg), "LD on line %d (tag %d): references an invalid end segment; out of range for wire tag %d.", ld_refs[r].line, ld_refs[r].tag, ld_refs[r].tag);
           add_error(ctx, errors, msg, 0);
         }
       }
