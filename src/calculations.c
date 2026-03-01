@@ -269,6 +269,14 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
   
   iwarn=false;
   istep=0;
+  /* Track first owning load card for each segment and any duplicates found */
+  int *first_ld_owner = calloc((size_t)ctx->geometry.n, sizeof(int));
+  int *dup_marked = calloc((size_t)ctx->geometry.n, sizeof(int));
+  int dup_count = 0;
+  int dup_cap = 0;
+  int *dup_tags = NULL;
+  int *dup_owner_lines = NULL;
+  int *dup_repeat_lines = NULL;
   
   /* cycle over loading cards */
   while( true )
@@ -279,8 +287,42 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
     if( istep > ctx->zload.nload)
     {
       if( iwarn == true )
-        nec_report(ctx, ONEC_SEV_WARNING,
-                   "Some segments have been loaded more than once; impedances added.");
+      {
+        if (dup_count == 0)
+        {
+          nec_report(ctx, ONEC_SEV_WARNING,
+                     "Some segments have been loaded more than once; impedances added.");
+        }
+        else
+        {
+          /* Compose a concise message listing up to 10 duplicated segments */
+          char buf[1024];
+          int pos = 0;
+          int show = dup_count > 10 ? 10 : dup_count;
+          pos += snprintf(buf + pos, sizeof(buf) - pos,
+                          "Some segments have been loaded more than once; %d segments duplicated. Tags:",
+                          dup_count);
+          for (int k = 0; k < show; k++)
+          {
+            /* lookup deck line numbers for the LD cards */
+            int owner_ld_idx = dup_owner_lines[k]; /* 1-based LD index */
+            int repeat_ld_idx = dup_repeat_lines[k]; /* 1-based LD index */
+            int owner_line = (owner_ld_idx > 0 && owner_ld_idx <= ctx->zload.nload) ? ctx->zload.ldcard_num[owner_ld_idx-1] : -1;
+            int repeat_line = (repeat_ld_idx > 0 && repeat_ld_idx <= ctx->zload.nload) ? ctx->zload.ldcard_num[repeat_ld_idx-1] : -1;
+            pos += snprintf(buf + pos, sizeof(buf) - pos, " %d, cards %d and %d%s",
+                            dup_tags[k], owner_line, repeat_line,
+                            (k + 1 == show && dup_count > show) ? ",..." : "");
+          }
+          nec_report(ctx, ONEC_SEV_WARNING, "%s", buf);
+        }
+      }
+
+      /* cleanup tracking arrays */
+      free(first_ld_owner);
+      free(dup_marked);
+      free(dup_tags);
+      free(dup_owner_lines);
+      free(dup_repeat_lines);
 
       ctx->smat.nop = ctx->geometry.n/ctx->geometry.np;
       if( ctx->smat.nop == 1)
@@ -383,9 +425,28 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
           
       } /* switch( jump ) */
       
-      if(( fabs( creal( ctx->zload.zarray[i]))+ fabs( cimag( ctx->zload.zarray[i]))) > 1.0e-20)
-        iwarn=true;
+      if(( fabs( creal( ctx->zload.zarray[i]))+ fabs( cimag( ctx->zload.zarray[i]))) > 1.0e-20) {
+        iwarn = true;
+        /* record duplicate if we already know the first owner */
+        if (first_ld_owner[i] != 0 && !dup_marked[i]) {
+          if (dup_count >= dup_cap) {
+            dup_cap = dup_cap == 0 ? 16 : dup_cap * 2;
+            dup_tags = realloc(dup_tags, dup_cap * sizeof(int));
+            dup_owner_lines = realloc(dup_owner_lines, dup_cap * sizeof(int));
+            dup_repeat_lines = realloc(dup_repeat_lines, dup_cap * sizeof(int));
+          }
+          dup_tags[dup_count] = ctx->geometry.tag_nums[i];
+          /* store LD card indexes (1-based) for owner and repeat */
+          dup_owner_lines[dup_count] = first_ld_owner[i];
+          dup_repeat_lines[dup_count] = istepx + 1;
+          dup_marked[i] = 1;
+          dup_count++;
+        }
+      }
       ctx->zload.zarray[i] += zt;
+      /* remember the first load card that touched this segment */
+      if (first_ld_owner[i] == 0)
+        first_ld_owner[i] = istepx + 1;
       
     } /* for( i = l1-1; i < l2; i++ ) */
     
@@ -395,6 +456,12 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
       snprintf(err_msg, sizeof(err_msg),
               "The LD card on line %d references tag %d, but no segment has that tag.",
               ctx->zload.ldcard_num[istepx], ldtags);
+      /* cleanup tracking arrays before returning */
+      free(first_ld_owner);
+      free(dup_marked);
+      free(dup_tags);
+      free(dup_owner_lines);
+      free(dup_repeat_lines);
       add_error(ctx, &ctx->errors, err_msg, FATAL);
       return -1;
     }
