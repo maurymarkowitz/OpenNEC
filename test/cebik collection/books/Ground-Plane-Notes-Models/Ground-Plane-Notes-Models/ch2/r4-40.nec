@@ -1,9 +1,0 @@
-CM (monopole 7.15 MHz 25-mm dia.)
-CM free space: 4 radials: GR-WG
-CE
-GW 2 11 0 0 0 10.48225 0 0 .002   
-GR 1 4      
-GE 0 -1 0         
-FR 0 1 0 0 7.15 1     
-WG r4-40.ngf
-EN

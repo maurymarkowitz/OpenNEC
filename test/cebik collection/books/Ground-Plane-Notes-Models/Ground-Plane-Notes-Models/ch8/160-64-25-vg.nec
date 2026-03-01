@@ -1,9 +1,0 @@
-CM monopole 1.85 MHz .02 m dia.
-CM 64 radials
-CE
-GF 0 r64-160-vg          
-GW 1 10 0 0 0 0 0 39.272 .01   
-GE -1 -1 0         
-EX 0 1 1 0 1 0     
-RP 0 181 1 1000 -90 0 1.00000 1.00000   
-EN

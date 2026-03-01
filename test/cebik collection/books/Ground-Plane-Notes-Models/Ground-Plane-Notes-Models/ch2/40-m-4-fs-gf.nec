@@ -1,9 +1,0 @@
-CM monopole 7.15 MHz 25-mm dia.
-CM free space: 4 radials: GF r4-40.ngf
-CE
-GF 0 r4-40.ngf          
-GW 1 11 0 0 0 0 0 10.067 .0125   
-GE 0 -1 0         
-EX 0 1 1 0 1 0     
-RP 0 361 1 1000 -90 0 1.00000 1.00000   
-EN

@@ -1,9 +1,0 @@
-CM 28.5-MHz helical dipole-left-hand
-CM Radius = 0.099m, Length = 2.7432m, 1-t = 0.3048m, 9 t
-CE
-GH 1 180 .3048 -2.7432 .099 .099 .099 .099 .001   
-GE 0
-EX 0 1 90 00 1.0 0.0 
-FR 0 1 0 0 28.5 0 
-RP 0 361 1 1000 -90 0 1 1 
-EN

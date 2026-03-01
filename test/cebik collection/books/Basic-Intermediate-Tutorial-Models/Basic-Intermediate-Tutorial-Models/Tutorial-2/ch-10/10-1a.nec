@@ -1,9 +1,0 @@
-CM Dipole with even segments 
-CE Series source placement
-GW 1 50 0 -.2375 0 0 .2375 0 .001   
-GE
-FR 0 1 0 0 299.7925 1     
-EX 0 1 25 00 1 0     
-EX 0 1 26 00 1 0     
-XQ
-EN
