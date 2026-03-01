@@ -175,7 +175,13 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
         
       } /* if( ns < npm) */
       
-      nec_report(ctx, ONEC_SEV_WARNING, "Step size limited at Z= %12.5E", z);
+      if (!ctx->step_size_warned) {
+        ctx->step_size_warned = true;
+        nec_report(ctx, ONEC_SEV_WARNING,
+          "Step size limited at Z= %12.5E near source segment (%.4g, %.4g, %.4g);"
+          " further occurrences suppressed",
+          z, ctx->dataj.xj, ctx->dataj.yj, ctx->dataj.zj);
+      }
       
     } /* if( tr > rx) */
     

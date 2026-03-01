@@ -748,7 +748,15 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
     {
       nt=0;
       if( ns >= nma)
-        nec_report(ctx, ONEC_SEV_WARNING, "Step size limited at Z= %10.5f", z);
+      {
+        if (!ctx->step_size_warned) {
+          ctx->step_size_warned = true;
+          nec_report(ctx, ONEC_SEV_WARNING,
+            "Step size limited at Z= %10.5f near source segment (%.4g, %.4g, %.4g);"
+            " further occurrences suppressed",
+            z, ctx->dataj.xj, ctx->dataj.yj, ctx->dataj.zj);
+        }
+      }
       else
       {
         ns= ns*2;
