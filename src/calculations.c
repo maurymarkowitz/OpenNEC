@@ -301,7 +301,7 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
           int pos = 0;
           int show = dup_count > 10 ? 10 : dup_count;
           pos += snprintf(buf + pos, sizeof(buf) - pos,
-                          "Some segments have been loaded more than once; %d segments duplicated. Tags:",
+                          "Some segments have been loaded more than once; %d segments duplicated. Tag",
                           dup_count);
           for (int k = 0; k < show; k++)
           {
@@ -310,7 +310,7 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
             int repeat_ld_idx = dup_repeat_lines[k]; /* 1-based LD index */
             int owner_line = (owner_ld_idx > 0 && owner_ld_idx <= ctx->zload.nload) ? ctx->zload.ldcard_num[owner_ld_idx-1] : -1;
             int repeat_line = (repeat_ld_idx > 0 && repeat_ld_idx <= ctx->zload.nload) ? ctx->zload.ldcard_num[repeat_ld_idx-1] : -1;
-            pos += snprintf(buf + pos, sizeof(buf) - pos, " %d, cards %d and %d%s",
+            pos += snprintf(buf + pos, sizeof(buf) - pos, " %d, LD cards %d and %d%s",
                             dup_tags[k], owner_line, repeat_line,
                             (k + 1 == show && dup_count > show) ? ",..." : "");
           }
