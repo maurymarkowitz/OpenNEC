@@ -24,7 +24,7 @@ This document summarizes the validation and guidance checks implemented in OpenN
 - SM placement and immediate follower: `SM` must follow `SP` or `SM`, and must be immediately followed by `SC`.
 - SC chain ancestry: If `SC` follows `SC`, ensure an earlier `SP` or `SM` exists before the chain; warn otherwise.
 - SY and CE relation: Warn if `SY` exists but no `CE`.
-- EN presence and position: Warn if `EN` missing; when present, it should be the last card.
+- EN presence and position: Warn if `EN` missing; when present, it should be the last card. Comment text can follow, but not cards.
 - EX/LD presence: Warn if neither `EX` nor `LD` is present.
 - GD without GN: Warn if `GD` appears but no preceding `GN`.
 - GE -1 requires GN: Warn if `GE I1=-1` is used without a `GN`.
