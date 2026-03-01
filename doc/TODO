@@ -1,9 +1,5 @@
 Items still to be implemented:
 
-* unify the error messages and always print a card number if possible
-
-* can we track which card created various geometry, so we can have more accurate warnings?
-
 * add support for the nec-2 style calling convention, using a tmp file with the input and output file names on separate lines
 
 * get the cebik EZnec examples working
