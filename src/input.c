@@ -381,11 +381,19 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
     // Skip leading whitespace
     size_t first = 0;
     while (first < line_len && isspace((unsigned char)card->orig_str[first])) first++;
-    
+
+    // If the line is empty or entirely whitespace, skip it
+    if (first >= line_len) {
+      strcpy(type_buff, "!");
+      strncpy(card->card_code, type_buff, 2);
+      card->card_code[2] = '\0';
+      continue;
+    }
+
     // Check for comment markers (CM, CE, !, #, ')
-    if (toupper(card->orig_str[first]) == 'C' && toupper(card->orig_str[first+1]) == 'M') {
+    if (toupper(card->orig_str[first]) == 'C' && first + 1 < line_len && toupper(card->orig_str[first+1]) == 'M') {
       strcpy(type_buff, "CM");
-    } else if (toupper(card->orig_str[first]) == 'C' && toupper(card->orig_str[first+1]) == 'E') {
+    } else if (toupper(card->orig_str[first]) == 'C' && first + 1 < line_len && toupper(card->orig_str[first+1]) == 'E') {
       strcpy(type_buff, "CE");
     } else if (card->orig_str[first] == '!') {
       strcpy(type_buff, "!");
