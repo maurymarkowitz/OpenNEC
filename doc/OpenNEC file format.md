@@ -53,6 +53,8 @@ The onec extension system is intended to be largely free-form, edited by the use
 
 - `ignore` indicates whether or not the card should take part in the calculations. Setting this to `true` causes that card to be ignored during processing. This is useful during the development or testing of a deck, as a card can be ignored in the calculations without having to physically remove it or mark it as a comment card.
 
+ **NOTE:** One can also cause any card to be ignored by adding a leading comment marker like `!`. However, using the extension reduces the risk of forgetting to uncomment the card when it's needed. A GUI can indicate ignored cards using a different format, whereas it is not always clear what a commented line means.
+
  - `comment` marks everything after that point on the line (and the following separator) to be a comment. This may seem redundant as it would be placed within an in-line comment, but it included to allow key/value pairs and comments to be placed on the same card, although the `comment` has to be the last value on the line.
  
  Additionally, a number of additional extensions are expected to be supported by programs that provide a graphical display.
@@ -93,7 +95,7 @@ NEC does not allow empty cards in the deck, but other formats allow this or some
 3) remove any card that starts with a non-NEC comment marker like `'`, `!` or `#`
 4) scan the deck for leading comments, any card at the top of the deck marked with `CM` or `CE`. this section ends with the first card that starts with a `G`, or the `CE` card if present.
 5) remove any cards that start with `CM` *after* that point. The original NEC format only supports comments at the top, but NEC-4 allowed these to be added.
-6) scan the geometry section and remove any cards containing upper or lower case versions of strings `ignore=true`, `ignore=yes`, etc. (see below for details). Also remove any cards with a tag value >=9700.
+6) scan the geometry section and remove any cards containing upper or lower case versions of strings `ignore=true`, `ignore:yes`, etc. (see below for details).
 7) remove any remaining cards that are not part of the NEC standard. This would include any cards like `IT`.
 
 The resulting deck is now compatible with any known NEC parser.

@@ -969,7 +969,6 @@ void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
 void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors)
 {
   char str[MAX_LINE_LEN];
-  char key[MAX_LINE_LEN], value[MAX_LINE_LEN];
   
   // track whether we found any onec extensions after the comment
   // marker. if we didn't, everything after the marker is a
@@ -1115,7 +1114,7 @@ void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors)
  * mark_4nec2_cards_invisible
  *
  * Called near the end of deck parsing to look for geometry cards with a tag
- * number >=9800 <=9900, which 4nec2 uses to indicate invisible geometry.
+ * number >=9800 <9900, which 4nec2 uses to indicate invisible geometry.
  * If such a card is found, and it does not already have an "invisible"
  * extension, one is added with the value "true".
  */
