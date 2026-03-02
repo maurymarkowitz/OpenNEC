@@ -24,9 +24,9 @@ On top of all this, new card types like `SY` have been added by 3rd party softwa
 Design decisions
 ----------------
 
-Individual fields on the cards are read using a flexible field separation parser that recognizes things like tabs, single or multiple spaces, and even decks where spaces are used to produce lined up columns. This means that if you read a deck and immediately write it, you should get a new file that is significantly similar to the original. This does not work every time, as these decks come in every format you might imagine, but it does work in most cases.
+Individual fields on the cards are read using a flexible field separation parser that recognizes things like tabs, single or multiple spaces, and even where spaces are used to produce lined up columns. This means that if you read a deck and immediately write it, you should get a new file that is significantly similar to the original. This does not work every time, as these decks come in every format you might imagine, but it does work in most cases.
 
-The values in the fields are treated as strings until calculations start. This is used to retain formulas in their original format, both so they can be written back in the same layout, as well as to ensure any other changes in the deck are always reflected in the values. For instance, changing the value on an SY card earlier in the deck will always update the formulas that use it, without the need for complex change tracking.
+The values in the fields are treated as strings until calculations start. This is used to retain formulas in their original format, both so they can be written back in the same layout, as well as to ensure any other changes in the deck are always reflected in the values. For instance, changing the value on an SY card earlier in the deck will always update the formulas that use it when the calculation runs, without the need for complex change tracking.
 
 The nec2c code allowed the use of `#` as in-line comment markers. This conflicts with the much more widespread use of `#` to indicate AWG wire sizes. As the `#` was used as a comment in some nec2c decks, OpenNEC allows this character, but only at the front of the line. Comments further into the deck will need to use some other marker, with `!` being the most widely used in modern software.
 
@@ -43,7 +43,7 @@ To support this use, onec includes a new feature that allows key/value pairs to 
 
 As this mechanism uses the inline comment system, and users will likely mix comments and key/value pairs on a single card, the system allows multiple entries to be separated by spaces, commas or semicolons. Inline comments are first separated by these delimiters, and then each result is examined for an `=` or `:`. Those entires containing such a value are assumed to be key/values, everything else is concatenated into a single comment.
 
-**NOTE:** as spaces are considered valid separators, strings with spaces or other delimiters in them have to be quoted with either single quotes, `'this is a string'`, or double quotes, `"this is a string, with a comma"`.
+**NOTE:** as spaces are considered valid separators, strings with spaces or other delimiters in them have to be quoted with either single quotes, `'this is a string'`, or double quotes, `"this is a string, with a comma for flair"`.
 
 The onec extension system is intended to be largely free-form, edited by the user or applications calling the onec library. There are a small number of defined extensions all 3rd party software should support:
 
@@ -61,7 +61,7 @@ The onec extension system is intended to be largely free-form, edited by the use
  
  - `invisible` indicates whether the geometry on the card should be visible onscreen. The default is `false`. Changing this to `true` indicates it should not be drawn on-screen. This does not remove it from the calculations, it is a visual effect only. This is generally used to limit the bounding box of the resulting design, so the GUI can calculate a useful camera position in the case when there are elements placed a long distance from the "main" antenna.
 
- **NOTE:** 4nec2 has a similar feature that ignores all cards with tag values between 9800 and 9899, and onec also follows this rule this as well, but the explicit `ignore` tag is more obvious and doesn't require you to change the original tag number.
+ **NOTE:** 4nec2 has a similar feature that ignores all cards with tag values between 9800 and 9899, and onec also follows this rule this as well. But the explicit `ignore` tag is more obvious and doesn't require you to change the original tag number.
 
 - `shape` is used to change the shape of the geometry for GUI programs. The calculation engine does not care about the shape of the elements, but the user of a GUI program might. By adding something like `name=boom, ignore=true, shape=square`, the boom on a Yagi antenna can be added to the file to make the display of the antenna more accurate without effecting the output. At a minimum, `circle` and `square` should be supported, along with any other shapes the GUI software might wish to add.
 
@@ -70,9 +70,9 @@ The onec extension system is intended to be largely free-form, edited by the use
 Out-of-band formulas
 --------------------
 
-4nec2 introduced the idea of allowing formulas in data fields, which makes the construction of decks simpler and is especially useful for doing measurement conversions like a wire radius from millimeters into the deck-wide default, meters. However, if such a deck is sent to a NEC-2 parser, the formulas will cause errors as the non-numeric values will not parse properly.
+4nec2 introduced the idea of allowing formulas in data fields, which makes the construction of decks simpler and is especially useful for doing measurement conversions like a wire radius from millimeters into inches, for instance. However, if such a deck is sent to a NEC-2 parser, the formulas will cause errors as the non-numeric values will not parse properly.
 
-For systems where NEC-2 compatibility is important, onec also allows formulas to be written "out-of-band" in the comments section. For instance, if a GW card wants to specify the radius of the wire in AWG, it can put the numeric value in the proper field, and then add an extension like "F7=#12". During parsing the formula in the extension will be copied into the field. If this concept is used, the parser notes this, and during writing the numeric value is put back into the field and the formula added in the extensions again. This makes the deck usable on any parser that understands trailing comments.
+For systems where NEC-2 compatibility is important, onec also allows formulas to be written "out-of-band" in the comments section. For instance, if a GW card wants to specify the radius of the wire in AWG, it can put the numeric value in the proper field, 1 mm, and then add an extension like "F7=#12". During parsing, the formula in the extension will be copied into the field. If this concept is used, the parser notes where the formula came from, and during writing the numeric value is put back into the field and the formula added in the extensions again. This makes the deck usable on any parser that understands trailing comments.
 
 **NOTE:** *Generally* speaking, the `=` key:value separator should be used primarily for formulas, and `:` otherwise. This makes it easier to pick out the formuals visually.
 
