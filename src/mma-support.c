@@ -191,7 +191,7 @@ int read_deck_maa(deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
     char line[512];
-    int n_wires = 0, n_loads = 0, n_src = 0;
+    int n_wires = 0;
     double freq = 0.0;
 
     /* read title (first non-empty, non-asterisk line) */
@@ -236,8 +236,6 @@ int read_deck_maa(deck_t *deck, FILE *fp)
         }
         if (count > 0) {
             n_wires = vals[0];
-            if (count > 1) n_loads = vals[1];
-            if (count > 2) n_src   = vals[2];
             break;
         }
     }
