@@ -1,3 +1,13 @@
+/*
+ * mma-support.h
+ *
+ * Public interface for MMANA-GAL .maa import/export support.  Applications
+ * can use these functions to read antenna geometry from a .maa file into an
+ * OpenNEC deck_t, or to write an existing deck_t back out in .maa
+ * format.  The routines are simple wrappers around the normal deck APIs and
+ * perform only minimal validation.
+ */
+
 #ifndef MMA_SUPPORT_H
 #define MMA_SUPPORT_H
 

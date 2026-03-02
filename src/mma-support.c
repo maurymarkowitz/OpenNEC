@@ -1,3 +1,19 @@
+/******************************************************************************
+ * mma-support.c
+ *
+ * Functions to convert between OpenNEC deck structures and the
+ * MMANA-GAL ".maa" file format.  The format is a simple, line-oriented
+ * representation used by MMANA-GAL and compatible tools.  Exporting writes a
+ * minimal subset of the deck (wires, loads, sources, frequency) to the
+ * provided file pointer.  Importing parses a .maa file and appends the
+ * corresponding GW/LD/EX/FR cards to an existing deck.
+ *
+ * These utilities are deliberately lightweight and do not attempt to
+ * perfectly reproduce every MMANA feature; they mirror the behavior of the
+ * earlier Python converters located in the AntennaSim project.
+ *
+ *****************************************************************************/
+
 #include "mma-support.h"
 #include "deck.h"    // for insert_card
 #include "misc.h"    // for add_error
@@ -6,7 +22,6 @@
 #include <math.h>
 #include <ctype.h>
 
-/* helper to append a card whose full text is given */
 /**
  * @brief Create a new card from a raw text line and append to deck.
  *
