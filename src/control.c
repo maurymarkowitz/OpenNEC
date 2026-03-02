@@ -613,7 +613,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
 
             if (i1 > 5) {
                 char msg[MAX_ERROR_LEN];
-                snprintf(msg, sizeof(msg), "Card %d is an LD card with type %d, which is not supported.", card_idx + 1, i1);
+                snprintf(msg, sizeof(msg), "LD on line %d: type %d is not supported.", card_idx + 1, i1);
                 add_error(ctx, &ctx->errors, msg, FATAL);
                 return -1;
             }
@@ -648,9 +648,8 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             if (ctx->zload.ldtagt[idx] < ctx->zload.ldtagf[idx]) {
                 char msg[MAX_ERROR_LEN];
                 snprintf(msg, sizeof(msg),
-                    "DATA FAULT ON LOADING CARD No: %d: ITAG "
-                    "STEP1: %d IS GREATER THAN ITAG STEP2: %d",
-                    ctx->zload.nload, i3, i4);
+                    "LD on line %d: ITAG start %d is greater than ITAG end %d",
+                    card_idx + 1, i3, i4);
                 add_error(ctx, &ctx->errors, msg, FATAL);
                 return -1;
             }
@@ -676,9 +675,11 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             
             if (ctx->gnd.nradl != 0) {
                 if (ctx->gnd.iperf == 2) {
-                    add_error(ctx, &ctx->errors,
-                        "RADIAL WIRE G.S. APPROXIMATION MAY "
-                        "NOT BE USED WITH SOMMERFELD GROUND OPTION", FATAL);
+                    char msg[MAX_ERROR_LEN];
+                    snprintf(msg, sizeof(msg),
+                        "GN on line %d: radial wire ground screen cannot be used with Sommerfeld ground option.",
+                        card_idx + 1);
+                    add_error(ctx, &ctx->errors, msg, FATAL);
                     return -1;
                 }
                 if (f3 >= 1.0e-20 || f4 >= 1.0e-20) {
@@ -696,7 +697,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             // warn about unsupported EX types
             if (i1 == 6 || i1 == 7) {
                 char msg[MAX_ERROR_LEN];
-                snprintf(msg, sizeof(msg), "Card %d is an EX card with type %d, which is not supported.", card_idx + 1, i1);
+                snprintf(msg, sizeof(msg), "EX on line %d: type %d is not supported.", card_idx + 1, i1);
                 add_error(ctx, &ctx->errors, msg, WARNING);
             }
             
@@ -720,7 +721,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     int seg_num = segment_number(ctx, i2, i3_resolved);
                     if (seg_num == 0) {
                         char msg[MAX_ERROR_LEN];
-                        snprintf(msg, sizeof(msg), "Card %d is an EX that references invalid tag %d, segment %d", card_idx + 1, i2, i3_resolved);
+                        snprintf(msg, sizeof(msg), "EX on line %d: references invalid tag %d, segment %d", card_idx + 1, i2, i3_resolved);
                         add_error(ctx, &ctx->errors, msg, FATAL);
                         return -1;
                     }
@@ -743,7 +744,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     int seg_num = segment_number(ctx, i2, i3_resolved);
                     if (seg_num == 0) {
                         char msg[MAX_ERROR_LEN];
-                        snprintf(msg, sizeof(msg), "Card %d is an EX that references invalid tag %d, segment %d", card_idx + 1, i2, i3_resolved);
+                        snprintf(msg, sizeof(msg), "EX on line %d: references invalid tag %d, segment %d", card_idx + 1, i2, i3_resolved);
                         add_error(ctx, &ctx->errors, msg, FATAL);
                         return -1;
                     }
@@ -797,14 +798,14 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             ctx->netcx.iseg1[idx] = segment_number(ctx, i1, i2);
             if (ctx->netcx.iseg1[idx] == 0) {
                 char msg[MAX_ERROR_LEN];
-                snprintf(msg, sizeof(msg), "Card %d is a %s that references invalid tag %d, segment %d", card_idx + 1, code, i1, i2);
+                snprintf(msg, sizeof(msg), "%s on line %d: references invalid tag %d, segment %d", code, card_idx + 1, i1, i2);
                 add_error(ctx, &ctx->errors, msg, FATAL);
                 return -1;
             }
             ctx->netcx.iseg2[idx] = segment_number(ctx, i3, i4);
             if (ctx->netcx.iseg2[idx] == 0) {
                 char msg[MAX_ERROR_LEN];
-                snprintf(msg, sizeof(msg), "Card %d is a %s that references invalid tag %d, segment %d", card_idx + 1, code, i3, i4);
+                snprintf(msg, sizeof(msg), "%s on line %d: references invalid tag %d, segment %d", code, card_idx + 1, i3, i4);
                 add_error(ctx, &ctx->errors, msg, FATAL);
                 return -1;
             }
@@ -934,7 +935,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     wg_filename = wg_default;
                 } else {
                     char msg[MAX_ERROR_LEN];
-                    snprintf(msg, sizeof(msg), "WG card %d has no filename and no input file to derive one from.", card_idx + 1);
+                    snprintf(msg, sizeof(msg), "WG on line %d: no filename and no input file to derive one from.", card_idx + 1);
                     add_error(ctx, &ctx->errors, msg, FATAL);
                     return -1;
                 }
@@ -952,7 +953,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             if (!ctx->green_fp) {
                 char msg[MAX_ERROR_LEN];
                 snprintf(msg, sizeof(msg),
-                         "WG card %d: cannot open '%s' for writing.", card_idx + 1, wg_filename);
+                         "WG on line %d: cannot open '%s' for writing.", card_idx + 1, wg_filename);
                 add_error(ctx, &ctx->errors, msg, FATAL);
                 return -1;
             }

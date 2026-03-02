@@ -293,7 +293,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           }
 
           if (xw1 == 0.0) {
-            snprintf(msg, sizeof(msg), "The GS card on line %d has a scale factor of zero. This is a fatal error.", i + 1);
+            snprintf(msg, sizeof(msg), "GS on line %d: scale factor is zero.", i + 1);
             add_error(ctx, errors, msg, FATAL);
             return; // Stops further geometry processing
           }
@@ -354,7 +354,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         
         // SP cards have to have a blank in I1, but is this really an error?
         if (tag != 0) {
-          snprintf(msg, sizeof(msg), "card_t %d is a SP, but it has data in I1.", i);
+          snprintf(msg, sizeof(msg), "SP on line %d: has data in I1.", i + 1);
           add_error(ctx,errors, msg, WARNING);
         }
         
@@ -370,7 +370,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
           // TODO: we should test the sanity of the inputs based on the ns
           int next_idx = peek_next_geometry(deck, i);
           if(next_idx == -1 || strcmp(deck->cards[next_idx].card_code, "SC") != 0) {
-            snprintf(msg, sizeof(msg), "The card on line %d is a SP with type %d, but the next card is not an SC, which it needs.", i + 1, segs);
+            snprintf(msg, sizeof(msg), "SP on line %d: type %d requires the next card to be an SC.", i + 1, segs);
             add_error(ctx, errors, msg, WARNING);
             continue;
           }
@@ -421,13 +421,13 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         
       case 7: // SM, generate multiple-patch rectangular surface
         if(tag < 1 || segs < 1) {
-          snprintf(msg, sizeof(msg), "The card on line %d is a SM, but the number of patches in I1 or I2 is too small.", i + 1);
+          snprintf(msg, sizeof(msg), "SM on line %d: number of patches in I1 or I2 is too small.", i + 1);
           add_error(ctx, errors, msg, 1);
           continue;
         }
         int sm_next = peek_next_geometry(deck, i);
         if(sm_next == -1 || strcmp(deck->cards[sm_next].card_code, "SC") != 0) {
-          snprintf(msg, sizeof(msg), "The card on line %d is a SM, but the next card is not an SC, which it needs.", i + 1);
+          snprintf(msg, sizeof(msg), "SM on line %d: requires the next card to be an SC.", i + 1);
           add_error(ctx, errors, msg, 1);
           continue;
         }
@@ -500,7 +500,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
             strncat(gf_default, ".ngf", MAX_PATH_LEN - strlen(gf_default));
             ngf_filename = gf_default;
           } else {
-            snprintf(msg, sizeof(msg), "GF card on line %d has no filename and no input file to derive one from.", i + 1);
+            snprintf(msg, sizeof(msg), "GF on line %d: no filename and no input file to derive one from.", i + 1);
             add_error(ctx, errors, msg, FATAL);
             return;
           }
@@ -538,7 +538,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
 
         FILE *gfp = fopen(ngf_filename, "rb");
         if (!gfp) {
-          snprintf(msg, sizeof(msg), "GF card on line %d cannot open the NGF file '%s'.", i + 1, ngf_display);
+          snprintf(msg, sizeof(msg), "GF on line %d: cannot open NGF file '%s'.", i + 1, ngf_display);
           add_error(ctx, errors, msg, FATAL);
           return;
         }
@@ -556,13 +556,13 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
       }
         
       case 12: // GC, geometry continuation - should only appear after GW
-        snprintf(msg, sizeof(msg), "GC card on line %d found outside of GW tapering context.", i + 1);
+        snprintf(msg, sizeof(msg), "GC on line %d: found outside of GW tapering context.", i + 1);
         add_error(ctx, errors, msg, WARNING);
         continue;
         
       default: // error message if this isn't a comment
         if(!is_comment(card)) {
-          snprintf(msg, sizeof(msg), "Geometry card on line %d has an unknown mnemonic, '%s'.", i + 1, card->card_code);
+          snprintf(msg, sizeof(msg), "Unknown card '%s' on line %d: skipped.", card->card_code, i + 1);
           add_error(ctx, errors, msg, 1);
         }
     } /* switch on card type */
@@ -1230,7 +1230,7 @@ void arc(nec_context_t *ctx, geometry_t *geom, int card_num, int tag_num, int se
   // as is the case in wire and helix, we will do the test now
   if(fabs(ang2- ang1) > 360.0000) {
     char msg[MAX_ERROR_LEN];
-    snprintf(msg, sizeof(msg), "The card on line %d is a GA with an angle >360 degrees.", card_num + 1);
+    snprintf(msg, sizeof(msg), "GA on line %d: angle >360 degrees.", card_num + 1);
     add_error(ctx, &ctx->geometry.errors, msg, 1);
     return;
   }
@@ -1666,7 +1666,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
   // sanity check, formerly used nop>0 but we no longer pass that in
   if(ix == 0 && iy == 0 && iz == 0) {
     char msg[MAX_ERROR_LEN];
-    snprintf(msg, sizeof(msg), "GX on card %d has no reflection axes.", card_num + 1);
+    snprintf(msg, sizeof(msg), "GX on line %d: no reflection axes.", card_num + 1);
     add_error(ctx, &ctx->geometry.errors, msg, 1);
     return;
   }

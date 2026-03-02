@@ -455,7 +455,7 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
     {
       char err_msg[256];
       snprintf(err_msg, sizeof(err_msg),
-              "The LD card on line %d references tag %d, but no segment has that tag.",
+              "LD on line %d: references tag %d, but no segment has that tag.",
               ctx->zload.ldcard_num[istepx], ldtags);
       /* cleanup tracking arrays before returning */
       free(first_ld_owner);
