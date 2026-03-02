@@ -15,6 +15,23 @@
  * @param fp   Open file handle to write the .maa data.  Must be writable.
  * @return 0 on success, -1 on error (typically a NULL pointer).
  */
+/**
+ * @brief Export a deck to MMANA-GAL .maa format.
+ *
+ * The function inspects the provided NEC deck for wire geometry (GW cards),
+ * lumped loads (LD) and excitations (EX), and emits a sequence of text
+ * lines that conform to the informal .maa specification used by MMANA-GAL.
+ *
+ * Only a subset of possible NEC cards is translated; any other cards in the
+ * deck are ignored.  The produced file begins with a title line, frequency
+ * line, counts line, followed by wire/load/source sections and a trivial
+ * ground block.
+ *
+ * @param deck Pointer to the source deck.  Must not be NULL.
+ * @param fp   File pointer already opened for writing.  The caller retains
+ *             responsibility for opening/closing the handle.
+ * @return 0 on success, -1 if either argument is NULL or a write error occurs.
+ */
 int write_deck_maa(const deck_t *deck, FILE *fp);
 
 /**
@@ -30,6 +47,24 @@ int write_deck_maa(const deck_t *deck, FILE *fp);
  *             insert_card(), so deck pointers must be valid.
  * @param fp   Open file handle for reading.  Must be readable and rewinded.
  * @return 0 on success, -1 on parse failure or I/O error.
+ */
+/**
+ * @brief Import MMANA-GAL .maa data into an OpenNEC deck.
+ *
+ * The parser reads line-oriented .maa contents from the provided file
+ * pointer.  It generates corresponding GW, LD, EX and FR cards and appends
+ * them to the supplied deck using the normal deck manipulation APIs.  The
+ * function does not clear or otherwise modify existing cards already present
+ * in the deck.
+ *
+ * The routine is tolerant of minor formatting variations (commas vs.
+ * spaces) and will skip invalid entries, but it will fail if the counts line
+ * cannot be located.
+ *
+ * @param deck Pointer to an initialized deck_t structure; cards are appended.
+ * @param fp   File pointer opened for reading.  Must be positioned at the
+ *             start of the .maa content.
+ * @return 0 on success, -1 on null arguments or I/O/parse errors.
  */
 int read_deck_maa(deck_t *deck, FILE *fp);
 

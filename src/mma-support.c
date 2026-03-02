@@ -7,6 +7,17 @@
 #include <ctype.h>
 
 /* helper to append a card whose full text is given */
+/**
+ * @brief Create a new card from a raw text line and append to deck.
+ *
+ * This helper allocates and populates a temporary card_t with the provided
+ * string, then uses insert_card() to place it at the end of the deck.  It
+ * is used by both the importer and exporter to materialize NEC cards.
+ *
+ * @param deck Target deck (must be non-NULL).
+ * @param text Null-terminated string containing the entire card line.
+ * @return 0 on success, -1 on allocation or insertion failure.
+ */
 static int append_card_from_text(deck_t *deck, const char *text)
 {
     card_t card = {0};
@@ -36,6 +47,9 @@ static int append_card_from_text(deck_t *deck, const char *text)
     return 0;
 }
 
+/**
+ * @copydoc write_deck_maa
+ */
 int write_deck_maa(const deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
@@ -119,6 +133,9 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
     return 0;
 }
 
+/**
+ * @copydoc read_deck_maa
+ */
 int read_deck_maa(deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
