@@ -72,14 +72,11 @@ counts line is self-contained.
     ***Segmentation***
     …
 
-The `***Wires***` header is **required** in Variant B to locate the wire count.
-The source and load counts use a two-value `wire, offset` form rather than a
-single integer.
+The `***Wires***` header is **required** in Variant B to locate the wire count. The source and load counts use a two-value `wire, offset` form rather than a single integer.
 
 ### Comment blocks are rare
 
-Only 17 files use `###Comment###` markers.  The marker may be followed by the
-comment text on the same line or on the immediately following line.
+Only 17 files use `###Comment###` markers.  The marker may be followed by the comment text on the same line or on the immediately following line.
 
 Per-file analysis
 -----------------
@@ -1042,8 +1039,7 @@ detect which variant a file uses and adjust the count-parsing accordingly.
 Grammar revision
 ----------------
 
-The "Minimal grammar" section of `MMA file format.md` should be updated to
-reflect both variants:
+The "Minimal grammar" section of `MMA file format.md` should be updated to reflect both variants:
 
 ```
 <MMA-A>  ::= <title>

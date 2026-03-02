@@ -17,6 +17,7 @@
 #include "mma-support.h"
 #include "deck.h"    // for insert_card
 #include "misc.h"    // for add_error
+
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -56,7 +57,53 @@ static int append_card_from_text(deck_t *deck, const char *text)
     card.card_code[1] = *p && *(p+1) ? *(p+1) : '\0';
     card.card_code[2] = '\0';
 
+    /* populate comment field for CM/CE/'!': write_deck_nec prints card_code+comment */
+    {
+        int code_end = 0;
+        if (strcmp(card.card_code, "CM") == 0 || strcmp(card.card_code, "CE") == 0)
+            code_end = 2;
+        else if (card.card_code[0] == '!' || card.card_code[0] == '#')
+            code_end = 1;
+        if (code_end > 0) {
+            const char *rest = p + code_end;
+            card.comment = strdup(rest);
+        }
+    }
+
     if (insert_card(deck, &card, deck->num_cards) < 0) {
+        return -1;
+    }
+    return 0;
+}
+
+/* insert a card at an arbitrary position (0..num_cards). Similar to
+   append_card_from_text but allows specifying the insertion index. */
+static int insert_card_from_text_at(deck_t *deck, const char *text, int pos)
+{
+    card_t card = {0};
+    size_t len = strlen(text);
+    card.edited = false;
+    card.ignore = false;
+    card.card_num = deck->num_cards + 1;
+    card.orig_str = calloc(len + 1, 1);
+    card.card_str = calloc(len + 1, 1);
+    if (!card.orig_str || !card.card_str) {
+        free(card.orig_str);
+        free(card.card_str);
+        return -1;
+    }
+    memcpy(card.orig_str, text, len);
+    memcpy(card.card_str, text, len);
+    /* mnemonic is first two non-space chars */
+    const char *p = text;
+    while (*p && isspace((unsigned char)*p)) p++;
+    card.card_code[0] = *p ? *p : '\0';
+    card.card_code[1] = *p && *(p+1) ? *(p+1) : '\0';
+    card.card_code[2] = '\0';
+
+    if (pos < 0) pos = 0;
+    if (pos > deck->num_cards) pos = deck->num_cards;
+    if (insert_card(deck, &card, pos) < 0) {
         return -1;
     }
     return 0;
@@ -69,15 +116,13 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
 
-    /* title: use first comment card if present */
-    const char *title = "OpenNEC export";
+    /* title: use first comment card if present and non-empty; blank line otherwise */
+    const char *title = "";
     for (int i = 0; i < deck->num_cards; i++) {
         card_t *c = &deck->cards[i];
         if (card_is_commented_out(c) || strcmp(c->card_code, "CM") == 0) {
             if (c->comment && c->comment[0] != '\0')
                 title = c->comment;
-            else if (c->orig_str)
-                title = c->orig_str;
             break;
         }
     }
@@ -124,6 +169,8 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
     }
 
     /* loads */
+    fprintf(fp, "***Load***\n");
+    fprintf(fp, "%d, 0\n", nl);
     for (int i = 0, count = 0; i < deck->num_cards && count < nl; i++) {
         card_t *c = &deck->cards[i];
         if (strcmp(c->card_code, "LD") != 0) continue;
@@ -139,6 +186,8 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
     }
 
     /* sources */
+    fprintf(fp, "***Source***\n");
+    fprintf(fp, "%d, 0\n", ns);
     for (int i = 0, count = 0; i < deck->num_cards && count < ns; i++) {
         card_t *c = &deck->cards[i];
         if (strcmp(c->card_code, "EX") != 0) continue;
@@ -193,6 +242,8 @@ int read_deck_maa(deck_t *deck, FILE *fp)
     char line[512];
     int n_wires = 0;
     double freq = 0.0;
+    int title_ce_index = -1;
+    int any_minus1 = 0;
 
     /* read title (first non-empty, non-asterisk line) */
     while (fgets(line, sizeof line, fp)) {
@@ -207,6 +258,9 @@ int read_deck_maa(deck_t *deck, FILE *fp)
         snprintf(buf, sizeof buf, "CM %s", line);
         append_card_from_text(deck, buf);
         append_card_from_text(deck, "CE");
+        /* record index of the CE we just appended so we can insert SY below it */
+        title_ce_index = deck->num_cards - 1;
+        /* (No automatic GS insertion: unit-detection removed per user request) */
     }
     /* next numeric line is frequency */
     while (fgets(line, sizeof line, fp)) {
@@ -239,12 +293,9 @@ int read_deck_maa(deck_t *deck, FILE *fp)
             break;
         }
     }
-    /* add FR card */
-    if (freq > 0) {
-        char buf[128];
-        snprintf(buf, sizeof buf, "FR 0,0,%.6f,0,0,0,0,0", freq);
-        append_card_from_text(deck, buf);
-    }
+    /* frequency is saved so that we can emit the FR card after the
+       GE termination later; MMANA expects FR to come immediately after GE,
+       not at the top of the deck.  */
 
     /* wires */
     for (int i = 0; i < n_wires; ) {
@@ -265,9 +316,8 @@ int read_deck_maa(deck_t *deck, FILE *fp)
             char *nl = strchr(t, '\n'); if (nl) *nl = '\0';
             while (*t && isspace((unsigned char)*t)) t++;
             char buf[300];
-            snprintf(buf, sizeof buf, "CM %s", t);
+            snprintf(buf, sizeof buf, "! %s", t);
             append_card_from_text(deck, buf);
-            append_card_from_text(deck, "CE");
             continue;
         }
         double x1,y1,z1,x2,y2,z2,rad; int segs;
@@ -278,11 +328,63 @@ int read_deck_maa(deck_t *deck, FILE *fp)
                      "GW %d, %d, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f",
                      i+1, segs, x1,y1,z1,x2,y2,z2,rad);
             append_card_from_text(deck, buf);
+            if (segs == -1) any_minus1 = 1;
             i++;
         }
     }
+    /* if needed insert SY default and replace -1 tokens with the literal
+       'segs' in GW card strings so the user can edit the SY value later. */
+    if (any_minus1 && title_ce_index >= 0) {
+        const char *sytext = "SY segs=10 'default segment count, change to realistic value'";
+        insert_card_from_text_at(deck, sytext, title_ce_index + 1);
+        for (int k = 0; k < deck->num_cards; k++) {
+            card_t *c = &deck->cards[k];
+            if (strcmp(c->card_code, "GW") != 0) continue;
+            if (!c->card_str) continue;
+            char *p1 = strchr(c->card_str, ',');
+            if (!p1) continue;
+            char *p2 = strchr(p1 + 1, ',');
+            if (!p2) continue;
+            /* extract token between p1 and p2 */
+            int toklen = (int)(p2 - (p1 + 1));
+            if (toklen <= 0 || toklen > 32) continue;
+            char token[40];
+            strncpy(token, p1 + 1, toklen);
+            token[toklen] = '\0';
+            /* trim */
+            char *ts = token;
+            while (*ts && isspace((unsigned char)*ts)) ts++;
+            char *te = token + strlen(token) - 1;
+            while (te > ts && isspace((unsigned char)*te)) *te-- = '\0';
+            if (strcmp(ts, "-1") == 0) {
+                /* build new string: prefix up to p1+1, then ' segs', then remainder from p2 */
+                size_t newlen = strlen(c->card_str) + 5;
+                char *ns = malloc(newlen);
+                if (!ns) continue;
+                size_t pre = (size_t)(p1 - c->card_str) + 1;
+                strncpy(ns, c->card_str, pre);
+                ns[pre] = '\0';
+                strcat(ns, " segs");
+                strcat(ns, p2);
+                free(c->card_str);
+                c->card_str = ns;
+                /* mirror to orig_str */
+                if (c->orig_str) {
+                    free(c->orig_str);
+                    c->orig_str = strdup(c->card_str);
+                }
+            }
+        }
+    }
+
     /* GE termination */
     append_card_from_text(deck, "GE");
+    /* now that geometry is finished, add the frequency card */
+    if (freq > 0) {
+        char buf[128];
+        snprintf(buf, sizeof buf, "FR 0,0,%.6f,0,0,0,0,0", freq);
+        append_card_from_text(deck, buf);
+    }
 
     /* parse following sections based on headers; headers must be seen
        so we read raw lines rather than using the helper. */
@@ -294,6 +396,10 @@ int read_deck_maa(deck_t *deck, FILE *fp)
         }
         if (strncmp(line, "***Source***", strlen("***Source***")) == 0) {
             section = 2;
+            continue;
+        }
+        if (strncmp(line, "***Segmentation***", strlen("***Segmentation***")) == 0) {
+            section = 3;
             continue;
         }
         if (strncmp(line, "***", strlen("***")) == 0) {
@@ -319,9 +425,8 @@ int read_deck_maa(deck_t *deck, FILE *fp)
             char *nl = strchr(t, '\n'); if (nl) *nl = '\0';
             while (*t && isspace((unsigned char)*t)) t++;
             char buf[300];
-            snprintf(buf, sizeof buf, "CM %s", t);
+            snprintf(buf, sizeof buf, "! %s", t);
             append_card_from_text(deck, buf);
-            append_card_from_text(deck, "CE");
             continue;
         }
         /* regular data line */
@@ -350,9 +455,25 @@ int read_deck_maa(deck_t *deck, FILE *fp)
                          wire, seg, re, im);
                 append_card_from_text(deck, buf);
             }
+        } else if (section == 3) {
+            /* ***Segmentation***: one line, four values:
+               max-segs, segs-per-wavelength, taper-ratio, min-segs-per-wire */
+            int max_segs = 0, segs_per_wl = 0, min_segs = 0;
+            double taper = 0.0;
+            if (sscanf(line, "%d%*[, ]%d%*[, ]%lf%*[, ]%d",
+                       &max_segs, &segs_per_wl, &taper, &min_segs) == 4) {
+                char buf[256];
+                snprintf(buf, sizeof buf,
+                         "! maa-segmentation: max-segs=%d segs-per-wl=%d taper=%.4g min-segs=%d",
+                         max_segs, segs_per_wl, taper, min_segs);
+                append_card_from_text(deck, buf);
+            }
+            section = 0; /* only one data line in this section */
         }
     }
 
+    /* append EN terminator */
+    append_card_from_text(deck, "EN");
 
     return 0;
 }

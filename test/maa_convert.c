@@ -4,12 +4,7 @@
 
 #include "mma-support.h"
 #include "deck.h"
-#include "output.h"
 #include "misc.h"
-
-/* write_deck_nec is defined in output.c but not declared publicly */
-extern void write_deck_nec(const nec_context_t *ctx, const deck_t *deck,
-                           FILE *file, int remove_inline_comments);
 
 static int convert_file(const char *inpath)
 {
@@ -41,8 +36,15 @@ static int convert_file(const char *inpath)
         perror(outpath);
         return -1;
     }
-    /* write deck in NEC format (no context needed) */
-    write_deck_nec(NULL, &deck, outf, 0);
+    /* write deck in NEC format: use card_str directly since cards were built
+       by read_deck_maa using append_card_from_text (int/float fields unparsed) */
+    for (int i = 0; i < deck.num_cards; i++) {
+        const char *s = deck.cards[i].card_str;
+        if (s && *s) {
+            fputs(s, outf);
+            fputc('\n', outf);
+        }
+    }
     fclose(outf);
     printf("converted %s -> %s\n", inpath, outpath);
     return 0;
