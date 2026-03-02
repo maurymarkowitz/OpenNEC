@@ -13,15 +13,19 @@ After reading this description you should be able to glance at an existing `.maa
 Format overview
 ---------------
 
-A typical `.maa` file is organised into the following logical sections.  The headers such as `***Wires***` that appear in many examples are purely cosmetic and are ignored by our parser.
+A typical `.maa` file is organised into the following logical sections.  Two
+distinct structural variants exist in the wild (see *Format variants* below).
+`***…***` section headers are effectively required — a survey of 935 real‑world
+files found only one without them, and that turned out to be a NEC deck saved
+with the wrong extension.
 
 1. **Title line.**  Arbitrary text used as a description of the model.  When the file is imported the converter creates a `CM` card containing this line (followed immediately by a `CE` card).  During export the first comment card in the deck is written back as the title line.  This preserves the user‑supplied description across conversions.
 2. **Frequency line.**  A single floating‑point value giving the design
-   frequency in megahertz.  Some files include an asterisk (`*`) on a
+   frequency in megahertz.  Some files (Variant B) include a bare `*` on a
    separate line between the title and the frequency; this is ignored.
-3. **Counts line.**  Three integers: the number of wires, loads and
-   voltage sources present.  The importer expects this line and will fail if
-   it cannot locate three integers in succession.
+3. **Counts.**  In Variant A a single line holds three integers: wire count,
+   load count, source count.  In Variant B each count appears on its own line
+   immediately inside the relevant `***…***` section.
 4. **Wire (geometry) block.**  Exactly `N_wires` following lines, each
    containing eight numeric values and usually a trailing “‑1” placeholder.
    The fields represent the end‑point coordinates of a straight wire in
@@ -51,33 +55,86 @@ A typical `.maa` file is organised into the following logical sections.  The hea
 
 Whitespace is permissive: commas or any combination of spaces and tabs may separate the numeric fields.  The lines may also contain leading/trailing spaces.  The format is case‑insensitive.
 
+Format variants
+---------------
+
+A survey of 935 real‑world `.maa` files revealed two structural variants (see
+[MMA format survey.md](MMA%20format%20survey.md) for the full per‑file table).
+
+**Variant A — 729 files (78 %)** — combined counts line, `***Wires***` optional
+
+    Broadband antenna 80m 3.5 - 3.8MHz
+    3.650000
+    7 1 1              ← nw nl ns together
+    0.0, -21.1, ..., 0.001, -1
+    ...
+    ***Source***
+    1, 1
+    w7c, 0.0, 1.0
+    ***Load***
+    0, 1
+    ...
+
+**Variant B — 205 files (22 %)** — per‑section headers, count inside each section
+
+    144CQlomba
+    *                  ← optional bare asterisk line
+    144.28
+    ***Wires***
+    16                 ← wire count alone
+    0.37853, -0.26672, ..., 8.000e-04, -1
+    ...
+    ***Source***
+    1, 0
+    w1c, 0.0, 1.0
+    ***Load***
+    0, 0
+    ...
+
 Minimal grammar
 ---------------
 
-(Straight‑line BNF, for reference.)
+(BNF for reference; both variants shown.)
 
 ```
-<MMA>          ::= <title> <newline>
-                   <frequency> <newline>
-                   <counts> <newline>
-                   {<wire>}* <newline>
-                   {<source>}* <newline>
-                   {<load>}* <newline>
-                   <extra>*
+<MMA-A>  ::= <title> NEWLINE
+             <frequency> NEWLINE
+             <nw> SEP <nl> SEP <ns> NEWLINE    // all three counts
+             <wire>^nw
+             ["***Source***" NEWLINE <ns> SEP <0> NEWLINE <src-a>^ns]
+             ["***Load***"   NEWLINE <nl> SEP <0> NEWLINE <load>^nl]
+             <extra>*
 
-<title>        ::= <any text>
-<frequency>    ::= <float>
-<counts>       ::= <int> <sep> <int> <sep> <int>
-<wire>         ::= <float> <sep> <float> <sep> ... <sep> <float> <sep> <int>
-<source>       ::= <int> <sep> <int> <sep> <float> <sep> <float>
-<load>         ::= <int> <sep> <int> <sep> <float> <sep> <float> <sep> <float> <sep> <float>
-<extra>        ::= <any text>       # not interpreted
+<MMA-B>  ::= <title> NEWLINE
+             ["*" NEWLINE]                     // optional separator
+             <frequency> NEWLINE
+             "***Wires***" NEWLINE
+             <nw> NEWLINE                      // wire count alone
+             <wire>^nw
+             ["***Source***" NEWLINE <ns> SEP <0> NEWLINE <src-b>^ns]
+             ["***Load***"   NEWLINE <nl> SEP <0> NEWLINE <load>^nl]
+             <extra>*
 
-<sep>          ::= "," | whitespace+
+<wire>   ::= <float> SEP <float> SEP <float> SEP   // x1 y1 z1
+             <float> SEP <float> SEP <float> SEP   // x2 y2 z2
+             <float> SEP <int>                     // radius, segments
+
+<src-a>  ::= <int> SEP <int> SEP <float> SEP <float>   // wire, seg, mag, phase°
+<src-b>  ::= "w" <int> "c" SEP <float> SEP <float>    // wire-label, phase°, mag
+
+<load>   ::= <int> SEP <int> SEP <float> SEP <float> SEP <float> SEP <float>
+                                                       // wire, seg, R, X, L, C
+
+<extra>  ::= "***Segmentation***" NEWLINE <seg-params>
+           | "***G/H/M/R/AzEl/X***" NEWLINE <ground-params>
+           | "###Comment###" [SP <text> | NEWLINE <text>]
+           | other line  // ignored
+
+SEP      ::= "," | whitespace+
 ```
 
-The `***…***` headers and comment markers may appear anywhere and are
-discarded by the parser.
+The `***…***` headers and `###Comment###` markers may appear anywhere between
+sections and are interpreted or skipped as described above.
 
 Features not supported by OpenNEC
 ---------------------------------
