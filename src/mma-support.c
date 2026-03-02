@@ -69,8 +69,19 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
 
-    /* title */
-    fprintf(fp, "OpenNEC export\n");
+    /* title: use first comment card if present */
+    const char *title = "OpenNEC export";
+    for (int i = 0; i < deck->num_cards; i++) {
+        card_t *c = &deck->cards[i];
+        if (card_is_commented_out(c) || strcmp(c->card_code, "CM") == 0) {
+            if (c->comment && c->comment[0] != '\0')
+                title = c->comment;
+            else if (c->orig_str)
+                title = c->orig_str;
+            break;
+        }
+    }
+    fprintf(fp, "%s\n", title);
 
     /* frequency: look for FR card first */
     double freq = 14.0; /* default */
@@ -144,6 +155,19 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
     /* ground/other info: simply write defaults */
     fprintf(fp, "1\n");          /* real ground */
     fprintf(fp, "13.0, 0.005\n"); /* average parameters */
+
+    /* append any comment cards as ###Comment### lines */
+    for (int i = 0; i < deck->num_cards; i++) {
+        card_t *c = &deck->cards[i];
+        if (card_is_commented_out(c) || strcmp(c->card_code, "CM") == 0) {
+            const char *txt = c->comment ? c->comment : c->orig_str;
+            if (txt && txt[0] != '\0') {
+                fprintf(fp, "###Comment### %s\n", txt);
+            }
+        }
+    }
+
+    /* end marker */
     fprintf(fp, "\n");
     return 0;
 }
@@ -151,6 +175,18 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
 /**
  * @copydoc read_deck_maa
  */
+/* helper to read next non-header line from the stream */
+static int maa_read_data_line(FILE *fp, char *out)
+{
+    while (fgets(out, 512, fp)) {
+        if (strncmp(out, "***", 3) == 0) continue;
+        if (out[0] == '*') continue;
+        if (out[0] == '\n') continue;
+        return 1;
+    }
+    return 0;
+}
+
 int read_deck_maa(deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
@@ -158,18 +194,54 @@ int read_deck_maa(deck_t *deck, FILE *fp)
     int n_wires = 0, n_loads = 0, n_src = 0;
     double freq = 0.0;
 
-    /* read title */
-    if (!fgets(line, sizeof line, fp)) return -1;
-    /* next line maybe freq */
-    if (fgets(line, sizeof line, fp)) {
+    /* read title (first non-empty, non-asterisk line) */
+    while (fgets(line, sizeof line, fp)) {
+        if (line[0] == '*' || line[0] == '\n') continue;
+        break;
+    }
+    if (line[0] == '\0') return -1;
+    {
+        char buf[256];
+        size_t l = strlen(line);
+        if (l && line[l-1] == '\n') line[l-1] = '\0';
+        snprintf(buf, sizeof buf, "CM %s", line);
+        append_card_from_text(deck, buf);
+        append_card_from_text(deck, "CE");
+    }
+    /* next numeric line is frequency */
+    while (fgets(line, sizeof line, fp)) {
+        if (line[0] == '*' || line[0] == '\n') continue;
         freq = atof(line);
+        break;
     }
-    /* counts */
-    if (fgets(line, sizeof line, fp)) {
-        sscanf(line, "%d %d %d", &n_wires, &n_loads, &n_src);
+    /* now counts line: look for first line containing only integers (no dot)
+       this handles the case where the next numeric item is a lone '7' after
+       the ***Wires*** header. */
+    while (fgets(line, sizeof line, fp)) {
+        /* skip headers and comments */
+        if (line[0] == '*' || line[0] == '\n') continue;
+        /* ignore lines with a decimal point (likely floats) */
+        if (strchr(line, '.')) continue;
+        char *p = line;
+        int vals[3] = {0,0,0};
+        int count = 0;
+        while (*p && count < 3) {
+            /* skip non-digit, non-minus */
+            if ((*p >= '0' && *p <= '9') || *p == '-') {
+                long v = strtol(p, &p, 10);
+                vals[count++] = (int)v;
+            } else {
+                p++;
+            }
+        }
+        if (count > 0) {
+            n_wires = vals[0];
+            if (count > 1) n_loads = vals[1];
+            if (count > 2) n_src   = vals[2];
+            break;
+        }
     }
-
-    /* append an FR card for frequency */
+    /* add FR card */
     if (freq > 0) {
         char buf[128];
         snprintf(buf, sizeof buf, "FR 0,0,%.6f,0,0,0,0,0", freq);
@@ -177,52 +249,112 @@ int read_deck_maa(deck_t *deck, FILE *fp)
     }
 
     /* wires */
-    for (int i = 0; i < n_wires; i++) {
-        if (!fgets(line, sizeof line, fp)) break;
+    for (int i = 0; i < n_wires; ) {
+        if (!maa_read_data_line(fp, line)) break;
+        /* handle comment markers that may precede or interrupt the wire list */
+        if (strncmp(line, "###Comment###", strlen("###Comment###")) == 0) {
+            char *t = line + 13;
+            while (*t && isspace((unsigned char)*t)) t++;
+            char comment_buf[512];
+            if (*t == '\0' || *t == '\n') {
+                /* grab next line for the comment text */
+                if (fgets(comment_buf, sizeof comment_buf, fp)) {
+                    t = comment_buf;
+                } else {
+                    t = "";
+                }
+            }
+            char *nl = strchr(t, '\n'); if (nl) *nl = '\0';
+            while (*t && isspace((unsigned char)*t)) t++;
+            char buf[300];
+            snprintf(buf, sizeof buf, "CM %s", t);
+            append_card_from_text(deck, buf);
+            append_card_from_text(deck, "CE");
+            continue;
+        }
         double x1,y1,z1,x2,y2,z2,rad; int segs;
-        if (sscanf(line, "%lf, %lf, %lf, %lf, %lf, %lf, %lf, %d",
+        if (sscanf(line, "%lf%*[, ]%lf%*[, ]%lf%*[, ]%lf%*[, ]%lf%*[, ]%lf%*[, ]%lf%*[, ]%d",
                    &x1,&y1,&z1,&x2,&y2,&z2,&rad,&segs) >= 8) {
             char buf[256];
-            /* tag is 1-based order */
             snprintf(buf, sizeof buf,
                      "GW %d, %d, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f",
                      i+1, segs, x1,y1,z1,x2,y2,z2,rad);
             append_card_from_text(deck, buf);
+            i++;
+        }
+    }
+    /* GE termination */
+    append_card_from_text(deck, "GE");
+
+    /* parse following sections based on headers; headers must be seen
+       so we read raw lines rather than using the helper. */
+    int section = 0; // 1=load, 2=source
+    while (fgets(line, sizeof line, fp)) {
+        if (strncmp(line, "***Load***", strlen("***Load***")) == 0) {
+            section = 1;
+            continue;
+        }
+        if (strncmp(line, "***Source***", strlen("***Source***")) == 0) {
+            section = 2;
+            continue;
+        }
+        if (strncmp(line, "***", strlen("***")) == 0) {
+            section = 0;
+            continue;
+        }
+        /* inline comments – wrap each in a CM/CE pair to retain ordering
+           MMANA often puts the actual text on the *next* line after the
+           ###Comment### marker, so handle both cases. */
+        if (strncmp(line, "###Comment###", strlen("###Comment###")) == 0) {
+            char *t = line + 13;
+            while (*t && isspace((unsigned char)*t)) t++;
+            char comment_buf[512];
+            if (*t == '\0' || *t == '\n') {
+                /* read following line for the comment text */
+                if (fgets(comment_buf, sizeof comment_buf, fp)) {
+                    t = comment_buf;
+                } else {
+                    t = "";
+                }
+            }
+            /* trim newline and leading whitespace */
+            char *nl = strchr(t, '\n'); if (nl) *nl = '\0';
+            while (*t && isspace((unsigned char)*t)) t++;
+            char buf[300];
+            snprintf(buf, sizeof buf, "CM %s", t);
+            append_card_from_text(deck, buf);
+            append_card_from_text(deck, "CE");
+            continue;
+        }
+        /* regular data line */
+        if (section == 1) {
+            int wire, seg;
+            double R=0,X=0,L=0,C=0;
+            if (sscanf(line, "%d%*[, ]%d%*[, ]%lf%*[, ]%lf%*[, ]%lf%*[, ]%lf",
+                       &wire,&seg,&R,&X,&L,&C) >= 2) {
+                char buf[256];
+                snprintf(buf, sizeof buf,
+                         "LD 0, %d, %d, %.6g, %.6g, %.6g, %.6g",
+                         wire, seg, R, X, L, C);
+                append_card_from_text(deck, buf);
+            }
+        } else if (section == 2) {
+            int wire, seg;
+            double mag=1.0, phase=0.0;
+            if (sscanf(line, "%d%*[, ]%d%*[, ]%lf%*[, ]%lf",
+                       &wire,&seg,&mag,&phase) >= 2) {
+                double phrad = phase * M_PI / 180.0;
+                double re = mag * cos(phrad);
+                double im = mag * sin(phrad);
+                char buf[256];
+                snprintf(buf, sizeof buf,
+                         "EX 0, %d, %d, %.6f, %.6f, 0,0,0",
+                         wire, seg, re, im);
+                append_card_from_text(deck, buf);
+            }
         }
     }
 
-    /* loads */
-    for (int i = 0; i < n_loads; i++) {
-        if (!fgets(line, sizeof line, fp)) break;
-        int wire, seg;
-        double R,X,L,C;
-        char *p = line;
-        /* allow commas or spaces */
-        sscanf(p, "%d %d %lf %lf %lf %lf", &wire,&seg,&R,&X,&L,&C);
-        char buf[256];
-        /* simple mapping to LD card; use R,X,L,C in f1..f4 */
-        snprintf(buf, sizeof buf,
-                 "LD 0, %d, %d, %.6g, %.6g, %.6g, %.6g",
-                 wire, seg, R, X, L, C);
-        append_card_from_text(deck, buf);
-    }
 
-    /* sources */
-    for (int i = 0; i < n_src; i++) {
-        if (!fgets(line, sizeof line, fp)) break;
-        int wire, seg;
-        double mag, phase;
-        sscanf(line, "%d %d %lf %lf", &wire,&seg,&mag,&phase);
-        double phrad = phase * M_PI / 180.0;
-        double re = mag * cos(phrad);
-        double im = mag * sin(phrad);
-        char buf[256];
-        snprintf(buf, sizeof buf,
-                 "EX 0, %d, %d, %.6f, %.6f, 0,0,0",
-                 wire, seg, re, im);
-        append_card_from_text(deck, buf);
-    }
-
-    /* ignore remaining ground/freq lines */
     return 0;
 }

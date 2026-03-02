@@ -41,7 +41,13 @@ A typical `.maa` file is organised into the following logical sections.  The hea
    further labelled blocks such as
    `***Segmentation***` (integer segmentation parameters),
    `***G/H/M/R/AzEl/X***` (ground type/parameters and measurement options),
-   and final `###Comment###` lines with free‑form text.  During import each such comment block is turned into a comment card (using the default `!` marker), and when exporting any comment cards present in the deck are emitted back as `###Comment### …` lines.  The remaining extra sections are still **ignored**.
+   and final `###Comment###` lines with free‑form text.  The marker is
+   sometimes followed by the comment on the same line, but more commonly the
+   text appears on the next line; our importer handles both forms and keeps
+   the comment at its original position relative to the geometry and load
+   blocks.  During import each comment is turned into a CM/CE card, and when
+   exporting any comment cards present in the deck are emitted back as
+   `###Comment### …` lines.  The remaining extra sections are still **ignored**.
 
 Whitespace is permissive: commas or any combination of spaces and tabs may separate the numeric fields.  The lines may also contain leading/trailing spaces.  The format is case‑insensitive.
 
