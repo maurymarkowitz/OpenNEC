@@ -680,7 +680,9 @@ struct nec_context_t
 	int eval_depth;         /* To track recursion depth during symbol evaluation */
 	bool xt_terminated;       /* True if simulation was halted by an XT card; no output is expected */
 	bool wg_after_cmset;      /* True if WG card opened green_fp: write binary NGF then stop */
-	bool frequency_loop_ran;  /* True if execute_frequency_loop() was called for at least one batch */
+	bool frequency_loop_ran;        /* True if execute_frequency_loop() was called for at least one batch */
+	bool freq_step_output_written;  /* True once per-step output has been written inside the freq loop */
+	bool preamble_written;          /* True once the geometry preamble has been written for this section */
 	bool step_size_warned;    /* True once the Romberg step-size-limited warning has been emitted */
 };
 

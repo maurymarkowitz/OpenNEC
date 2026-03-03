@@ -25,6 +25,25 @@
 void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *pfile);
 
 /**
+ * @brief Writes the one-time geometry preamble section.
+ *
+ * Writes the file header, structure specification, segments, patches, and
+ * input card listing.  Called once per simulation section before the
+ * frequency loop begins.
+ */
+void write_nec_preamble(nec_context_t *ctx, const deck_t *deck, FILE *file);
+
+/**
+ * @brief Writes all per-frequency-step output sections.
+ *
+ * Writes frequency data, loading, environment, matrix timing, network data,
+ * antenna input parameters, currents, power budget, radiation patterns, and
+ * near-field data for the current frequency step.  Called at the end of each
+ * frequency iteration inside execute_frequency_loop().
+ */
+void write_frequency_step_output(FILE *file, nec_context_t *ctx);
+
+/**
  * @brief Writes a deck in the original NEC-2 format.
  *
  * Extension cards (SY etc.) are omitted.  Formulas are emitted as their

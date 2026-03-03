@@ -22,7 +22,7 @@
 
 // Forward declarations for static functions
 static int nec_calculation_defaults(nec_context_t *ctx);
-static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq);
+static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq, const deck_t *deck);
 static void reset_loading_buffers(nec_context_t *ctx);
 static void reset_network_buffers(nec_context_t *ctx);
 static void reset_coupling_buffers(nec_context_t *ctx);
@@ -198,7 +198,7 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
                                    ctx->wg_after_cmset);
         if (!is_termination && has_output_request) {
             ctx->frequency_loop_ran = true;
-            if (execute_frequency_loop(ctx, ctx->save.num_freq, ctx->save.freq_step_type, ctx->save.freq_step) != 0) {
+            if (execute_frequency_loop(ctx, ctx->save.num_freq, ctx->save.freq_step_type, ctx->save.freq_step, deck) != 0) {
                 return -1;
             }
         }
@@ -377,6 +377,8 @@ static int nec_calculation_defaults(nec_context_t *ctx)
     ctx->dataj.use_extended_kernel = 0;   // Extended thin-wire kernel off by default
     ctx->gnd.far_field_type = -1;
     ctx->frequency_loop_ran = false;
+    ctx->freq_step_output_written = false;
+    ctx->preamble_written = false;
     
     // Note: The following old main.c local variables are not stored in ctx
     // as they were only used for local flow control:
@@ -516,9 +518,12 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
         char *code = card->card_code;
         
         // Check for batch termination cards
-        if (strcmp(code, "XQ") == 0) {
-            *batch_end = card_idx;  // Include XQ in this batch
-            ctx->current_card_idx = card_idx + 1;  // Next batch starts after XQ
+        if (strcmp(code, "XQ") == 0 ||
+            strcmp(code, "RP") == 0 ||
+            strcmp(code, "NE") == 0 ||
+            strcmp(code, "NH") == 0) {
+            *batch_end = card_idx;  // Include this card in the batch
+            ctx->current_card_idx = card_idx + 1;  // Next batch starts after
             found_batch_end = true;
             break;
         }
@@ -988,7 +993,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
  * @param delfrq  Frequency step size
  * @return        0 on success, -1 on error
  */
-static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq)
+static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq, const deck_t *deck)
 {
     if (ctx == NULL) {
         return -1;
@@ -1076,6 +1081,12 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         factor_block_matrix(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, iresrv, ctx->geometry.symmetry_flag);
     }
     
+    // Write one-time geometry preamble before the frequency loop (first call only)
+    if (ctx->output_fp != NULL && !ctx->preamble_written) {
+        write_nec_preamble(ctx, deck, ctx->output_fp);
+        ctx->preamble_written = true;
+    }
+
     // Frequency loop
     for (int mhz = 1; mhz <= nfrq; mhz++) {
         // Update frequency
@@ -1249,6 +1260,12 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
                 ctx->fpat.network_loss = ctx->netcx.power_net_loss;
                 compute_radiation_pattern(ctx);
             }
+        }
+
+        // Write per-frequency-step output after all calculations are done
+        if (ctx->output_fp != NULL) {
+            write_frequency_step_output(ctx->output_fp, ctx);
+            ctx->freq_step_output_written = true;
         }
     }
     

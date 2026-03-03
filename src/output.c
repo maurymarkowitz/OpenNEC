@@ -501,14 +501,32 @@ static void write_coupling_data(nec_context_t *ctx)
  * Writes a standard NEC-style output file, using various work functions.
  *
  */
-void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *file)
+
+/******************************************************************************
+ * write_nec_preamble()
+ *
+ * Writes the one-time geometry header section: file header, structure
+ * specification, segments, patches, and input cards.  Called once per
+ * simulation section, before the frequency loop begins.
+ */
+void write_nec_preamble(nec_context_t *ctx, const deck_t *deck, FILE *file)
 {
   write_header(ctx, deck, file);
   write_structure(ctx, deck, file);
   write_segments(ctx, deck, file);
   write_patches(ctx, deck, file);
-  // Write all control cards (for now as single batch - full XQ support pending)
   write_input_cards(file, deck, deck->geometry_end + 1, deck->deck_end, 0);
+}
+
+/******************************************************************************
+ * write_frequency_step_output()
+ *
+ * Writes all per-frequency-step output sections (frequency data, loading,
+ * currents, power budget, radiation patterns, near field).  Called once at
+ * the end of each frequency step in execute_frequency_loop().
+ */
+void write_frequency_step_output(FILE *file, nec_context_t *ctx)
+{
   write_frequency_data(file, ctx);
   write_loading_data(file, ctx);
   write_environment_data(file, ctx);
@@ -526,6 +544,20 @@ void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *file)
   write_normalized_gain(file, ctx);
   write_near_field_data(file, ctx);
   write_near_field_plot(ctx);
+}
+
+void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *file)
+{
+  if (ctx->freq_step_output_written) {
+    /* Per-step output (preamble + per-frequency sections) was already written
+     * inside execute_frequency_loop().  Only write the trailing footer. */
+    write_footer(file, ctx, deck);
+    return;
+  }
+
+  /* Single-frequency or legacy path: write everything in one pass. */
+  write_nec_preamble(ctx, deck, file);
+  write_frequency_step_output(file, ctx);
   write_footer(file, ctx, deck);
 }
 
