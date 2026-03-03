@@ -9,10 +9,10 @@ Changes from nec2c
 ------------------
 
 - nec2c is in the form of a stand-alone command-line program. Other programs wanting to use nec2c to perform calculations by creating a temporary deck file, running the program, and then parsing the resulting output file.
-- onec is in the form of a library that can be directly included in other programs. Those programs can modify the deck and read the results directly without using files. A simple wrapper program is also included, which emulates the nec2c command-line interface.
+- onec is in the form of a library that can be directly included in other programs. Those programs can modify the deck and read the results directly without using files. A command-line wrapper program is also included, which emulates the nec2c command-line interface.
 
 - nec2c parses the deck card-by-card from the input file.
-- onec parses the entire deck in one pass, which allows it to perform whole-deck checks.
+- onec parses the entire deck in one pass, which allows it to perform whole-deck checks and perform file-type conversions.
 
 - nec2c can calculate only one file at a time.
 - onec's command line can process multiple files, all the files in a directory, and can recurse through directories.
@@ -21,15 +21,15 @@ Changes from nec2c
 - onec has been refactored so there is no global state and is completely thread-safe. Programs can use the library to work on multiple decks, and the command shell can run multiple input files at the same time.
 
 - nec2c uses the original Fortran matrix calculation code. A number of forks of nec2c support one matrix library or another.
-- onec supports a wide variety of well-known matrix libraries across multiple platforms. These offer major performance improvements on larger files (3x on 1000 segments, 7x on 4000). You can compare the performance by running the script in the speed_tests folder. On Apple platforms, Accelerate will be linked by default as this is always available, on other platforms the library selection is manual.
+- onec supports a wide variety of well-known matrix libraries across multiple platforms. These offer major performance improvements on larger files (3x on 1000 segments, 7x on 4000). You can compare the performance by running the script in the speed_tests folder. On Apple platforms, Accelerate will be linked by default as this is always available, on other platforms the library selection is manual. See the [BUILD.md](../BUILD.md) file for details.
 
 - nec2c added initial support for green's files, but never implemented it.
-- OpenNEC has complete green's file support, and a green's file can be written using the -g flag on the command line, bypassing the need to add a WG card to the deck.
+- onec has complete green's file support, and a green's file can be written using the -g flag on the command line, bypassing the need to add a WG card to the deck.
 
 Other basic changes
 -------------------
 
-- onec adds a generic extension system that allows arbitrary data to be stored in cards in a compatible fashion. See the "OpenNEC file format" document for details.
+- onec adds a generic extension system that allows arbitrary data to be stored in cards in a compatible fashion. See the [OpenNEC file format](OpenNEC%20file%20format.md) document for details.
 
 - onec has extensively updated error reporting that, wherever possible, reports the card and tag that caused the issue. This makes debugging stacks much easier.
 

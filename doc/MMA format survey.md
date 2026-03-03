@@ -3,7 +3,7 @@ MMANA‑GAL .maa File Format Survey
 
 This document was produced by scanning all 935 `.maa`/`.mma` files found in the
 `AntennaFiles-OLD-master` collection and comparing the structure of each one
-against the grammar described in `MMA file format.md`.
+against the grammar described in [MMA file format.md](MMA%20file%20format.md).
 
 Summary of findings
 --------------------
