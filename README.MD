@@ -108,7 +108,7 @@ The currently recognized formats and extensions are:
 | `.aci` | AntSolver | recognised | — |
 | `.mmae` | MMANA-EZ | recognised | — |
 
-"Recognised" means the extension is detected and a helpful error is shown, but no importer exists yet.
+"Recognised" means the extension is detected and a helpful error is shown if such a file is found, but no import/exporter exists yet.
 
 Build & Setup
 -------------
