@@ -3,7 +3,9 @@
  * main.c is the entry point for the command-line version of OpenNEC
  * It works along with input.c and output.c. Together they parse the
  * command line, read input files if provided, run the commands in
- * the deck, and then print the output to more files.
+ * the deck, and then print the output to more files. It also uses the
+ * various importers and exporters in *-support to read and write other
+ * formats.
  *
  *****************************************************************************/
 
@@ -69,13 +71,13 @@ void print_usage(char *argv[])
   puts("Options:");
   puts("  -h, --help: print this description");
   puts("  -v, --version: print version info");
+  puts("  -r, --recursive: recurse into subdirectories");
   puts("  -n, --no-run: don't run the simulation after parsing");
   puts("  -t, --test-deck: run various sanity tests");
   puts("  -i file, --input-file=file: read input file. this is not required if input_file is provided. if neither is provided, input is read from stdin");
   puts("  -o file, --output-file=file: write output to file. omitted -o writes to stdout (single file) or <file>.out (multiple files)");
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -g, --greens[=file]: write a Green's function file; filename defaults to input path with .ngf extension");
-  puts("  -r, --recursive: recurse into subdirectories");
   puts("  -j, --jobs N: process up to N files in parallel (default 1)");
   puts("Multiple input files or folders can be specified; each file will generate a .out file.");
   puts("If no input_file is provided, input is read from stdin and output goes to stdout.");
@@ -244,7 +246,7 @@ static filetype_t classify_by_extension(const char *filename)
 static const char *filetype_name(filetype_t ft, const char *filename)
 {
   switch (ft) {
-    case FILETYPE_NEC:   return "NEC/OpenNEC deck";
+    case FILETYPE_NEC:   return "NEC deck";
     case FILETYPE_YO:    return "Yagi Optimizer";
     case FILETYPE_MAA:   return "MMANA-GAL";
     case FILETYPE_STDIN: return "stdin";
