@@ -116,8 +116,9 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
 
-    /* title: use first comment card if present and non-empty; blank line otherwise */
+    /* title: use first CM/comment card if present and non-empty; blank line otherwise */
     const char *title = "";
+    int title_card_idx = -1;
     for (int i = 0; i < deck->num_cards; i++) {
         card_t *c = &deck->cards[i];
         if (card_is_commented_out(c) || strcmp(c->card_code, "CM") == 0) {
@@ -125,6 +126,7 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
                 title = c->comment;
                 /* skip any leading space left from "CM <text>" parsing */
                 while (*title && isspace((unsigned char)*title)) title++;
+                title_card_idx = i;
             }
             break;
         }
@@ -207,15 +209,27 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
                 wire, seg, R, X, L, C);
     }
 
-    /* append any comment cards as ###Comment### lines */
+    /* ###Comment### block — always last in the file.
+       Emit CM cards (excluding the title) and '!' comment cards
+       (excluding importer metadata lines that start with "maa-"). */
     for (int i = 0; i < deck->num_cards; i++) {
+        if (i == title_card_idx) continue;
         card_t *c = &deck->cards[i];
+        const char *txt = NULL;
         if (card_is_commented_out(c) || strcmp(c->card_code, "CM") == 0) {
-            const char *txt = c->comment ? c->comment : c->orig_str;
-            if (txt && txt[0] != '\0') {
-                fprintf(fp, "###Comment### %s\n", txt);
+            txt = c->comment ? c->comment : c->orig_str;
+            if (txt) {
+                while (*txt && isspace((unsigned char)*txt)) txt++;
             }
+        } else if (c->card_code[0] == '!' && c->card_str) {
+            /* '!' comment card from importer — skip internal metadata markers */
+            const char *s = c->card_str;
+            while (*s == '!' || isspace((unsigned char)*s)) s++;
+            if (strncmp(s, "maa-", 4) != 0)   /* exclude maa-segmentation etc. */
+                txt = s;
         }
+        if (txt && txt[0] != '\0')
+            fprintf(fp, "###Comment###\n%s\n", txt);
     }
 
     /* end marker */
@@ -247,6 +261,9 @@ int read_deck_maa(deck_t *deck, FILE *fp)
     int title_ce_index = -1;
     int any_minus1 = 0;
     int wire_segs[1024] = {0}; /* raw seg count per wire (0-based); may be <=0 for auto-seg */
+    /* ###Comment### blocks are always placed after EN — collect here and flush at the end */
+    char *pending_comments[256];
+    int   n_pending = 0;
 
     /* read title:
      * - Variant A / Variant B with title: first non-blank line is the title text.
@@ -326,7 +343,8 @@ int read_deck_maa(deck_t *deck, FILE *fp)
             while (*t && isspace((unsigned char)*t)) t++;
             char buf[300];
             snprintf(buf, sizeof buf, "! %s", t);
-            append_card_from_text(deck, buf);
+            /* defer: emit after EN */
+            if (n_pending < 256) pending_comments[n_pending++] = strdup(buf);
             continue;
         }
         double x1,y1,z1,x2,y2,z2,rad; int segs;
@@ -433,9 +451,7 @@ int read_deck_maa(deck_t *deck, FILE *fp)
             skip_count = 0;
             continue;
         }
-        /* inline comments – wrap each in a CM/CE pair to retain ordering
-           MMANA often puts the actual text on the *next* line after the
-           ###Comment### marker, so handle both cases. */
+        /* ###Comment### — always deferred to after EN */
         if (strncmp(line, "###Comment###", strlen("###Comment###")) == 0) {
             char *t = line + 13;
             while (*t && isspace((unsigned char)*t)) t++;
@@ -453,7 +469,7 @@ int read_deck_maa(deck_t *deck, FILE *fp)
             while (*t && isspace((unsigned char)*t)) t++;
             char buf[300];
             snprintf(buf, sizeof buf, "! %s", t);
-            append_card_from_text(deck, buf);
+            if (n_pending < 256) pending_comments[n_pending++] = strdup(buf);
             continue;
         }
         /* regular data line */
@@ -633,6 +649,12 @@ int read_deck_maa(deck_t *deck, FILE *fp)
 
     /* append EN terminator */
     append_card_from_text(deck, "EN");
+
+    /* flush ###Comment### blocks — always after EN */
+    for (int ci = 0; ci < n_pending; ci++) {
+        append_card_from_text(deck, pending_comments[ci]);
+        free(pending_comments[ci]);
+    }
 
     return 0;
 }

@@ -265,12 +265,12 @@ Examples
 
 ### Importer
 
-The following shows `Broadband 80m.5.maa` converted to NEC‑2 format by `read_deck_maa`. The title becomes the `CM` card, each wire line becomes a `GW` card, the `***Segmentation***` parameters are preserved as a `!` comment, and the `###Comment###` block likewise becomes a `!` line:
+The following shows `Broadband 80m.5.maa` converted to NEC‑2 format by `read_deck_maa`. The title becomes the `CM` card, each wire line becomes a `GW` card, the source designator `w7c` resolves to wire 7 centre with a tinyexpr expression for the segment (because all wires use auto‑segmentation), the `***Segmentation***` parameters are preserved as a `!` comment, and the `###Comment###` block likewise becomes a `!` line.  This particular file specifies `gtype=0` (free‑space), so no `GN` card is emitted:
 
 ```
 CM Broadband antenna 80m 3.5 - 3.8MHz (SWR<1,2)
 CE
-SY segs=10 'default segment count, change to realistic value'
+SY segs=10 !default segment count, change to realistic value
 GW 1, segs, 0.000000, -21.100000, -0.000000, 0.000000, 0.000000, 0.000000, 0.001000
 GW 2, segs, 0.500000, 0.000000, 0.000000, 0.500000, 21.100000, 0.000000, 0.001000
 GW 3, segs, 0.500000, -17.550000, -0.000000, 0.500000, 0.000000, 0.000000, 0.001000
@@ -279,12 +279,12 @@ GW 5, segs, 0.000000, 0.000000, 0.000000, 0.000000, 17.550000, 0.000000, 0.00100
 GW 6, segs, 0.300000, 0.000000, -1.030000, 0.500000, 0.000000, 0.000000, 0.001000
 GW 7, segs, 0.200000, 0.000000, -1.030000, 0.300000, 0.000000, -1.030000, 0.001000
 GE
-FR 0,0,3.650000,0,0,0,0,0
-EX 0, 1, 1, 1.000000, 0.000000, 0,0,0
-LD 0, 0, 1, 0, 0, 0, 0
+EX 0, 7, (segs+1)/2, 1.000000, 0.000000, 0,0,0
 ! maa-segmentation: max-segs=800 segs-per-wl=80 taper=2 min-segs=2
-! Mod by UR0GT, 02.04.2008 0:06:04
+FR 0,0,3.650000,0,0,0,0,0
+RP 0, 37, 73, 1000, 0, 0, 5, 5
 EN
+! Mod by UR0GT, 02.04.2008 0:06:04
 ```
 
 The importer replaces MMANA's `-1` placeholder with the token `segs` in the textual GW lines and inserts the `SY` helper so the user can set a concrete segment count. The default value inserted is `segs=10`; change this value to a realistic per‑wire segment count and then replace `segs` with that integer before running a simulation. The textual `segs` token is not automatically propagated into numeric fields used by other parts of OpenNEC.
@@ -305,4 +305,4 @@ Half-wave dipole at 14 MHz
 ```
 If no `CM` card is present the title line is left blank.  The exporter produces Variant B (`***Wires***` header, source lines in `w<N>c, phase°, mag` form) with `***Source***` before `***Load***`, matching the structure of the most common real‑world files.  The example corresponds to a single wire from (0,0,0) to (1,0,0) with radius field 0.001 (interpret according to the radius‑unit note above) and five segments.
 
-The earlier sample (`Broadband antenna 80m 3.5 - 3.8MHz …`) shown above is an example of a richer file; the additional headers and fields would be ignored when imported by OpenNEC.
+The earlier sample (`Broadband antenna 80m 3.5 - 3.8MHz …`) shown above is an example of a richer file.  `***Segmentation***` and `***G/H/M/R/AzEl/X***` are handled as described; other extra headers (measurement settings, stacking, etc.) are still ignored.
