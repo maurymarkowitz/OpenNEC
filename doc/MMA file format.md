@@ -1,10 +1,10 @@
 MMANA‑GAL ".maa" file format
-=================================
+============================
 
 Introduction
 ------------
 
-The MMANA‑GAL software (and its derivatives) uses an ASCII format for saving antenna models. The files conventionally carry the `.maa` extension, or more rarely `.mma`. These contain an ordered sequence of text lines. Although the format is undocumented, a large number of examples on‑line allow the structure to be inferred. This document summarises the features that OpenNEC’s import/export code understands and points out the sections that are currently ignored.
+The MMANA‑GAL software (and its derivatives) uses an ASCII format for saving antenna models. The files conventionally carry the `.maa` extension, or more rarely `.mma`. These files contain an ordered sequence of text lines. Although the format is undocumented, a large number of examples on‑line allow the structure to be inferred. This document summarises the features that OpenNEC’s import/export code understands and points out the sections that are currently ignored.
 
 The variation seen in the wild ranges from the minimal 4‑line variant used by simple exporters (frequency, counts, wires, loads, sources) up through more elaborate files which include segmentation parameters, ground and measurement options, and comment blocks. After reading this description you should be able to glance at an existing `.maa` file and understand which parts will be carried over when using OpenNEC's conversion functions.
 
@@ -16,11 +16,67 @@ A typical `.maa` file is organised into the following logical sections. Two dist
 1. **Title line.**  Arbitrary text used as a description of the model. **Optional in Variant B** — 220 of 935 surveyed files omit it entirely and begin with a bare `*` separator instead. When present and the file is imported the converter creates a `CM` card containing this line (followed immediately by a `CE` card). During export the first comment card in the deck is written back as the title line.
 2. **Frequency line.**  A single floating‑point value giving the design frequency in megahertz. Some files (Variant B) include a bare `*` on a separate line between the title and the frequency; this is ignored.
 3. **Counts.**  In Variant A a single line holds three integers: wire count, load count, source count. In Variant B each count appears on its own line immediately inside the relevant `***…***` section.
-4. **Wire (geometry) block.**  Exactly `N_wires` following lines, each containing eight numeric values and usually a trailing “‑1” placeholder. The fields represent the end‑point coordinates of a straight wire in metres, the radius in metres, and the number of segments. Example:
+4. **Wire (geometry) block.**  Exactly `N_wires` following lines, each containing eight numeric values. The fields represent the end‑point coordinates of a straight wire in metres, the radius, and the segment count. Example:
    ````
    0.0, -21.1, -3.662e-07,  0.0, 0.0, 0.0, 0.001, -1
    ````
-5. **Source (EX) block.**  A line giving the count (usually same as number of excitations), followed by that many lines with four values: wire number, segment number, voltage magnitude and phase (degrees). The importer converts magnitude/phase into real/imaginary parts.
+
+   **Radius units.**  The radius field is ambiguous: values appear to be in millimetres or in wavelengths unless there is a per‑file annotation that overrides this.  The mechanism for indicating the unit is not yet fully understood; OpenNEC's importer currently treats the field value as metres (the NEC native unit) without conversion.  Users should verify or scale values manually if the source file uses mm.
+
+   **Segment count special values.**  A positive integer gives the exact NEC segment count for that wire.  The following negative and zero values are MMANA auto‑segmentation directives:
+
+   | Value | MMANA meaning |
+   |---|---|
+   | `0`  | Automatic uniform segmentation |
+   | `‑1` | Automatic tapering segmentation (denser near junctions) |
+   | `‑2` | Tapering applied only at the start end of the wire |
+   | `‑3` | Tapering applied only at the finish end of the wire |
+
+   OpenNEC does not implement these auto‑segmentation modes (see *Features not supported* below).
+
+5. **Source (EX) block.**  A line giving the count, followed by that many source definitions.  Each definition uses a three‑field format:
+
+   ````
+   <source-designator>, <phase°>, <magnitude>
+   ````
+
+   The source designator encodes the source type, wire number, attachment point and optional offset in a compact alphanumeric token.  The leading letter selects the source type:
+
+   | Prefix | Source type |
+   |---|---|
+   | `W` | Wire |
+   | `V` | Voltage source |
+
+   After the type letter comes the wire number as a decimal integer, then a single letter that identifies the attachment point on the wire:
+
+   | Letter | Position |
+   |---|---|
+   | `C` | Centre segment |
+   | `B` | Beginning (first) segment |
+   | `E` | End (last) segment |
+
+   An optional signed integer offset may follow the attachment letter immediately (no separator).  Positive values step towards the end; negative values step towards the beginning:
+
+   | Designator | Meaning |
+   |---|---|
+   | `W1C`   | Centre segment of wire 1 |
+   | `W3C1`  | One segment past the centre of wire 3 |
+   | `W4C-1` | One segment before the centre of wire 4 |
+   | `W5B`   | First segment of wire 5 |
+   | `W6E3`  | Third segment from the end of wire 6 |
+
+   The importer resolves the designator to a NEC segment index and emits an `EX 0` card with the magnitude and phase converted to real/imaginary components.  When the wire uses an MMANA auto-segmentation marker (`0`, `‑1`, `‑2`, or `‑3`) the true segment count is not yet known, so instead of a concrete integer the segment field is written as a tinyexpr expression that references the `segs` symbol from the `SY` card inserted for that purpose:
+
+   | Designator | Emitted EX segment field |
+   |---|---|
+   | `W3C`   | `(segs+1)/2`    |
+   | `W3C1`  | `(segs+1)/2+1`  |
+   | `W3C-1` | `(segs+1)/2-1`  |
+   | `W6E`   | `segs`          |
+   | `W6E-2` | `segs-2`        |
+   | `W5B`   | `1` (concrete)  |
+
+   Once the user edits the `SY segs=…` line to a concrete positive value, OpenNEC's expression evaluator resolves these automatically.
 6. **Load (LD) block.**  A count line then load definitions. Each load is expressed as wire number, segment number, R, X, L, C. The code maps series RLC or fixed impedance constructs; parallel loads are ignored.
 7. **Optional extra sections.**  Many real‑world `.maa` files then contain further labelled blocks such as:
    `***Segmentation***` (MMANA auto‑segmentation tuning),
@@ -45,7 +101,7 @@ A typical `.maa` file is organised into the following logical sections. Two dist
    | 4 | 2 – 16     | Minimum segments per wire |
 
    Example: `800, 80, 2.0, 2` — 800 max total, 80 seg/λ, 2.0× taper, min 2/wire. A survey of 935 files found only 16 distinct combinations of these values. OpenNEC does not perform auto‑segmentation (each wire's segment count is fixed on the wire line itself), so on import the four values are captured and written as a single `!` comment card for reference, e.g.:
-   
+
    `! maa-segmentation: max-segs=800 segs-per-wl=80 taper=2 min-segs=4`
 
 Whitespace is permissive: commas or any combination of spaces and tabs may separate the numeric fields. The lines may also contain leading/trailing spaces. The format is case‑insensitive.
@@ -118,10 +174,23 @@ Minimal grammar
 
 <wire>   ::= <float> SEP <float> SEP <float> SEP   // x1 y1 z1
              <float> SEP <float> SEP <float> SEP   // x2 y2 z2
-             <float> SEP <int>                     // radius, segments
+             <float> SEP <seg-count>               // radius (mm or λ, see notes), segments
+
+<seg-count> ::= <positive-int>  // explicit NEC segment count
+              | "0"             // auto uniform segmentation
+              | "-1"            // auto tapering segmentation
+              | "-2"            // taper at start end only
+              | "-3"            // taper at finish end only
 
 <src-a>  ::= <int> SEP <int> SEP <float> SEP <float>   // wire, seg, mag, phase°
-<src-b>  ::= "w" <int> "c" SEP <float> SEP <float>    // wire-label, phase°, mag
+<src-b>  ::= <src-designator> SEP <float> SEP <float>  // designator, phase°, mag
+
+<src-designator> ::= <src-type> <int> <attach-point> [ <signed-int> ]
+<src-type>       ::= "W" | "V"     // voltage source (both forms equivalent)
+<attach-point>   ::= "C"           // centre segment
+                   | "B"           // beginning (first) segment
+                   | "E"           // end (last) segment
+<signed-int>     ::= ["-"] <digit> { <digit> }  // offset from attach-point
 
 <load>   ::= <int> SEP <int> SEP <float> SEP <float> SEP <float> SEP <float>
                                                        // wire, seg, R, X, L, C
@@ -146,15 +215,13 @@ Features not supported by OpenNEC
 ---------------------------------
 
 * The `***Segmentation***` section is imported as a `!` comment line for reference (e.g. `! maa-segmentation: max-segs=800 segs-per-wl=80 taper=2 min-segs=4`) but the values are not used to drive re‑segmentation.  All other extra sections (ground definitions, measurement settings, stacking information, etc.) are still ignored.
-* When importing files where any wire uses `-1` as the segment placeholder (MMANA's "auto‑segment" marker), the importer inserts a small helper card immediately after the `CE` card with the form:
+* When importing files where any wire uses one of the MMANA auto‑segmentation markers (`0`, `‑1`, `‑2`, or `‑3`) as the segment count, the importer inserts a small helper card immediately after the `CE` card with the form:
 
    `SY segs=10 'default segment count, change to realistic value'`
 
-   and replaces the textual `-1` token in the `GW` card strings with the literal token `segs`. This makes the auto‑segmentation intent explicit in the NEC deck so a user can edit the `SY` line (change `segs=10` to a sensible positive value) and then replace `segs` with that number before running a simulation. Note: this change is textual (it updates `card->card_str`/`orig_str`) and does not automatically convert parsed numeric fields elsewhere in OpenNEC.
-* The exporter produces Variant A: a combined counts line followed by bare
-  wire data, then `***Source***` and `***Load***` headers with their blocks.
-  It does not emit `***Wires***`, `***Segmentation***`, or ground/measurement
-  headers.
+   and replaces the textual placeholder token in the `GW` card strings with the literal token `segs`.  All four marker values are treated the same way at import time — the specific tapering mode is not preserved.  This makes the auto‑segmentation intent explicit in the NEC deck so a user can edit the `SY` line (change `segs=10` to a sensible positive value) and then replace `segs` with that number before running a simulation.  Note: this change is textual (it updates `card->card_str`/`orig_str`) and does not automatically convert parsed numeric fields elsewhere in OpenNEC.
+* The full source designator syntax (`W`/`V` prefix, `C`/`B`/`E` attachment point, signed offset) is recognised by the importer.  For wires with a concrete segment count the attachment and offset are resolved to an absolute 1-based segment number (clamped to the wire bounds).  For wires that use any MMANA auto-segmentation marker (`0`, `‑1`, `‑2`, `‑3`) the segment count is not yet known, so `C` and `E` designators emit a tinyexpr expression (`(segs+1)/2`, `segs`, etc.) in the `EX` card's segment field, referencing the `segs` SY symbol; `B` (beginning) designators always resolve to a concrete integer since they have no segment-count dependency.  The `V` source type is treated identically to `W` (both map to `EX 0`).
+* The exporter produces Variant B: a `***Wires***` header with the wire count on its own line, followed by the wire data, then `***Source***` (before `***Load***`) with sources in `w<N>c, phase°, mag` form.  It does not emit `***Segmentation***` or ground/measurement headers.
 * Filenames in the collection sometimes contain other units (feet, inches) or spatial rotations. Only coordinates in metres are handled by the importer; unit conversions are **not** performed.
 * Parallel loading networks, voltage sources with special types, and certain non‑linear loads present in some `.maa` examples are not mapped.
 
@@ -167,14 +234,15 @@ A minimal file produced by the current exporter looks like this (using a deck wh
 ```
 Half-wave dipole at 14 MHz
 14.000000
-1 0 0
+***Wires***
+1
 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.001000, 5
 ***Source***
 0, 0
 ***Load***
 0, 0
 ```
-If no `CM` card is present the title line is left blank.  The exporter produces Variant A (combined counts line, no `***Wires***` header) and includes `***Source***` and `***Load***` section headers, matching the structure of the 934 real‑world files that carry them.  Which corresponds to a single wire from (0,0,0) to (1,0,0) with radius 1 mm and five segments.
+If no `CM` card is present the title line is left blank.  The exporter produces Variant B (`***Wires***` header, source lines in `w<N>c, phase°, mag` form) with `***Source***` before `***Load***`, matching the structure of the most common real‑world files.  The example corresponds to a single wire from (0,0,0) to (1,0,0) with radius field 0.001 (interpret according to the radius‑unit note above) and five segments.
 
 The earlier sample (`Broadband antenna 80m 3.5 - 3.8MHz …`) shown above is an example of a richer file; the additional headers and fields would be ignored when imported by OpenNEC.
 

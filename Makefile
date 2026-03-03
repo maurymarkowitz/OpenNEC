@@ -144,7 +144,7 @@ else
     $(error ERROR: Unknown BACKEND=$(BACKEND). Valid options: auto, accelerate, openblas, mkl, atlas, blas, original)
 endif
 
-SOURCES = src/main.c src/input.c src/output.c src/deck.c src/deck_validations.c src/card_validation.c src/geometry.c src/calculations.c src/fields.c src/ground.c src/matrix.c src/network.c src/radiation.c src/somnec.c src/misc.c src/types.c src/tinyexpr.c src/control.c src/mma-support.c
+SOURCES = src/main.c src/input.c src/output.c src/deck.c src/deck_validations.c src/card_validation.c src/geometry.c src/calculations.c src/fields.c src/ground.c src/matrix.c src/network.c src/radiation.c src/somnec.c src/misc.c src/types.c src/tinyexpr.c src/control.c src/mma-support.c src/yo-support.c
 
 LIB_SOURCES = $(filter-out src/main.c, $(SOURCES))
 LIB_OBJECTS = $(LIB_SOURCES:.c=.o)
@@ -176,6 +176,12 @@ maa_convert: test/maa_convert.c $(LIBRARY) src/mma-support.c
 	$(CC) $(CFLAGS) test/maa_convert.c src/mma-support.c $(LIBRARY) $(LDFLAGS) -o maa_convert -lm
 
 .PHONY: maa_convert
+
+# Build the yo converter utility (links libonec.a and includes yo-support)
+yo_convert: test/yo_convert.c $(LIBRARY) src/yo-support.c
+	$(CC) $(CFLAGS) test/yo_convert.c src/yo-support.c $(LIBRARY) $(LDFLAGS) -o yo_convert -lm
+
+.PHONY: yo_convert
 
 # Run the round-trip test on all .nec/.deck files in test/
 .PHONY: roundtrip

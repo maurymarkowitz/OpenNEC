@@ -2,7 +2,9 @@ Items still to be implemented:
 
 * add support for the nec-2 style calling convention, using a tmp file with the input and output file names on separate lines
 
-* get the cebik EZnec examples working
+* finish maa support, need to properly handle the loading based on wire and segment
+
+* get more info on the .ez format
 
 * does anything in card.c really need ctx?
 

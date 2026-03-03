@@ -121,8 +121,11 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
     for (int i = 0; i < deck->num_cards; i++) {
         card_t *c = &deck->cards[i];
         if (card_is_commented_out(c) || strcmp(c->card_code, "CM") == 0) {
-            if (c->comment && c->comment[0] != '\0')
+            if (c->comment && c->comment[0] != '\0') {
                 title = c->comment;
+                /* skip any leading space left from "CM <text>" parsing */
+                while (*title && isspace((unsigned char)*title)) title++;
+            }
             break;
         }
     }
@@ -147,7 +150,9 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
         else if (strcmp(c->card_code, "LD") == 0) nl++;
         else if (strcmp(c->card_code, "EX") == 0) ns++;
     }
-    fprintf(fp, "%d %d %d\n", nw, nl, ns);
+    /* Variant B: ***Wires*** header with wire count on its own line */
+    fprintf(fp, "***Wires***\n");
+    fprintf(fp, "%d\n", nw);
 
     /* wires */
     for (int i = 0, count = 0; i < deck->num_cards && count < nw; i++) {
@@ -168,6 +173,23 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
                 x1, y1, z1, x2, y2, z2, rad, segs);
     }
 
+    /* Variant B: ***Source*** comes before ***Load*** */
+
+    /* sources: Variant B format  w<N>c, <phase°>, <mag> */
+    fprintf(fp, "***Source***\n");
+    fprintf(fp, "%d, 0\n", ns);
+    for (int i = 0, count = 0; i < deck->num_cards && count < ns; i++) {
+        card_t *c = &deck->cards[i];
+        if (strcmp(c->card_code, "EX") != 0) continue;
+        count++;
+        int wire = c->i[2];
+        double re = c->f[1];
+        double im = c->f[2];
+        double mag = hypot(re, im);
+        double phase = atan2(im, re) * 180.0 / M_PI;
+        fprintf(fp, "w%dc, %.2f, %.6f\n", wire, phase, mag);
+    }
+
     /* loads */
     fprintf(fp, "***Load***\n");
     fprintf(fp, "%d, 0\n", nl);
@@ -184,26 +206,6 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
         fprintf(fp, "%d, %d, %.6g, %.6g, %.6g, %.6g\n",
                 wire, seg, R, X, L, C);
     }
-
-    /* sources */
-    fprintf(fp, "***Source***\n");
-    fprintf(fp, "%d, 0\n", ns);
-    for (int i = 0, count = 0; i < deck->num_cards && count < ns; i++) {
-        card_t *c = &deck->cards[i];
-        if (strcmp(c->card_code, "EX") != 0) continue;
-        count++;
-        int wire = c->i[2];
-        int seg  = c->i[3];
-        double re = c->f[1];
-        double im = c->f[2];
-        double mag = hypot(re, im);
-        double phase = atan2(im, re) * 180.0 / M_PI;
-        fprintf(fp, "%d, %d, %.6f, %.2f\n", wire, seg, mag, phase);
-    }
-
-    /* ground/other info: simply write defaults */
-    fprintf(fp, "1\n");          /* real ground */
-    fprintf(fp, "13.0, 0.005\n"); /* average parameters */
 
     /* append any comment cards as ###Comment### lines */
     for (int i = 0; i < deck->num_cards; i++) {
@@ -244,24 +246,31 @@ int read_deck_maa(deck_t *deck, FILE *fp)
     double freq = 0.0;
     int title_ce_index = -1;
     int any_minus1 = 0;
+    int wire_segs[1024] = {0}; /* raw seg count per wire (0-based); may be <=0 for auto-seg */
 
-    /* read title (first non-empty, non-asterisk line) */
+    /* read title:
+     * - Variant A / Variant B with title: first non-blank line is the title text.
+     * - Variant B without title: file starts with a bare '*' separator line; that
+     *   line is consumed here and no CM/CE are emitted.
+     * We stop at the first non-blank line regardless of whether it starts with '*'. */
+    line[0] = '\0';
     while (fgets(line, sizeof line, fp)) {
-        if (line[0] == '*' || line[0] == '\n') continue;
-        break;
+        if (line[0] == '\n') continue;   /* skip leading blank lines */
+        break;                           /* stop at first non-blank line */
     }
-    if (line[0] == '\0') return -1;
-    {
+    if (line[0] == '\0') return -1;      /* truly empty file */
+    if (line[0] != '*') {
+        /* real title text */
         char buf[256];
         size_t l = strlen(line);
         if (l && line[l-1] == '\n') line[l-1] = '\0';
         snprintf(buf, sizeof buf, "CM %s", line);
         append_card_from_text(deck, buf);
         append_card_from_text(deck, "CE");
-        /* record index of the CE we just appended so we can insert SY below it */
         title_ce_index = deck->num_cards - 1;
-        /* (No automatic GS insertion: unit-detection removed per user request) */
     }
+    /* else: Variant B no-title — the '*' line was consumed; frequency follows next */
+
     /* next numeric line is frequency */
     while (fgets(line, sizeof line, fp)) {
         if (line[0] == '*' || line[0] == '\n') continue;
@@ -328,15 +337,18 @@ int read_deck_maa(deck_t *deck, FILE *fp)
                      "GW %d, %d, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f",
                      i+1, segs, x1,y1,z1,x2,y2,z2,rad);
             append_card_from_text(deck, buf);
-            if (segs == -1) any_minus1 = 1;
+            wire_segs[i < 1024 ? i : 1023] = segs;
+            if (segs <= 0) any_minus1 = 1;
             i++;
         }
     }
     /* if needed insert SY default and replace -1 tokens with the literal
        'segs' in GW card strings so the user can edit the SY value later. */
-    if (any_minus1 && title_ce_index >= 0) {
+    if (any_minus1) {
+        /* insert SY helper just after CE when present, otherwise at position 0 */
+        int insert_at = (title_ce_index >= 0) ? title_ce_index + 1 : 0;
         const char *sytext = "SY segs=10 'default segment count, change to realistic value'";
-        insert_card_from_text_at(deck, sytext, title_ce_index + 1);
+        insert_card_from_text_at(deck, sytext, insert_at);
         for (int k = 0; k < deck->num_cards; k++) {
             card_t *c = &deck->cards[k];
             if (strcmp(c->card_code, "GW") != 0) continue;
@@ -356,7 +368,7 @@ int read_deck_maa(deck_t *deck, FILE *fp)
             while (*ts && isspace((unsigned char)*ts)) ts++;
             char *te = token + strlen(token) - 1;
             while (te > ts && isspace((unsigned char)*te)) *te-- = '\0';
-            if (strcmp(ts, "-1") == 0) {
+            if (atoi(ts) <= 0) {
                 /* build new string: prefix up to p1+1, then ' segs', then remainder from p2 */
                 size_t newlen = strlen(c->card_str) + 5;
                 char *ns = malloc(newlen);
@@ -389,13 +401,16 @@ int read_deck_maa(deck_t *deck, FILE *fp)
     /* parse following sections based on headers; headers must be seen
        so we read raw lines rather than using the helper. */
     int section = 0; // 1=load, 2=source
+    int skip_count = 0; /* set after a section header to eat the count line */
     while (fgets(line, sizeof line, fp)) {
         if (strncmp(line, "***Load***", strlen("***Load***")) == 0) {
             section = 1;
+            skip_count = 1;
             continue;
         }
         if (strncmp(line, "***Source***", strlen("***Source***")) == 0) {
             section = 2;
+            skip_count = 1;
             continue;
         }
         if (strncmp(line, "***Segmentation***", strlen("***Segmentation***")) == 0) {
@@ -404,6 +419,12 @@ int read_deck_maa(deck_t *deck, FILE *fp)
         }
         if (strncmp(line, "***", strlen("***")) == 0) {
             section = 0;
+            skip_count = 0;
+            continue;
+        }
+        /* skip the count line that immediately follows a section header */
+        if (skip_count) {
+            skip_count = 0;
             continue;
         }
         /* inline comments – wrap each in a CM/CE pair to retain ordering
@@ -442,17 +463,90 @@ int read_deck_maa(deck_t *deck, FILE *fp)
                 append_card_from_text(deck, buf);
             }
         } else if (section == 2) {
-            int wire, seg;
-            double mag=1.0, phase=0.0;
-            if (sscanf(line, "%d%*[, ]%d%*[, ]%lf%*[, ]%lf",
-                       &wire,&seg,&mag,&phase) >= 2) {
+            int wire = 0, seg = 1;
+            char seg_expr[64] = {0};
+            int seg_uses_expr = 0;
+            double mag = 1.0, phase = 0.0;
+            /* Variant B:  <src-designator>, <phase°>, <mag>
+               Designator: [WwVv] <wire#> [CcBbEe] [<signed-offset>]
+               W/V = voltage source; C=centre, B=begin, E=end;
+               optional signed integer offset from the attachment point. */
+            if ((line[0] == 'w' || line[0] == 'W' ||
+                 line[0] == 'v' || line[0] == 'V') &&
+                isdigit((unsigned char)line[1])) {
+                char *p = line + 1;
+                wire = (int)strtol(p, &p, 10);
+                /* attachment letter: C (default), B, or E */
+                char attach = 'C';
+                if      (*p == 'c' || *p == 'C') { attach = 'C'; p++; }
+                else if (*p == 'b' || *p == 'B') { attach = 'B'; p++; }
+                else if (*p == 'e' || *p == 'E') { attach = 'E'; p++; }
+                /* optional signed offset immediately after the letter */
+                int offset = 0;
+                if (*p == '+' || *p == '-' || isdigit((unsigned char)*p)) {
+                    offset = (int)strtol(p, &p, 10);
+                }
+                /* resolve to NEC 1-based segment index.
+                   When the wire uses MMANA auto-segmentation (wsc <= 0) and
+                   the attachment is C or E, emit a tinyexpr expression that
+                   references the 'segs' symbol from the SY card, so the
+                   correct segment is automatically used once the user sets
+                   segs to a concrete value.  B-attachment has no dependency
+                   on the total segment count so it always resolves to an
+                   integer. */
+                int wsc = (wire >= 1 && wire <= n_wires) ? wire_segs[wire-1] : 0;
+                if (wsc <= 0) {
+                    if (attach == 'C') {
+                        if (offset == 0)
+                            snprintf(seg_expr, sizeof seg_expr, "(segs+1)/2");
+                        else
+                            snprintf(seg_expr, sizeof seg_expr, "(segs+1)/2%+d", offset);
+                        seg_uses_expr = 1;
+                    } else if (attach == 'E') {
+                        if (offset == 0)
+                            snprintf(seg_expr, sizeof seg_expr, "segs");
+                        else
+                            snprintf(seg_expr, sizeof seg_expr, "segs%+d", offset);
+                        seg_uses_expr = 1;
+                    } else { /* B — first segment, no segs dependency */
+                        seg = 1 + offset;
+                        if (seg < 1) seg = 1;
+                    }
+                } else {
+                    if (attach == 'C') {
+                        seg = (wsc + 1) / 2 + offset;
+                    } else if (attach == 'B') {
+                        seg = 1 + offset;
+                    } else { /* E */
+                        seg = wsc + offset;
+                    }
+                    /* clamp to valid range */
+                    if (seg < 1)   seg = 1;
+                    if (seg > wsc) seg = wsc;
+                }
+                /* now read phase and magnitude */
+                while (*p && (isspace((unsigned char)*p) || *p == ',')) p++;
+                phase = strtod(p, &p);
+                while (*p && (isspace((unsigned char)*p) || *p == ',')) p++;
+                mag   = strtod(p, &p);
+            } else {
+                /* Variant A:  wire, seg, mag, phase° */
+                sscanf(line, "%d%*[, ]%d%*[, ]%lf%*[, ]%lf",
+                       &wire, &seg, &mag, &phase);
+            }
+            if (wire > 0) {
                 double phrad = phase * M_PI / 180.0;
                 double re = mag * cos(phrad);
                 double im = mag * sin(phrad);
                 char buf[256];
-                snprintf(buf, sizeof buf,
-                         "EX 0, %d, %d, %.6f, %.6f, 0,0,0",
-                         wire, seg, re, im);
+                if (seg_uses_expr)
+                    snprintf(buf, sizeof buf,
+                             "EX 0, %d, %s, %.6f, %.6f, 0,0,0",
+                             wire, seg_expr, re, im);
+                else
+                    snprintf(buf, sizeof buf,
+                             "EX 0, %d, %d, %.6f, %.6f, 0,0,0",
+                             wire, seg, re, im);
                 append_card_from_text(deck, buf);
             }
         } else if (section == 3) {
