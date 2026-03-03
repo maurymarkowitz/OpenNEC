@@ -1710,9 +1710,9 @@ static void write_frequency_data(FILE *file, const nec_context_t *ctx)
                 "APPROXIMATE INTEGRATION EMPLOYED FOR SEGMENTS \n"
                 "                        "
                 "THAT ARE MORE THAN %.3f WAVELENGTHS APART",
-          ctx->dataj.rkh);
+          ctx->dataj.k_half_len);
 
-  if (ctx->dataj.iexk == 1)
+  if (ctx->dataj.use_extended_kernel == 1)
   {
     fprintf(file, "\n"
                   "                        "

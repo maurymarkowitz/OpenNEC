@@ -373,8 +373,8 @@ static int nec_calculation_defaults(nec_context_t *ctx)
     ctx->yparm.icoup = 0;
     ctx->gnd.iperf = 0;
     ctx->gnd.nradl = 0;
-    ctx->dataj.rkh = 1.0;  // Default matrix integration limit
-    ctx->dataj.iexk = 0;   // Extended thin-wire kernel off by default
+    ctx->dataj.k_half_len = 1.0;  // Default matrix integration limit
+    ctx->dataj.use_extended_kernel = 0;   // Extended thin-wire kernel off by default
     ctx->gnd.ifar = -1;
     ctx->frequency_loop_ran = false;
     
@@ -907,11 +907,11 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
         }
         else if (strcmp(code, "EK") == 0) {
             // Extended thin-wire kernel
-            ctx->dataj.iexk = i1;
+            ctx->dataj.use_extended_kernel = i1;
         }
         else if (strcmp(code, "KH") == 0) {
             // Matrix integration limit
-            ctx->dataj.rkh = f1;
+            ctx->dataj.k_half_len = f1;
         }
         else if (strcmp(code, "WG") == 0) {
             /* WG FILENAME: write Numerical Green's Function file after cmset.
@@ -1161,7 +1161,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         // Fill and factor primary interaction matrix
         double tim1, tim2;
         nec_get_time_ms(ctx, &tim1);
-        if (cmset(ctx, ctx->netcx.neq, cm, ctx->dataj.rkh, ctx->dataj.iexk) != 0) {
+        if (cmset(ctx, ctx->netcx.neq, cm, ctx->dataj.k_half_len, ctx->dataj.use_extended_kernel) != 0) {
             mem_free(ctx, (void *)&cm);
             return -1;
         }

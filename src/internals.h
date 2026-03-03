@@ -104,43 +104,44 @@ typedef struct geometry_t
 } geometry_t;
 
 /* common  /dataj/ */
+/* Formerly: Fortran /DATAJ/ → nec2c: dataj_t */
 typedef struct
 {
 	int
-		iexk,
-		ind1,
-		indd1,
-		ind2,
-		indd2,
-		ipgnd;
+		use_extended_kernel,  /* iexk — Fortran IEXK: extended thin-wire kernel flag */
+		end1_kernel_type,     /* ind1 — Fortran IND1: end-1 kernel indicator */
+		end1_kernel_deferred, /* indd1 — Fortran INDD1: end-1 deferred kernel indicator */
+		end2_kernel_type,     /* ind2 — Fortran IND2: end-2 kernel indicator */
+		end2_kernel_deferred, /* indd2 — Fortran INDD2: end-2 deferred kernel indicator */
+		ground_image_pass;    /* ipgnd — Fortran IPGND: ground image loop pass (1 or 2) */
 
 	double
-		s,
-		b,
-		xj,
-		yj,
-		zj,
-		cabj,
-		sabj,
-		salpj,
-		rkh,
-		t1xj,
-		t1yj,
-		t1zj,
-		t2xj,
-		t2yj,
-		t2zj;
+		seg_half_len,    /* s — Fortran S: source segment half-length */
+		seg_radius,      /* b — Fortran B: source segment radius / patch T2X */
+		src_x,           /* xj — Fortran XJ: source segment center x */
+		src_y,           /* yj — Fortran YJ: source segment center y */
+		src_z,           /* zj — Fortran ZJ: source segment center z */
+		src_dir_cos_x,   /* cabj — Fortran CABJ: cos(α)cos(β) for source segment */
+		src_dir_cos_y,   /* sabj — Fortran SABJ: cos(α)sin(β) for source segment */
+		src_dir_cos_z,   /* salpj — Fortran SALPJ: sin(α) for source segment */
+		k_half_len,      /* rkh — Fortran RKH: k × half-length */
+		patch_t1x,       /* t1xj — Fortran CABJ(EQUIV): patch T1 x-component */
+		patch_t1y,       /* t1yj — Fortran SABJ(EQUIV): patch T1 y-component */
+		patch_t1z,       /* t1zj — Fortran SALPJ(EQUIV): patch T1 z-component */
+		patch_t2x,       /* t2xj — Fortran B(EQUIV): patch T2 x-component */
+		patch_t2y,       /* t2yj — Fortran IND1(EQUIV): patch T2 y-component */
+		patch_t2z;       /* t2zj — Fortran IND2(EQUIV): patch T2 z-component */
 
 	complex double
-		exk,
-		eyk,
-		ezk,
-		exs,
-		eys,
-		ezs,
-		exc,
-		eyc,
-		ezc;
+		e_const_x,  /* exk — Fortran EXK: E-field contribution (constant current), x */
+		e_const_y,  /* eyk — Fortran EYK: E-field contribution (constant current), y */
+		e_const_z,  /* ezk — Fortran EZK: E-field contribution (constant current), z */
+		e_sin_x,    /* exs — Fortran EXS: E-field contribution (sine current), x */
+		e_sin_y,    /* eys — Fortran EYS: E-field contribution (sine current), y */
+		e_sin_z,    /* ezs — Fortran EZS: E-field contribution (sine current), z */
+		e_cos_x,    /* exc — Fortran EXC: E-field contribution (cosine current), x */
+		e_cos_y,    /* eyc — Fortran EYC: E-field contribution (cosine current), y */
+		e_cos_z;    /* ezc — Fortran EZC: E-field contribution (cosine current), z */
 
 } segment_t;
 

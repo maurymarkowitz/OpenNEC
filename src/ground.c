@@ -180,7 +180,7 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
         nec_report(ctx, ONEC_SEV_WARNING,
           "Step size limited at Z= %12.5E near source segment (%.4g, %.4g, %.4g);"
           " further occurrences suppressed",
-          z, ctx->dataj.xj, ctx->dataj.yj, ctx->dataj.zj);
+          z, ctx->dataj.src_x, ctx->dataj.src_y, ctx->dataj.src_z);
       }
       
     } /* if( tr > rx) */
@@ -216,9 +216,9 @@ void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
   double cph, sph, zphs, r2s, rk, sfac, thet;
   complex double  erv, ezv, erh, ezh, eph, er, et, hrv, hzv, hrh;
   
-  xt= ctx->dataj.xj+ t* ctx->dataj.cabj;
-  yt= ctx->dataj.yj+ t* ctx->dataj.sabj;
-  zt= ctx->dataj.zj+ t* ctx->dataj.salpj;
+  xt= ctx->dataj.src_x+ t* ctx->dataj.src_dir_cos_x;
+  yt= ctx->dataj.src_y+ t* ctx->dataj.src_dir_cos_y;
+  zt= ctx->dataj.src_z+ t* ctx->dataj.src_dir_cos_z;
   rhx= ctx->incom.xo- xt;
   rhy= ctx->incom.yo- yt;
   rhs= rhx* rhx+ rhy* rhy;
@@ -275,19 +275,19 @@ void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
     erh= erh+ hrh;
     ezh= ezh+ hrv;
     eph= eph+ et;
-    erv= erv* ctx->dataj.salpj;
-    ezv= ezv* ctx->dataj.salpj;
+    erv= erv* ctx->dataj.src_dir_cos_z;
+    ezv= ezv* ctx->dataj.src_dir_cos_z;
     erh= erh* ctx->incom.sn* cph;
     ezh= ezh* ctx->incom.sn* cph;
     eph= eph* ctx->incom.sn* sph;
     erh= erv+ erh;
-    e[0]=( erh* rhx+ eph* phx)* ctx->dataj.s;
-    e[1]=( erh* rhy+ eph* phy)* ctx->dataj.s;
-    e[2]=( ezv+ ezh)* ctx->dataj.s;
+    e[0]=( erh* rhx+ eph* phx)* ctx->dataj.seg_half_len;
+    e[1]=( erh* rhy+ eph* phy)* ctx->dataj.seg_half_len;
+    e[2]=( ezv+ ezh)* ctx->dataj.seg_half_len;
     e[3]=0.;
     e[4]=0.;
     e[5]=0.;
-    sfac= PI* ctx->dataj.s;
+    sfac= PI* ctx->dataj.seg_half_len;
     sfac= sin( sfac)/ sfac;
     e[6]= e[0]* sfac;
     e[7]= e[1]* sfac;
@@ -307,8 +307,8 @@ void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
   intrp(ctx, ctx->gwav.r2, thet, &erv, &ezv, &erh, &eph );
   ctx->gwav.xx2= ctx->gwav.xx2/ ctx->gwav.r2;
   sfac= ctx->incom.sn* cph;
-  erh= ctx->gwav.xx2*( ctx->dataj.salpj* erv+ sfac* erh);
-  ezh= ctx->gwav.xx2*( ctx->dataj.salpj* ezv- sfac* erv);
+  erh= ctx->gwav.xx2*( ctx->dataj.src_dir_cos_z* erv+ sfac* erh);
+  ezh= ctx->gwav.xx2*( ctx->dataj.src_dir_cos_z* ezv- sfac* erv);
   /* x,y,z fields for constant current */
   eph= ctx->incom.sn* sph* ctx->gwav.xx2* eph;
   e[0]= erh* rhx+ eph* phx;

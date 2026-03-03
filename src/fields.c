@@ -63,8 +63,8 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
   complex double epx, epy, refs, refps, zrsin, zratx, zscrn;
   complex double tezs, ters, tezc, terc, tezk, terk, egnd[9];
   
-  xij= xi- ctx->dataj.xj;
-  yij= yi- ctx->dataj.yj;
+  xij= xi- ctx->dataj.src_x;
+  yij= yi- ctx->dataj.src_y;
   ijx= ij;
   rfl=-1.;
   
@@ -73,11 +73,11 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
     if( ip == 1)
       ijx=1;
     rfl= -rfl;
-    salpr= ctx->dataj.salpj* rfl;
-    zij= zi- rfl* ctx->dataj.zj;
-    zp= xij* ctx->dataj.cabj+ yij* ctx->dataj.sabj+ zij* salpr;
-    rhox= xij- ctx->dataj.cabj* zp;
-    rhoy= yij- ctx->dataj.sabj* zp;
+    salpr= ctx->dataj.src_dir_cos_z* rfl;
+    zij= zi- rfl* ctx->dataj.src_z;
+    zp= xij* ctx->dataj.src_dir_cos_x+ yij* ctx->dataj.src_dir_cos_y+ zij* salpr;
+    rhox= xij- ctx->dataj.src_dir_cos_x* zp;
+    rhoy= yij- ctx->dataj.src_dir_cos_y* zp;
     rhoz= zij- salpr* zp;
     
     rh= sqrt( rhox* rhox+ rhoy* rhoy+ rhoz* rhoz+ ai* ai);
@@ -96,7 +96,7 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
     
     /* lumped current element approx. for large separations */
     r= sqrt( zp* zp+ rh* rh);
-    if( r >= ctx->dataj.rkh)
+    if( r >= ctx->dataj.k_half_len)
     {
       rmag= TP* r;
       cth= zp/ r;
@@ -107,37 +107,37 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
       tzk= ETA* px* txk* cmplx(1.0, rmag-1.0/ rmag)/(2.* py);
       tezk= tyk* cth- tzk* px;
       terk= tyk* px+ tzk* cth;
-      rmag= sin( PI* ctx->dataj.s)/ PI;
+      rmag= sin( PI* ctx->dataj.seg_half_len)/ PI;
       tezc= tezk* rmag;
       terc= terk* rmag;
-      tezk= tezk* ctx->dataj.s;
-      terk= terk* ctx->dataj.s;
+      tezk= tezk* ctx->dataj.seg_half_len;
+      terk= terk* ctx->dataj.seg_half_len;
       txs=CPLX_00;
       tys=CPLX_00;
       tzs=CPLX_00;
       
-    } /* if( r >= ctx->dataj.rkh) */
+    } /* if( r >= ctx->dataj.k_half_len) */
     else
     {
       /* eksc for thin wire approx. or ekscx for extended t.w. approx. */
-      if( ctx->dataj.iexk != 1)
-        eksc(ctx, ctx->dataj.s, zp, rh, TP, ijx, &tezs, &ters,
+      if( ctx->dataj.use_extended_kernel != 1)
+        eksc(ctx, ctx->dataj.seg_half_len, zp, rh, TP, ijx, &tezs, &ters,
              &tezc, &terc, &tezk, &terk );
       else
-        ekscx(ctx, ctx->dataj.b, ctx->dataj.s, zp, rh, TP, ijx, ctx->dataj.ind1, ctx->dataj.ind2,
+        ekscx(ctx, ctx->dataj.seg_radius, ctx->dataj.seg_half_len, zp, rh, TP, ijx, ctx->dataj.end1_kernel_type, ctx->dataj.end2_kernel_type,
               &tezs, &ters, &tezc, &terc, &tezk, &terk);
       
-      txs= tezs* ctx->dataj.cabj+ ters* rhox;
-      tys= tezs* ctx->dataj.sabj+ ters* rhoy;
+      txs= tezs* ctx->dataj.src_dir_cos_x+ ters* rhox;
+      tys= tezs* ctx->dataj.src_dir_cos_y+ ters* rhoy;
       tzs= tezs* salpr+ ters* rhoz;
       
-    } /* if( r < ctx->dataj.rkh) */
+    } /* if( r < ctx->dataj.k_half_len) */
     
-    txk= tezk* ctx->dataj.cabj+ terk* rhox;
-    tyk= tezk* ctx->dataj.sabj+ terk* rhoy;
+    txk= tezk* ctx->dataj.src_dir_cos_x+ terk* rhox;
+    tyk= tezk* ctx->dataj.src_dir_cos_y+ terk* rhoy;
     tzk= tezk* salpr+ terk* rhoz;
-    txc= tezc* ctx->dataj.cabj+ terc* rhox;
-    tyc= tezc* ctx->dataj.sabj+ terc* rhoy;
+    txc= tezc* ctx->dataj.src_dir_cos_x+ terc* rhox;
+    tyc= tezc* ctx->dataj.src_dir_cos_y+ terc* rhoy;
     tzc= tezc* salpr+ terc* rhoz;
     
     if( ip == 1)
@@ -151,8 +151,8 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
         /* set parameters for radial wire ground screen. */
         if( ctx->gnd.nradl != 0)
         {
-          xspec=( xi* ctx->dataj.zj+ zi* ctx->dataj.xj)/( zi+ ctx->dataj.zj);
-          yspec=( yi* ctx->dataj.zj+ zi* ctx->dataj.yj)/( zi+ ctx->dataj.zj);
+          xspec=( xi* ctx->dataj.src_z+ zi* ctx->dataj.src_x)/( zi+ ctx->dataj.src_z);
+          yspec=( yi* ctx->dataj.src_z+ zi* ctx->dataj.src_y)/( zi+ ctx->dataj.src_z);
           rhospc= sqrt( xspec* xspec+ yspec* yspec+ ctx->gnd.t2* ctx->gnd.t2);
           
           if( rhospc <= ctx->gnd.scrwl)
@@ -203,28 +203,28 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
         
       } /* if( ctx->gnd.iperf <= 0) */
       
-      ctx->dataj.exk= ctx->dataj.exk- txk* ctx->gnd.frati;
-      ctx->dataj.eyk= ctx->dataj.eyk- tyk* ctx->gnd.frati;
-      ctx->dataj.ezk= ctx->dataj.ezk- tzk* ctx->gnd.frati;
-      ctx->dataj.exs= ctx->dataj.exs- txs* ctx->gnd.frati;
-      ctx->dataj.eys= ctx->dataj.eys- tys* ctx->gnd.frati;
-      ctx->dataj.ezs= ctx->dataj.ezs- tzs* ctx->gnd.frati;
-      ctx->dataj.exc= ctx->dataj.exc- txc* ctx->gnd.frati;
-      ctx->dataj.eyc= ctx->dataj.eyc- tyc* ctx->gnd.frati;
-      ctx->dataj.ezc= ctx->dataj.ezc- tzc* ctx->gnd.frati;
+      ctx->dataj.e_const_x= ctx->dataj.e_const_x- txk* ctx->gnd.frati;
+      ctx->dataj.e_const_y= ctx->dataj.e_const_y- tyk* ctx->gnd.frati;
+      ctx->dataj.e_const_z= ctx->dataj.e_const_z- tzk* ctx->gnd.frati;
+      ctx->dataj.e_sin_x= ctx->dataj.e_sin_x- txs* ctx->gnd.frati;
+      ctx->dataj.e_sin_y= ctx->dataj.e_sin_y- tys* ctx->gnd.frati;
+      ctx->dataj.e_sin_z= ctx->dataj.e_sin_z- tzs* ctx->gnd.frati;
+      ctx->dataj.e_cos_x= ctx->dataj.e_cos_x- txc* ctx->gnd.frati;
+      ctx->dataj.e_cos_y= ctx->dataj.e_cos_y- tyc* ctx->gnd.frati;
+      ctx->dataj.e_cos_z= ctx->dataj.e_cos_z- tzc* ctx->gnd.frati;
       continue;
       
     } /* if( ip == 1) */
     
-    ctx->dataj.exk= txk;
-    ctx->dataj.eyk= tyk;
-    ctx->dataj.ezk= tzk;
-    ctx->dataj.exs= txs;
-    ctx->dataj.eys= tys;
-    ctx->dataj.ezs= tzs;
-    ctx->dataj.exc= txc;
-    ctx->dataj.eyc= tyc;
-    ctx->dataj.ezc= tzc;
+    ctx->dataj.e_const_x= txk;
+    ctx->dataj.e_const_y= tyk;
+    ctx->dataj.e_const_z= tzk;
+    ctx->dataj.e_sin_x= txs;
+    ctx->dataj.e_sin_y= tys;
+    ctx->dataj.e_sin_z= tzs;
+    ctx->dataj.e_cos_x= txc;
+    ctx->dataj.e_cos_y= tyc;
+    ctx->dataj.e_cos_z= tzc;
     
   } /* for( ip = 0; ip < ctx->gnd.ksymp; ip++ ) */
   
@@ -232,11 +232,11 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
     return;
   
   /* field due to ground using sommerfeld/norton */
-  ctx->incom.sn= sqrt( ctx->dataj.cabj* ctx->dataj.cabj+ ctx->dataj.sabj* ctx->dataj.sabj);
+  ctx->incom.sn= sqrt( ctx->dataj.src_dir_cos_x* ctx->dataj.src_dir_cos_x+ ctx->dataj.src_dir_cos_y* ctx->dataj.src_dir_cos_y);
   if( ctx->incom.sn >= 1.0e-5)
   {
-    ctx->incom.xsn= ctx->dataj.cabj/ ctx->incom.sn;
-    ctx->incom.ysn= ctx->dataj.sabj/ ctx->incom.sn;
+    ctx->incom.xsn= ctx->dataj.src_dir_cos_x/ ctx->incom.sn;
+    ctx->incom.ysn= ctx->dataj.src_dir_cos_y/ ctx->incom.sn;
   }
   else
   {
@@ -246,11 +246,11 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
   }
   
   /* displace observation point for thin wire approximation */
-  zij= zi+ ctx->dataj.zj;
-  salpr= -ctx->dataj.salpj;
-  rhox= ctx->dataj.sabj* zij- salpr* yij;
-  rhoy= salpr* xij- ctx->dataj.cabj* zij;
-  rhoz= ctx->dataj.cabj* yij- ctx->dataj.sabj* xij;
+  zij= zi+ ctx->dataj.src_z;
+  salpr= -ctx->dataj.src_dir_cos_z;
+  rhox= ctx->dataj.src_dir_cos_y* zij- salpr* yij;
+  rhoy= salpr* xij- ctx->dataj.src_dir_cos_x* zij;
+  rhoz= ctx->dataj.src_dir_cos_x* yij- ctx->dataj.src_dir_cos_y* xij;
   rh= rhox* rhox+ rhoy* rhoy+ rhoz* rhoz;
   
   if( rh <= 1.e-10)
@@ -276,11 +276,11 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
     double shaf;
     /* field from interpolation is integrated over segment */
     ctx->incom.isnor=1;
-    dmin= creal(ctx->dataj.exk*conj(ctx->dataj.exk)) +
-    creal(ctx->dataj.eyk*conj(ctx->dataj.eyk)) +
-    creal(ctx->dataj.ezk*conj(ctx->dataj.ezk) );
+    dmin= creal(ctx->dataj.e_const_x*conj(ctx->dataj.e_const_x)) +
+    creal(ctx->dataj.e_const_y*conj(ctx->dataj.e_const_y)) +
+    creal(ctx->dataj.e_const_z*conj(ctx->dataj.e_const_z) );
     dmin=.01* sqrt( dmin);
-    shaf=.5* ctx->dataj.s;
+    shaf=.5* ctx->dataj.seg_half_len;
     if (rom2(ctx, - shaf, shaf, egnd, dmin) != 0)
       return;
   }
@@ -293,7 +293,7 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
   
   if( r > .95)
   {
-    zp= xij* ctx->dataj.cabj+ yij* ctx->dataj.sabj+ zij* salpr;
+    zp= xij* ctx->dataj.src_dir_cos_x+ yij* ctx->dataj.src_dir_cos_y+ zij* salpr;
     rh= r- zp* zp;
     if( rh <= 1.e-10)
       dmin=0.;
@@ -303,32 +303,32 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
     if( dmin <= .95)
     {
       px=1.- dmin;
-      terk=( txk* ctx->dataj.cabj+ tyk* ctx->dataj.sabj+ tzk* salpr)* px;
-      txk= dmin* txk+ terk* ctx->dataj.cabj;
-      tyk= dmin* tyk+ terk* ctx->dataj.sabj;
+      terk=( txk* ctx->dataj.src_dir_cos_x+ tyk* ctx->dataj.src_dir_cos_y+ tzk* salpr)* px;
+      txk= dmin* txk+ terk* ctx->dataj.src_dir_cos_x;
+      tyk= dmin* tyk+ terk* ctx->dataj.src_dir_cos_y;
       tzk= dmin* tzk+ terk* salpr;
-      ters=( txs* ctx->dataj.cabj+ tys* ctx->dataj.sabj+ tzs* salpr)* px;
-      txs= dmin* txs+ ters* ctx->dataj.cabj;
-      tys= dmin* tys+ ters* ctx->dataj.sabj;
+      ters=( txs* ctx->dataj.src_dir_cos_x+ tys* ctx->dataj.src_dir_cos_y+ tzs* salpr)* px;
+      txs= dmin* txs+ ters* ctx->dataj.src_dir_cos_x;
+      tys= dmin* tys+ ters* ctx->dataj.src_dir_cos_y;
       tzs= dmin* tzs+ ters* salpr;
-      terc=( txc* ctx->dataj.cabj+ tyc* ctx->dataj.sabj+ tzc* salpr)* px;
-      txc= dmin* txc+ terc* ctx->dataj.cabj;
-      tyc= dmin* tyc+ terc* ctx->dataj.sabj;
+      terc=( txc* ctx->dataj.src_dir_cos_x+ tyc* ctx->dataj.src_dir_cos_y+ tzc* salpr)* px;
+      txc= dmin* txc+ terc* ctx->dataj.src_dir_cos_x;
+      tyc= dmin* tyc+ terc* ctx->dataj.src_dir_cos_y;
       tzc= dmin* tzc+ terc* salpr;
       
     } /* if( dmin <= .95) */
     
   } /* if( r > .95) */
   
-  ctx->dataj.exk= ctx->dataj.exk+ txk;
-  ctx->dataj.eyk= ctx->dataj.eyk+ tyk;
-  ctx->dataj.ezk= ctx->dataj.ezk+ tzk;
-  ctx->dataj.exs= ctx->dataj.exs+ txs;
-  ctx->dataj.eys= ctx->dataj.eys+ tys;
-  ctx->dataj.ezs= ctx->dataj.ezs+ tzs;
-  ctx->dataj.exc= ctx->dataj.exc+ txc;
-  ctx->dataj.eyc= ctx->dataj.eyc+ tyc;
-  ctx->dataj.ezc= ctx->dataj.ezc+ tzc;
+  ctx->dataj.e_const_x= ctx->dataj.e_const_x+ txk;
+  ctx->dataj.e_const_y= ctx->dataj.e_const_y+ tyk;
+  ctx->dataj.e_const_z= ctx->dataj.e_const_z+ tzk;
+  ctx->dataj.e_sin_x= ctx->dataj.e_sin_x+ txs;
+  ctx->dataj.e_sin_y= ctx->dataj.e_sin_y+ tys;
+  ctx->dataj.e_sin_z= ctx->dataj.e_sin_z+ tzs;
+  ctx->dataj.e_cos_x= ctx->dataj.e_cos_x+ txc;
+  ctx->dataj.e_cos_y= ctx->dataj.e_cos_y+ tyc;
+  ctx->dataj.e_cos_z= ctx->dataj.e_cos_z+ tzc;
   
   return;
 }
@@ -754,7 +754,7 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
           nec_report(ctx, ONEC_SEV_WARNING,
             "Step size limited at Z= %10.5f near source segment (%.4g, %.4g, %.4g);"
             " further occurrences suppressed",
-            z, ctx->dataj.xj, ctx->dataj.yj, ctx->dataj.zj);
+            z, ctx->dataj.src_x, ctx->dataj.src_y, ctx->dataj.src_z);
         }
       }
       else
@@ -817,20 +817,20 @@ void hintg(nec_context_t *ctx, double xi, double yi, double zi )
   double rz, rsq, r, rk, cr, sr, t1zr, t2zr;
   complex double  gam, f1x, f1y, f1z, f2x, f2y, f2z, rrv, rrh;
   
-  rx= xi- ctx->dataj.xj;
-  ry= yi- ctx->dataj.yj;
+  rx= xi- ctx->dataj.src_x;
+  ry= yi- ctx->dataj.src_y;
   rfl=-1.;
-  ctx->dataj.exk=CPLX_00;
-  ctx->dataj.eyk=CPLX_00;
-  ctx->dataj.ezk=CPLX_00;
-  ctx->dataj.exs=CPLX_00;
-  ctx->dataj.eys=CPLX_00;
-  ctx->dataj.ezs=CPLX_00;
+  ctx->dataj.e_const_x=CPLX_00;
+  ctx->dataj.e_const_y=CPLX_00;
+  ctx->dataj.e_const_z=CPLX_00;
+  ctx->dataj.e_sin_x=CPLX_00;
+  ctx->dataj.e_sin_y=CPLX_00;
+  ctx->dataj.e_sin_z=CPLX_00;
   
   for( ip = 1; ip <= ctx->gnd.ksymp; ip++ )
   {
     rfl= -rfl;
-    rz= zi- ctx->dataj.zj* rfl;
+    rz= zi- ctx->dataj.src_z* rfl;
     rsq= rx* rx+ ry* ry+ rz* rz;
     
     if( rsq < 1.0e-20)
@@ -840,18 +840,18 @@ void hintg(nec_context_t *ctx, double xi, double yi, double zi )
     rk= TP* r;
     cr= cos( rk);
     sr= sin( rk);
-    gam=-( cmplx(cr,-sr)+rk*cmplx(sr,cr) )/( FPI*rsq*r )* ctx->dataj.s;
-    ctx->dataj.exc= gam* rx;
-    ctx->dataj.eyc= gam* ry;
-    ctx->dataj.ezc= gam* rz;
-    t1zr= ctx->dataj.t1zj* rfl;
-    t2zr= ctx->dataj.t2zj* rfl;
-    f1x= ctx->dataj.eyc* t1zr- ctx->dataj.ezc* ctx->dataj.t1yj;
-    f1y= ctx->dataj.ezc* ctx->dataj.t1xj- ctx->dataj.exc* t1zr;
-    f1z= ctx->dataj.exc* ctx->dataj.t1yj- ctx->dataj.eyc* ctx->dataj.t1xj;
-    f2x= ctx->dataj.eyc* t2zr- ctx->dataj.ezc* ctx->dataj.t2yj;
-    f2y= ctx->dataj.ezc* ctx->dataj.t2xj- ctx->dataj.exc* t2zr;
-    f2z= ctx->dataj.exc* ctx->dataj.t2yj- ctx->dataj.eyc* ctx->dataj.t2xj;
+    gam=-( cmplx(cr,-sr)+rk*cmplx(sr,cr) )/( FPI*rsq*r )* ctx->dataj.seg_half_len;
+    ctx->dataj.e_cos_x= gam* rx;
+    ctx->dataj.e_cos_y= gam* ry;
+    ctx->dataj.e_cos_z= gam* rz;
+    t1zr= ctx->dataj.patch_t1z* rfl;
+    t2zr= ctx->dataj.patch_t2z* rfl;
+    f1x= ctx->dataj.e_cos_y* t1zr- ctx->dataj.e_cos_z* ctx->dataj.patch_t1y;
+    f1y= ctx->dataj.e_cos_z* ctx->dataj.patch_t1x- ctx->dataj.e_cos_x* t1zr;
+    f1z= ctx->dataj.e_cos_x* ctx->dataj.patch_t1y- ctx->dataj.e_cos_y* ctx->dataj.patch_t1x;
+    f2x= ctx->dataj.e_cos_y* t2zr- ctx->dataj.e_cos_z* ctx->dataj.patch_t2y;
+    f2y= ctx->dataj.e_cos_z* ctx->dataj.patch_t2x- ctx->dataj.e_cos_x* t2zr;
+    f2z= ctx->dataj.e_cos_x* ctx->dataj.patch_t2y- ctx->dataj.e_cos_y* ctx->dataj.patch_t2x;
     
     if( ip != 1)
     {
@@ -900,12 +900,12 @@ void hintg(nec_context_t *ctx, double xi, double yi, double zi )
       
     } /* if( ip != 1) */
     
-    ctx->dataj.exk += f1x;
-    ctx->dataj.eyk += f1y;
-    ctx->dataj.ezk += f1z;
-    ctx->dataj.exs += f2x;
-    ctx->dataj.eys += f2y;
-    ctx->dataj.ezs += f2z;
+    ctx->dataj.e_const_x += f1x;
+    ctx->dataj.e_const_y += f1y;
+    ctx->dataj.e_const_z += f1z;
+    ctx->dataj.e_sin_x += f2x;
+    ctx->dataj.e_sin_y += f2y;
+    ctx->dataj.e_sin_z += f2z;
     
   } /* for( ip = 1; ip <= ctx->gnd.ksymp; ip++ ) */
   
@@ -923,43 +923,43 @@ void hsfld(nec_context_t *ctx,  double xi, double yi, double zi, double ai )
   double phy, phz, rmag, xymag, xspec, yspec, rhospc, px, py, cth;
   complex double hpk, hps, hpc, qx, qy, qz, rrv, rrh, zratx;
   
-  xij= xi- ctx->dataj.xj;
-  yij= yi- ctx->dataj.yj;
+  xij= xi- ctx->dataj.src_x;
+  yij= yi- ctx->dataj.src_y;
   rfl=-1.;
   
   for( ip = 0; ip < ctx->gnd.ksymp; ip++ )
   {
     rfl= -rfl;
-    salpr= ctx->dataj.salpj* rfl;
-    zij= zi- rfl* ctx->dataj.zj;
-    zp= xij* ctx->dataj.cabj+ yij* ctx->dataj.sabj+ zij* salpr;
-    rhox= xij- ctx->dataj.cabj* zp;
-    rhoy= yij- ctx->dataj.sabj* zp;
+    salpr= ctx->dataj.src_dir_cos_z* rfl;
+    zij= zi- rfl* ctx->dataj.src_z;
+    zp= xij* ctx->dataj.src_dir_cos_x+ yij* ctx->dataj.src_dir_cos_y+ zij* salpr;
+    rhox= xij- ctx->dataj.src_dir_cos_x* zp;
+    rhoy= yij- ctx->dataj.src_dir_cos_y* zp;
     rhoz= zij- salpr* zp;
     rh= sqrt( rhox* rhox+ rhoy* rhoy+ rhoz* rhoz+ ai* ai);
     
     if( rh <= 1.0e-10)
     {
-      ctx->dataj.exk=0.;
-      ctx->dataj.eyk=0.;
-      ctx->dataj.ezk=0.;
-      ctx->dataj.exs=0.;
-      ctx->dataj.eys=0.;
-      ctx->dataj.ezs=0.;
-      ctx->dataj.exc=0.;
-      ctx->dataj.eyc=0.;
-      ctx->dataj.ezc=0.;
+      ctx->dataj.e_const_x=0.;
+      ctx->dataj.e_const_y=0.;
+      ctx->dataj.e_const_z=0.;
+      ctx->dataj.e_sin_x=0.;
+      ctx->dataj.e_sin_y=0.;
+      ctx->dataj.e_sin_z=0.;
+      ctx->dataj.e_cos_x=0.;
+      ctx->dataj.e_cos_y=0.;
+      ctx->dataj.e_cos_z=0.;
       continue;
     }
     
     rhox= rhox/ rh;
     rhoy= rhoy/ rh;
     rhoz= rhoz/ rh;
-    phx= ctx->dataj.sabj* rhoz- salpr* rhoy;
-    phy= salpr* rhox- ctx->dataj.cabj* rhoz;
-    phz= ctx->dataj.cabj* rhoy- ctx->dataj.sabj* rhox;
+    phx= ctx->dataj.src_dir_cos_y* rhoz- salpr* rhoy;
+    phy= salpr* rhox- ctx->dataj.src_dir_cos_x* rhoz;
+    phz= ctx->dataj.src_dir_cos_x* rhoy- ctx->dataj.src_dir_cos_y* rhox;
     
-    hsflx(ctx, ctx->dataj.s, rh, zp, &hpk, &hps, &hpc);
+    hsflx(ctx, ctx->dataj.seg_half_len, rh, zp, &hpk, &hps, &hpc);
     
     if( ip == 1 )
     {
@@ -972,8 +972,8 @@ void hsfld(nec_context_t *ctx,  double xi, double yi, double zi, double ai )
         /* set parameters for radial wire ground screen. */
         if( ctx->gnd.nradl != 0)
         {
-          xspec=( xi* ctx->dataj.zj+ zi* ctx->dataj.xj)/( zi+ ctx->dataj.zj);
-          yspec=( yi* ctx->dataj.zj+ zi* ctx->dataj.yj)/( zi+ ctx->dataj.zj);
+          xspec=( xi* ctx->dataj.src_z+ zi* ctx->dataj.src_x)/( zi+ ctx->dataj.src_z);
+          yspec=( yi* ctx->dataj.src_z+ zi* ctx->dataj.src_y)/( zi+ ctx->dataj.src_z);
           rhospc= sqrt( xspec* xspec+ yspec* yspec+ ctx->gnd.t2* ctx->gnd.t2);
           
           if( rhospc <= ctx->gnd.scrwl)
@@ -1007,41 +1007,41 @@ void hsfld(nec_context_t *ctx,  double xi, double yi, double zi, double ai )
         qx= qy* px+ phx* rrh;
         qy= qy* py+ phy* rrh;
         qz= phz* rrh;
-        ctx->dataj.exk= ctx->dataj.exk- hpk* qx;
-        ctx->dataj.eyk= ctx->dataj.eyk- hpk* qy;
-        ctx->dataj.ezk= ctx->dataj.ezk- hpk* qz;
-        ctx->dataj.exs= ctx->dataj.exs- hps* qx;
-        ctx->dataj.eys= ctx->dataj.eys- hps* qy;
-        ctx->dataj.ezs= ctx->dataj.ezs- hps* qz;
-        ctx->dataj.exc= ctx->dataj.exc- hpc* qx;
-        ctx->dataj.eyc= ctx->dataj.eyc- hpc* qy;
-        ctx->dataj.ezc= ctx->dataj.ezc- hpc* qz;
+        ctx->dataj.e_const_x= ctx->dataj.e_const_x- hpk* qx;
+        ctx->dataj.e_const_y= ctx->dataj.e_const_y- hpk* qy;
+        ctx->dataj.e_const_z= ctx->dataj.e_const_z- hpk* qz;
+        ctx->dataj.e_sin_x= ctx->dataj.e_sin_x- hps* qx;
+        ctx->dataj.e_sin_y= ctx->dataj.e_sin_y- hps* qy;
+        ctx->dataj.e_sin_z= ctx->dataj.e_sin_z- hps* qz;
+        ctx->dataj.e_cos_x= ctx->dataj.e_cos_x- hpc* qx;
+        ctx->dataj.e_cos_y= ctx->dataj.e_cos_y- hpc* qy;
+        ctx->dataj.e_cos_z= ctx->dataj.e_cos_z- hpc* qz;
         continue;
         
       } /* if( ctx->gnd.iperf != 1 ) */
       
-      ctx->dataj.exk= ctx->dataj.exk- hpk* phx;
-      ctx->dataj.eyk= ctx->dataj.eyk- hpk* phy;
-      ctx->dataj.ezk= ctx->dataj.ezk- hpk* phz;
-      ctx->dataj.exs= ctx->dataj.exs- hps* phx;
-      ctx->dataj.eys= ctx->dataj.eys- hps* phy;
-      ctx->dataj.ezs= ctx->dataj.ezs- hps* phz;
-      ctx->dataj.exc= ctx->dataj.exc- hpc* phx;
-      ctx->dataj.eyc= ctx->dataj.eyc- hpc* phy;
-      ctx->dataj.ezc= ctx->dataj.ezc- hpc* phz;
+      ctx->dataj.e_const_x= ctx->dataj.e_const_x- hpk* phx;
+      ctx->dataj.e_const_y= ctx->dataj.e_const_y- hpk* phy;
+      ctx->dataj.e_const_z= ctx->dataj.e_const_z- hpk* phz;
+      ctx->dataj.e_sin_x= ctx->dataj.e_sin_x- hps* phx;
+      ctx->dataj.e_sin_y= ctx->dataj.e_sin_y- hps* phy;
+      ctx->dataj.e_sin_z= ctx->dataj.e_sin_z- hps* phz;
+      ctx->dataj.e_cos_x= ctx->dataj.e_cos_x- hpc* phx;
+      ctx->dataj.e_cos_y= ctx->dataj.e_cos_y- hpc* phy;
+      ctx->dataj.e_cos_z= ctx->dataj.e_cos_z- hpc* phz;
       continue;
       
     } /* if( ip == 1 ) */
     
-    ctx->dataj.exk= hpk* phx;
-    ctx->dataj.eyk= hpk* phy;
-    ctx->dataj.ezk= hpk* phz;
-    ctx->dataj.exs= hps* phx;
-    ctx->dataj.eys= hps* phy;
-    ctx->dataj.ezs= hps* phz;
-    ctx->dataj.exc= hpc* phx;
-    ctx->dataj.eyc= hpc* phy;
-    ctx->dataj.ezc= hpc* phz;
+    ctx->dataj.e_const_x= hpk* phx;
+    ctx->dataj.e_const_y= hpk* phy;
+    ctx->dataj.e_const_z= hpk* phz;
+    ctx->dataj.e_sin_x= hps* phx;
+    ctx->dataj.e_sin_y= hps* phy;
+    ctx->dataj.e_sin_z= hps* phz;
+    ctx->dataj.e_cos_x= hpc* phx;
+    ctx->dataj.e_cos_y= hpc* phy;
+    ctx->dataj.e_cos_z= hpc* phz;
     
   } /* for( ip = 0; ip < ctx->gnd.ksymp; ip++ ) */
   
@@ -1144,21 +1144,21 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
   {
     for( i = 0; i < ctx->geometry.n; i++ )
     {
-      ctx->dataj.xj= xob- ctx->geometry.x[i];
-      ctx->dataj.yj= yob- ctx->geometry.y[i];
-      ctx->dataj.zj= zob- ctx->geometry.z[i];
-      zp= ctx->geometry.cab[i]* ctx->dataj.xj+ ctx->geometry.sab[i]* ctx->dataj.yj+ ctx->geometry.salp[i]* ctx->dataj.zj;
+      ctx->dataj.src_x= xob- ctx->geometry.x[i];
+      ctx->dataj.src_y= yob- ctx->geometry.y[i];
+      ctx->dataj.src_z= zob- ctx->geometry.z[i];
+      zp= ctx->geometry.cab[i]* ctx->dataj.src_x+ ctx->geometry.sab[i]* ctx->dataj.src_y+ ctx->geometry.salp[i]* ctx->dataj.src_z;
       
       if( fabs( zp) > 0.5001* ctx->geometry.si[i])
         continue;
       
-      zp= ctx->dataj.xj* ctx->dataj.xj+ ctx->dataj.yj* ctx->dataj.yj+ ctx->dataj.zj* ctx->dataj.zj- zp* zp;
-      ctx->dataj.xj= ctx->geometry.bi[i];
+      zp= ctx->dataj.src_x* ctx->dataj.src_x+ ctx->dataj.src_y* ctx->dataj.src_y+ ctx->dataj.src_z* ctx->dataj.src_z- zp* zp;
+      ctx->dataj.src_x= ctx->geometry.bi[i];
       
-      if( zp > 0.9* ctx->dataj.xj* ctx->dataj.xj)
+      if( zp > 0.9* ctx->dataj.src_x* ctx->dataj.src_x)
         continue;
       
-      ax= ctx->dataj.xj;
+      ax= ctx->dataj.src_x;
       break;
       
     } /* for( i = 0; i < n; i++ ) */
@@ -1166,40 +1166,40 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
     for( i = 0; i < ctx->geometry.n; i++ )
     {
       ix = i+1;
-      ctx->dataj.s= ctx->geometry.si[i];
-      ctx->dataj.b= ctx->geometry.bi[i];
-      ctx->dataj.xj= ctx->geometry.x[i];
-      ctx->dataj.yj= ctx->geometry.y[i];
-      ctx->dataj.zj= ctx->geometry.z[i];
-      ctx->dataj.cabj= ctx->geometry.cab[i];
-      ctx->dataj.sabj= ctx->geometry.sab[i];
-      ctx->dataj.salpj= ctx->geometry.salp[i];
+      ctx->dataj.seg_half_len= ctx->geometry.si[i];
+      ctx->dataj.seg_radius= ctx->geometry.bi[i];
+      ctx->dataj.src_x= ctx->geometry.x[i];
+      ctx->dataj.src_y= ctx->geometry.y[i];
+      ctx->dataj.src_z= ctx->geometry.z[i];
+      ctx->dataj.src_dir_cos_x= ctx->geometry.cab[i];
+      ctx->dataj.src_dir_cos_y= ctx->geometry.sab[i];
+      ctx->dataj.src_dir_cos_z= ctx->geometry.salp[i];
       
-      if( ctx->dataj.iexk != 0)
+      if( ctx->dataj.use_extended_kernel != 0)
       {
         ipr= ctx->geometry.icon1[i];
         
-        if(ipr > PCHCON) ctx->dataj.ind1 = 2;
+        if(ipr > PCHCON) ctx->dataj.end1_kernel_type = 2;
         else if( ipr < 0 )
         {
           ipr = -ipr;
           iprx = ipr-1;
           
           if( -ctx->geometry.icon1[iprx] != ix )
-            ctx->dataj.ind1=2;
+            ctx->dataj.end1_kernel_type=2;
           else
           {
-            xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[iprx]+ ctx->dataj.sabj*
-                     ctx->geometry.sab[iprx]+ ctx->dataj.salpj* ctx->geometry.salp[iprx]);
-            if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.b-1.) > 1.0e-6) )
-              ctx->dataj.ind1=2;
+            xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
+                     ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
+            if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+              ctx->dataj.end1_kernel_type=2;
             else
-              ctx->dataj.ind1=0;
+              ctx->dataj.end1_kernel_type=0;
           }
         } /* if( ipr < 0 ) */
         else
           if( ipr == 0 )
-            ctx->dataj.ind1=1;
+            ctx->dataj.end1_kernel_type=1;
           else
           {
             iprx = ipr-1;
@@ -1207,49 +1207,49 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
             if( ipr != ix )
             {
               if( ctx->geometry.icon2[iprx] != ix )
-                ctx->dataj.ind1=2;
+                ctx->dataj.end1_kernel_type=2;
               else
               {
-                xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[iprx]+ ctx->dataj.sabj*
-                         ctx->geometry.sab[iprx]+ ctx->dataj.salpj* ctx->geometry.salp[iprx]);
-                if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.b-1.) > 1.0e-6) )
-                  ctx->dataj.ind1=2;
+                xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
+                         ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
+                if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+                  ctx->dataj.end1_kernel_type=2;
                 else
-                  ctx->dataj.ind1=0;
+                  ctx->dataj.end1_kernel_type=0;
               }
             } /* if( ipr != ix ) */
             else
             {
-              if( ctx->dataj.cabj* ctx->dataj.cabj+ ctx->dataj.sabj* ctx->dataj.sabj > 1.0e-8)
-                ctx->dataj.ind1=2;
+              if( ctx->dataj.src_dir_cos_x* ctx->dataj.src_dir_cos_x+ ctx->dataj.src_dir_cos_y* ctx->dataj.src_dir_cos_y > 1.0e-8)
+                ctx->dataj.end1_kernel_type=2;
               else
-                ctx->dataj.ind1=0;
+                ctx->dataj.end1_kernel_type=0;
             }
           } /* else */
         
         ipr= ctx->geometry.icon2[i];
         
-        if (ipr > PCHCON) ctx->dataj.ind2 = 2;
+        if (ipr > PCHCON) ctx->dataj.end2_kernel_type = 2;
         else if( ipr < 0 )
         {
           ipr = -ipr;
           iprx = ipr-1;
           
           if( -ctx->geometry.icon2[iprx] != ix )
-            ctx->dataj.ind1=2;
+            ctx->dataj.end1_kernel_type=2;
           else
           {
-            xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[iprx]+ ctx->dataj.sabj*
-                     ctx->geometry.sab[iprx]+ ctx->dataj.salpj* ctx->geometry.salp[iprx]);
-            if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.b-1.) > 1.0e-6) )
-              ctx->dataj.ind1=2;
+            xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
+                     ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
+            if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+              ctx->dataj.end1_kernel_type=2;
             else
-              ctx->dataj.ind1=0;
+              ctx->dataj.end1_kernel_type=0;
           }
         } /* if( ipr < 0 ) */
         else
           if( ipr == 0 )
-            ctx->dataj.ind2=1;
+            ctx->dataj.end2_kernel_type=1;
           else
           {
             iprx = ipr-1;
@@ -1257,36 +1257,36 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
             if( ipr != ix )
             {
               if( ctx->geometry.icon1[iprx] != ix )
-                ctx->dataj.ind2=2;
+                ctx->dataj.end2_kernel_type=2;
               else
               {
-                xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[iprx]+ ctx->dataj.sabj*
-                         ctx->geometry.sab[iprx]+ ctx->dataj.salpj* ctx->geometry.salp[iprx]);
-                if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.b-1.) > 1.0e-6) )
-                  ctx->dataj.ind2=2;
+                xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
+                         ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
+                if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+                  ctx->dataj.end2_kernel_type=2;
                 else
-                  ctx->dataj.ind2=0;
+                  ctx->dataj.end2_kernel_type=0;
               }
             } /* if( ipr != (i+1) ) */
             else
             {
-              if( ctx->dataj.cabj* ctx->dataj.cabj+ ctx->dataj.sabj* ctx->dataj.sabj > 1.0e-8)
-                ctx->dataj.ind1=2;
+              if( ctx->dataj.src_dir_cos_x* ctx->dataj.src_dir_cos_x+ ctx->dataj.src_dir_cos_y* ctx->dataj.src_dir_cos_y > 1.0e-8)
+                ctx->dataj.end1_kernel_type=2;
               else
-                ctx->dataj.ind1=0;
+                ctx->dataj.end1_kernel_type=0;
             }
             
           } /* else */
         
-      } /* if( ctx->dataj.iexk != 0) */
+      } /* if( ctx->dataj.use_extended_kernel != 0) */
       
       efld(ctx,  xob, yob, zob, ax,1);
       acx= cmplx( ctx->crnt.a_real[i], ctx->crnt.a_imag[i]);
       bcx= cmplx( ctx->crnt.b_real[i], ctx->crnt.b_imag[i]);
       ccx= cmplx( ctx->crnt.c_real[i], ctx->crnt.c_imag[i]);
-      *ex += ctx->dataj.exk* acx+ ctx->dataj.exs* bcx+ ctx->dataj.exc* ccx;
-      *ey += ctx->dataj.eyk* acx+ ctx->dataj.eys* bcx+ ctx->dataj.eyc* ccx;
-      *ez += ctx->dataj.ezk* acx+ ctx->dataj.ezs* bcx+ ctx->dataj.ezc* ccx;
+      *ex += ctx->dataj.e_const_x* acx+ ctx->dataj.e_sin_x* bcx+ ctx->dataj.e_cos_x* ccx;
+      *ey += ctx->dataj.e_const_y* acx+ ctx->dataj.e_sin_y* bcx+ ctx->dataj.e_cos_y* ccx;
+      *ez += ctx->dataj.e_const_z* acx+ ctx->dataj.e_sin_z* bcx+ ctx->dataj.e_cos_z* ccx;
       
     } /* for( i = 0; i < n; i++ ) */
     
@@ -1298,27 +1298,27 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
   jc= ctx->geometry.n-1;
   for( i = 0; i < ctx->geometry.m; i++ )
   {
-    ctx->dataj.s= ctx->geometry.pbi[i];
-    ctx->dataj.xj= ctx->geometry.px[i];
-    ctx->dataj.yj= ctx->geometry.py[i];
-    ctx->dataj.zj= ctx->geometry.pz[i];
-    ctx->dataj.t1xj= ctx->geometry.t1x[i];
-    ctx->dataj.t1yj= ctx->geometry.t1y[i];
-    ctx->dataj.t1zj= ctx->geometry.t1z[i];
-    ctx->dataj.t2xj= ctx->geometry.t2x[i];
-    ctx->dataj.t2yj= ctx->geometry.t2y[i];
-    ctx->dataj.t2zj= ctx->geometry.t2z[i];
+    ctx->dataj.seg_half_len= ctx->geometry.pbi[i];
+    ctx->dataj.src_x= ctx->geometry.px[i];
+    ctx->dataj.src_y= ctx->geometry.py[i];
+    ctx->dataj.src_z= ctx->geometry.pz[i];
+    ctx->dataj.patch_t1x= ctx->geometry.t1x[i];
+    ctx->dataj.patch_t1y= ctx->geometry.t1y[i];
+    ctx->dataj.patch_t1z= ctx->geometry.t1z[i];
+    ctx->dataj.patch_t2x= ctx->geometry.t2x[i];
+    ctx->dataj.patch_t2y= ctx->geometry.t2y[i];
+    ctx->dataj.patch_t2z= ctx->geometry.t2z[i];
     jc += 3;
-    acx= ctx->dataj.t1xj* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.t1yj* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.t1zj* ctx->crnt.surface_cur[jc];
-    bcx= ctx->dataj.t2xj* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.t2yj* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.t2zj* ctx->crnt.surface_cur[jc];
+    acx= ctx->dataj.patch_t1x* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.patch_t1y* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.patch_t1z* ctx->crnt.surface_cur[jc];
+    bcx= ctx->dataj.patch_t2x* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.patch_t2y* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.patch_t2z* ctx->crnt.surface_cur[jc];
     
     for( ipa = 0; ipa < ctx->gnd.ksymp; ipa++ )
     {
-      ctx->dataj.ipgnd= ipa+1;
+      ctx->dataj.ground_image_pass= ipa+1;
       unere(ctx,  xob, yob, zob);
-      *ex= *ex+ acx* ctx->dataj.exk+ bcx* ctx->dataj.exs;
-      *ey= *ey+ acx* ctx->dataj.eyk+ bcx* ctx->dataj.eys;
-      *ez= *ez+ acx* ctx->dataj.ezk+ bcx* ctx->dataj.ezs;
+      *ex= *ex+ acx* ctx->dataj.e_const_x+ bcx* ctx->dataj.e_sin_x;
+      *ey= *ey+ acx* ctx->dataj.e_const_y+ bcx* ctx->dataj.e_sin_y;
+      *ez= *ez+ acx* ctx->dataj.e_const_z+ bcx* ctx->dataj.e_sin_z;
     }
     
   } /* for( i = 0; i < m; i++ ) */
@@ -1341,9 +1341,9 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
   if (tbf(ctx, is+1, 0) != 0)
     return;
   ctx->geometry.icon1[is]= i;
-  ctx->dataj.s= ctx->geometry.si[is]*.5;
-  curd= CCJ* v/(( log(2.* ctx->dataj.s/ ctx->geometry.bi[is])-1.)*( ctx->segj.bx[ctx->segj.jsno-1]*
-                                                         cos( TP* ctx->dataj.s)+ ctx->segj.cx[ctx->segj.jsno-1]* sin( TP* ctx->dataj.s))* ctx->geometry.wlam);
+  ctx->dataj.seg_half_len= ctx->geometry.si[is]*.5;
+  curd= CCJ* v/(( log(2.* ctx->dataj.seg_half_len/ ctx->geometry.bi[is])-1.)*( ctx->segj.bx[ctx->segj.jsno-1]*
+                                                         cos( TP* ctx->dataj.seg_half_len)+ ctx->segj.cx[ctx->segj.jsno-1]* sin( TP* ctx->dataj.seg_half_len))* ctx->geometry.wlam);
   ctx->vsorc.vqds[ctx->vsorc.nqds]= v;
   ctx->vsorc.iqds[ctx->vsorc.nqds]= is+1;
   ctx->vsorc.nqds++;
@@ -1352,113 +1352,113 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
   {
     j= ctx->segj.jco[jx]-1;
     jp1 = j+1;
-    ctx->dataj.s= ctx->geometry.si[j];
-    ctx->dataj.b= ctx->geometry.bi[j];
-    ctx->dataj.xj= ctx->geometry.x[j];
-    ctx->dataj.yj= ctx->geometry.y[j];
-    ctx->dataj.zj= ctx->geometry.z[j];
-    ctx->dataj.cabj= ctx->geometry.cab[j];
-    ctx->dataj.sabj= ctx->geometry.sab[j];
-    ctx->dataj.salpj= ctx->geometry.salp[j];
+    ctx->dataj.seg_half_len= ctx->geometry.si[j];
+    ctx->dataj.seg_radius= ctx->geometry.bi[j];
+    ctx->dataj.src_x= ctx->geometry.x[j];
+    ctx->dataj.src_y= ctx->geometry.y[j];
+    ctx->dataj.src_z= ctx->geometry.z[j];
+    ctx->dataj.src_dir_cos_x= ctx->geometry.cab[j];
+    ctx->dataj.src_dir_cos_y= ctx->geometry.sab[j];
+    ctx->dataj.src_dir_cos_z= ctx->geometry.salp[j];
     
-    if( ctx->dataj.iexk != 0)
+    if( ctx->dataj.use_extended_kernel != 0)
     {
       ipr= ctx->geometry.icon1[j];
       
-      if (ipr > PCHCON) ctx->dataj.ind1=2;
+      if (ipr > PCHCON) ctx->dataj.end1_kernel_type=2;
       else if( ipr < 0 )
       {
         ipr= -ipr;
         ipr--;
         if( -ctx->geometry.icon1[ipr-1] != jp1 )
-          ctx->dataj.ind1=2;
+          ctx->dataj.end1_kernel_type=2;
         else
         {
-          xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[ipr]+ ctx->dataj.sabj*
-                   ctx->geometry.sab[ipr]+ ctx->dataj.salpj* ctx->geometry.salp[ipr]);
-          if( (xi < 0.999999) || (fabs(ctx->geometry.bi[ipr]/ctx->dataj.b-1.) > 1.0e-6) )
-            ctx->dataj.ind1=2;
+          xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[ipr]+ ctx->dataj.src_dir_cos_y*
+                   ctx->geometry.sab[ipr]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[ipr]);
+          if( (xi < 0.999999) || (fabs(ctx->geometry.bi[ipr]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+            ctx->dataj.end1_kernel_type=2;
           else
-            ctx->dataj.ind1=0;
+            ctx->dataj.end1_kernel_type=0;
         }
       }  /* if( ipr < 0 ) */
       else
         if( ipr == 0 )
-          ctx->dataj.ind1=1;
+          ctx->dataj.end1_kernel_type=1;
         else /* ipr > 0 */
         {
           ipr--;
           if( ipr != j )
           {
             if( ctx->geometry.icon2[ipr] != jp1)
-              ctx->dataj.ind1=2;
+              ctx->dataj.end1_kernel_type=2;
             else
             {
-              xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[ipr]+ ctx->dataj.sabj*
-                       ctx->geometry.sab[ipr]+ ctx->dataj.salpj* ctx->geometry.salp[ipr]);
-              if( (xi < 0.999999) || (fabs(ctx->geometry.bi[ipr]/ctx->dataj.b-1.) > 1.0e-6) )
-                ctx->dataj.ind1=2;
+              xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[ipr]+ ctx->dataj.src_dir_cos_y*
+                       ctx->geometry.sab[ipr]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[ipr]);
+              if( (xi < 0.999999) || (fabs(ctx->geometry.bi[ipr]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+                ctx->dataj.end1_kernel_type=2;
               else
-                ctx->dataj.ind1=0;
+                ctx->dataj.end1_kernel_type=0;
             }
           } /* if( ipr != j ) */
           else
           {
-            if( ctx->dataj.cabj* ctx->dataj.cabj+ ctx->dataj.sabj* ctx->dataj.sabj > 1.0e-8)
-              ctx->dataj.ind1=2;
+            if( ctx->dataj.src_dir_cos_x* ctx->dataj.src_dir_cos_x+ ctx->dataj.src_dir_cos_y* ctx->dataj.src_dir_cos_y > 1.0e-8)
+              ctx->dataj.end1_kernel_type=2;
             else
-              ctx->dataj.ind1=0;
+              ctx->dataj.end1_kernel_type=0;
           }
         } /* else */
       
       ipr= ctx->geometry.icon2[j];
-      if (ipr > PCHCON) ctx->dataj.ind2=2;
+      if (ipr > PCHCON) ctx->dataj.end2_kernel_type=2;
       else if( ipr < 0 )
       {
         ipr = -ipr;
         ipr--;
         if( -ctx->geometry.icon2[ipr] != jp1 )
-          ctx->dataj.ind1=2;
+          ctx->dataj.end1_kernel_type=2;
         else
         {
-          xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[ipr]+ ctx->dataj.sabj*
-                   ctx->geometry.sab[ipr]+ ctx->dataj.salpj* ctx->geometry.salp[ipr]);
-          if( (xi < 0.999999) || (fabs(ctx->geometry.bi[ipr]/ctx->dataj.b-1.) > 1.0e-6) )
-            ctx->dataj.ind1=2;
+          xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[ipr]+ ctx->dataj.src_dir_cos_y*
+                   ctx->geometry.sab[ipr]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[ipr]);
+          if( (xi < 0.999999) || (fabs(ctx->geometry.bi[ipr]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+            ctx->dataj.end1_kernel_type=2;
           else
-            ctx->dataj.ind1=0;
+            ctx->dataj.end1_kernel_type=0;
         }
       } /* if( ipr < 0 ) */
       else
         if( ipr == 0 )
-          ctx->dataj.ind2=1;
+          ctx->dataj.end2_kernel_type=1;
         else /* ipr > 0 */
         {
           ipr--;
           if( ipr != j )
           {
             if( ctx->geometry.icon1[ipr] != jp1)
-              ctx->dataj.ind2=2;
+              ctx->dataj.end2_kernel_type=2;
             else
             {
-              xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[ipr]+ ctx->dataj.sabj*
-                       ctx->geometry.sab[ipr]+ ctx->dataj.salpj* ctx->geometry.salp[ipr]);
-              if( (xi < 0.999999) || (fabs(ctx->geometry.bi[ipr]/ctx->dataj.b-1.) > 1.0e-6) )
-                ctx->dataj.ind2=2;
+              xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[ipr]+ ctx->dataj.src_dir_cos_y*
+                       ctx->geometry.sab[ipr]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[ipr]);
+              if( (xi < 0.999999) || (fabs(ctx->geometry.bi[ipr]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+                ctx->dataj.end2_kernel_type=2;
               else
-                ctx->dataj.ind2=0;
+                ctx->dataj.end2_kernel_type=0;
             }
           } /* if( ipr != j )*/
           else
           {
-            if( ctx->dataj.cabj* ctx->dataj.cabj+ ctx->dataj.sabj* ctx->dataj.sabj > 1.0e-8)
-              ctx->dataj.ind1=2;
+            if( ctx->dataj.src_dir_cos_x* ctx->dataj.src_dir_cos_x+ ctx->dataj.src_dir_cos_y* ctx->dataj.src_dir_cos_y > 1.0e-8)
+              ctx->dataj.end1_kernel_type=2;
             else
-              ctx->dataj.ind1=0;
+              ctx->dataj.end1_kernel_type=0;
           }
         } /* else */
       
-    } /* if( ctx->dataj.iexk != 0) */
+    } /* if( ctx->dataj.use_extended_kernel != 0) */
     
     for( i = 0; i < ctx->geometry.n; i++ )
     {
@@ -1471,9 +1471,9 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
       cabi= ctx->geometry.cab[i];
       sabi= ctx->geometry.sab[i];
       salpi= ctx->geometry.salp[i];
-      etk= ctx->dataj.exk* cabi+ ctx->dataj.eyk* sabi+ ctx->dataj.ezk* salpi;
-      ets= ctx->dataj.exs* cabi+ ctx->dataj.eys* sabi+ ctx->dataj.ezs* salpi;
-      etc= ctx->dataj.exc* cabi+ ctx->dataj.eyc* sabi+ ctx->dataj.ezc* salpi;
+      etk= ctx->dataj.e_const_x* cabi+ ctx->dataj.e_const_y* sabi+ ctx->dataj.e_const_z* salpi;
+      ets= ctx->dataj.e_sin_x* cabi+ ctx->dataj.e_sin_y* sabi+ ctx->dataj.e_sin_z* salpi;
+      etc= ctx->dataj.e_cos_x* cabi+ ctx->dataj.e_cos_y* sabi+ ctx->dataj.e_cos_z* salpi;
       e[i]= e[i]-( etk* ctx->segj.ax[jx]+ ets* ctx->segj.bx[jx]+ etc* ctx->segj.cx[jx])* curd;
     }
     
@@ -1490,18 +1490,18 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
         tx= ctx->geometry.t2x[i];
         ty= ctx->geometry.t2y[i];
         tz= ctx->geometry.t2z[i];
-        etk= ctx->dataj.exk* tx+ ctx->dataj.eyk* ty+ ctx->dataj.ezk* tz;
-        ets= ctx->dataj.exs* tx+ ctx->dataj.eys* ty+ ctx->dataj.ezs* tz;
-        etc= ctx->dataj.exc* tx+ ctx->dataj.eyc* ty+ ctx->dataj.ezc* tz;
+        etk= ctx->dataj.e_const_x* tx+ ctx->dataj.e_const_y* ty+ ctx->dataj.e_const_z* tz;
+        ets= ctx->dataj.e_sin_x* tx+ ctx->dataj.e_sin_y* ty+ ctx->dataj.e_sin_z* tz;
+        etc= ctx->dataj.e_cos_x* tx+ ctx->dataj.e_cos_y* ty+ ctx->dataj.e_cos_z* tz;
         e[i1] += ( etk* ctx->segj.ax[jx]+ ets* ctx->segj.bx[jx]+
                   etc* ctx->segj.cx[jx] )* curd* ctx->geometry.psalp[i];
         i1++;
         tx= ctx->geometry.t1x[i];
         ty= ctx->geometry.t1y[i];
         tz= ctx->geometry.t1z[i];
-        etk= ctx->dataj.exk* tx+ ctx->dataj.eyk* ty+ ctx->dataj.ezk* tz;
-        ets= ctx->dataj.exs* tx+ ctx->dataj.eys* ty+ ctx->dataj.ezs* tz;
-        etc= ctx->dataj.exc* tx+ ctx->dataj.eyc* ty+ ctx->dataj.ezc* tz;
+        etk= ctx->dataj.e_const_x* tx+ ctx->dataj.e_const_y* ty+ ctx->dataj.e_const_z* tz;
+        ets= ctx->dataj.e_sin_x* tx+ ctx->dataj.e_sin_y* ty+ ctx->dataj.e_sin_z* tz;
+        etc= ctx->dataj.e_cos_x* tx+ ctx->dataj.e_cos_y* ty+ ctx->dataj.e_cos_z* tz;
         e[i1] += ( etk* ctx->segj.ax[jx]+ ets* ctx->segj.bx[jx]+
                   etc* ctx->segj.cx[jx])* curd* ctx->geometry.psalp[i];
       }
@@ -1620,40 +1620,40 @@ void nhfld(nec_context_t *restrict ctx,  double xob, double yob, double zob,
   
   if(ctx->geometry.n != 0) {
     for(i = 0; i < ctx->geometry.n; i++) {
-      ctx->dataj.xj= xob- ctx->geometry.x[i];
-      ctx->dataj.yj= yob- ctx->geometry.y[i];
-      ctx->dataj.zj= zob- ctx->geometry.z[i];
-      zp= ctx->geometry.cab[i]* ctx->dataj.xj+ ctx->geometry.sab[i]* ctx->dataj.yj+ ctx->geometry.salp[i]* ctx->dataj.zj;
+      ctx->dataj.src_x= xob- ctx->geometry.x[i];
+      ctx->dataj.src_y= yob- ctx->geometry.y[i];
+      ctx->dataj.src_z= zob- ctx->geometry.z[i];
+      zp= ctx->geometry.cab[i]* ctx->dataj.src_x+ ctx->geometry.sab[i]* ctx->dataj.src_y+ ctx->geometry.salp[i]* ctx->dataj.src_z;
       
       if( fabs( zp) > 0.5001* ctx->geometry.si[i])
         continue;
       
-      zp= ctx->dataj.xj* ctx->dataj.xj+ ctx->dataj.yj* ctx->dataj.yj+ ctx->dataj.zj* ctx->dataj.zj- zp* zp;
-      ctx->dataj.xj= ctx->geometry.bi[i];
+      zp= ctx->dataj.src_x* ctx->dataj.src_x+ ctx->dataj.src_y* ctx->dataj.src_y+ ctx->dataj.src_z* ctx->dataj.src_z- zp* zp;
+      ctx->dataj.src_x= ctx->geometry.bi[i];
       
-      if( zp > 0.9* ctx->dataj.xj* ctx->dataj.xj)
+      if( zp > 0.9* ctx->dataj.src_x* ctx->dataj.src_x)
         continue;
       
-      ax= ctx->dataj.xj;
+      ax= ctx->dataj.src_x;
       break;
     }
     
     for(i = 0; i < ctx->geometry.n; i++) {
-      ctx->dataj.s= ctx->geometry.si[i];
-      ctx->dataj.b= ctx->geometry.bi[i];
-      ctx->dataj.xj= ctx->geometry.x[i];
-      ctx->dataj.yj= ctx->geometry.y[i];
-      ctx->dataj.zj= ctx->geometry.z[i];
-      ctx->dataj.cabj= ctx->geometry.cab[i];
-      ctx->dataj.sabj= ctx->geometry.sab[i];
-      ctx->dataj.salpj= ctx->geometry.salp[i];
+      ctx->dataj.seg_half_len= ctx->geometry.si[i];
+      ctx->dataj.seg_radius= ctx->geometry.bi[i];
+      ctx->dataj.src_x= ctx->geometry.x[i];
+      ctx->dataj.src_y= ctx->geometry.y[i];
+      ctx->dataj.src_z= ctx->geometry.z[i];
+      ctx->dataj.src_dir_cos_x= ctx->geometry.cab[i];
+      ctx->dataj.src_dir_cos_y= ctx->geometry.sab[i];
+      ctx->dataj.src_dir_cos_z= ctx->geometry.salp[i];
       hsfld(ctx,  xob, yob, zob, ax);
       acx= cmplx( ctx->crnt.a_real[i], ctx->crnt.a_imag[i]);
       bcx= cmplx( ctx->crnt.b_real[i], ctx->crnt.b_imag[i]);
       ccx= cmplx( ctx->crnt.c_real[i], ctx->crnt.c_imag[i]);
-      *hx += ctx->dataj.exk* acx+ ctx->dataj.exs* bcx+ ctx->dataj.exc* ccx;
-      *hy += ctx->dataj.eyk* acx+ ctx->dataj.eys* bcx+ ctx->dataj.eyc* ccx;
-      *hz += ctx->dataj.ezk* acx+ ctx->dataj.ezs* bcx+ ctx->dataj.ezc* ccx;
+      *hx += ctx->dataj.e_const_x* acx+ ctx->dataj.e_sin_x* bcx+ ctx->dataj.e_cos_x* ccx;
+      *hy += ctx->dataj.e_const_y* acx+ ctx->dataj.e_sin_y* bcx+ ctx->dataj.e_cos_y* ccx;
+      *hz += ctx->dataj.e_const_z* acx+ ctx->dataj.e_sin_z* bcx+ ctx->dataj.e_cos_z* ccx;
     }
     
     if(ctx->geometry.m == 0)
@@ -1663,23 +1663,23 @@ void nhfld(nec_context_t *restrict ctx,  double xob, double yob, double zob,
   
   jc = ctx->geometry.n - 1;
   for(i = 0; i < ctx->geometry.m; i++) {
-    ctx->dataj.s= ctx->geometry.pbi[i];
-    ctx->dataj.xj= ctx->geometry.px[i];
-    ctx->dataj.yj= ctx->geometry.py[i];
-    ctx->dataj.zj= ctx->geometry.pz[i];
-    ctx->dataj.t1xj= ctx->geometry.t1x[i];
-    ctx->dataj.t1yj= ctx->geometry.t1y[i];
-    ctx->dataj.t1zj= ctx->geometry.t1z[i];
-    ctx->dataj.t2xj= ctx->geometry.t2x[i];
-    ctx->dataj.t2yj= ctx->geometry.t2y[i];
-    ctx->dataj.t2zj= ctx->geometry.t2z[i];
+    ctx->dataj.seg_half_len= ctx->geometry.pbi[i];
+    ctx->dataj.src_x= ctx->geometry.px[i];
+    ctx->dataj.src_y= ctx->geometry.py[i];
+    ctx->dataj.src_z= ctx->geometry.pz[i];
+    ctx->dataj.patch_t1x= ctx->geometry.t1x[i];
+    ctx->dataj.patch_t1y= ctx->geometry.t1y[i];
+    ctx->dataj.patch_t1z= ctx->geometry.t1z[i];
+    ctx->dataj.patch_t2x= ctx->geometry.t2x[i];
+    ctx->dataj.patch_t2y= ctx->geometry.t2y[i];
+    ctx->dataj.patch_t2z= ctx->geometry.t2z[i];
     hintg(ctx,  xob, yob, zob);
     jc += 3;
-    acx= ctx->dataj.t1xj* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.t1yj* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.t1zj* ctx->crnt.surface_cur[jc];
-    bcx= ctx->dataj.t2xj* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.t2yj* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.t2zj* ctx->crnt.surface_cur[jc];
-    *hx= *hx+ acx* ctx->dataj.exk+ bcx* ctx->dataj.exs;
-    *hy= *hy+ acx* ctx->dataj.eyk+ bcx* ctx->dataj.eys;
-    *hz= *hz+ acx* ctx->dataj.ezk+ bcx* ctx->dataj.ezs;
+    acx= ctx->dataj.patch_t1x* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.patch_t1y* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.patch_t1z* ctx->crnt.surface_cur[jc];
+    bcx= ctx->dataj.patch_t2x* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.patch_t2y* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.patch_t2z* ctx->crnt.surface_cur[jc];
+    *hx= *hx+ acx* ctx->dataj.e_const_x+ bcx* ctx->dataj.e_sin_x;
+    *hy= *hy+ acx* ctx->dataj.e_const_y+ bcx* ctx->dataj.e_sin_y;
+    *hz= *hz+ acx* ctx->dataj.e_const_z+ bcx* ctx->dataj.e_sin_z;
   }
   
   return;
@@ -1697,20 +1697,20 @@ void pcint(nec_context_t *restrict ctx,  double xi, double yi, double zi, double
   complex double e1, e2, e3, e4, e5, e6, e7, e8, e9;
   
   nint = 10;
-  d= sqrt( ctx->dataj.s)*.5;
+  d= sqrt( ctx->dataj.seg_half_len)*.5;
   ds=4.* d/ (double) nint;
   da= ds* ds;
-  gcon=1./ ctx->dataj.s;
+  gcon=1./ ctx->dataj.seg_half_len;
   fcon=1./(2.* TP* d);
-  xxj= ctx->dataj.xj;
-  xyj= ctx->dataj.yj;
-  xzj= ctx->dataj.zj;
-  xs= ctx->dataj.s;
-  ctx->dataj.s= da;
+  xxj= ctx->dataj.src_x;
+  xyj= ctx->dataj.src_y;
+  xzj= ctx->dataj.src_z;
+  xs= ctx->dataj.seg_half_len;
+  ctx->dataj.seg_half_len= da;
   s1= d+ ds*.5;
-  xss= ctx->dataj.xj+ s1*( ctx->dataj.t1xj+ ctx->dataj.t2xj);
-  yss= ctx->dataj.yj+ s1*( ctx->dataj.t1yj+ ctx->dataj.t2yj);
-  zss= ctx->dataj.zj+ s1*( ctx->dataj.t1zj+ ctx->dataj.t2zj);
+  xss= ctx->dataj.src_x+ s1*( ctx->dataj.patch_t1x+ ctx->dataj.patch_t2x);
+  yss= ctx->dataj.src_y+ s1*( ctx->dataj.patch_t1y+ ctx->dataj.patch_t2y);
+  zss= ctx->dataj.src_z+ s1*( ctx->dataj.patch_t1z+ ctx->dataj.patch_t2z);
   s1= s1+ d;
   s2x= s1;
   e1=CPLX_00;
@@ -1727,22 +1727,22 @@ void pcint(nec_context_t *restrict ctx,  double xi, double yi, double zi, double
   {
     s1= s1- ds;
     s2= s2x;
-    xss= xss- ds* ctx->dataj.t1xj;
-    yss= yss- ds* ctx->dataj.t1yj;
-    zss= zss- ds* ctx->dataj.t1zj;
-    ctx->dataj.xj= xss;
-    ctx->dataj.yj= yss;
-    ctx->dataj.zj= zss;
+    xss= xss- ds* ctx->dataj.patch_t1x;
+    yss= yss- ds* ctx->dataj.patch_t1y;
+    zss= zss- ds* ctx->dataj.patch_t1z;
+    ctx->dataj.src_x= xss;
+    ctx->dataj.src_y= yss;
+    ctx->dataj.src_z= zss;
     
     for( i2 = 0; i2 < nint; i2++ )
     {
       s2= s2- ds;
-      ctx->dataj.xj= ctx->dataj.xj- ds* ctx->dataj.t2xj;
-      ctx->dataj.yj= ctx->dataj.yj- ds* ctx->dataj.t2yj;
-      ctx->dataj.zj= ctx->dataj.zj- ds* ctx->dataj.t2zj;
+      ctx->dataj.src_x= ctx->dataj.src_x- ds* ctx->dataj.patch_t2x;
+      ctx->dataj.src_y= ctx->dataj.src_y- ds* ctx->dataj.patch_t2y;
+      ctx->dataj.src_z= ctx->dataj.src_z- ds* ctx->dataj.patch_t2z;
       unere(ctx,  xi, yi, zi);
-      ctx->dataj.exk= ctx->dataj.exk* cabi+ ctx->dataj.eyk* sabi+ ctx->dataj.ezk* salpi;
-      ctx->dataj.exs= ctx->dataj.exs* cabi+ ctx->dataj.eys* sabi+ ctx->dataj.ezs* salpi;
+      ctx->dataj.e_const_x= ctx->dataj.e_const_x* cabi+ ctx->dataj.e_const_y* sabi+ ctx->dataj.e_const_z* salpi;
+      ctx->dataj.e_sin_x= ctx->dataj.e_sin_x* cabi+ ctx->dataj.e_sin_y* sabi+ ctx->dataj.e_sin_z* salpi;
       g1=( d+ s1)*( d+ s2)* gcon;
       g2=( d- s1)*( d+ s2)* gcon;
       g3=( d- s1)*( d- s2)* gcon;
@@ -1750,15 +1750,15 @@ void pcint(nec_context_t *restrict ctx,  double xi, double yi, double zi, double
       f2=( s1* s1+ s2* s2)* TP;
       f1= s1/ f2-( g1- g2- g3+ g4)* fcon;
       f2= s2/ f2-( g1+ g2- g3- g4)* fcon;
-      e1= e1+ ctx->dataj.exk* g1;
-      e2= e2+ ctx->dataj.exk* g2;
-      e3= e3+ ctx->dataj.exk* g3;
-      e4= e4+ ctx->dataj.exk* g4;
-      e5= e5+ ctx->dataj.exs* g1;
-      e6= e6+ ctx->dataj.exs* g2;
-      e7= e7+ ctx->dataj.exs* g3;
-      e8= e8+ ctx->dataj.exs* g4;
-      e9= e9+ ctx->dataj.exk* f1+ ctx->dataj.exs* f2;
+      e1= e1+ ctx->dataj.e_const_x* g1;
+      e2= e2+ ctx->dataj.e_const_x* g2;
+      e3= e3+ ctx->dataj.e_const_x* g3;
+      e4= e4+ ctx->dataj.e_const_x* g4;
+      e5= e5+ ctx->dataj.e_sin_x* g1;
+      e6= e6+ ctx->dataj.e_sin_x* g2;
+      e7= e7+ ctx->dataj.e_sin_x* g3;
+      e8= e8+ ctx->dataj.e_sin_x* g4;
+      e9= e9+ ctx->dataj.e_const_x* f1+ ctx->dataj.e_sin_x* f2;
       
     } /* for( i2 = 0; i2 < nint; i2++ ) */
     
@@ -1773,10 +1773,10 @@ void pcint(nec_context_t *restrict ctx,  double xi, double yi, double zi, double
   e[6]= e7;
   e[7]= e8;
   e[8]= e9;
-  ctx->dataj.xj= xxj;
-  ctx->dataj.yj= xyj;
-  ctx->dataj.zj= xzj;
-  ctx->dataj.s= xs;
+  ctx->dataj.src_x= xxj;
+  ctx->dataj.src_y= xyj;
+  ctx->dataj.src_z= xzj;
+  ctx->dataj.seg_half_len= xs;
   
   return;
 }
@@ -1791,30 +1791,30 @@ void unere(nec_context_t *ctx,  double xob, double yob, double zob )
   double tt2, rt, xymag, px, py, cth, r2;
   complex double er, q1, q2, rrv, rrh, edp;
   
-  zr= ctx->dataj.zj;
-  t1zr= ctx->dataj.t1zj;
-  t2zr= ctx->dataj.t2zj;
+  zr= ctx->dataj.src_z;
+  t1zr= ctx->dataj.patch_t1z;
+  t2zr= ctx->dataj.patch_t2z;
   
-  if( ctx->dataj.ipgnd == 2)
+  if( ctx->dataj.ground_image_pass == 2)
   {
     zr= -zr;
     t1zr= -t1zr;
     t2zr= -t2zr;
   }
   
-  rx= xob- ctx->dataj.xj;
-  ry= yob- ctx->dataj.yj;
+  rx= xob- ctx->dataj.src_x;
+  ry= yob- ctx->dataj.src_y;
   rz= zob- zr;
   r2= rx* rx+ ry* ry+ rz* rz;
   
   if( r2 <= 1.0e-20)
   {
-    ctx->dataj.exk=CPLX_00;
-    ctx->dataj.eyk=CPLX_00;
-    ctx->dataj.ezk=CPLX_00;
-    ctx->dataj.exs=CPLX_00;
-    ctx->dataj.eys=CPLX_00;
-    ctx->dataj.ezs=CPLX_00;
+    ctx->dataj.e_const_x=CPLX_00;
+    ctx->dataj.e_const_y=CPLX_00;
+    ctx->dataj.e_const_z=CPLX_00;
+    ctx->dataj.e_sin_x=CPLX_00;
+    ctx->dataj.e_sin_y=CPLX_00;
+    ctx->dataj.e_sin_z=CPLX_00;
     return;
   }
   
@@ -1822,29 +1822,29 @@ void unere(nec_context_t *ctx,  double xob, double yob, double zob )
   tt1= -TP* r;
   tt2= tt1* tt1;
   rt= r2* r;
-  er= cmplx( sin( tt1),- cos( tt1))*( CONST2* ctx->dataj.s);
+  er= cmplx( sin( tt1),- cos( tt1))*( CONST2* ctx->dataj.seg_half_len);
   q1= cmplx( tt2-1., tt1)* er/ rt;
   q2= cmplx(3.- tt2,-3.* tt1)* er/( rt* r2);
-  er = q2*( ctx->dataj.t1xj* rx+ ctx->dataj.t1yj* ry+ t1zr* rz);
-  ctx->dataj.exk= q1* ctx->dataj.t1xj+ er* rx;
-  ctx->dataj.eyk= q1* ctx->dataj.t1yj+ er* ry;
-  ctx->dataj.ezk= q1* t1zr+ er* rz;
-  er= q2*( ctx->dataj.t2xj* rx+ ctx->dataj.t2yj* ry+ t2zr* rz);
-  ctx->dataj.exs= q1* ctx->dataj.t2xj+ er* rx;
-  ctx->dataj.eys= q1* ctx->dataj.t2yj+ er* ry;
-  ctx->dataj.ezs= q1* t2zr+ er* rz;
+  er = q2*( ctx->dataj.patch_t1x* rx+ ctx->dataj.patch_t1y* ry+ t1zr* rz);
+  ctx->dataj.e_const_x= q1* ctx->dataj.patch_t1x+ er* rx;
+  ctx->dataj.e_const_y= q1* ctx->dataj.patch_t1y+ er* ry;
+  ctx->dataj.e_const_z= q1* t1zr+ er* rz;
+  er= q2*( ctx->dataj.patch_t2x* rx+ ctx->dataj.patch_t2y* ry+ t2zr* rz);
+  ctx->dataj.e_sin_x= q1* ctx->dataj.patch_t2x+ er* rx;
+  ctx->dataj.e_sin_y= q1* ctx->dataj.patch_t2y+ er* ry;
+  ctx->dataj.e_sin_z= q1* t2zr+ er* rz;
   
-  if( ctx->dataj.ipgnd == 1)
+  if( ctx->dataj.ground_image_pass == 1)
     return;
   
   if( ctx->gnd.iperf == 1)
   {
-    ctx->dataj.exk= -ctx->dataj.exk;
-    ctx->dataj.eyk= -ctx->dataj.eyk;
-    ctx->dataj.ezk= -ctx->dataj.ezk;
-    ctx->dataj.exs= -ctx->dataj.exs;
-    ctx->dataj.eys= -ctx->dataj.eys;
-    ctx->dataj.ezs= -ctx->dataj.ezs;
+    ctx->dataj.e_const_x= -ctx->dataj.e_const_x;
+    ctx->dataj.e_const_y= -ctx->dataj.e_const_y;
+    ctx->dataj.e_const_z= -ctx->dataj.e_const_z;
+    ctx->dataj.e_sin_x= -ctx->dataj.e_sin_x;
+    ctx->dataj.e_sin_y= -ctx->dataj.e_sin_y;
+    ctx->dataj.e_sin_z= -ctx->dataj.e_sin_z;
     return;
   }
   
@@ -1868,14 +1868,14 @@ void unere(nec_context_t *ctx,  double xob, double yob, double zob )
   rrh=( rrh- rrv)/( rrh+ rrv);
   rrv= ctx->gnd.zrati* rrv;
   rrv=-( cth- rrv)/( cth+ rrv);
-  edp=( ctx->dataj.exk* px+ ctx->dataj.eyk* py)*( rrh- rrv);
-  ctx->dataj.exk= ctx->dataj.exk* rrv+ edp* px;
-  ctx->dataj.eyk= ctx->dataj.eyk* rrv+ edp* py;
-  ctx->dataj.ezk= ctx->dataj.ezk* rrv;
-  edp=( ctx->dataj.exs* px+ ctx->dataj.eys* py)*( rrh- rrv);
-  ctx->dataj.exs= ctx->dataj.exs* rrv+ edp* px;
-  ctx->dataj.eys= ctx->dataj.eys* rrv+ edp* py;
-  ctx->dataj.ezs= ctx->dataj.ezs* rrv;
+  edp=( ctx->dataj.e_const_x* px+ ctx->dataj.e_const_y* py)*( rrh- rrv);
+  ctx->dataj.e_const_x= ctx->dataj.e_const_x* rrv+ edp* px;
+  ctx->dataj.e_const_y= ctx->dataj.e_const_y* rrv+ edp* py;
+  ctx->dataj.e_const_z= ctx->dataj.e_const_z* rrv;
+  edp=( ctx->dataj.e_sin_x* px+ ctx->dataj.e_sin_y* py)*( rrh- rrv);
+  ctx->dataj.e_sin_x= ctx->dataj.e_sin_x* rrv+ edp* px;
+  ctx->dataj.e_sin_y= ctx->dataj.e_sin_y* rrv+ edp* py;
+  ctx->dataj.e_sin_z= ctx->dataj.e_sin_z* rrv;
   
   return;
 }

@@ -72,8 +72,8 @@ int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, do
   neq = ctx->geometry.n + 2 * ctx->geometry.m;
   ctx->smat.nop = neq / npeq;
 
-  ctx->dataj.rkh = rkhx;
-  ctx->dataj.iexk = iexkx;
+  ctx->dataj.k_half_len = rkhx;
+  ctx->dataj.use_extended_kernel = iexkx;
   it = ctx->matpar.nlast;
 
   for( i = 0; i < nrow; i++ )
@@ -253,23 +253,23 @@ void cmss(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2,
 	  jj1 += 2;
 	  jj2 = jj1+1;
 
-	  ctx->dataj.s = ctx->geometry.pbi[jl];
-	  ctx->dataj.xj = ctx->geometry.px[jl];
-	  ctx->dataj.yj = ctx->geometry.py[jl];
-	  ctx->dataj.zj = ctx->geometry.pz[jl];
-	  ctx->dataj.t1xj = ctx->geometry.t1x[jl];
-	  ctx->dataj.t1yj = ctx->geometry.t1y[jl];
-	  ctx->dataj.t1zj = ctx->geometry.t1z[jl];
-	  ctx->dataj.t2xj = ctx->geometry.t2x[jl];
-	  ctx->dataj.t2yj = ctx->geometry.t2y[jl];
-	  ctx->dataj.t2zj = ctx->geometry.t2z[jl];
+	  ctx->dataj.seg_half_len = ctx->geometry.pbi[jl];
+	  ctx->dataj.src_x = ctx->geometry.px[jl];
+	  ctx->dataj.src_y = ctx->geometry.py[jl];
+	  ctx->dataj.src_z = ctx->geometry.pz[jl];
+	  ctx->dataj.patch_t1x = ctx->geometry.t1x[jl];
+	  ctx->dataj.patch_t1y = ctx->geometry.t1y[jl];
+	  ctx->dataj.patch_t1z = ctx->geometry.t1z[jl];
+	  ctx->dataj.patch_t2x = ctx->geometry.t2x[jl];
+	  ctx->dataj.patch_t2y = ctx->geometry.t2y[jl];
+	  ctx->dataj.patch_t2z = ctx->geometry.t2z[jl];
 
 	  hintg(ctx, xi, yi, zi);
 
-	  g11 = -( t2xi * ctx->dataj.exk + t2yi * ctx->dataj.eyk + t2zi * ctx->dataj.ezk );
-	  g12 = -( t2xi * ctx->dataj.exs + t2yi * ctx->dataj.eys + t2zi * ctx->dataj.ezs );
-	  g21 = -( t1xi * ctx->dataj.exk + t1yi * ctx->dataj.eyk + t1zi * ctx->dataj.ezk );
-	  g22 = -( t1xi * ctx->dataj.exs + t1yi * ctx->dataj.eys + t1zi * ctx->dataj.ezs );
+	  g11 = -( t2xi * ctx->dataj.e_const_x + t2yi * ctx->dataj.e_const_y + t2zi * ctx->dataj.e_const_z );
+	  g12 = -( t2xi * ctx->dataj.e_sin_x + t2yi * ctx->dataj.e_sin_y + t2zi * ctx->dataj.e_sin_z );
+	  g21 = -( t1xi * ctx->dataj.e_const_x + t1yi * ctx->dataj.e_const_y + t1zi * ctx->dataj.e_const_z );
+	  g22 = -( t1xi * ctx->dataj.e_sin_x + t1yi * ctx->dataj.e_sin_y + t1zi * ctx->dataj.e_sin_z );
 
 	  if( i == j )
 	  {
@@ -364,21 +364,21 @@ void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex d
 	  {
 		jl += 2;
 		js = j-1;
-		ctx->dataj.t1xj = ctx->geometry.t1x[js];
-		ctx->dataj.t1yj = ctx->geometry.t1y[js];
-		ctx->dataj.t1zj = ctx->geometry.t1z[js];
-		ctx->dataj.t2xj = ctx->geometry.t2x[js];
-		ctx->dataj.t2yj = ctx->geometry.t2y[js];
-		ctx->dataj.t2zj = ctx->geometry.t2z[js];
-		ctx->dataj.xj = ctx->geometry.px[js];
-		ctx->dataj.yj = ctx->geometry.py[js];
-		ctx->dataj.zj = ctx->geometry.pz[js];
-		ctx->dataj.s = ctx->geometry.pbi[js];
+		ctx->dataj.patch_t1x = ctx->geometry.t1x[js];
+		ctx->dataj.patch_t1y = ctx->geometry.t1y[js];
+		ctx->dataj.patch_t1z = ctx->geometry.t1z[js];
+		ctx->dataj.patch_t2x = ctx->geometry.t2x[js];
+		ctx->dataj.patch_t2y = ctx->geometry.t2y[js];
+		ctx->dataj.patch_t2z = ctx->geometry.t2z[js];
+		ctx->dataj.src_x = ctx->geometry.px[js];
+		ctx->dataj.src_y = ctx->geometry.py[js];
+		ctx->dataj.src_z = ctx->geometry.pz[js];
+		ctx->dataj.seg_half_len = ctx->geometry.pbi[js];
 
 		/* ground loop */
 		for( ip = 1; ip <= ctx->gnd.ksymp; ip++ )
 		{
-		  ctx->dataj.ipgnd= ip;
+		  ctx->dataj.ground_image_pass= ip;
 
 		  if( ((ipch == j) || (icgo != 0)) && (ip != 2) )
 		  {
@@ -389,7 +389,7 @@ void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex d
 			  pyl= PI* ctx->geometry.si[i]* fsign;
 			  pxl= sin( pyl);
 			  pyl= cos( pyl);
-			  ctx->dataj.exc= emel[8]* fsign;
+			  ctx->dataj.e_cos_x= emel[8]* fsign;
 
 			  if (trio(ctx, i+1) != 0)
 			    return;
@@ -400,10 +400,10 @@ void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex d
 
 			  if( itrp == 0 )
 				cw[k+il*nrow] +=
-				  ctx->dataj.exc * ( ctx->segj.ax[jsnox] + ctx->segj.bx[jsnox] * pxl + ctx->segj.cx[jsnox] * pyl );
+				  ctx->dataj.e_cos_x * ( ctx->segj.ax[jsnox] + ctx->segj.bx[jsnox] * pxl + ctx->segj.cx[jsnox] * pyl );
 			  else
 				cw[il+k*nrow] +=
-				  ctx->dataj.exc * ( ctx->segj.ax[jsnox] + ctx->segj.bx[jsnox] * pxl + ctx->segj.cx[jsnox] * pyl );
+				  ctx->dataj.e_cos_x * ( ctx->segj.ax[jsnox] + ctx->segj.bx[jsnox] * pxl + ctx->segj.cx[jsnox] * pyl );
 
 			} /* if( icgo <= 0 ) */
 
@@ -431,14 +431,14 @@ void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex d
 		  /* normal fill */
 		  if( itrp == 0)
 		  {
-			cm[k+(jl-1)*nrow] += ctx->dataj.exk* cabi+ ctx->dataj.eyk* sabi+ ctx->dataj.ezk* salpi;
-			cm[k+jl*nrow]     += ctx->dataj.exs* cabi+ ctx->dataj.eys* sabi+ ctx->dataj.ezs* salpi;
+			cm[k+(jl-1)*nrow] += ctx->dataj.e_const_x* cabi+ ctx->dataj.e_const_y* sabi+ ctx->dataj.e_const_z* salpi;
+			cm[k+jl*nrow]     += ctx->dataj.e_sin_x* cabi+ ctx->dataj.e_sin_y* sabi+ ctx->dataj.e_sin_z* salpi;
 			continue;
 		  }
 
 		  /* transposed fill */
-		  cm[(jl-1)+k*nrow] += ctx->dataj.exk* cabi+ ctx->dataj.eyk* sabi+ ctx->dataj.ezk* salpi;
-		  cm[jl+k*nrow]     += ctx->dataj.exs* cabi+ ctx->dataj.eys* sabi+ ctx->dataj.ezs* salpi;
+		  cm[(jl-1)+k*nrow] += ctx->dataj.e_const_x* cabi+ ctx->dataj.e_const_y* sabi+ ctx->dataj.e_const_z* salpi;
+		  cm[jl+k*nrow]     += ctx->dataj.e_sin_x* cabi+ ctx->dataj.e_sin_y* sabi+ ctx->dataj.e_sin_z* salpi;
 
 		} /* for( ip = 1; ip <= gnd.ksymp; ip++ ) */
 
@@ -462,14 +462,14 @@ void cmws(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
   complex double etk, ets, etc;
 
   j--;
-  ctx->dataj.s = ctx->geometry.si[j];
-  ctx->dataj.b = ctx->geometry.bi[j];
-  ctx->dataj.xj = ctx->geometry.x[j];
-  ctx->dataj.yj = ctx->geometry.y[j];
-  ctx->dataj.zj = ctx->geometry.z[j];
-  ctx->dataj.cabj = ctx->geometry.cab[j];
-  ctx->dataj.sabj = ctx->geometry.sab[j];
-  ctx->dataj.salpj = ctx->geometry.salp[j];
+  ctx->dataj.seg_half_len = ctx->geometry.si[j];
+  ctx->dataj.seg_radius = ctx->geometry.bi[j];
+  ctx->dataj.src_x = ctx->geometry.x[j];
+  ctx->dataj.src_y = ctx->geometry.y[j];
+  ctx->dataj.src_z = ctx->geometry.z[j];
+  ctx->dataj.src_dir_cos_x = ctx->geometry.cab[j];
+  ctx->dataj.src_dir_cos_y = ctx->geometry.sab[j];
+  ctx->dataj.src_dir_cos_z = ctx->geometry.salp[j];
 
   /* observation loop */
   ipr= -1;
@@ -509,9 +509,9 @@ void cmws(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
 
 	} /* if( (ik != 0) || (ipr == 0) ) */
 
-	etk=-( ctx->dataj.exk* tx+ ctx->dataj.eyk* ty+ ctx->dataj.ezk* tz)* ctx->geometry.psalp[js];
-	ets=-( ctx->dataj.exs* tx+ ctx->dataj.eys* ty+ ctx->dataj.ezs* tz)* ctx->geometry.psalp[js];
-	etc=-( ctx->dataj.exc* tx+ ctx->dataj.eyc* ty+ ctx->dataj.ezc* tz)* ctx->geometry.psalp[js];
+	etk=-( ctx->dataj.e_const_x* tx+ ctx->dataj.e_const_y* ty+ ctx->dataj.e_const_z* tz)* ctx->geometry.psalp[js];
+	ets=-( ctx->dataj.e_sin_x* tx+ ctx->dataj.e_sin_y* ty+ ctx->dataj.e_sin_z* tz)* ctx->geometry.psalp[js];
+	etc=-( ctx->dataj.e_cos_x* tx+ ctx->dataj.e_cos_y* ty+ ctx->dataj.e_cos_z* tz)* ctx->geometry.psalp[js];
 
 	/* fill matrix elements.  element locations */
 	/* determined by connection data. */
@@ -571,34 +571,34 @@ void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
   /* set source segment parameters */
   jx = j;
   j--;
-  ctx->dataj.s = ctx->geometry.si[j];
-  ctx->dataj.b = ctx->geometry.bi[j];
-  ctx->dataj.xj = ctx->geometry.x[j];
-  ctx->dataj.yj = ctx->geometry.y[j];
-  ctx->dataj.zj = ctx->geometry.z[j];
-  ctx->dataj.cabj = ctx->geometry.cab[j];
-  ctx->dataj.sabj = ctx->geometry.sab[j];
-  ctx->dataj.salpj = ctx->geometry.salp[j];
+  ctx->dataj.seg_half_len = ctx->geometry.si[j];
+  ctx->dataj.seg_radius = ctx->geometry.bi[j];
+  ctx->dataj.src_x = ctx->geometry.x[j];
+  ctx->dataj.src_y = ctx->geometry.y[j];
+  ctx->dataj.src_z = ctx->geometry.z[j];
+  ctx->dataj.src_dir_cos_x = ctx->geometry.cab[j];
+  ctx->dataj.src_dir_cos_y = ctx->geometry.sab[j];
+  ctx->dataj.src_dir_cos_z = ctx->geometry.salp[j];
 
   /* decide whether ext. t.w. approx. can be used */
-  if( ctx->dataj.iexk != 0)
+  if( ctx->dataj.use_extended_kernel != 0)
   {
 	ipr = ctx->geometry.icon1[j];
-	if (ipr > PCHCON) ctx->dataj.ind1 = 0;
+	if (ipr > PCHCON) ctx->dataj.end1_kernel_type = 0;
 	else if( ipr < 0 )
 	{
 	  ipr= -ipr;
 	  iprx= ipr-1;
 
-	  if( -ctx->geometry.icon1[iprx] != jx )	ctx->dataj.ind1 = 2;
+	  if( -ctx->geometry.icon1[iprx] != jx )	ctx->dataj.end1_kernel_type = 2;
 	  else
 	  {
-		xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[iprx]+ ctx->dataj.sabj*
-			ctx->geometry.sab[iprx]+ ctx->dataj.salpj* ctx->geometry.salp[iprx]);
-		if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.b-1.) > 1.e-6) )
-		  ctx->dataj.ind1=2;
+		xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
+			ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
+		if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.e-6) )
+		  ctx->dataj.end1_kernel_type=2;
 		else
-		  ctx->dataj.ind1=0;
+		  ctx->dataj.end1_kernel_type=0;
 
 	  } /* if( -data.icon1[iprx] != jx ) */
 
@@ -606,50 +606,50 @@ void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
 	else
 	{
 	  iprx = ipr-1;
-	  if( ipr == 0 ) ctx->dataj.ind1=1;
+	  if( ipr == 0 ) ctx->dataj.end1_kernel_type=1;
 	  else
 	  {
 		if( ipr != jx )
 		{
-		  if( ctx->geometry.icon2[iprx] != jx ) ctx->dataj.ind1=2;
+		  if( ctx->geometry.icon2[iprx] != jx ) ctx->dataj.end1_kernel_type=2;
 		  else
 		  {
-			xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[iprx]+ ctx->dataj.sabj*
-				ctx->geometry.sab[iprx]+ ctx->dataj.salpj* ctx->geometry.salp[iprx]);
-			if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.b-1.) > 1.e-6) )
-			  ctx->dataj.ind1=2;
+			xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
+				ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
+			if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.e-6) )
+			  ctx->dataj.end1_kernel_type=2;
 			else
-			  ctx->dataj.ind1=0;
+			  ctx->dataj.end1_kernel_type=0;
 
 		  } /* if( data.icon2[iprx] != jx ) */
 
 		} /* if( ipr != jx ) */
 		else
-		  if( ctx->dataj.cabj* ctx->dataj.cabj+ ctx->dataj.sabj* ctx->dataj.sabj > 1.e-8)
-			ctx->dataj.ind1=2;
+		  if( ctx->dataj.src_dir_cos_x* ctx->dataj.src_dir_cos_x+ ctx->dataj.src_dir_cos_y* ctx->dataj.src_dir_cos_y > 1.e-8)
+			ctx->dataj.end1_kernel_type=2;
 		  else
-			ctx->dataj.ind1=0;
+			ctx->dataj.end1_kernel_type=0;
 
 	  } /* if( ipr == 0 ) */
 
 	} /* if( ipr < 0 ) */
 
 	ipr = ctx->geometry.icon2[j];
-	if (ipr > PCHCON) ctx->dataj.ind2 = 2;
+	if (ipr > PCHCON) ctx->dataj.end2_kernel_type = 2;
 	else if( ipr < 0 )
 	{
 	  ipr= -ipr;
 	  iprx = ipr-1;
 	  if( -ctx->geometry.icon2[iprx] != jx )
-		ctx->dataj.ind2=2;
+		ctx->dataj.end2_kernel_type=2;
 	  else
 	  {
-		xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[iprx]+ ctx->dataj.sabj*
-			ctx->geometry.sab[iprx]+ ctx->dataj.salpj* ctx->geometry.salp[iprx]);
-		if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.b-1.) > 1.e-6) )
-		  ctx->dataj.ind2=2;
+		xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
+			ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
+		if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.e-6) )
+		  ctx->dataj.end2_kernel_type=2;
 		else
-		  ctx->dataj.ind2=0;
+		  ctx->dataj.end2_kernel_type=0;
 
 	  } /* if( -data.icon1[iprx] != jx ) */
 
@@ -657,36 +657,36 @@ void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
 	else
 	{
 	  iprx = ipr-1;
-	  if( ipr == 0 ) ctx->dataj.ind2=1;
+	  if( ipr == 0 ) ctx->dataj.end2_kernel_type=1;
 	  else
 	  {
 		if( ipr != jx )
 		{
 		  if( ctx->geometry.icon1[iprx] != jx )
-			ctx->dataj.ind2=2;
+			ctx->dataj.end2_kernel_type=2;
 		  else
 		  {
-			xi= fabs( ctx->dataj.cabj* ctx->geometry.cab[iprx]+ ctx->dataj.sabj*
-				ctx->geometry.sab[iprx]+ ctx->dataj.salpj* ctx->geometry.salp[iprx]);
-			if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.b-1.) > 1.e-6) )
-			  ctx->dataj.ind2=2;
+			xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
+				ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
+			if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.e-6) )
+			  ctx->dataj.end2_kernel_type=2;
 			else
-			  ctx->dataj.ind2=0;
+			  ctx->dataj.end2_kernel_type=0;
 
 		  } /* if( data.icon2[iprx] != jx ) */
 
 		} /* if( ipr != jx ) */
 		else
-		  if( ctx->dataj.cabj* ctx->dataj.cabj+ ctx->dataj.sabj* ctx->dataj.sabj > 1.e-8)
-			ctx->dataj.ind2=2;
+		  if( ctx->dataj.src_dir_cos_x* ctx->dataj.src_dir_cos_x+ ctx->dataj.src_dir_cos_y* ctx->dataj.src_dir_cos_y > 1.e-8)
+			ctx->dataj.end2_kernel_type=2;
 		  else
-			ctx->dataj.ind2=0;
+			ctx->dataj.end2_kernel_type=0;
 
 	  } /* if( ipr == 0 ) */
 
 	} /* if( ipr < 0 ) */
 
-  } /* if( dataj.iexk != 0) */
+  } /* if( dataj.use_extended_kernel != 0) */
 
   /* observation loop */
   ipr=-1;
@@ -704,9 +704,9 @@ void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
 
 	efld( ctx, xi, yi, zi, ai, ij);
 
-	etk= ctx->dataj.exk* cabi+ ctx->dataj.eyk* sabi+ ctx->dataj.ezk* salpi;
-	ets= ctx->dataj.exs* cabi+ ctx->dataj.eys* sabi+ ctx->dataj.ezs* salpi;
-	etc= ctx->dataj.exc* cabi+ ctx->dataj.eyc* sabi+ ctx->dataj.ezc* salpi;
+	etk= ctx->dataj.e_const_x* cabi+ ctx->dataj.e_const_y* sabi+ ctx->dataj.e_const_z* salpi;
+	ets= ctx->dataj.e_sin_x* cabi+ ctx->dataj.e_sin_y* sabi+ ctx->dataj.e_sin_z* salpi;
+	etc= ctx->dataj.e_cos_x* cabi+ ctx->dataj.e_cos_y* sabi+ ctx->dataj.e_cos_z* salpi;
 
 	/* fill matrix elements. element locations */
 	/* determined by connection data. */
