@@ -24,8 +24,8 @@ fields were dissolved directly into the monolithic context.
 | Current OpenNEC Type | Fortran COMMON | nec2c Type | necpp C++ Class | Proposed Modern Name | Notes |
 |---|---|---|---|---|---|
 | `geometry_t` | `/DATA/` | `data_t` | `c_geometry` | ✅ keep `geometry_t` | Already renamed |
-| `crnt_t` | `/CRNT/` | `crnt_t` | → `nec_context` | `current_basis_t` | Abbreviation of "current" |
-| `dataj_t` | `/DATAJ/` | `dataj_t` | → `nec_context` | `segment_data_t` | "/DATAJ/" = "data for J-th segment" |
+| `crnt_t` | `/CRNT/` | `crnt_t` | → `nec_context` | `current_t` | Abbreviation of "current" |
+| `dataj_t` | `/DATAJ/` | `dataj_t` | → `nec_context` | `segment_t` | "/DATAJ/" = "data for J-th segment" |
 | `fpat_t` | `/FPAT/` | `fpat_t` | `nec_radiation_pattern` | `field_pattern_t` | "FPAT" = field pattern |
 | `ggrid_t` | `/GGRID/` | `ggrid_t` | `c_ggrid` | `green_grid_t` | Green's function interpolation grid |
 | `gnd_t` | `/GND/` | `gnd_t` | `nec_ground` | `ground_params_t` | |
@@ -33,7 +33,7 @@ fields were dissolved directly into the monolithic context.
 | `incom_t` | `/INCOM/` | `incom_t` | → `nec_context` | `green_params_t` | Common params for Sommerfeld integration |
 | `matpar_t` | `/MATPAR/` | `matpar_t` | → `nec_context` | `matrix_params_t` | |
 | `netcx_t` | `/NETCX/` | `netcx_t` | → `nec_context` | `network_context_t` | |
-| `plot_t` | `/PLOT/` | `plot_t` | `c_plot_card` | `plot_flags_t` | |
+| `plot_t` | `/PLOT/` | `plot_t` | `c_plot_card` | `plot_params_t` | |
 | `save_t` | `/SAVE/` | `save_t` | → `nec_context` | `run_params_t` | Holds frequency sweep and ground params |
 | `segj_t` | `/SEGJ/` | `segj_t` | → `c_geometry` | `segment_junction_t` | Basis function junction traversal |
 | `smat_t` | `/SMAT/` | `smat_t` | → `nec_context` | `symmetry_matrix_t` | Mode transformation matrix |
@@ -55,8 +55,8 @@ fields were dissolved directly into the monolithic context.
 | `m` | `M` | surface patch count | `m` | `num_patches` |
 | `mp` | `MP` | patches in symmetry cell | `mp` | `num_patches_sym` |
 | `npm` | *(derived)* | N+M | `n_plus_2m` *(n+2m actually)* | `num_segs_and_patches` |
-| `np2m` | *(derived)* | N+2M | `n_plus_2m` | `num_unknowns` |
-| `np3m` | *(derived)* | N+3M | `n_plus_3m` | `num_current_components` |
+| `np2m` | *(derived)* | N+2M | `n_plus_2m` | `num_segs_2xpatches` |
+| `np3m` | *(derived)* | N+3M | `n_plus_3m` | `num_segs_3xpatches` |
 | `ipsym` | `IPSYM` | symmetry flag (0/1/2/3/negative) | `m_ipsym` | `symmetry_flag` |
 | `*icon1` | `ICON1` | segment end-1 connection index | `icon1` | `*seg_end1_conn` |
 | `*icon2` | `ICON2` | segment end-2 connection index | `icon2` | `*seg_end2_conn` |
