@@ -90,9 +90,9 @@ onec can also write files in different formats using the `-w` option. This is no
 
 This works along with `-r` and globbing, so one can convert a folder of files to NEC format with something like:
 
-```./onec -r -w .nec /example_files/*.mma```
+```./onec -r -n -w .nec /example_files/*.mma```
 
-There are a number of limitations in these importers as the different formatters support different features and options. See the various "file format" documents in the doc folder for more details.
+There are a number of limitations in these importers as the different formats support different features and options. See the various "file format" documents in the doc folder for more details.
 
 The currently recognized formats and extensions are:
 
