@@ -248,12 +248,13 @@ static filetype_t classify_by_extension(const char *filename)
   if (strcasecmp(ext, ".maa") == 0) return FILETYPE_MAA;
   if (strcasecmp(ext, ".mma") == 0) return FILETYPE_MAA;
 
+  if (strcasecmp(ext, ".4nec") == 0) return FILETYPE_NEC;         /* 4nec2 project — identical to NEC deck */
+
   if (strcasecmp(ext, ".ez")   == 0) return FILETYPE_UNSUPPORTED; /* EZNEC         */
   if (strcasecmp(ext, ".ezn")  == 0) return FILETYPE_UNSUPPORTED; /* EZNEC newer   */
   if (strcasecmp(ext, ".nwp")  == 0) return FILETYPE_UNSUPPORTED; /* NEC-Win Plus  */
   if (strcasecmp(ext, ".nwz")  == 0) return FILETYPE_UNSUPPORTED; /* NEC-Win Zip   */
   if (strcasecmp(ext, ".aci")  == 0) return FILETYPE_UNSUPPORTED; /* AntSolver     */
-  if (strcasecmp(ext, ".4nec") == 0) return FILETYPE_UNSUPPORTED; /* 4nec2 project */
   if (strcasecmp(ext, ".mmae") == 0) return FILETYPE_UNSUPPORTED; /* MMANA-EZ      */
 
   return FILETYPE_UNKNOWN;

@@ -98,7 +98,7 @@ The currently recognized formats and extensions are:
 
 | Extension(s) | Format | Read | Write |
 |---|---|---|---|
-| `.nec` `.deck` | OpenNEC / NEC-2 deck | ✓ | ✓ |
+| `.nec` `.deck` `.4nec` | OpenNEC / NEC-2 deck | ✓ | ✓ |
 | `.nec2` | NEC-2 (stripped, numeric) | ✓ | ✓ |
 | `.nec4` | NEC-4 | ✓ | stub |
 | `.maa` `.mma` | MMANA-GAL | ✓ | ✓ |
@@ -106,7 +106,6 @@ The currently recognized formats and extensions are:
 | `.ez` `.ezn` | EZNEC | recognised | — |
 | `.nwp` `.nwz` | NEC-Win Plus / Zip | recognised | — |
 | `.aci` | AntSolver | recognised | — |
-| `.4nec` | 4nec2 project | recognised | — |
 | `.mmae` | MMANA-EZ | recognised | — |
 
 "Recognised" means the extension is detected and a helpful error is shown, but no importer exists yet.
