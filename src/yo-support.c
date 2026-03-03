@@ -593,6 +593,9 @@ int read_deck_yo(deck_t *deck, FILE *fp)
         append_card_from_text(deck, buf);
     }
 
+    /* RP — full 3D far-field pattern (37 theta × 73 phi, 5° steps) */
+    append_card_from_text(deck, "RP 0, 37, 73, 1000, 0, 0, 5, 5");
+
     /* EN */
     append_card_from_text(deck, "EN");
 
