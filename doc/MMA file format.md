@@ -11,9 +11,9 @@ The variation seen in the wild ranges from the minimal 4‑line variant used by 
 Format overview
 ---------------
 
-A typical `.maa` file is organised into the following logical sections. Two distinct structural variants exist in the wild (see *Format variants* below). They differ in their use of section headers, which are marked in the file with `***…***`. A survey of 935 real‑world files found only one without them, and that turned out to be a NEC deck saved with the wrong extension.
+A typical `.maa` file is organised into the following logical sections. Two distinct structural variants exist in the wild (see *Format variants* below). They differ in their use of section headers, which are marked in the file with `***…***`. 
 
-1. **Title line.**  Arbitrary text used as a description of the model. **Optional in Variant B** — 220 of 935 surveyed files omit it entirely and begin with a bare `*` separator instead. When present and the file is imported the converter creates a `CM` card containing this line (followed immediately by a `CE` card). During export the first comment card in the deck is written back as the title line.
+1. **Title line.**  Arbitrary text used as a description of the model. The title is optional in Variant B — 220 of 935 files omit it and begin with a bare `*` separator instead. When present and the file is imported the converter creates a `CM` card containing this line (followed immediately by a `CE` card). During export the first comment card in the deck is written back as the title line.
 2. **Frequency line.**  A single floating‑point value giving the design frequency in megahertz. Some files (Variant B) include a bare `*` on a separate line between the title and the frequency; this is ignored.
 3. **Counts.**  In Variant A a single line holds three integers: wire count, load count, source count. In Variant B each count appears on its own line immediately inside the relevant `***…***` section.
 4. **Wire (geometry) block.**  Exactly `N_wires` following lines, each containing eight numeric values. The fields represent the end‑point coordinates of a straight wire in metres, the radius, and the segment count. Example:
@@ -21,7 +21,7 @@ A typical `.maa` file is organised into the following logical sections. Two dist
    0.0, -21.1, -3.662e-07,  0.0, 0.0, 0.0, 0.001, -1
    ````
 
-   **Radius units.**  The radius field is ambiguous: values appear to be in millimetres or in wavelengths unless there is a per‑file annotation that overrides this.  The mechanism for indicating the unit is not yet fully understood; OpenNEC's importer currently treats the field value as metres (the NEC native unit) without conversion.  Users should verify or scale values manually if the source file uses mm.
+   **Radius units.**  The radius field is ambiguous: values appear to be in millimetres or in wavelengths unless there is a per‑file annotation that overrides this. The mechanism for indicating the unit is not yet fully understood; OpenNEC's importer currently treats the field value as metres (the NEC native unit) without conversion.  Users should verify or scale values manually if the source file uses mm.
 
    **Segment count special values.**  A positive integer gives the exact NEC segment count for that wire.  The following negative and zero values are MMANA auto‑segmentation directives:
 
@@ -47,7 +47,7 @@ A typical `.maa` file is organised into the following logical sections. Two dist
    | `W` | Wire |
    | `V` | Voltage source |
 
-   After the type letter comes the wire number as a decimal integer, then a single letter that identifies the attachment point on the wire:
+   After the type letter comes the wire number as a decimal integer, which is the ordinal position of the wire in the Wires list. After that is a single letter that identifies the attachment point on the wire:
 
    | Letter | Position |
    |---|---|
@@ -65,7 +65,7 @@ A typical `.maa` file is organised into the following logical sections. Two dist
    | `W5B`   | First segment of wire 5 |
    | `W6E3`  | Third segment from the end of wire 6 |
 
-   The importer resolves the designator to a NEC segment index and emits an `EX 0` card with the magnitude and phase converted to real/imaginary components.  When the wire uses an MMANA auto-segmentation marker (`0`, `‑1`, `‑2`, or `‑3`) the true segment count is not yet known, so instead of a concrete integer the segment field is written as a tinyexpr expression that references the `segs` symbol from the `SY` card inserted for that purpose:
+   The importer resolves the designator to a NEC segment index and emits an `EX 0` card with the magnitude and phase converted to real/imaginary components. When the wire uses an MMANA auto-segmentation marker (`0`, `‑1`, `‑2`, or `‑3`) the true segment count is not yet known, so instead of a concrete integer the segment field is written as a tinyexpr expression that references the `segs` symbol from the `SY` card inserted for that purpose:
 
    | Designator | Emitted EX segment field |
    |---|---|
@@ -100,7 +100,7 @@ A typical `.maa` file is organised into the following logical sections. Two dist
    | 3 | 1.01 – 2.0 | Length taper ratio between adjacent segments |
    | 4 | 2 – 16     | Minimum segments per wire |
 
-   Example: `800, 80, 2.0, 2` — 800 max total, 80 seg/λ, 2.0× taper, min 2/wire. A survey of 935 files found only 16 distinct combinations of these values. OpenNEC does not perform auto‑segmentation (each wire's segment count is fixed on the wire line itself), so on import the four values are captured and written as a single `!` comment card for reference, e.g.:
+   Example: `800, 80, 2.0, 2` — 800 max total, 80 seg/λ, 2.0× taper, min 2/wire. Among the 935 files there are only 16 distinct combinations of these values. OpenNEC does not perform auto‑segmentation (each wire's segment count is fixed on the wire line itself), so on import the four values are captured and written as a single `!` comment card for reference, e.g.:
 
    `! maa-segmentation: max-segs=800 segs-per-wl=80 taper=2 min-segs=4`
 
@@ -109,7 +109,7 @@ Whitespace is permissive: commas or any combination of spaces and tabs may separ
 Format variants
 ---------------
 
-A survey of 935 real‑world `.maa` files revealed two structural variants (see [MMA format survey.md](MMA%20format%20survey.md) for the full per‑file table).
+The 935 real‑world `.maa` files revealed two structural variants (see [MMA format survey.md](MMA%20format%20survey.md) for the full per‑file table).
 
 **Variant A — 729 files (78 %)** — combined counts line, `***Wires***` optional
 
