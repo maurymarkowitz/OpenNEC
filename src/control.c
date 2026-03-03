@@ -27,7 +27,8 @@ static void reset_loading_buffers(nec_context_t *ctx);
 static void reset_network_buffers(nec_context_t *ctx);
 static void reset_coupling_buffers(nec_context_t *ctx);
 static void reset_vsorc_buffers(nec_context_t *ctx);
-static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start, int *batch_end);
+static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start, int *batch_end, bool *batch_has_fr);
+static int execute_extra_patterns(nec_context_t *ctx, const deck_t *deck, int batch_start, int batch_end);
 static int count_tag_segments(const nec_context_t *ctx, int tag);
 static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card, int field_idx, int tag);
 
@@ -162,9 +163,10 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
     bool deck_complete = false;
     while (!deck_complete) {
         int batch_start, batch_end;
-        
+        bool batch_has_fr = false;
+
         // Process next batch of control cards
-        int batch_result = process_next_batch(ctx, deck, &batch_start, &batch_end);
+        int batch_result = process_next_batch(ctx, deck, &batch_start, &batch_end, &batch_has_fr);
         if (batch_result < 0) {
             // Error occurred
             return -1;
@@ -196,10 +198,26 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
                                    ctx->fpat.is_near_field != -1 ||
                                    has_xq ||
                                    ctx->wg_after_cmset);
+
+        // Determine whether this batch needs a full solve or just extra patterns.
+        // A batch with no FR card and an already-completed prior solve behaves like
+        // nec2c's igo==4 path: compute radiation/near-field patterns with existing
+        // currents, without re-filling the matrix or re-printing power budget.
+        bool extra_patterns_only = (!batch_has_fr &&
+                                    ctx->frequency_loop_ran &&
+                                    (ctx->gnd.far_field_type != -1 || ctx->fpat.is_near_field != -1) &&
+                                    !has_xq && !ctx->wg_after_cmset);
+
         if (!is_termination && has_output_request) {
-            ctx->frequency_loop_ran = true;
-            if (execute_frequency_loop(ctx, ctx->save.num_freq, ctx->save.freq_step_type, ctx->save.freq_step, deck) != 0) {
-                return -1;
+            if (extra_patterns_only) {
+                if (execute_extra_patterns(ctx, deck, batch_start, batch_end) != 0) {
+                    return -1;
+                }
+            } else {
+                ctx->frequency_loop_ran = true;
+                if (execute_frequency_loop(ctx, ctx->save.num_freq, ctx->save.freq_step_type, ctx->save.freq_step, deck) != 0) {
+                    return -1;
+                }
             }
         }
         
@@ -488,7 +506,7 @@ static void reset_vsorc_buffers(nec_context_t *ctx)
  * @param batch_end    Output: last card index of this batch (inclusive)
  * @return             0 on success, -1 on error, 1 if EN/XT reached (end of deck), 2 if NX restart
  */
-static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start, int *batch_end)
+static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start, int *batch_end, bool *batch_has_fr)
 {
     // Validate inputs
     if (ctx == NULL || deck == NULL || batch_start == NULL || batch_end == NULL) {
@@ -506,6 +524,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
     // Find end of batch (next XQ, EN, or XT card)
     *batch_end = ctx->current_card_idx;
     bool found_batch_end = false;
+    bool found_fr = false;  // track whether an FR card is in this batch
     
     for (int card_idx = ctx->current_card_idx; card_idx < deck->num_cards; card_idx++) {
         card_t *card = &deck->cards[card_idx];
@@ -516,6 +535,11 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
         }
         
         char *code = card->card_code;
+
+        // Track FR card appearances in this batch
+        if (strcmp(code, "FR") == 0) {
+            found_fr = true;
+        }
         
         // Check for batch termination cards
         if (strcmp(code, "XQ") == 0 ||
@@ -545,6 +569,10 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
         }
         
         *batch_end = card_idx;
+    }
+
+    if (batch_has_fr != NULL) {
+        *batch_has_fr = found_fr;
     }
     
     if (!found_batch_end) {
@@ -978,6 +1006,53 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
 }
 
 /******************************************************************************
+ * execute_extra_patterns()
+ *
+ * Handle an RP/NE/NH batch that has no FR card — i.e., nec2c's igo==4/5/6
+ * path where the matrix is not refilled and no new power budget is printed.
+ * The previously computed currents (from the last execute_frequency_loop call)
+ * are reused; only the radiation-pattern (or near-field) calculation and its
+ * output section are repeated.
+ *
+ * This matches nec2c oldmain.c case 4 → case 5 → case 6: after igo is set to
+ * 4 (end of excitation section), a subsequent RP with no new FR jumps straight
+ * to the pattern computation without a matrix refill, frequency header, or
+ * power budget.
+ *
+ * @param ctx         The NEC context (currents already solved)
+ * @param deck        The full deck (for output card listing)
+ * @param batch_start First card index of this batch
+ * @param batch_end   Last card index (the RP or NE/NH card)
+ * @return            0 on success, -1 on error
+ */
+static int execute_extra_patterns(nec_context_t *ctx, const deck_t *deck, int batch_start, int batch_end)
+{
+    (void)batch_start; /* currently unused; kept for future multi-RP iteration */
+
+    if (ctx == NULL || deck == NULL) {
+        return -1;
+    }
+
+    /* Compute the pattern using existing (already solved) currents */
+    if (ctx->gnd.far_field_type != -1) {
+        ctx->fpat.power_in    = ctx->netcx.power_in;
+        ctx->fpat.network_loss = ctx->netcx.power_net_loss;
+        compute_radiation_pattern(ctx);
+    }
+
+    if (ctx->fpat.is_near_field != -1) {
+        compute_near_field(ctx);
+    }
+
+    /* Write only the pattern section — no frequency header, no power budget */
+    if (ctx->output_fp != NULL) {
+        write_extra_pattern_output(ctx->output_fp, ctx);
+    }
+
+    return 0;
+}
+
+/******************************************************************************
  * execute_frequency_loop()
  *
  * Execute the main frequency loop calculations. This is the core computation
@@ -1272,6 +1347,25 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
     // Free temporary arrays
     mem_free(ctx, (void **)&cm);
     if (xtemp != NULL) {
+        // Restore geometry to original unscaled (metres) values so that a
+        // subsequent execute_frequency_loop call (e.g. from a second RP batch)
+        // gets the same baseline geometry instead of the already-scaled one.
+        for (int i = 0; i < ctx->geometry.num_segs; i++) {
+            ctx->geometry.x_center[i] = xtemp[i];
+            ctx->geometry.y_center[i] = ytemp[i];
+            ctx->geometry.z_center[i] = ztemp[i];
+            ctx->geometry.half_len[i] = sitemp[i];
+            ctx->geometry.radius[i]   = bitemp[i];
+        }
+        if (ctx->geometry.num_patches > 0) {
+            for (int i = 0; i < ctx->geometry.num_patches; i++) {
+                int j = i + ctx->geometry.num_segs;
+                ctx->geometry.patch_x_center[i] = xtemp[j];
+                ctx->geometry.patch_y_center[i] = ytemp[j];
+                ctx->geometry.patch_z_center[i] = ztemp[j];
+                ctx->geometry.patch_area[i]     = bitemp[j];
+            }
+        }
         mem_free(ctx, (void **)&xtemp);
         mem_free(ctx, (void **)&ytemp);
         mem_free(ctx, (void **)&ztemp);

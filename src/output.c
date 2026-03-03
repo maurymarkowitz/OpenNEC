@@ -546,6 +546,24 @@ void write_frequency_step_output(FILE *file, nec_context_t *ctx)
   write_near_field_plot(ctx);
 }
 
+/*
+ * write_extra_pattern_output()
+ *
+ * Writes only the radiation-pattern or near-field section, without repeating
+ * the frequency header, loading, timing, or power budget.  Called when a
+ * second RP/NE/NH card appears without an intervening FR — mirrors nec2c's
+ * igo==4→5→6 path.
+ */
+void write_extra_pattern_output(FILE *file, nec_context_t *ctx)
+{
+  write_radiation_pattern_header(file, ctx);
+  write_radiation_pattern_data(file, ctx);
+  write_average_power_gain(file, ctx);
+  write_normalized_gain(file, ctx);
+  write_near_field_data(file, ctx);
+  write_near_field_plot(ctx);
+}
+
 void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *file)
 {
   if (ctx->freq_step_output_written) {

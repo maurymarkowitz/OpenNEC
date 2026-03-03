@@ -44,6 +44,16 @@ void write_nec_preamble(nec_context_t *ctx, const deck_t *deck, FILE *file);
 void write_frequency_step_output(FILE *file, nec_context_t *ctx);
 
 /**
+ * @brief Writes only the radiation-pattern (or near-field) output section.
+ *
+ * Used by execute_extra_patterns() when a second RP/NE/NH card follows with
+ * no new FR card — mirrors nec2c's igo==4→5→6 path that skips the frequency
+ * header, loading, matrix timing, and power budget and jumps straight to
+ * the pattern computation.
+ */
+void write_extra_pattern_output(FILE *file, nec_context_t *ctx);
+
+/**
  * @brief Writes a deck in the original NEC-2 format.
  *
  * Extension cards (SY etc.) are omitted.  Formulas are emitted as their
