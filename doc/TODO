@@ -52,6 +52,7 @@ Items still to be implemented:
 - check k4ero-4.nec for missing taper, likely due to formula issue
 - patch.c - why so many segments?
 - Example3.nec - has 50% in one of the fields
-- D2T.nec - what is "#0.4
-- why does hrs_441.nec overflow the buffer set up in network.c around line 290?
+- D2T.nec (renamed D2T.necx): uses 4nec2 optimizer variable syntax "#.4" in a SY card ("SY Len=#.4"). The '#' prefix marks a value as an optimizer variable, so '#12' means 12-AWG wire. '#.4' appears to be a typo or unusual variant — neither onec nor nec2c can parse it. Needs investigation.
+- Bowtie.nec (renamed Bowtie.necx): uses AWG wire-gauge notation (#12, #14 etc.) and 4nec2 single-quote inline comments (e.g. SY Rsrc=0.002' Source radius). nec2c fails on these. onec parses them but the model is 5327 segments (complexity T≈4×10^12) — way too large to run in practice or compare. Needs investigation.
+- why does hrs_441.nec (renamed hrs_441.necx) have TL cards referencing tag 451 which doesn't exist? Tag 451 should be created by the GX card, but onec reports "references invalid tag 451, segment 6". Possible GX tag-assignment bug.
 - Gr_func.nec, NGF_radial4.nec - WG card
