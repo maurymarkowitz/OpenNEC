@@ -452,7 +452,7 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
 /******************************************************************************
  * write_coupling_data()
  *
- * Renders the CP (coupling) isolation table accumulated by couple() in
+ * Renders the CP (coupling) isolation table accumulated by compute_coupling() in
  * calculations.c.  No-op if no coupling rows were recorded.
  */
 static void write_coupling_data(nec_context_t *ctx)
@@ -1724,7 +1724,7 @@ static void write_frequency_data(FILE *file, const nec_context_t *ctx)
  * write_loading_data
  *
  * Writes the structure impedance loading section header.
- * The actual loading details are printed by load() in calculations.c
+ * The actual loading details are printed by apply_impedance_loading() in calculations.c
  * as it processes the loading cards.
  */
 static void write_loading_data(FILE *file, const nec_context_t *ctx)
@@ -1741,7 +1741,7 @@ static void write_loading_data(FILE *file, const nec_context_t *ctx)
     return;
   }
 
-  // Print the loading data header (from load() function)
+  // Print the loading data header (from apply_impedance_loading() function)
   fprintf(file, "\n"
                 "  LOCATION        RESISTANCE  INDUCTANCE  CAPACITANCE   "
                 "  IMPEDANCE (OHMS)   CONDUCTIVITY  CIRCUIT\n"
@@ -2460,7 +2460,7 @@ static void write_normalized_gain(FILE *file, const nec_context_t *ctx)
  * write_near_field_data
  *
  * Writes the near electric or magnetic field results accumulated in
- * ctx->nfr by nfpat().  No-op if no points were recorded.
+ * ctx->nfr by compute_near_field().  No-op if no points were recorded.
  */
 static void write_near_field_data(FILE *file, const nec_context_t *ctx)
 {
@@ -2490,11 +2490,11 @@ static void write_near_field_data(FILE *file, const nec_context_t *ctx)
   {
     near_field_point_t *pt = &ctx->nfr.points[i];
     double tmp1 = cabs(pt->ex);
-    double tmp2 = cang(ctx, pt->ex);
+    double tmp2 = complex_angle_deg(ctx, pt->ex);
     double tmp3 = cabs(pt->ey);
-    double tmp4 = cang(ctx, pt->ey);
+    double tmp4 = complex_angle_deg(ctx, pt->ey);
     double tmp5 = cabs(pt->ez);
-    double tmp6 = cang(ctx, pt->ez);
+    double tmp6 = complex_angle_deg(ctx, pt->ez);
     fprintf(file, "\n"
             " %9.4f %9.4f %9.4f  %11.4E %7.2f  %11.4E %7.2f  %11.4E %7.2f",
             pt->xob, pt->yob, pt->zob, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6);
@@ -2527,11 +2527,11 @@ static void write_near_field_plot(const nec_context_t *ctx)
       xxx = pt->zob;
 
     double tmp1 = cabs(pt->ex);
-    double tmp2 = cang(ctx, pt->ex);
+    double tmp2 = complex_angle_deg(ctx, pt->ex);
     double tmp3 = cabs(pt->ey);
-    double tmp4 = cang(ctx, pt->ey);
+    double tmp4 = complex_angle_deg(ctx, pt->ey);
     double tmp5 = cabs(pt->ez);
-    double tmp6 = cang(ctx, pt->ez);
+    double tmp6 = complex_angle_deg(ctx, pt->ez);
 
     if (ctx->plot.plot_axis == 2)
     {

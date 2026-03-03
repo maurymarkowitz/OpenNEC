@@ -11,6 +11,7 @@
 #include "types.h"
 
 /* Radiation pattern - called from control.c */
-void rdpat(nec_context_t *ctx);
+/* Formerly nec2c: rdpat */
+void compute_radiation_pattern(nec_context_t *ctx);
 
 #endif /* RADIATION_H */

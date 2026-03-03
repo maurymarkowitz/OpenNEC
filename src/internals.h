@@ -228,7 +228,7 @@ typedef struct
 	complex double ex, ey, ez;  /* field components (E or H) */
 } near_field_point_t;
 
-/* Near-field results accumulated by nfpat() */
+/* Near-field results accumulated by compute_near_field() */
 typedef struct
 {
 	int num_points;

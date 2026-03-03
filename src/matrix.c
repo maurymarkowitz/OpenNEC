@@ -9,12 +9,12 @@
  * backends (Accelerate, OpenBLAS, Netlib LAPACK, MKL) through LU routines.
  *
  * Major responsibilities include:
- * - cmset(): Assemble the primary NGF matrix A for the problem, setting up
+ * - fill_interaction_matrix(): Assemble the primary NGF matrix A for the problem, setting up
  *   blocks, handling symmetry (n/p equations), and incorporating segment
  *   kernel choices and loading corrections.
- * - cmww()/cmws()/cmsw()/cmss(): Compute interaction submatrices for
+ * - fill_wire_wire_matrix()/fill_wire_patch_matrix()/fill_patch_wire_matrix()/fill_patch_patch_matrix(): Compute interaction submatrices for
  *   wire-wire, wire-surface, surface-wire, and surface-surface terms.
- * - trio(): Prepare segment current expansion data used by interaction
+ * - compute_all_basis_funcs_on_seg(): Prepare segment current expansion data used by interaction
  *   calculations.
  * - Factorization and solve: Perform LU factorization (zgetrf) and solve
  *   (zgetrs) on per-mode blocks with careful handling of storage layout and
@@ -30,11 +30,16 @@
 #include "calculations.h"
 
 /* Forward declarations for internal functions */
-static void cmss(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2, complex double *restrict cm, int nrow, int itrp);
-static void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex double *restrict cm, complex double *restrict cw, int ncw, int nrow, int itrp);
-static void cmws(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int itrp);
-static void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int nw, int itrp);
-void qdsrc(nec_context_t *restrict ctx, int is, complex double v, complex double *restrict e);
+/* Formerly nec2c: cmss */
+static void fill_patch_patch_matrix(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2, complex double *restrict cm, int nrow, int itrp);
+/* Formerly nec2c: cmsw */
+static void fill_patch_wire_matrix(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex double *restrict cm, complex double *restrict cw, int ncw, int nrow, int itrp);
+/* Formerly nec2c: cmws */
+static void fill_wire_patch_matrix(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int itrp);
+/* Formerly nec2c: cmww */
+static void fill_wire_wire_matrix(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int nw, int itrp);
+/* Formerly nec2c: qdsrc */
+void charge_discontinuity_source(nec_context_t *restrict ctx, int is, complex double v, complex double *restrict e);
 
 #ifdef HAVE_ACCELERATE
 #include <Accelerate/Accelerate.h>
@@ -61,7 +66,8 @@ extern void zgetrs_(char*, int*, int*, double _Complex*, int*, int*, double _Com
 /*-------------------------------------------------------------------*/
 
 /* cmset sets up the complex structure matrix in the array cm */
-int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, double rkhx, int iexkx)
+/* Formerly nec2c: cmset */
+int fill_interaction_matrix(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, double rkhx, int iexkx)
 {
   int mp2, neq, npeq, it, i, j, i1, i2, in2;
   int im1, im2, ist, ij, ipr, jss, jm1, jm2, jst, k, ka, kk;
@@ -102,7 +108,7 @@ int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, do
   {
 	for( j = 1; j <= ctx->geometry.num_segs; j++ )
 	{
-	  if (trio(ctx, j) != 0)
+	  if (compute_all_basis_funcs_on_seg(ctx, j) != 0)
 	    return -1;
 	  for( i = 0; i < ctx->segj.num_junction_segs; i++ )
 	  {
@@ -111,10 +117,10 @@ int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, do
 	  }
 
 	  if( i1 <= in2)
-		cmww(ctx, j, i1, in2, cm, nrow, cm, nrow, 1);
+		fill_wire_wire_matrix(ctx, j, i1, in2, cm, nrow, cm, nrow, 1);
 
 	  if( im1 <= im2)
-		cmws(ctx, j, im1, im2, &cm[(ist - 1) * nrow], nrow, cm, 1);
+		fill_wire_patch_matrix(ctx, j, im1, im2, &cm[(ist - 1) * nrow], nrow, cm, 1);
 
 	  /* matrix elements modified by loading */
 	  if( ctx->zload.num_loads == 0)
@@ -153,10 +159,10 @@ int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, do
 	  jst += npeq;
 
 	  if( i1 <= in2)
-		cmsw(ctx, jm1, jm2, i1, in2, &cm[(jst - 1)], cm, 0, nrow, 1);
+		fill_patch_wire_matrix(ctx, jm1, jm2, i1, in2, &cm[(jst - 1)], cm, 0, nrow, 1);
 
 	  if( im1 <= im2)
-		cmss(ctx, jm1, jm2, im1, im2, &cm[(jst - 1) + (ist - 1) * nrow], nrow, 1);
+		fill_patch_patch_matrix(ctx, jm1, jm2, im1, im2, &cm[(jst - 1) + (ist - 1) * nrow], nrow, 1);
 	}
 
   } /* if( m != 0) */
@@ -212,7 +218,8 @@ int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, do
 /*-----------------------------------------------------------------------*/
 
 /* cmss computes matrix elements for surface-surface interactions. */
-void cmss(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2,
+/* Formerly nec2c: cmss */
+void fill_patch_patch_matrix(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2,
     complex double *restrict cm, int nrow, int itrp )
 {
   int i1, i2, icomp, ii1, i, il, ii2, jj1, j, jl, /*jl2,*/ jj2;
@@ -264,7 +271,7 @@ void cmss(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2,
 	  ctx->dataj.patch_t2y = ctx->geometry.patch_t2y[jl];
 	  ctx->dataj.patch_t2z = ctx->geometry.patch_t2z[jl];
 
-	  hintg(ctx, xi, yi, zi);
+	  h_field_patch(ctx, xi, yi, zi);
 
 	  g11 = -( t2xi * ctx->dataj.e_const_x + t2yi * ctx->dataj.e_const_y + t2zi * ctx->dataj.e_const_z );
 	  g12 = -( t2xi * ctx->dataj.e_sin_x + t2yi * ctx->dataj.e_sin_y + t2zi * ctx->dataj.e_sin_z );
@@ -318,7 +325,8 @@ void cmss(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2,
 /*-----------------------------------------------------------------------*/
 
 /* computes matrix elements for e along wires due to patch current */
-void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex double *restrict cm,
+/* Formerly nec2c: cmsw */
+void fill_patch_wire_matrix(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex double *restrict cm,
     complex double *restrict cw, int ncw, int nrow, int itrp )
 {
   int jsnox; /* -1 offset to "jsno" for array indexing */
@@ -384,14 +392,14 @@ void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex d
 		  {
 			if( icgo <= 0 )
 			{
-			  pcint(ctx, xi, yi, zi, cabi, sabi, salpi, emel);
+			  integrate_patch_at_junction(ctx, xi, yi, zi, cabi, sabi, salpi, emel);
 
 			  pyl= PI* ctx->geometry.half_len[i]* fsign;
 			  pxl= sin( pyl);
 			  pyl= cos( pyl);
 			  ctx->dataj.e_cos_x= emel[8]* fsign;
 
-			  if (trio(ctx, i+1) != 0)
+			  if (compute_all_basis_funcs_on_seg(ctx, i+1) != 0)
 			    return;
 
 			  il= i-ncw;
@@ -426,7 +434,7 @@ void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex d
 
 		  } /* if( ((ipch == (j+1)) || (icgo != 0)) && (ip != 2) ) */
 
-		  unere(ctx, xi, yi, zi);
+		  e_field_unit_patch_current(ctx, xi, yi, zi);
 
 		  /* normal fill */
 		  if( itrp == 0)
@@ -454,7 +462,8 @@ void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex d
 /*-----------------------------------------------------------------------*/
 
 /* cmws computes matrix elements for wire-surface interactions */
-void cmws(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
+/* Formerly nec2c: cmws */
+void fill_wire_patch_matrix(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
     int nr, complex double *restrict cw, int itrp )
  {
   int ipr, i, ipatch, ik, js=0, ij, jx;
@@ -485,7 +494,7 @@ void cmws(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
 	  xi= ctx->geometry.patch_x_center[js];
 	  yi= ctx->geometry.patch_y_center[js];
 	  zi= ctx->geometry.patch_z_center[js];
-	  hsfld(ctx, xi, yi, zi, 0.);
+	  h_field_segment(ctx, xi, yi, zi, 0.);
 
 	  if( ik != 0 )
 	  {
@@ -561,7 +570,8 @@ void cmws(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
 /*-----------------------------------------------------------------------*/
 
 /* cmww computes matrix elements for wire-wire interactions */
-void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
+/* Formerly nec2c: cmww */
+void fill_wire_wire_matrix(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
     int nr, complex double *restrict cw, int nw, int itrp)
  {
   int ipr, iprx, i, ij, jx;
@@ -702,7 +712,7 @@ void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
 	sabi= ctx->geometry.dir_cos_y[i];
 	salpi= ctx->geometry.dir_cos_z[i];
 
-	efld( ctx, xi, yi, zi, ai, ij);
+	e_field_segment( ctx, xi, yi, zi, ai, ij);
 
 	etk= ctx->dataj.e_const_x* cabi+ ctx->dataj.e_const_y* sabi+ ctx->dataj.e_const_z* salpi;
 	ets= ctx->dataj.e_sin_x* cabi+ ctx->dataj.e_sin_y* sabi+ ctx->dataj.e_sin_z* salpi;
@@ -756,7 +766,8 @@ void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
 /* etmns fills the array e with the negative of the */
 /* electric field incident on the structure. e is the */
 /* right hand side of the matrix equation. */
-void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double p4,
+/* Formerly nec2c: etmns */
+void fill_excitation_vector(nec_context_t *restrict ctx, double p1, double p2, double p3, double p4,
     double p5, double p6, int ipr, complex double *restrict e )
 {
   int i, is, i1, i2=0, neq;
@@ -788,7 +799,7 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
 	for( i = 0; i < ctx->vsorc.num_qdsrcs; i++ )
 	{
 	  is= ctx->vsorc.qdsrc_segs[i];
-	  qdsrc( ctx, is, ctx->vsorc.qdsrc_voltages[i], e);
+	  charge_discontinuity_source( ctx, is, ctx->vsorc.qdsrc_voltages[i], e);
 	}
 	return;
 
@@ -1078,7 +1089,8 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
 /* numerical analysis.  comments below refer to comments in ralstons */
 /* text.    (matrix transposed.) */
 
-void factr(const nec_context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip, int ndim)
+/* Formerly nec2c: factr */
+void factor_matrix(const nec_context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip, int ndim)
 {
 #if defined(HAVE_ACCELERATE) || defined(HAVE_OPENBLAS) || defined(HAVE_BLAS) || defined(HAVE_MKL)
 	/* LAPACK-backed LU factorization using a local np×np buffer to honor layout. */
@@ -1236,7 +1248,8 @@ void factr(const nec_context_t *restrict ctx, int n, complex double *restrict a,
 /* matricies of the symmetric modes and calls routine to factor */
 /* matricies.  if no symmetry, the routine is called to factor the */
 /* complete matrix. */
-void factrs(nec_context_t *restrict ctx, int np, int nrow, complex double *restrict a, int *restrict ip )
+/* Formerly nec2c: factrs */
+void factor_matrix_symmetric(nec_context_t *restrict ctx, int np, int nrow, complex double *restrict a, int *restrict ip )
 {
   int kk, ka;
 
@@ -1244,7 +1257,7 @@ void factrs(nec_context_t *restrict ctx, int np, int nrow, complex double *restr
   for( kk = 0; kk < ctx->smat.num_sections; kk++ )
   {
 	ka= kk* np;
-	factr(ctx, np, &a[ka], &ip[ka], nrow );
+	factor_matrix(ctx, np, &a[ka], &ip[ka], nrow );
   }
   return;
 }
@@ -1253,7 +1266,8 @@ void factrs(nec_context_t *restrict ctx, int np, int nrow, complex double *restr
 
 /* fblock sets parameters for out-of-core */
 /* solution for the primary matrix (a) */
-int fblock(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym )
+/* Formerly nec2c: fblock */
+int factor_block_matrix(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym )
 {
   int i, j, k, ka, kk;
   double phaz, arg;
@@ -1434,7 +1448,8 @@ void solve(const nec_context_t *restrict ctx, int n, complex double *restrict a,
 /* subroutine solves, for symmetric structures, handles the */
 /* transformation of the right hand side vector and solution */
 /* of the matrix eq. */
-void solves(nec_context_t *restrict ctx, complex double *restrict a, int *restrict ip, complex double *restrict b,
+/* Formerly nec2c: solves */
+void solve_symmetric(nec_context_t *restrict ctx, complex double *restrict a, int *restrict ip, complex double *restrict b,
     int neq, int nrh, int np, int n, int mp, int m)
 {
   int npeq, nrow, ic, i, kk, ia, ib, j, k;

@@ -1072,7 +1072,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
     
     // Perform fblock matrix setup if needed
     if (ctx->matpar.core_used == 0) {
-        fblock(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, iresrv, ctx->geometry.symmetry_flag);
+        factor_block_matrix(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, iresrv, ctx->geometry.symmetry_flag);
     }
     
     // Frequency loop
@@ -1122,7 +1122,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
             double *zli = ctx->zload.load_l;
             double *zlc = ctx->zload.load_c;
             
-            if (load(ctx, ldtyp, ldtag, ldtagf, ldtagt, zlr, zli, zlc) != 0)
+            if (apply_impedance_loading(ctx, ldtyp, ldtag, ldtagf, ldtagt, zlr, zli, zlc) != 0)
                 return -1;
         }
         
@@ -1161,7 +1161,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         // Fill and factor primary interaction matrix
         double tim1, tim2;
         nec_get_time_ms(ctx, &tim1);
-        if (cmset(ctx, ctx->netcx.num_eq, cm, ctx->dataj.k_half_len, ctx->dataj.use_extended_kernel) != 0) {
+        if (fill_interaction_matrix(ctx, ctx->netcx.num_eq, cm, ctx->dataj.k_half_len, ctx->dataj.use_extended_kernel) != 0) {
             mem_free(ctx, (void *)&cm);
             return -1;
         }
@@ -1197,7 +1197,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         nec_get_time_ms(ctx, &tim2);
         ctx->mat_fill_time = tim2 - tim1;
 
-        factrs(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, cm, ctx->save.pivot);
+        factor_matrix_symmetric(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, cm, ctx->save.pivot);
         nec_get_time_ms(ctx, &tim1);
         ctx->mat_factor_time = tim1 - tim2;
         
@@ -1209,7 +1209,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         // For voltage source excitation (most common case)
         if (ctx->fpat.excitation_type == 0 || ctx->fpat.excitation_type == 5) {
             // Fill right-hand side matrix (excitation)
-            etmns(ctx, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ctx->fpat.excitation_type, ctx->crnt.surface_cur);
+            fill_excitation_vector(ctx, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ctx->fpat.excitation_type, ctx->crnt.surface_cur);
             
             // Solve with network
             network(ctx, cm, ctx->save.pivot, ctx->crnt.surface_cur);
@@ -1231,7 +1231,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
             
             // Handle coupling calculations if requested
             if (ctx->yparm.num_pairs > 0) {
-                couple(ctx, ctx->crnt.surface_cur, ctx->geometry.wavelength);
+                compute_coupling(ctx, ctx->crnt.surface_cur, ctx->geometry.wavelength);
             }
             
             // Near field calculation if requested
@@ -1239,14 +1239,14 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
             // the output guard in main.c reads it after execute_frequency_loop
             // returns, and nec_calculation_defaults resets it per-batch.
             if (ctx->fpat.is_near_field != -1) {
-                nfpat(ctx);
+                compute_near_field(ctx);
             }
             
             // Store data for radiation pattern output (calculation happens in output.c)
             if (ctx->gnd.far_field_type != -1) {
                 ctx->fpat.power_in = ctx->netcx.power_in;
                 ctx->fpat.network_loss = ctx->netcx.power_net_loss;
-                rdpat(ctx);
+                compute_radiation_pattern(ctx);
             }
         }
     }

@@ -14,7 +14,9 @@
 void somnec(nec_context_t *ctx, double epr, double sig, double fmhz);
 
 /* Cross-module somnec functions */
-void sflds(nec_context_t *ctx, double t, complex double *e);
-void fbar(nec_context_t *ctx, complex double p, complex double *r);
+/* Formerly nec2c: sflds */
+void sommerfeld_field(nec_context_t *ctx, double t, complex double *e);
+/* Formerly nec2c: fbar */
+void norton_attenuation_factor(nec_context_t *ctx, complex double p, complex double *r);
 
 #endif /* SOMNEC_H */

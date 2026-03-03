@@ -10,8 +10,8 @@
  *
  * Major responsibilities include:
  * - Computing near E-fields for segments with sine, cosine, and constant
- *   current distributions, with and without ground (efld()).
- * - Handling thin-wire and extended-kernel approximations (eksc(), ekscx())
+ *   current distributions, with and without ground (e_field_segment()).
+ * - Handling thin-wire and extended-kernel approximations (e_field_thin_wire(), e_field_extended_wire())
  *   depending on geometry and kernel selection, producing segment-wise
  *   field contributions.
  * - Applying ground reflection coefficients and radial ground screen
@@ -32,19 +32,27 @@
 #include "somnec.h"
 
 /* Forward declarations for internal functions */
-static void eksc(nec_context_t *restrict ctx, double s, double z, double rh, double xk, int ij, complex double *restrict ezs, complex double *restrict ers, complex double *restrict ezc, complex double *restrict erc, complex double *restrict ezk, complex double *restrict erk);
-static void ekscx(nec_context_t *restrict ctx, double bx, double s, double z, double rhx, double xk, int ij, int inx1, int inx2, complex double *restrict ezs, complex double *restrict ers, complex double *restrict ezc, complex double *restrict erc, complex double *restrict ezk, complex double *restrict erk);
-static void gh(nec_context_t *ctx, double zk, double *hr, double *hi);
-static void gx(nec_context_t *ctx, double zz, double rh, double xk, complex double *gz, complex double *gzp);
-static void gxx(nec_context_t *ctx, double zz, double rh, double a, double a2, double xk, int ira, complex double *g1, complex double *g1p, complex double *g2, complex double *g2p, complex double *g3, complex double *gzp);
-static void hfk(nec_context_t *ctx, double el1, double el2, double rhk, double zpkx, double *sgr, double *sgi);
-static void hsflx(nec_context_t *restrict ctx, double s, double rh, double zpx, complex double *restrict hpk, complex double *restrict hps, complex double *restrict hpc);
+/* Formerly nec2c: eksc */
+static void e_field_thin_wire(nec_context_t *restrict ctx, double s, double z, double rh, double xk, int ij, complex double *restrict ezs, complex double *restrict ers, complex double *restrict ezc, complex double *restrict erc, complex double *restrict ezk, complex double *restrict erk);
+/* Formerly nec2c: ekscx */
+static void e_field_extended_wire(nec_context_t *restrict ctx, double bx, double s, double z, double rhx, double xk, int ij, int inx1, int inx2, complex double *restrict ezs, complex double *restrict ers, complex double *restrict ezc, complex double *restrict erc, complex double *restrict ezk, complex double *restrict erk);
+/* Formerly nec2c: gh */
+static void wire_h_integrand(nec_context_t *ctx, double zk, double *hr, double *hi);
+/* Formerly nec2c: gx */
+static void wire_end_contrib_thin(nec_context_t *ctx, double zz, double rh, double xk, complex double *gz, complex double *gzp);
+/* Formerly nec2c: gxx */
+static void wire_end_contrib_extended(nec_context_t *ctx, double zz, double rh, double a, double a2, double xk, int ira, complex double *g1, complex double *g1p, complex double *g2, complex double *g2p, complex double *g3, complex double *gzp);
+/* Formerly nec2c: hfk */
+static void h_field_filament(nec_context_t *ctx, double el1, double el2, double rhk, double zpkx, double *sgr, double *sgi);
+/* Formerly nec2c: hsflx */
+static void h_field_segment_components(nec_context_t *restrict ctx, double s, double rh, double zpx, complex double *restrict hpk, complex double *restrict hps, complex double *restrict hpc);
 
 /*-------------------------------------------------------------------*/
 
 /* compute near e fields of a segment with sine, cosine, and */
 /* constant currents.  ground effect included. */
-void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double ai, int ij )
+/* Formerly nec2c: efld */
+void e_field_segment(nec_context_t *restrict ctx, double xi, double yi, double zi, double ai, int ij )
 {
 #define	txk	egnd[0]
 #define	tyk	egnd[1]
@@ -121,10 +129,10 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
     {
       /* eksc for thin wire approx. or ekscx for extended t.w. approx. */
       if( ctx->dataj.use_extended_kernel != 1)
-        eksc(ctx, ctx->dataj.seg_half_len, zp, rh, TP, ijx, &tezs, &ters,
+        e_field_thin_wire(ctx, ctx->dataj.seg_half_len, zp, rh, TP, ijx, &tezs, &ters,
              &tezc, &terc, &tezk, &terk );
       else
-        ekscx(ctx, ctx->dataj.seg_radius, ctx->dataj.seg_half_len, zp, rh, TP, ijx, ctx->dataj.end1_kernel_type, ctx->dataj.end2_kernel_type,
+        e_field_extended_wire(ctx, ctx->dataj.seg_radius, ctx->dataj.seg_half_len, zp, rh, TP, ijx, ctx->dataj.end1_kernel_type, ctx->dataj.end2_kernel_type,
               &tezs, &ters, &tezc, &terc, &tezk, &terk);
       
       txs= tezs* ctx->dataj.src_dir_cos_x+ ters* rhox;
@@ -281,14 +289,14 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
     creal(ctx->dataj.e_const_z*conj(ctx->dataj.e_const_z) );
     dmin=.01* sqrt( dmin);
     shaf=.5* ctx->dataj.seg_half_len;
-    if (rom2(ctx, - shaf, shaf, egnd, dmin) != 0)
+    if (romberg_integrate_sommerfeld(ctx, - shaf, shaf, egnd, dmin) != 0)
       return;
   }
   else
   {
     /* norton field equations and lumped current element approximation */
     ctx->incom.use_sommerfeld=2;
-    sflds(ctx, 0., egnd);
+    sommerfeld_field(ctx, 0., egnd);
   } /* if( r <= .95) */
   
   if( r > .95)
@@ -337,7 +345,8 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
 
 /* compute e field of sine, cosine, and constant */
 /* current filaments by thin wire approximation. */
-void eksc(nec_context_t *ctx, double s, double z, double rh, double xk, int ij,
+/* Formerly nec2c: eksc */
+void e_field_thin_wire(nec_context_t *ctx, double s, double z, double rh, double xk, int ij,
           complex double *ezs, complex double *ers, complex double *ezc,
           complex double *erc, complex double *ezk, complex double *erk )
 {
@@ -354,14 +363,14 @@ void eksc(nec_context_t *ctx, double s, double z, double rh, double xk, int ij,
   cs= cos( shk);
   z2a= sh- z;
   z1a=-( sh+ z);
-  gx(ctx, z1a, rh, xk, &gz1, &gp1);
-  gx(ctx, z2a, rh, xk, &gz2, &gp2);
+  wire_end_contrib_thin(ctx, z1a, rh, xk, &gz1, &gp1);
+  wire_end_contrib_thin(ctx, z2a, rh, xk, &gz2, &gp2);
   gzp1= gp1* z1a;
   gzp2= gp2* z2a;
   *ezs=  CONST1*(( gz2- gz1)* cs* xk-( gzp2+ gzp1)* ss);
   *ezc= -CONST1*(( gz2+ gz1)* ss* xk+( gzp2- gzp1)* cs);
   *erk= CONST1*( gp2- gp1)* rh;
-  intx(ctx, - shk, shk, rhk, ij, &cint, &sint);
+  romberg_integrate_wire_e(ctx, - shk, shk, rhk, ij, &cint, &sint);
   *ezk= -CONST1*( gzp2- gzp1+ xk* xk* cmplx( cint,- sint));
   gzp1= gzp1* z1a;
   gzp2= gzp2* z2a;
@@ -385,7 +394,8 @@ void eksc(nec_context_t *ctx, double s, double z, double rh, double xk, int ij,
 
 /* compute e field of sine, cosine, and constant current */
 /* filaments by extended thin wire approximation. */
-void ekscx(nec_context_t *ctx, double bx, double s, double z,
+/* Formerly nec2c: ekscx */
+void e_field_extended_wire(nec_context_t *ctx, double bx, double s, double z,
            double rhx, double xk, int ij, int inx1, int inx2,
            complex double *ezs, complex double *ers, complex double *ezc,
            complex double *erc, complex double *ezk, complex double *erk )
@@ -422,10 +432,10 @@ void ekscx(nec_context_t *ctx, double bx, double s, double z,
   a2= b* b;
   
   if( inx1 != 2)
-    gxx(ctx, z1a, rh, b, a2, xk, ira, &gz1, &gzp1, &gr1, &grp1, &grk1, &gzz1);
+    wire_end_contrib_extended(ctx, z1a, rh, b, a2, xk, ira, &gz1, &gzp1, &gr1, &grp1, &grk1, &gzz1);
   else
   {
-    gx(ctx, z1a, rhx, xk, &gz1, &grk1);
+    wire_end_contrib_thin(ctx, z1a, rhx, xk, &gz1, &grk1);
     gzp1= grk1* z1a;
     gr1= gz1/ rhx;
     grp1= gzp1/ rhx;
@@ -434,10 +444,10 @@ void ekscx(nec_context_t *ctx, double bx, double s, double z,
   }
   
   if( inx2 != 2)
-    gxx(ctx, z2a, rh, b, a2, xk, ira, &gz2, &gzp2, &gr2, &grp2, &grk2, &gzz2);
+    wire_end_contrib_extended(ctx, z2a, rh, b, a2, xk, ira, &gz2, &gzp2, &gr2, &grp2, &grk2, &gzz2);
   else
   {
-    gx(ctx, z2a, rhx, xk, &gz2, &grk2);
+    wire_end_contrib_thin(ctx, z2a, rhx, xk, &gz2, &grk2);
     gzp2= grk2* z2a;
     gr2= gz2/ rhx;
     grp2= gzp2/ rhx;
@@ -452,7 +462,7 @@ void ekscx(nec_context_t *ctx, double bx, double s, double z,
   *erc= -CONST1*(( z2a* grp2- z1a* grp1+ gr2- gr1)*cs
                  +( z2a* gr2+ z1a* gr1)* ss* xk);
   *erk= CONST1*( grk2- grk1);
-  intx(ctx, - shk, shk, rhk, ij, &cint, &sint);
+  romberg_integrate_wire_e(ctx, - shk, shk, rhk, ij, &cint, &sint);
   bk= b* xk;
   bk2= bk* bk*.25;
   *ezk= -CONST1*( gzp2- gzp1+ xk* xk*(1.- bk2)*
@@ -464,7 +474,8 @@ void ekscx(nec_context_t *ctx, double bx, double s, double z,
 /*-----------------------------------------------------------------------*/
 
 /* integrand for h field of a wire */
-void gh(nec_context_t *ctx, double zk, double *hr, double *hi)
+/* Formerly nec2c: gh */
+void wire_h_integrand(nec_context_t *ctx, double zk, double *hr, double *hi)
 {
   double rs, r, ckr, skr, rr2, rr3;
   
@@ -487,7 +498,8 @@ void gh(nec_context_t *ctx, double zk, double *hr, double *hi)
 /* current element over a ground plane using formulas of k.a. norton */
 /* (proc. ire, sept., 1937, pp.1203,1236.) */
 
-void gwave(nec_context_t *restrict ctx, complex double *restrict erv, complex double *restrict ezv,
+/* Formerly nec2c: gwave */
+void ground_wave_field(nec_context_t *restrict ctx, complex double *restrict erv, complex double *restrict ezv,
            complex double *restrict erh, complex double *restrict ezh, complex double *restrict eph )
 {
   double sppp, sppp2, cppp2, cppp, spp, spp2, cpp2, cpp;
@@ -522,12 +534,12 @@ void gwave(nec_context_t *restrict ctx, complex double *restrict erv, complex do
   omr=1.- rv;
   w=1./ omr;
   w=(4.0 + I*0.0)* p1* w* w;
-  fbar(ctx,  w, &f );
+  norton_attenuation_factor(ctx,  w, &f );
   q1= rk2* t1/(2.* ctx->gwav.impedance_ratio_sq* cpp2);
   rh=( t2- ctx->gwav.impedance_ratio* spp)/( t2+ ctx->gwav.impedance_ratio* spp);
   v=1./(1.+ rh);
   v=(4.0 + I*0.0)* q1* v* v;
-  fbar(ctx,  v, &g );
+  norton_attenuation_factor(ctx,  v, &g );
   xr1= ctx->gwav.cur_phase1/ ctx->gwav.range1;
   xr2= ctx->gwav.cur_phase2/ ctx->gwav.range2;
   x1= cppp2* xr1;
@@ -567,7 +579,8 @@ void gwave(nec_context_t *restrict ctx, complex double *restrict erv, complex do
 /*-----------------------------------------------------------------------*/
 
 /* segment end contributions for thin wire approx. */
-void gx(nec_context_t *ctx, double zz, double rh, double xk,
+/* Formerly nec2c: gx */
+void wire_end_contrib_thin(nec_context_t *ctx, double zz, double rh, double xk,
         complex double *gz, complex double *gzp)
 {
   double r, r2, rkz;
@@ -584,7 +597,8 @@ void gx(nec_context_t *ctx, double zz, double rh, double xk,
 /*-----------------------------------------------------------------------*/
 
 /* segment end contributions for ext. thin wire approx. */
-void gxx(nec_context_t *ctx, double zz, double rh, double a,
+/* Formerly nec2c: gxx */
+void wire_end_contrib_extended(nec_context_t *ctx, double zz, double rh, double a,
          double a2, double xk, int ira, complex double *g1,
          complex double *g1p, complex double *g2,
          complex double *g2p, complex double *g3, complex double *gzp )
@@ -644,7 +658,8 @@ void gxx(nec_context_t *ctx, double zz, double rh, double a,
 
 /* hfk computes the h field of a uniform current */
 /* filament by numerical integration */
-void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
+/* Formerly nec2c: hfk */
+void h_field_filament(nec_context_t *ctx, double el1, double el2, double rhk,
          double zpkx, double *sgr, double *sgi )
 {
   int nx = 1, nma = 65536, nts = 4;
@@ -666,7 +681,7 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
   *sgi=0.0;
   ns= nx;
   nt=0;
-  gh(ctx, z, &g1r, &g1i);
+  wire_h_integrand(ctx, z, &g1r, &g1i);
 
   int intx2_iters = 0;
   const int intx2_max = 65536 * 64;
@@ -691,9 +706,9 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
       
       dzot= dz*.5;
       zp= z+ dzot;
-      gh(ctx, zp, &g3r, &g3i);
+      wire_h_integrand(ctx, zp, &g3r, &g3i);
       zp= z+ dz;
-      gh(ctx, zp, &g5r, &g5i);
+      wire_h_integrand(ctx, zp, &g5r, &g5i);
       
     } /* if( flag ) */
     
@@ -704,7 +719,7 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
     t10r=(4.0* t01r- t00r)/3.0;
     t10i=(4.0* t01i- t00i)/3.0;
     
-    test(ctx, t01r, t10r, &te1r, t01i, t10i, &te1i, 0.);
+    test_romberg_convergence(ctx, t01r, t10r, &te1r, t01i, t10i, &te1i, 0.);
     if( (te1i <= rx) && (te1r <= rx) )
     {
       *sgr= *sgr+ t10r;
@@ -733,9 +748,9 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
     } /* if( (te1i <= rx) && (te1r <= rx) ) */
     
     zp= z+ dz*0.25;
-    gh(ctx, zp, &g2r, &g2i);
+    wire_h_integrand(ctx, zp, &g2r, &g2i);
     zp= z+ dz*0.75;
-    gh(ctx, zp, &g4r, &g4i);
+    wire_h_integrand(ctx, zp, &g4r, &g4i);
     t02r=( t01r+ dzot*( g2r+ g4r))*0.5;
     t02i=( t01i+ dzot*( g2i+ g4i))*0.5;
     t11r=(4.0* t02r- t01r)/3.0;
@@ -743,7 +758,7 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
     t20r=(16.0* t11r- t10r)/15.0;
     t20i=(16.0* t11i- t10i)/15.0;
     
-    test(ctx, t11r, t20r, &te2r, t11i, t20i, &te2i, 0.);
+    test_romberg_convergence(ctx, t11r, t20r, &te2r, t11i, t20i, &te2i, 0.);
     if( (te2i > rx) || (te2r > rx) )
     {
       nt=0;
@@ -810,7 +825,8 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
 /*-----------------------------------------------------------------------*/
 
 /* hintg computes the h field of a patch current */
-void hintg(nec_context_t *ctx, double xi, double yi, double zi )
+/* Formerly nec2c: hintg */
+void h_field_patch(nec_context_t *ctx, double xi, double yi, double zi )
 {
   int ip;
   double rx, ry, rfl, xymag, pxx, pyy, cth;
@@ -916,7 +932,8 @@ void hintg(nec_context_t *ctx, double xi, double yi, double zi )
 
 /* hsfld computes the h field for constant, sine, and */
 /* cosine current on a segment including ground effects. */
-void hsfld(nec_context_t *ctx,  double xi, double yi, double zi, double ai )
+/* Formerly nec2c: hsfld */
+void h_field_segment(nec_context_t *ctx,  double xi, double yi, double zi, double ai )
 {
   int ip;
   double xij, yij, rfl, salpr, zij, zp, rhox, rhoy, rhoz, rh, phx;
@@ -959,7 +976,7 @@ void hsfld(nec_context_t *ctx,  double xi, double yi, double zi, double ai )
     phy= salpr* rhox- ctx->dataj.src_dir_cos_x* rhoz;
     phz= ctx->dataj.src_dir_cos_x* rhoy- ctx->dataj.src_dir_cos_y* rhox;
     
-    hsflx(ctx, ctx->dataj.seg_half_len, rh, zp, &hpk, &hps, &hpc);
+    h_field_segment_components(ctx, ctx->dataj.seg_half_len, rh, zp, &hpk, &hps, &hpc);
     
     if( ip == 1 )
     {
@@ -1051,7 +1068,8 @@ void hsfld(nec_context_t *ctx,  double xi, double yi, double zi, double ai )
 /*-----------------------------------------------------------------------*/
 
 /* calculates h field of sine cosine, and constant current of segment */
-void hsflx(nec_context_t *ctx, double s, double rh, double zpx,
+/* Formerly nec2c: hsflx */
+void h_field_segment_components(nec_context_t *ctx, double s, double rh, double zpx,
            complex double *hpk, complex double *hps,
            complex double *hpc )
 {
@@ -1085,7 +1103,7 @@ void hsflx(nec_context_t *ctx, double s, double rh, double zpx,
     dk= TP* dh;
     cdk= cos( dk);
     sdk= sin( dk);
-    hfk(ctx, -dk, dk, rh* TP, zp* TP, &hkr, &hki);
+    h_field_filament(ctx, -dk, dk, rh* TP, zp* TP, &hkr, &hki);
     *hpk= cmplx( hkr, hki);
     
     if( rhz >= 1.0e-3)
@@ -1128,7 +1146,8 @@ void hsflx(nec_context_t *ctx, double s, double rh, double zpx,
 
 /* nefld computes the near field at specified points in space after */
 /* the structure currents have been computed. */
-void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
+/* Formerly nec2c: nefld */
+void near_e_field(nec_context_t *restrict ctx, double xob, double yob, double zob,
            complex double *restrict ex, complex double *restrict ey, complex double *restrict ez )
 {
   int i, ix, ipr, iprx, jc, ipa;
@@ -1280,7 +1299,7 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
         
       } /* if( ctx->dataj.use_extended_kernel != 0) */
       
-      efld(ctx,  xob, yob, zob, ax,1);
+      e_field_segment(ctx,  xob, yob, zob, ax,1);
       acx= cmplx( ctx->crnt.a_real[i], ctx->crnt.a_imag[i]);
       bcx= cmplx( ctx->crnt.b_real[i], ctx->crnt.b_imag[i]);
       ccx= cmplx( ctx->crnt.c_real[i], ctx->crnt.c_imag[i]);
@@ -1315,7 +1334,7 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
     for( ipa = 0; ipa < ctx->gnd.has_ground; ipa++ )
     {
       ctx->dataj.ground_image_pass= ipa+1;
-      unere(ctx,  xob, yob, zob);
+      e_field_unit_patch_current(ctx,  xob, yob, zob);
       *ex= *ex+ acx* ctx->dataj.e_const_x+ bcx* ctx->dataj.e_sin_x;
       *ey= *ey+ acx* ctx->dataj.e_const_y+ bcx* ctx->dataj.e_sin_y;
       *ez= *ez+ acx* ctx->dataj.e_const_z+ bcx* ctx->dataj.e_sin_z;
@@ -1329,7 +1348,8 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
 /*-------------------------------------------------------------------*/
 /* fill incident field array for charge discontinuity voltage source */
 //for some reason this was in input.c in nec2c
-void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
+/* Formerly nec2c: qdsrc */
+void charge_discontinuity_source(nec_context_t *ctx, int is, complex double v, complex double *e )
 {
   int i, jx, j, jp1, ipr, ij, i1;
   double xi, yi, zi, ai, cabi, sabi, salpi, tx, ty, tz;
@@ -1338,7 +1358,7 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
   is--;
   i= ctx->geometry.seg_end1_conn[is];
   ctx->geometry.seg_end1_conn[is] = 0;
-  if (tbf(ctx, is+1, 0) != 0)
+  if (compute_basis_func(ctx, is+1, 0) != 0)
     return;
   ctx->geometry.seg_end1_conn[is]= i;
   ctx->dataj.seg_half_len= ctx->geometry.half_len[is]*.5;
@@ -1467,7 +1487,7 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
       yi= ctx->geometry.y_center[i];
       zi= ctx->geometry.z_center[i];
       ai= ctx->geometry.radius[i];
-      efld(ctx,  xi, yi, zi, ai, ij);
+      e_field_segment(ctx,  xi, yi, zi, ai, ij);
       cabi= ctx->geometry.dir_cos_x[i];
       sabi= ctx->geometry.dir_cos_y[i];
       salpi= ctx->geometry.dir_cos_z[i];
@@ -1485,7 +1505,7 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
         xi= ctx->geometry.patch_x_center[i];
         yi= ctx->geometry.patch_y_center[i];
         zi= ctx->geometry.patch_z_center[i];
-        hsfld(ctx,  xi, yi, zi,0.);
+        h_field_segment(ctx,  xi, yi, zi,0.);
         i1++;
         tx= ctx->geometry.patch_t2x[i];
         ty= ctx->geometry.patch_t2y[i];
@@ -1519,7 +1539,8 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
 /*-----------------------------------------------------------------------*/
 
 /* compute near e or h fields over a range of points */
-void nfpat(nec_context_t *ctx)
+/* Formerly nec2c: nfpat */
+void compute_near_field(nec_context_t *ctx)
 {
   int i, j, kk;
   double znrt, cth=0., sth=0., ynrt, cph=0., sph=0., xnrt, xob, yob;
@@ -1577,9 +1598,9 @@ void nfpat(nec_context_t *ctx)
         tmp3= zob/ ctx->geometry.wavelength;
         
         if( ctx->fpat.near_field_type != 1)
-          nefld(ctx,  tmp1, tmp2, tmp3, &ex, &ey, &ez);
+          near_e_field(ctx,  tmp1, tmp2, tmp3, &ex, &ey, &ez);
         else
-          nhfld(ctx,  tmp1, tmp2, tmp3, &ex, &ey, &ez);
+          near_h_field(ctx,  tmp1, tmp2, tmp3, &ex, &ey, &ez);
         
         /* Accumulate into near-field results for output.c */
         ctx->nfr.points = realloc(ctx->nfr.points,
@@ -1606,7 +1627,8 @@ void nfpat(nec_context_t *ctx)
 /* nhfld computes the near field at specified points in space after */
 /* the structure currents have been computed. */
 
-void nhfld(nec_context_t *restrict ctx,  double xob, double yob, double zob,
+/* Formerly nec2c: nhfld */
+void near_h_field(nec_context_t *restrict ctx,  double xob, double yob, double zob,
            complex double *restrict hx, complex double *restrict hy, complex double *restrict hz )
 {
   int i, jc;
@@ -1647,7 +1669,7 @@ void nhfld(nec_context_t *restrict ctx,  double xob, double yob, double zob,
       ctx->dataj.src_dir_cos_x= ctx->geometry.dir_cos_x[i];
       ctx->dataj.src_dir_cos_y= ctx->geometry.dir_cos_y[i];
       ctx->dataj.src_dir_cos_z= ctx->geometry.dir_cos_z[i];
-      hsfld(ctx,  xob, yob, zob, ax);
+      h_field_segment(ctx,  xob, yob, zob, ax);
       acx= cmplx( ctx->crnt.a_real[i], ctx->crnt.a_imag[i]);
       bcx= cmplx( ctx->crnt.b_real[i], ctx->crnt.b_imag[i]);
       ccx= cmplx( ctx->crnt.c_real[i], ctx->crnt.c_imag[i]);
@@ -1673,7 +1695,7 @@ void nhfld(nec_context_t *restrict ctx,  double xob, double yob, double zob,
     ctx->dataj.patch_t2x= ctx->geometry.patch_t2x[i];
     ctx->dataj.patch_t2y= ctx->geometry.patch_t2y[i];
     ctx->dataj.patch_t2z= ctx->geometry.patch_t2z[i];
-    hintg(ctx,  xob, yob, zob);
+    h_field_patch(ctx,  xob, yob, zob);
     jc += 3;
     acx= ctx->dataj.patch_t1x* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.patch_t1y* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.patch_t1z* ctx->crnt.surface_cur[jc];
     bcx= ctx->dataj.patch_t2x* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.patch_t2y* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.patch_t2z* ctx->crnt.surface_cur[jc];
@@ -1688,7 +1710,8 @@ void nhfld(nec_context_t *restrict ctx,  double xob, double yob, double zob,
 /*-----------------------------------------------------------------------*/
 
 /* integrate over patches at wire connection point */
-void pcint(nec_context_t *restrict ctx,  double xi, double yi, double zi, double cabi,
+/* Formerly nec2c: pcint */
+void integrate_patch_at_junction(nec_context_t *restrict ctx,  double xi, double yi, double zi, double cabi,
            double sabi, double salpi, complex double *restrict e )
 {
   int nint, i1, i2;
@@ -1740,7 +1763,7 @@ void pcint(nec_context_t *restrict ctx,  double xi, double yi, double zi, double
       ctx->dataj.src_x= ctx->dataj.src_x- ds* ctx->dataj.patch_t2x;
       ctx->dataj.src_y= ctx->dataj.src_y- ds* ctx->dataj.patch_t2y;
       ctx->dataj.src_z= ctx->dataj.src_z- ds* ctx->dataj.patch_t2z;
-      unere(ctx,  xi, yi, zi);
+      e_field_unit_patch_current(ctx,  xi, yi, zi);
       ctx->dataj.e_const_x= ctx->dataj.e_const_x* cabi+ ctx->dataj.e_const_y* sabi+ ctx->dataj.e_const_z* salpi;
       ctx->dataj.e_sin_x= ctx->dataj.e_sin_x* cabi+ ctx->dataj.e_sin_y* sabi+ ctx->dataj.e_sin_z* salpi;
       g1=( d+ s1)*( d+ s2)* gcon;
@@ -1785,7 +1808,8 @@ void pcint(nec_context_t *restrict ctx,  double xi, double yi, double zi, double
 
 /* calculates the electric field due to unit current */
 /* in the t1 and t2 directions on a patch */
-void unere(nec_context_t *ctx,  double xob, double yob, double zob )
+/* Formerly nec2c: unere */
+void e_field_unit_patch_current(nec_context_t *ctx,  double xob, double yob, double zob )
 {
   double zr, t1zr, t2zr, rx, ry, rz, r, tt1;
   double tt2, rt, xymag, px, py, cth, r2;

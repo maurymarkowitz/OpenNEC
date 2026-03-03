@@ -157,8 +157,8 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
             rhs[j] = CPLX_00;
 
           rhs[isc1] = CPLX_10;
-          solves(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
-          cabc(ctx, rhs);
+          solve_symmetric(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
+          compute_current_coefficients(ctx, rhs);
 
           for( j = 0; j < irow1; j++ )
           {
@@ -418,8 +418,8 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
 
         irow1= nteqa[i]-1;
         rhs[irow1]=CPLX_10;
-        solves(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
-        cabc(ctx, rhs);
+        solve_symmetric(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
+        compute_current_coefficients(ctx, rhs);
 
         for( j = 0; j < nteq; j++ )
         {
@@ -430,7 +430,7 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
       } /* for( i = 0; i < nteq; i++ ) */
 
       /* factor network equation matrix */
-      factr(ctx, nteq, cmn, ipnt, ndimn);
+      factor_matrix(ctx, nteq, cmn, ipnt, ndimn);
 
     } /* if( ctx->netcx.num_networks != 0) */
 
@@ -443,8 +443,8 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
     for( i = 0; i < neqt; i++ )
       rhs[i]= einc[i];
 
-    solves(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
-    cabc(ctx, rhs);
+    solve_symmetric(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
+    compute_current_coefficients(ctx, rhs);
 
     for( i = 0; i < nteq; i++ )
     {
@@ -463,8 +463,8 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
       einc[irow1] -= rhnt[i];
     }
 
-    solves(ctx, cm, ip, einc, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
-    cabc(ctx, einc);
+    solve_symmetric(ctx, cm, ip, einc, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
+    compute_current_coefficients(ctx, einc);
 
     /* Allocate arrays for network excitation data */
     ctx->netcx.nexc = nteq + ntsc;
@@ -529,8 +529,8 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
   else
   {
     /* solve for currents when no networks are present */
-    solves(ctx, cm, ip, einc, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
-    cabc(ctx, einc);
+    solve_symmetric(ctx, cm, ip, einc, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
+    compute_current_coefficients(ctx, einc);
     ntsc=0;
   }
 

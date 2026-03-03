@@ -9,9 +9,9 @@
  *
  * Major responsibilities include:
  * - Integrating ground-influenced field components using variable-interval
- *   Romberg integration (rom2()).
+ *   Romberg integration (romberg_integrate_sommerfeld()).
  * - Computing field due to ground for a current element on the source segment
- *   at position t relative to the segment center (sflds()).
+ *   at position t relative to the segment center (sommerfeld_field()).
  * - Applying reflection coefficients and handling special cases like the
  *   radial wire ground screen when enabled.
  * - Producing the x, y, z components of the field for constant, sine, and
@@ -35,7 +35,8 @@
 /* variable interval width romberg integration is used.  there are 9 */
 /* field components - the x, y, and z components due to constant, */
 /* sine, and cosine current distributions. */
-int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restrict sum, double dmin)
+/* Formerly nec2c: rom2 */
+int romberg_integrate_sommerfeld(nec_context_t *restrict ctx, double a, double b, complex double *restrict sum, double dmin)
 {
   int i, ns, nt;
   bool flag=true;
@@ -50,7 +51,7 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
   ze= b;
   s= b- a;
   
-  assert(s >= 0. && "INTERNAL: rom2() called with b < a; segment length is negative (geometry corruption)");
+  assert(s >= 0. && "INTERNAL: romberg_integrate_sommerfeld() called with b < a; segment length is negative (geometry corruption)");
   
   ep= s/(1.e4* ctx->geometry.num_segs_and_patches);
   zend= ze- ep;
@@ -60,7 +61,7 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
   
   ns= nx;
   nt=0;
-  sflds(ctx, z, g1);
+  sommerfeld_field(ctx, z, g1);
   
   while( true )
   {
@@ -75,8 +76,8 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
       }
       
       dzot= dz*.5;
-      sflds(ctx, z+ dzot, g3);
-      sflds(ctx, z+ dz, g5);
+      sommerfeld_field(ctx, z+ dzot, g3);
+      sommerfeld_field(ctx, z+ dz, g5);
       
     } /* if( flag ) */
     
@@ -103,7 +104,7 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
     
     tmag1= sqrt( tmag1);
     tmag2= sqrt( tmag2);
-    test(ctx, tmag1, tmag2, &tr, 0., 0., &ti, dmin);
+    test_romberg_convergence(ctx, tmag1, tmag2, &tr, 0., 0., &ti, dmin);
     
     if( tr <= rx)
     {
@@ -128,8 +129,8 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
       
     } /* if( tr <= rx) */
     
-    sflds(ctx, z+ dz*.25, g2);
-    sflds(ctx, z+ dz*.75, g4);
+    sommerfeld_field(ctx, z+ dz*.25, g2);
+    sommerfeld_field(ctx, z+ dz*.75, g4);
     tmag1=0.;
     tmag2=0.;
     
@@ -153,7 +154,7 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
     
     tmag1= sqrt( tmag1);
     tmag2= sqrt( tmag2);
-    test(ctx, tmag1, tmag2, &tr, 0.,0., &ti, dmin);
+    test_romberg_convergence(ctx, tmag1, tmag2, &tr, 0.,0., &ti, dmin);
     
     if( tr > rx)
     {
@@ -210,7 +211,8 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
 
 /* sfldx returns the field due to ground for a current element on */
 /* the source segment at t relative to the segment center. */
-void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
+/* Formerly nec2c: sflds */
+void sommerfeld_field(nec_context_t *restrict ctx, double t, complex double *restrict e )
 {
   double xt, yt, zt, rhx, rhy, rhs, rho, phx, phy;
   double cph, sph, zphs, r2s, rk, sfac, thet;
@@ -262,7 +264,7 @@ void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
     ctx->gwav.z_img1=1.;
     ctx->gwav.range1=1.;
     ctx->gwav.cur_phase1=0.;
-    gwave(ctx, &erv, &ezv, &erh, &ezh, &eph);
+    ground_wave_field(ctx, &erv, &ezv, &erh, &ezh, &eph);
     
     et=-CONST1* ctx->gnd.fresnel_ratio* ctx->gwav.cur_phase2/( r2s* ctx->gwav.range2);
     er=2.* et* cmplx(1.0, rk);
@@ -304,7 +306,7 @@ void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
   
   /* combine vertical and horizontal components and convert */
   /* to x,y,z components. multiply by exp(-jkr)/r. */
-  intrp(ctx, ctx->gwav.range2, thet, &erv, &ezv, &erh, &eph );
+  interpolate_sommerfeld_grid(ctx, ctx->gwav.range2, thet, &erv, &ezv, &erh, &eph );
   ctx->gwav.cur_phase2= ctx->gwav.cur_phase2/ ctx->gwav.range2;
   sfac= ctx->incom.sin_alpha* cph;
   erh= ctx->gwav.cur_phase2*( ctx->dataj.src_dir_cos_z* erv+ sfac* erh);

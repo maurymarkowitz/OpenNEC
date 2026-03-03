@@ -64,7 +64,7 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *pfile);
  *
  * Stores all geometry and the unfactored CM interaction matrix so that a
  * subsequent simulation run using a GF card can restore them without
- * recomputing. Called by the WG control-card handler after cmset().
+ * recomputing. Called by the WG control-card handler after fill_interaction_matrix().
  *
  * @param file  Output file pointer (must be opened in binary mode).
  * @param ctx   The simulation context.

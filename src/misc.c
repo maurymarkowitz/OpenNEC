@@ -209,8 +209,8 @@ void abort_on_error(const nec_context_t *ctx, int why)
 	  nec_report(ctx, ONEC_SEV_FATAL, "onec: NGF solution option not supported - aborting");
 	  break;
 
-	case -6: /* No convergence in gshank() */
-	  nec_report(ctx, ONEC_SEV_FATAL, "onec: No convergence in gshank() - aborting");
+	case -6: /* No convergence in shanks_integration() */
+	  nec_report(ctx, ONEC_SEV_FATAL, "onec: No convergence in shanks_integration() - aborting");
 	  break;
 
 	case -7: /* Error in hankel() */

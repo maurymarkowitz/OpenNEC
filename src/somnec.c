@@ -12,7 +12,7 @@
  *   components (Erv, Ezv, Erh, Eph) derived from Sommerfeld integrals.
  * - Initialize medium parameters (epscf) from `epr` (relative permittivity),
  *   `sig` (conductivity), and `fmhz` (frequency) and set derived constants.
- * - Loop over radius and angle to evaluate integrals via `evlua()`, apply
+ * - Loop over radius and angle to evaluate integrals via `evaluate_sommerfeld_integrals()`, apply
  *   phasor scaling, and write results into the grid arrays in `ggrid`.
  * - Handle the r=0 limit for the first grid using closed-form expressions.
  *
@@ -27,12 +27,17 @@
 
 /* Forward declarations for internal functions */
 static void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex double *j0p);
-static void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv, complex double *erh, complex double *eph);
-static int gshank(nec_context_t *ctx, complex double start, complex double dela, complex double *sum, int nans, complex double *seed, int ibk, complex double bk, complex double delb);
+/* Formerly nec2c: evlua */
+static void evaluate_sommerfeld_integrals(nec_context_t *ctx, complex double *erv, complex double *ezv, complex double *erh, complex double *eph);
+/* Formerly nec2c: gshank */
+static int shanks_integration(nec_context_t *ctx, complex double start, complex double dela, complex double *sum, int nans, complex double *seed, int ibk, complex double bk, complex double delb);
 static int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex double *h0p);
-static void lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam);
-static void rom1(nec_context_t *ctx, int n, complex double *sum, int nx);
-static void saoa(nec_context_t *ctx, double t, complex double *ans);
+/* Formerly nec2c: lambda */
+static void sommerfeld_lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam);
+/* Formerly nec2c: rom1 */
+static void romberg_integrate_1d(nec_context_t *ctx, int n, complex double *sum, int nx);
+/* Formerly nec2c: saoa */
+static void sommerfeld_asymptotic(nec_context_t *ctx, double t, complex double *ans);
 
 /*-----------------------------------------------------------------------*/
 
@@ -100,7 +105,7 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
         if(ctx->somnec.evlcom.zph < 1.e-7)
           ctx->somnec.evlcom.zph=0.;
         
-        evlua(ctx, &erv, &ezv, &erh, &eph );
+        evaluate_sommerfeld_integrals(ctx, &erv, &ezv, &erh, &eph );
         
         rk=ctx->somnec.evlcom.ck2*r;
         con=-CONST1*r/cmplx(cos(rk),-sin(rk));
@@ -273,7 +278,8 @@ void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex do
 
 /* evlua controls the integration contour in the complex */
 /* lambda plane for evaluation of the sommerfeld integrals */
-void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
+/* Formerly nec2c: evlua */
+void evaluate_sommerfeld_integrals(nec_context_t *ctx, complex double *erv, complex double *ezv,
 	complex double *erh, complex double *eph )
 {
   int i, jump;
@@ -292,21 +298,21 @@ void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
 	if( ctx->somnec.evlua.del > ctx->somnec.evlcom.tkmag)
 	{
 	  ctx->somnec.cntour.b=cmplx(.1*ctx->somnec.evlcom.tkmag,-.1*ctx->somnec.evlcom.tkmag);
-	  rom1(ctx,6,ctx->somnec.evlua.sum,2);
+	  romberg_integrate_1d(ctx,6,ctx->somnec.evlua.sum,2);
 	  ctx->somnec.cntour.a=ctx->somnec.cntour.b;
 	  ctx->somnec.cntour.b=cmplx(ctx->somnec.evlua.del,-ctx->somnec.evlua.del);
-	  rom1 (ctx,6,ctx->somnec.evlua.ans,2);
+	  romberg_integrate_1d (ctx,6,ctx->somnec.evlua.ans,2);
 	  for( i = 0; i < 6; i++ )
 		ctx->somnec.evlua.sum[i] += ctx->somnec.evlua.ans[i];
 	}
 	else
 	{
 	  ctx->somnec.cntour.b=cmplx(ctx->somnec.evlua.del,-ctx->somnec.evlua.del);
-	  rom1(ctx,6,ctx->somnec.evlua.sum,2);
+	  romberg_integrate_1d(ctx,6,ctx->somnec.evlua.sum,2);
 	}
 
 	ctx->somnec.evlua.delta=PTP*ctx->somnec.evlua.del;
-	gshank(ctx,ctx->somnec.cntour.b,ctx->somnec.evlua.delta,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,0,ctx->somnec.cntour.b,ctx->somnec.cntour.b);
+	shanks_integration(ctx,ctx->somnec.cntour.b,ctx->somnec.evlua.delta,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,0,ctx->somnec.cntour.b,ctx->somnec.cntour.b);
 	ctx->somnec.evlua.ans[5] *= ctx->somnec.evlcom.ck1;
 
 	/* conjugate since nec uses exp(+jwt) */
@@ -326,10 +332,10 @@ void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
   ctx->somnec.evlua.cp3=cmplx(1.02*ctx->somnec.evlcom.ck2,-.2*ctx->somnec.evlcom.ck2);
   ctx->somnec.cntour.a=ctx->somnec.evlua.cp1;
   ctx->somnec.cntour.b=ctx->somnec.evlua.cp2;
-  rom1(ctx,6,ctx->somnec.evlua.sum,2);
+  romberg_integrate_1d(ctx,6,ctx->somnec.evlua.sum,2);
   ctx->somnec.cntour.a=ctx->somnec.evlua.cp2;
   ctx->somnec.cntour.b=ctx->somnec.evlua.cp3;
-  rom1(ctx,6,ctx->somnec.evlua.ans,2);
+  romberg_integrate_1d(ctx,6,ctx->somnec.evlua.ans,2);
 
   for( i = 0; i < 6; i++ )
 	ctx->somnec.evlua.sum[i]=-(ctx->somnec.evlua.sum[i]+ctx->somnec.evlua.ans[i]);
@@ -343,7 +349,7 @@ void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
   ctx->somnec.evlua.del=PTP/ctx->somnec.evlua.del;
   ctx->somnec.evlua.delta=cmplx(-1.0,ctx->somnec.evlua.slope)*ctx->somnec.evlua.del/sqrt(1.+ctx->somnec.evlua.slope*ctx->somnec.evlua.slope);
   ctx->somnec.evlua.delta2=-conj(ctx->somnec.evlua.delta);
-  gshank(ctx,ctx->somnec.evlua.cp1,ctx->somnec.evlua.delta,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,0,ctx->somnec.evlua.bk,ctx->somnec.evlua.bk);
+  shanks_integration(ctx,ctx->somnec.evlua.cp1,ctx->somnec.evlua.delta,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,0,ctx->somnec.evlua.bk,ctx->somnec.evlua.bk);
   ctx->somnec.evlua.rmis=ctx->somnec.evlcom.rho*(creal(ctx->somnec.evlcom.ck1)-ctx->somnec.evlcom.ck2);
 
   jump = false;
@@ -363,15 +369,15 @@ void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
 	  ctx->somnec.evlua.cp1=ctx->somnec.evlcom.ck1-(.1+I*0.2);
 	  ctx->somnec.evlua.cp2=ctx->somnec.evlua.cp1+.2;
 	  ctx->somnec.evlua.bk=cmplx(0.,ctx->somnec.evlua.del);
-	  gshank(ctx,ctx->somnec.evlua.cp1,ctx->somnec.evlua.bk,ctx->somnec.evlua.sum,6,ctx->somnec.evlua.ans,0,ctx->somnec.evlua.bk,ctx->somnec.evlua.bk);
+	  shanks_integration(ctx,ctx->somnec.evlua.cp1,ctx->somnec.evlua.bk,ctx->somnec.evlua.sum,6,ctx->somnec.evlua.ans,0,ctx->somnec.evlua.bk,ctx->somnec.evlua.bk);
 	  ctx->somnec.cntour.a=ctx->somnec.evlua.cp1;
 	  ctx->somnec.cntour.b=ctx->somnec.evlua.cp2;
-	  rom1(ctx,6,ctx->somnec.evlua.ans,1);
+	  romberg_integrate_1d(ctx,6,ctx->somnec.evlua.ans,1);
 	  for( i = 0; i < 6; i++ )
 		ctx->somnec.evlua.ans[i] -= ctx->somnec.evlua.sum[i];
 
-	  gshank(ctx,ctx->somnec.evlua.cp3,ctx->somnec.evlua.bk,ctx->somnec.evlua.sum,6,ctx->somnec.evlua.ans,0,ctx->somnec.evlua.bk,ctx->somnec.evlua.bk);
-	  gshank(ctx,ctx->somnec.evlua.cp2,ctx->somnec.evlua.delta2,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,0,ctx->somnec.evlua.bk,ctx->somnec.evlua.bk);
+	  shanks_integration(ctx,ctx->somnec.evlua.cp3,ctx->somnec.evlua.bk,ctx->somnec.evlua.sum,6,ctx->somnec.evlua.ans,0,ctx->somnec.evlua.bk,ctx->somnec.evlua.bk);
+	  shanks_integration(ctx,ctx->somnec.evlua.cp2,ctx->somnec.evlua.delta2,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,0,ctx->somnec.evlua.bk,ctx->somnec.evlua.bk);
 	}
 
 	jump = true;
@@ -393,7 +399,7 @@ void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
 	ctx->somnec.evlua.bk=cmplx(ctx->somnec.evlua.rmis,.99*cimag(ctx->somnec.evlcom.ck1));
 	ctx->somnec.evlua.delta=ctx->somnec.evlua.bk-ctx->somnec.evlua.cp3;
 	ctx->somnec.evlua.delta *= ctx->somnec.evlua.del/cabs(ctx->somnec.evlua.delta);
-	gshank(ctx,ctx->somnec.evlua.cp3,ctx->somnec.evlua.delta,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,1,ctx->somnec.evlua.bk,ctx->somnec.evlua.delta2);
+	shanks_integration(ctx,ctx->somnec.evlua.cp3,ctx->somnec.evlua.delta,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,1,ctx->somnec.evlua.bk,ctx->somnec.evlua.delta2);
 
   } /* if( ! jump ) */
 
@@ -411,7 +417,8 @@ void evlua(nec_context_t *ctx, complex double *erv, complex double *ezv,
 /*-----------------------------------------------------------------------*/
 
 /* fbar is sommerfeld attenuation function for numerical distance p */
-void fbar(nec_context_t *ctx, complex double p, complex double *fbar )
+/* Formerly nec2c: fbar */
+void norton_attenuation_factor(nec_context_t *ctx, complex double p, complex double *fbar )
 {
   int i, minus;
   double tms, sms;
@@ -471,7 +478,8 @@ void fbar(nec_context_t *ctx, complex double p, complex double *fbar )
 /* the step increment may be changed from dela to delb.  shank's */
 /* algorithm to accelerate convergence of a slowly converging series */
 /* is used */
-int gshank(nec_context_t *ctx, complex double start, complex double dela,
+/* Formerly nec2c: gshank */
+int shanks_integration(nec_context_t *ctx, complex double start, complex double dela,
 	complex double *sum, int nans, complex double *seed,
 	int ibk, complex double bk, complex double delb )
 {
@@ -502,14 +510,14 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
       ibx=1;
       ctx->somnec.cntour.b=bk;
       del=delb;
-      rom1(ctx,nans,sum,2);
+      romberg_integrate_1d(ctx,nans,sum,2);
       for( i = 0; i < nans; i++ )
         ans2[i] += sum[i];
       intx = 0;
       continue;
     } /* if( (ibx == 0) && (creal(b) >= rbk) ) */
 
-    rom1(ctx,nans,sum,2);
+    romberg_integrate_1d(ctx,nans,sum,2);
     for( i = 0; i < nans; i++ )
       ans1[i] = ans2[i]+sum[i];
     ctx->somnec.cntour.a=ctx->somnec.cntour.b;
@@ -520,14 +528,14 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
       ibx=2;
       ctx->somnec.cntour.b=bk;
       del=delb;
-      rom1(ctx,nans,sum,2);
+      romberg_integrate_1d(ctx,nans,sum,2);
       for( i = 0; i < nans; i++ )
         ans2[i] += sum[i];
       intx = 0;
       continue;
     } /* if( (ibx == 0) && (creal(b) >= rbk) ) */
 
-    rom1(ctx,nans,sum,2);
+    romberg_integrate_1d(ctx,nans,sum,2);
     for( i = 0; i < nans; i++ )
       ans2[i]=ans1[i]+sum[i];
 
@@ -613,7 +621,7 @@ int gshank(nec_context_t *ctx, complex double start, complex double dela,
   } /* for( intx = 1; intx <= maxh; intx++ ) */
 
   /* No convergence */
-  add_error(ctx, &ctx->errors, "No convergence in gshank()", FATAL);
+  add_error(ctx, &ctx->errors, "No convergence in shanks_integration()", FATAL);
   return -1;
 }
 
@@ -728,7 +736,8 @@ int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex dou
 /*-----------------------------------------------------------------------*/
 
 /* compute integration parameter xlam=lambda from parameter t. */
-void lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam )
+/* Formerly nec2c: lambda */
+void sommerfeld_lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam )
 {
   *dxlam=ctx->somnec.cntour.b-ctx->somnec.cntour.a;
   *xlam=ctx->somnec.cntour.a+*dxlam*t;
@@ -739,7 +748,8 @@ void lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *
 
 /* rom1 integrates the 6 sommerfeld integrals from a to b in lambda. */
 /* the method of variable interval width romberg integration is used. */
-void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
+/* Formerly nec2c: rom1 */
+void romberg_integrate_1d(nec_context_t *ctx, int n, complex double *sum, int nx )
 {
   int jump, lstep, nogo, i, ns, nt;
 
@@ -753,7 +763,7 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
     sum[i]=CPLX_00;
   ns=nx;
   nt=0;
-  saoa(ctx, ctx->somnec.rom1.z, ctx->somnec.rom1.g1);
+  sommerfeld_asymptotic(ctx, ctx->somnec.rom1.z, ctx->somnec.rom1.g1);
 
   jump = false;
   while( true )
@@ -769,8 +779,8 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
       }
 
       ctx->somnec.rom1.dzot=ctx->somnec.rom1.dz*.5;
-      saoa(ctx, ctx->somnec.rom1.z+ctx->somnec.rom1.dzot, ctx->somnec.rom1.g3);
-      saoa(ctx, ctx->somnec.rom1.z+ctx->somnec.rom1.dz, ctx->somnec.rom1.g5);
+      sommerfeld_asymptotic(ctx, ctx->somnec.rom1.z+ctx->somnec.rom1.dzot, ctx->somnec.rom1.g3);
+      sommerfeld_asymptotic(ctx, ctx->somnec.rom1.z+ctx->somnec.rom1.dz, ctx->somnec.rom1.g5);
 
     } /* if( ! jump ) */
 
@@ -782,7 +792,7 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
       ctx->somnec.rom1.t10[i]=(4.*ctx->somnec.rom1.t01[i]-ctx->somnec.rom1.t00)/3.;
 
       /* test convergence of 3 point romberg result */
-      test(ctx, creal(ctx->somnec.rom1.t01[i]), creal(ctx->somnec.rom1.t10[i]), &ctx->somnec.rom1.tr, cimag(ctx->somnec.rom1.t01[i]), cimag(ctx->somnec.rom1.t10[i]), &ctx->somnec.rom1.ti, 0. );
+      test_romberg_convergence(ctx, creal(ctx->somnec.rom1.t01[i]), creal(ctx->somnec.rom1.t10[i]), &ctx->somnec.rom1.tr, cimag(ctx->somnec.rom1.t01[i]), cimag(ctx->somnec.rom1.t10[i]), &ctx->somnec.rom1.ti, 0. );
       if( (ctx->somnec.rom1.tr > CRIT) || (ctx->somnec.rom1.ti > CRIT) )
         nogo = true;
     }
@@ -811,8 +821,8 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
 
     } /* if( ! nogo ) */
 
-    saoa(ctx, ctx->somnec.rom1.z+ctx->somnec.rom1.dz*.25, ctx->somnec.rom1.g2);
-    saoa(ctx, ctx->somnec.rom1.z+ctx->somnec.rom1.dz*.75, ctx->somnec.rom1.g4);
+    sommerfeld_asymptotic(ctx, ctx->somnec.rom1.z+ctx->somnec.rom1.dz*.25, ctx->somnec.rom1.g2);
+    sommerfeld_asymptotic(ctx, ctx->somnec.rom1.z+ctx->somnec.rom1.dz*.75, ctx->somnec.rom1.g4);
     nogo=false;
     for( i = 0; i < n; i++ )
     {
@@ -821,7 +831,7 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
       ctx->somnec.rom1.t20[i]=(16.*ctx->somnec.rom1.t11-ctx->somnec.rom1.t10[i])/15.;
 
       /* test convergence of 5 point romberg result */
-      test(ctx, creal(ctx->somnec.rom1.t11), creal(ctx->somnec.rom1.t20[i]), &ctx->somnec.rom1.tr, cimag(ctx->somnec.rom1.t11), cimag(ctx->somnec.rom1.t20[i]), &ctx->somnec.rom1.ti, 0. );
+      test_romberg_convergence(ctx, creal(ctx->somnec.rom1.t11), creal(ctx->somnec.rom1.t20[i]), &ctx->somnec.rom1.tr, cimag(ctx->somnec.rom1.t11), cimag(ctx->somnec.rom1.t20[i]), &ctx->somnec.rom1.ti, 0. );
       if( (ctx->somnec.rom1.tr > CRIT) || (ctx->somnec.rom1.ti > CRIT) )
         nogo = true;
     }
@@ -871,7 +881,7 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
     if( ! lstep )
     {
       lstep = true;
-      lambda(ctx, ctx->somnec.rom1.z, &ctx->somnec.rom1.t00, &ctx->somnec.rom1.t11 );
+      sommerfeld_lambda(ctx, ctx->somnec.rom1.z, &ctx->somnec.rom1.t00, &ctx->somnec.rom1.t11 );
     }
 
     for( i = 0; i < n; i++ )
@@ -895,12 +905,13 @@ void rom1(nec_context_t *ctx, int n, complex double *sum, int nx )
 
 /* saoa computes the integrand for each of the 6 sommerfeld */
 /* integrals for source and observer above ground */
-void saoa(nec_context_t *ctx, double t, complex double *ans)
+/* Formerly nec2c: saoa */
+void sommerfeld_asymptotic(nec_context_t *ctx, double t, complex double *ans)
 {
   double xlr;
   complex double xl, dxl, cgam1, cgam2, b0, b0p, com, dgam, den1, den2;
 
-  lambda(ctx, t, &xl, &dxl);
+  sommerfeld_lambda(ctx, t, &xl, &dxl);
   if( ctx->somnec.evlcom.jh == 0 )
   {
     /* bessel function form */
