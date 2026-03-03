@@ -45,9 +45,9 @@ void cabc(nec_context_t *restrict ctx, complex double *restrict curx)
   double ar, ai, sh;
   complex double  curd, cs1, cs2;
   
-  if( ctx->geometry.n != 0)
+  if( ctx->geometry.num_segs != 0)
   {
-    for( i = 0; i < ctx->geometry.n; i++ )
+    for( i = 0; i < ctx->geometry.num_segs; i++ )
     {
       ctx->crnt.a_real[i]=0.;
       ctx->crnt.a_imag[i]=0.;
@@ -57,7 +57,7 @@ void cabc(nec_context_t *restrict ctx, complex double *restrict curx)
       ctx->crnt.c_imag[i]=0.;
     }
     
-    for( i = 0; i < ctx->geometry.n; i++ )
+    for( i = 0; i < ctx->geometry.num_segs; i++ )
     {
       ar= creal( curx[i]);
       ai= cimag( curx[i]);
@@ -82,15 +82,15 @@ void cabc(nec_context_t *restrict ctx, complex double *restrict curx)
       for( is = 0; is < ctx->vsorc.num_qdsrcs_used; is++ )
       {
         i= ctx->vsorc.qdsrc_indices[is]-1;
-        jx= ctx->geometry.icon1[i];
-        ctx->geometry.icon1[i]=0;
+        jx= ctx->geometry.seg_end1_conn[i];
+        ctx->geometry.seg_end1_conn[i]=0;
         if (tbf(ctx, i+1,0) != 0)
           return;
-        ctx->geometry.icon1[i]= jx;
-        sh= ctx->geometry.si[i]*.5;
-        curd= CCJ* ctx->vsorc.qdsrc_voltages_saved[is]/( (log(2.* sh/ ctx->geometry.bi[i])-1.)*
+        ctx->geometry.seg_end1_conn[i]= jx;
+        sh= ctx->geometry.half_len[i]*.5;
+        curd= CCJ* ctx->vsorc.qdsrc_voltages_saved[is]/( (log(2.* sh/ ctx->geometry.radius[i])-1.)*
                                    (ctx->segj.coeff_sine[ctx->segj.num_junction_segs-1]* cos(TP* sh)+ ctx->segj.coeff_cos[ctx->segj.num_junction_segs-1]*
-                                    sin(TP* sh))* ctx->geometry.wlam );
+                                    sin(TP* sh))* ctx->geometry.wavelength );
         ar= creal( curd);
         ai= cimag( curd);
         
@@ -109,26 +109,26 @@ void cabc(nec_context_t *restrict ctx, complex double *restrict curx)
       
     } /* if( ctx->vsorc.num_qdsrcs_used != 0) */
     
-    for( i = 0; i < ctx->geometry.n; i++ )
+    for( i = 0; i < ctx->geometry.num_segs; i++ )
       curx[i]= cmplx( ctx->crnt.a_real[i]+ctx->crnt.c_real[i], ctx->crnt.a_imag[i]+ctx->crnt.c_imag[i] );
     
   } /* if( n != 0) */
   
-  if( ctx->geometry.m == 0)
+  if( ctx->geometry.num_patches == 0)
     return;
   
   /* convert surface currents from */
   /* t1,t2 components to x,y,z components */
-  jco1= ctx->geometry.np2m;
-  jco2= jco1+ ctx->geometry.m;
-  for( i = 1; i <= ctx->geometry.m; i++ ) {
+  jco1= ctx->geometry.num_segs_2xpatches;
+  jco2= jco1+ ctx->geometry.num_patches;
+  for( i = 1; i <= ctx->geometry.num_patches; i++ ) {
     jco1 -= 2;
     jco2 -= 3;
     cs1= curx[jco1];
     cs2= curx[jco1+1];
-    curx[jco2]  = cs1* ctx->geometry.t1x[ctx->geometry.m-i]+ cs2* ctx->geometry.t2x[ctx->geometry.m-i];
-    curx[jco2+1]= cs1* ctx->geometry.t1y[ctx->geometry.m-i]+ cs2* ctx->geometry.t2y[ctx->geometry.m-i];
-    curx[jco2+2]= cs1* ctx->geometry.t1z[ctx->geometry.m-i]+ cs2* ctx->geometry.t2z[ctx->geometry.m-i];
+    curx[jco2]  = cs1* ctx->geometry.patch_t1x[ctx->geometry.num_patches-i]+ cs2* ctx->geometry.patch_t2x[ctx->geometry.num_patches-i];
+    curx[jco2+1]= cs1* ctx->geometry.patch_t1y[ctx->geometry.num_patches-i]+ cs2* ctx->geometry.patch_t2y[ctx->geometry.num_patches-i];
+    curx[jco2+2]= cs1* ctx->geometry.patch_t1z[ctx->geometry.num_patches-i]+ cs2* ctx->geometry.patch_t2z[ctx->geometry.num_patches-i];
   }
   
   return;
@@ -262,17 +262,17 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
   
   /* initialize d array, used for temporary */
   /* storage of loading information. */
-  mreq = (size_t)ctx->geometry.npm;
+  mreq = (size_t)ctx->geometry.num_segs_and_patches;
   mreq *= sizeof(complex double);
   mem_realloc(ctx,  (void *)&ctx->zload.seg_impedance, mreq );
-  for( i = 0; i < ctx->geometry.n; i++ )
+  for( i = 0; i < ctx->geometry.num_segs; i++ )
     ctx->zload.seg_impedance[i]=CPLX_00;
   
   iwarn=false;
   istep=0;
   /* Track first owning load card for each segment and any duplicates found */
-  int *first_ld_owner = calloc((size_t)ctx->geometry.n, sizeof(int));
-  int *dup_marked = calloc((size_t)ctx->geometry.n, sizeof(int));
+  int *first_ld_owner = calloc((size_t)ctx->geometry.num_segs, sizeof(int));
+  int *dup_marked = calloc((size_t)ctx->geometry.num_segs, sizeof(int));
   int dup_count = 0;
   int dup_cap = 0;
   int *dup_tags = NULL;
@@ -325,18 +325,18 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
       free(dup_owner_lines);
       free(dup_repeat_lines);
 
-      ctx->smat.num_sections = ctx->geometry.n/ctx->geometry.np;
+      ctx->smat.num_sections = ctx->geometry.num_segs/ctx->geometry.num_segs_sym;
       if( ctx->smat.num_sections == 1)
         return 0;
       
-      for( i = 0; i < ctx->geometry.np; i++ )
+      for( i = 0; i < ctx->geometry.num_segs_sym; i++ )
       {
         zt= ctx->zload.seg_impedance[i];
         l1= i;
         
         for( l2 = 1; l2 < ctx->smat.num_sections; l2++ )
         {
-          l1 += ctx->geometry.np;
+          l1 += ctx->geometry.num_segs_sym;
           ctx->zload.seg_impedance[l1]= zt;
         }
       }
@@ -353,7 +353,7 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
     jump= ldtyp[istepx]+1;
     ichk=0;
     l1= 1;
-    l2= ctx->geometry.n;
+    l2= ctx->geometry.num_segs;
     
     if( ldtags == 0)
     {
@@ -388,41 +388,41 @@ int load(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
       /* jump to appropriate section for loading type */
       switch( jump ) {
         case 1:
-          zt= zlr[istepx]/ ctx->geometry.si[i]+ tpcj* zli[istepx]/( ctx->geometry.si[i]* ctx->geometry.wlam);
+          zt= zlr[istepx]/ ctx->geometry.half_len[i]+ tpcj* zli[istepx]/( ctx->geometry.half_len[i]* ctx->geometry.wavelength);
           if( fabs( zlc[istepx]) > 1.0e-20)
-            zt += ctx->geometry.wlam/( tpcj* ctx->geometry.si[i]* zlc[istepx]);
+            zt += ctx->geometry.wavelength/( tpcj* ctx->geometry.half_len[i]* zlc[istepx]);
           break;
           
         case 2:
-          zt= tpcj* ctx->geometry.si[i]* zlc[istepx]/ ctx->geometry.wlam;
+          zt= tpcj* ctx->geometry.half_len[i]* zlc[istepx]/ ctx->geometry.wavelength;
           if( fabs( zli[istepx]) > 1.0e-20)
-            zt += ctx->geometry.si[i]* ctx->geometry.wlam/( tpcj* zli[istepx]);
+            zt += ctx->geometry.half_len[i]* ctx->geometry.wavelength/( tpcj* zli[istepx]);
           if( fabs( zlr[istepx]) > 1.0e-20)
-            zt += ctx->geometry.si[i]/ zlr[istepx];
+            zt += ctx->geometry.half_len[i]/ zlr[istepx];
           zt=1./ zt;
           break;
           
         case 3:
-          zt= zlr[istepx]* ctx->geometry.wlam+ tpcj* zli[istepx];
+          zt= zlr[istepx]* ctx->geometry.wavelength+ tpcj* zli[istepx];
           if( fabs( zlc[istepx]) > 1.0e-20)
-            zt += 1./( tpcj* ctx->geometry.si[i]* ctx->geometry.si[i]* zlc[istepx]);
+            zt += 1./( tpcj* ctx->geometry.half_len[i]* ctx->geometry.half_len[i]* zlc[istepx]);
           break;
           
         case 4:
-          zt= tpcj* ctx->geometry.si[i]* ctx->geometry.si[i]* zlc[istepx];
+          zt= tpcj* ctx->geometry.half_len[i]* ctx->geometry.half_len[i]* zlc[istepx];
           if( fabs( zli[istepx]) > 1.0e-20)
             zt += 1./( tpcj* zli[istepx]);
           if( fabs( zlr[istepx]) > 1.0e-20)
-            zt += 1./( zlr[istepx]* ctx->geometry.wlam);
+            zt += 1./( zlr[istepx]* ctx->geometry.wavelength);
           zt=1./ zt;
           break;
           
         case 5:
-          zt= cmplx( zlr[istepx], zli[istepx])/ ctx->geometry.si[i];
+          zt= cmplx( zlr[istepx], zli[istepx])/ ctx->geometry.half_len[i];
           break;
           
         case 6:
-          zint( ctx, zlr[istepx]* ctx->geometry.wlam, ctx->geometry.bi[i], &zt );
+          zint( ctx, zlr[istepx]* ctx->geometry.wavelength, ctx->geometry.radius[i], &zt );
           
       } /* switch( jump ) */
       
@@ -958,7 +958,7 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
   pp=0.;
   ix=i-1;
   
-  jcox= ctx->geometry.icon1[ix];
+  jcox= ctx->geometry.seg_end1_conn[ix];
   if( jcox > PCHCON) jcox= i;
   
   jend=-1;
@@ -970,7 +970,7 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
   {
     if( jcox != 0 )
     {
-      if(++sbf_hops > ctx->geometry.n) {
+      if(++sbf_hops > ctx->geometry.num_segs) {
         int other_seg = (jcox < 0) ? -jcox : jcox;
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg),
@@ -991,7 +991,7 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
       jcoxx = jcox-1;
       
       jsno++;
-      d= PI* ctx->geometry.si[jcoxx];
+      d= PI* ctx->geometry.half_len[jcoxx];
       sdh= sin( d);
       cdh= cos( d);
       sd=2.* sdh* cdh;
@@ -1004,7 +1004,7 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
       else
         omc=1.- cdh* cdh+ sdh* sdh;
       
-      aj=1./( log(1./( PI* ctx->geometry.bi[jcoxx]))-.577215664);
+      aj=1./( log(1./( PI* ctx->geometry.radius[jcoxx]))-.577215664);
       pp -= omc/ sd* aj;
       
       if( jcox == is)
@@ -1018,9 +1018,9 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
       if( jcox != i )
       {
         if( jend != 1)
-          jcox= ctx->geometry.icon1[jcoxx];
+          jcox= ctx->geometry.seg_end1_conn[jcoxx];
         else
-          jcox= ctx->geometry.icon2[jcoxx];
+          jcox= ctx->geometry.seg_end2_conn[jcoxx];
         
         if( abs(jcox) != i )
         {
@@ -1050,7 +1050,7 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
     pp=0.;
     njun1= jsno;
     
-    jcox= ctx->geometry.icon2[ix];
+    jcox= ctx->geometry.seg_end2_conn[ix];
     if( jcox > PCHCON) jcox= i;
     
     jend=1;
@@ -1062,7 +1062,7 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
   while( jcox != 0 );
   
   njun2= jsno- njun1;
-  d= PI* ctx->geometry.si[ix];
+  d= PI* ctx->geometry.half_len[ix];
   sdh= sin( d);
   cdh= cos( d);
   sd=2.* sdh* cdh;
@@ -1076,7 +1076,7 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
   else
     omc=1.- cd;
   
-  ap=1./( log(1./( PI* ctx->geometry.bi[ix])) -.577215664);
+  ap=1./( log(1./( PI* ctx->geometry.radius[ix])) -.577215664);
   aj= ap;
   
   if( njun1 == 0)
@@ -1084,14 +1084,14 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
     if( njun2 == 0)
     {
       *aa =-1.;
-      qp= PI* ctx->geometry.bi[ix];
+      qp= PI* ctx->geometry.radius[ix];
       xxi= qp* qp;
       xxi= qp*(1.-.5* xxi)/(1.- xxi);
       *cc=1./( cdh- xxi* sdh);
       return 0;
     }
     
-    qp= PI* ctx->geometry.bi[ix];
+    qp= PI* ctx->geometry.radius[ix];
     xxi= qp* qp;
     xxi= qp*(1.-.5* xxi)/(1.- xxi);
     qp=-( omc+ xxi* sd)/( sd*( ap+ xxi* pp)+ cd*( xxi* ap- pp));
@@ -1115,7 +1115,7 @@ int sbf(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
   
   if( njun2 == 0)
   {
-    qm= PI* ctx->geometry.bi[ix];
+    qm= PI* ctx->geometry.radius[ix];
     xxi= qm* qm;
     xxi= qm*(1.-.5* xxi)/(1.- xxi);
     qm=( omc+ xxi* sd)/( sd*( aj- xxi* pm)+ cd*( pm+ xxi* aj));
@@ -1180,7 +1180,7 @@ int tbf(nec_context_t *ctx, int i, int icap )
   ctx->segj.num_junction_segs=0;
   pp=0.;
   ix = i-1;
-  jcox= ctx->geometry.icon1[ix];
+  jcox= ctx->geometry.seg_end1_conn[ix];
   
   if( jcox > PCHCON) jcox= i;
   
@@ -1202,7 +1202,7 @@ int tbf(nec_context_t *ctx, int i, int icap )
       ctx->segj.num_junction_segs++;
       jsnox = ctx->segj.num_junction_segs-1;
       ctx->segj.junction_segs[jsnox]= jcox;
-      d= PI* ctx->geometry.si[jcoxx];
+      d= PI* ctx->geometry.half_len[jcoxx];
       sdh= sin( d);
       cdh= cos( d);
       sd=2.* sdh* cdh;
@@ -1215,7 +1215,7 @@ int tbf(nec_context_t *ctx, int i, int icap )
       else
         omc=1.- cdh* cdh+ sdh* sdh;
       
-      aj=1./( log(1./( PI* ctx->geometry.bi[jcoxx]))-.577215664);
+      aj=1./( log(1./( PI* ctx->geometry.radius[jcoxx]))-.577215664);
       pp= pp- omc/ sd* aj;
       ctx->segj.coeff_const[jsnox]= aj/ sd* sig;
       ctx->segj.coeff_sine[jsnox]= aj/(2.* cdh);
@@ -1224,9 +1224,9 @@ int tbf(nec_context_t *ctx, int i, int icap )
       if( jcox != i)
       {
         if( jend == 1)
-          jcox= ctx->geometry.icon2[jcoxx];
+          jcox= ctx->geometry.seg_end2_conn[jcoxx];
         else
-          jcox= ctx->geometry.icon1[jcoxx];
+          jcox= ctx->geometry.seg_end1_conn[jcoxx];
         
         if( abs(jcox) != i )
         {
@@ -1255,7 +1255,7 @@ int tbf(nec_context_t *ctx, int i, int icap )
     pp=0.;
     njun1= ctx->segj.num_junction_segs;
     
-    jcox= ctx->geometry.icon2[ix];
+    jcox= ctx->geometry.seg_end2_conn[ix];
     if( jcox > PCHCON) jcox= i;
     
     jend=1;
@@ -1268,7 +1268,7 @@ int tbf(nec_context_t *ctx, int i, int icap )
   njun2= ctx->segj.num_junction_segs- njun1;
   jsnop= ctx->segj.num_junction_segs;
   ctx->segj.junction_segs[jsnop]= i;
-  d= PI* ctx->geometry.si[ix];
+  d= PI* ctx->geometry.half_len[ix];
   sdh= sin( d);
   cdh= cos( d);
   sd=2.* sdh* cdh;
@@ -1282,7 +1282,7 @@ int tbf(nec_context_t *ctx, int i, int icap )
   else
     omc=1.- cd;
   
-  ap=1./( log(1./( PI* ctx->geometry.bi[ix]))-.577215664);
+  ap=1./( log(1./( PI* ctx->geometry.radius[ix]))-.577215664);
   aj= ap;
   
   if( njun1 == 0)
@@ -1295,7 +1295,7 @@ int tbf(nec_context_t *ctx, int i, int icap )
         xxi=0.;
       else
       {
-        qp= PI* ctx->geometry.bi[ix];
+        qp= PI* ctx->geometry.radius[ix];
         xxi= qp* qp;
         xxi= qp*(1.-.5* xxi)/(1.- xxi);
       }
@@ -1311,7 +1311,7 @@ int tbf(nec_context_t *ctx, int i, int icap )
       xxi=0.;
     else
     {
-      qp= PI* ctx->geometry.bi[ix];
+      qp= PI* ctx->geometry.radius[ix];
       xxi= qp* qp;
       xxi= qp*(1.-.5* xxi)/(1.- xxi);
     }
@@ -1340,7 +1340,7 @@ int tbf(nec_context_t *ctx, int i, int icap )
       xxi=0.;
     else
     {
-      qm= PI* ctx->geometry.bi[ix];
+      qm= PI* ctx->geometry.radius[ix];
       xxi= qm* qm;
       xxi= qm*(1.-.5* xxi)/(1.- xxi);
     }
@@ -1398,7 +1398,7 @@ int trio(nec_context_t *ctx, int j )
   
   ctx->segj.num_junction_segs=0;
   jx = j-1;
-  jcox= ctx->geometry.icon1[jx];
+  jcox= ctx->geometry.seg_end1_conn[jx];
   
   if( jcox <= PCHCON)
   {
@@ -1408,7 +1408,7 @@ int trio(nec_context_t *ctx, int j )
   
   if( (jcox == 0) || (jcox > PCHCON) )
   {
-    jcox= ctx->geometry.icon2[jx];
+    jcox= ctx->geometry.seg_end2_conn[jx];
     
     if( jcox <= PCHCON)
     {
@@ -1475,9 +1475,9 @@ int trio(nec_context_t *ctx, int j )
       ctx->segj.junction_segs[jsnox]= jcox;
       
       if( jend != 1)
-        jcox= ctx->geometry.icon1[jcoxx];
+        jcox= ctx->geometry.seg_end1_conn[jcoxx];
       else
-        jcox= ctx->geometry.icon2[jcoxx];
+        jcox= ctx->geometry.seg_end2_conn[jcoxx];
       
       if( jcox == 0 )
       {
@@ -1495,7 +1495,7 @@ int trio(nec_context_t *ctx, int j )
     if( iend == 1)
       break;
     
-    jcox= ctx->geometry.icon2[jx];
+    jcox= ctx->geometry.seg_end2_conn[jx];
     
     if( jcox > PCHCON ) break;
     

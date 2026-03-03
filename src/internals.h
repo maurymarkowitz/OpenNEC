@@ -63,41 +63,41 @@ typedef struct
 
 /** common  /geometry/ (geometry data)
  */
-typedef struct geometry_t
+typedef struct geometry_t /* Formerly: Fortran /DATA/ → nec2c: data_t */
 {
 	int
-		n,		      	// Number of wire segments in total
-		np,		      	// Number of wire segments in symmetry cell
-		m,		      	// Number of surface patches
-		mp,		      	// Number of surface patches in symmetry cell
-		npm,	      	// = n+m
-		np2m,	      	// = n+2m
-		np3m,	      	// = n+3m
-		ipsym,	    	// Symmetry flag
-		*icon1,     	// Segments connections on end 1
-		*icon2,	    	// Segments connections on end 2
-		*tag_nums,		// Segment's tag number, which may be zero
-    	*card_nums; 	// which card number generated this bit, never zero
+		num_segs,         /* n — Fortran N: total wire segment count */
+		num_segs_sym,     /* np — Fortran NP: segments in symmetry cell */
+		num_patches,      /* m — Fortran M: surface patch count */
+		num_patches_sym,  /* mp — Fortran MP: patches in symmetry cell */
+		num_segs_and_patches, /* npm — N+M */
+		num_segs_2xpatches,   /* np2m — N+2M */
+		num_segs_3xpatches,   /* np3m — N+3M */
+		symmetry_flag,    /* ipsym — Fortran IPSYM: symmetry flag (0/1/2/3/negative) */
+		*seg_end1_conn,   /* icon1 — Fortran ICON1: segment end-1 connection index */
+		*seg_end2_conn,   /* icon2 — Fortran ICON2: segment end-2 connection index */
+		*tag_nums,        /* Fortran ITAG: segment tag numbers */
+    	*card_nums;       /* OpenNEC: source card line numbers */
   
 	double
     	// Wire segment data
-    	*x1, *y1, *z1,	// End 1 coordinates of wire segments
-		*x2, *y2, *z2,	// End 2 coordinates of wire segments
-		*x, *y, *z,		// Coordinates of segment centers
-		*si, *bi,		// Length and radius of segments
-		*cab,			// cos(a)*cos(b)
-		*sab,			// cos(a)*sin(b)
-		*salp,			// Z component - sin(a)
+    	*end1_x, *end1_y, *end1_z, /* x1/y1/z1 — Fortran X/Y/Z (pre-CABC): seg end-1 coords */
+		*end2_x, *end2_y, *end2_z, /* x2/y2/z2 — SI/ALP/BET (EQUIV): seg end-2 coords */
+		*x_center, *y_center, *z_center, /* x/y/z — Fortran X/Y/Z: seg center coords (wavelengths) */
+		*half_len,   /* si — Fortran SI: segment half-length (wavelengths) */
+		*radius,     /* bi — Fortran BI: segment radius (wavelengths) */
+		*dir_cos_x,  /* cab — Fortran CAB: cos(α)·cos(β) direction cosine */
+		*dir_cos_y,  /* sab — Fortran SAB: cos(α)·sin(β) direction cosine */
+		*dir_cos_z,  /* salp — Fortran SALP: sin(α) direction cosine */
 
     	// Surface patch data
-		*px, *py, *pz,		// Coordinates of patch center
-		*t1x, *t1y, *t1z,	// Coordinates of t1 vector
-		*t2x, *t2y, *t2z,	// Coordinates of t2 vector
-		*pbi,				// Patch surface area
-		*psalp,				// Z component - sin(a)
+		*patch_x_center, *patch_y_center, *patch_z_center, /* px/py/pz — patch center coords */
+		*patch_t1x, *patch_t1y, *patch_t1z, /* t1x/t1y/t1z — patch tangent vector T1 */
+		*patch_t2x, *patch_t2y, *patch_t2z, /* t2x/t2y/t2z — patch tangent vector T2 */
+		*patch_area,      /* pbi — Fortran BI (patch EQUIV): patch area (wavelengths²) */
+		*patch_normal_z,  /* psalp — Fortran SALP (patch EQUIV): patch normal direction cosine */
 
-    /* Wavelength in meters */
-    wlam;
+    	wavelength; /* wlam — Fortran WLAM: wavelength in meters */
   
   // list of errors added while processing this geometry
   errors_list_t errors;

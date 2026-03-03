@@ -61,7 +61,7 @@ void ffld(nec_context_t *restrict ctx, double thet, double phi,
   roy= thz* phx;
 
   jump = false;
-  if( ctx->geometry.n != 0)
+  if( ctx->geometry.num_segs != 0)
   {
 	/* loop for structure image if any */
 	/* calculation of reflection coeffecients */
@@ -112,10 +112,10 @@ void ffld(nec_context_t *restrict ctx, double thet, double phi,
 	  ciz=CPLX_00;
 
 	  /* loop over structure segments */
-	  for( i = 0; i < ctx->geometry.n; i++ )
+	  for( i = 0; i < ctx->geometry.num_segs; i++ )
 	  {
-		omega=-( rox* ctx->geometry.cab[i]+ roy* ctx->geometry.sab[i]+ roz* ctx->geometry.salp[i]);
-		el= PI* ctx->geometry.si[i];
+		omega=-( rox* ctx->geometry.dir_cos_x[i]+ roy* ctx->geometry.dir_cos_y[i]+ roz* ctx->geometry.dir_cos_z[i]);
+		el= PI* ctx->geometry.half_len[i];
 		sill= omega* el;
 		top= el+ sill;
 		bot= el- sill;
@@ -139,15 +139,15 @@ void ffld(nec_context_t *restrict ctx, double thet, double phi,
 		c= el*( boo+ too);
 		rr= a* ctx->crnt.a_real[i]+ b* ctx->crnt.b_imag[i]+ c* ctx->crnt.c_real[i];
 		ri= a* ctx->crnt.a_imag[i]- b* ctx->crnt.b_real[i]+ c* ctx->crnt.c_imag[i];
-		arg= TP*( ctx->geometry.x[i]* rox+ ctx->geometry.y[i]* roy+ ctx->geometry.z[i]* roz);
+		arg= TP*( ctx->geometry.x_center[i]* rox+ ctx->geometry.y_center[i]* roy+ ctx->geometry.z_center[i]* roz);
 
 		if( (k != 1) || (ctx->gnd.far_field_type < 2) )
 		{
 		  /* summation for far field integral */
 		  exa= cmplx( cos( arg), sin( arg))* cmplx( rr, ri);
-		  cix= cix+ exa* ctx->geometry.cab[i];
-		  ciy= ciy+ exa* ctx->geometry.sab[i];
-		  ciz= ciz+ exa* ctx->geometry.salp[i];
+		  cix= cix+ exa* ctx->geometry.dir_cos_x[i];
+		  ciy= ciy+ exa* ctx->geometry.dir_cos_y[i];
+		  ciz= ciz+ exa* ctx->geometry.dir_cos_z[i];
 		  continue;
 		}
 
@@ -155,9 +155,9 @@ void ffld(nec_context_t *restrict ctx, double thet, double phi,
 		/* in cliff and ground screen problems */
 
 		/* specular point distance */
-		dr= ctx->geometry.z[i]* tthet;
+		dr= ctx->geometry.z_center[i]* tthet;
 
-		d= dr* phy+ ctx->geometry.x[i];
+		d= dr* phy+ ctx->geometry.x_center[i];
 		if( ctx->gnd.far_field_type == 2)
 		{
 		  if(( ctx->gnd.cliff_dist- d) > 0.)
@@ -174,7 +174,7 @@ void ffld(nec_context_t *restrict ctx, double thet, double phi,
 		} /* if( gnd.far_field_type == 2) */
 		else
 		{
-		  d= sqrt( d*d + (ctx->geometry.y[i]-dr*phx)*(ctx->geometry.y[i]-dr*phx) );
+		  d= sqrt( d*d + (ctx->geometry.y_center[i]-dr*phx)*(ctx->geometry.y_center[i]-dr*phx) );
 		  if( ctx->gnd.far_field_type == 3)
 		  {
 			if(( ctx->gnd.cliff_dist- d) > 0.)
@@ -211,7 +211,7 @@ void ffld(nec_context_t *restrict ctx, double thet, double phi,
 			  else
 			  {
 				if( ctx->gnd.far_field_type == 5)
-				  d= dr* phy+ ctx->geometry.x[i];
+				  d= dr* phy+ ctx->geometry.x_center[i];
 
 				if(( ctx->gnd.cliff_dist- d) > 0.)
 				{
@@ -236,9 +236,9 @@ void ffld(nec_context_t *restrict ctx, double thet, double phi,
 		/* contribution of each image segment modified by */
 		/* reflection coef, for cliff and ground screen problems */
 		exa= cmplx( cos( arg), sin( arg))* cmplx( rr, ri);
-		tix= exa* ctx->geometry.cab[i];
-		tiy= exa* ctx->geometry.sab[i];
-		tiz= exa* ctx->geometry.salp[i];
+		tix= exa* ctx->geometry.dir_cos_x[i];
+		tiy= exa* ctx->geometry.dir_cos_y[i];
+		tiz= exa* ctx->geometry.dir_cos_z[i];
 		cdp=( tix* phx+ tiy* phy)*( rrh- rrv);
 		cix= cix+ tix* rrv+ cdp* phx;
 		ciy= ciy+ tiy* rrv+ cdp* phy;
@@ -266,7 +266,7 @@ void ffld(nec_context_t *restrict ctx, double thet, double phi,
 
 	} /* for( k=0; k < gnd.has_ground; k++ ) */
 
-	if( ctx->geometry.m > 0)
+	if( ctx->geometry.num_patches > 0)
 	  jump = true;
 	else
 	{
@@ -291,7 +291,7 @@ void ffld(nec_context_t *restrict ctx, double thet, double phi,
   {
 	rfl= -rfl;
 	rrz= roz* rfl;
-	fflds( ctx, rox, roy, rrz, &ctx->crnt.surface_cur[ctx->geometry.n], &gx, &gy, &gz);
+	fflds( ctx, rox, roy, rrz, &ctx->crnt.surface_cur[ctx->geometry.num_segs], &gx, &gy, &gz);
 
 	if( ip != 1 )
 	{
@@ -353,17 +353,17 @@ void fflds(nec_context_t *restrict ctx, double rox, double roy, double roz,
   /* complex double gx, gy, gz; */
   complex double ct;
 
-  double *xs = ctx->geometry.px;
-  double *ys = ctx->geometry.py;
-  double *zs = ctx->geometry.pz;
-  double *s = ctx->geometry.pbi;
+  double *xs = ctx->geometry.patch_x_center;
+  double *ys = ctx->geometry.patch_y_center;
+  double *zs = ctx->geometry.patch_z_center;
+  double *s = ctx->geometry.patch_area;
 
   *ex=CPLX_00;
   *ey=CPLX_00;
   *ez=CPLX_00;
 
   i= -1;
-  for( j = 0; j < ctx->geometry.m; j++ )
+  for( j = 0; j < ctx->geometry.num_patches; j++ )
   {
 	i++;
 	arg= TP*( rox* xs[i]+ roy* ys[i]+ roz* zs[i]);
@@ -440,9 +440,9 @@ void rdpat(nec_context_t *ctx)
     else if ((ctx->gnd.far_field_type == 3) || (ctx->gnd.far_field_type == 6))
       strcpy(ctx->rpat.ground_cliff_type, "CIRCULAR");
     
-    ctx->gnd.cliff_dist = ctx->fpat.cliff_dist / ctx->geometry.wlam;
-    ctx->gnd.cliff_height = ctx->fpat.cliff_height / ctx->geometry.wlam;
-    ctx->gnd.impedance_ratio2 = csqrt(1./ cmplx(ctx->fpat.epsr2, -ctx->fpat.sigma2 * ctx->geometry.wlam * 59.96));
+    ctx->gnd.cliff_dist = ctx->fpat.cliff_dist / ctx->geometry.wavelength;
+    ctx->gnd.cliff_height = ctx->fpat.cliff_height / ctx->geometry.wavelength;
+    ctx->gnd.impedance_ratio2 = csqrt(1./ cmplx(ctx->fpat.epsr2, -ctx->fpat.sigma2 * ctx->geometry.wavelength * 59.96));
   }
   
   /* Calculate range factor if specified */
@@ -450,7 +450,7 @@ void rdpat(nec_context_t *ctx)
   ctx->rpat.exra = 0.0;
   if (ctx->fpat.range >= 1.0e-20) {
     ctx->rpat.exrm = 1.0 / ctx->fpat.range;
-    double exra_tmp = ctx->fpat.range / ctx->geometry.wlam;
+    double exra_tmp = ctx->fpat.range / ctx->geometry.wavelength;
     ctx->rpat.exra = -360.0 * (exra_tmp - floor(exra_tmp));
   }
   
@@ -463,15 +463,15 @@ void rdpat(nec_context_t *ctx)
   
   /* Calculate gain factors */
   if ((ctx->fpat.excitation_type == 0) || (ctx->fpat.excitation_type == 5)) {
-    gcop = ctx->geometry.wlam * ctx->geometry.wlam * 2.0 * PI / (376.73 * ctx->fpat.power_in);
+    gcop = ctx->geometry.wavelength * ctx->geometry.wavelength * 2.0 * PI / (376.73 * ctx->fpat.power_in);
     prad = ctx->fpat.power_in - ctx->fpat.ohmic_loss - ctx->fpat.network_loss;
     gcon = gcop;
     if (ctx->fpat.gain_type != 0)
       gcon = gcon * ctx->fpat.power_in / prad;
   }
   else if (ctx->fpat.excitation_type == 4) {
-    ctx->fpat.power_in = 394.51 * ctx->fpat.exc_param6 * ctx->fpat.exc_param6 * ctx->geometry.wlam * ctx->geometry.wlam;
-    gcop = ctx->geometry.wlam * ctx->geometry.wlam * 2.0 * PI / (376.73 * ctx->fpat.power_in);
+    ctx->fpat.power_in = 394.51 * ctx->fpat.exc_param6 * ctx->fpat.exc_param6 * ctx->geometry.wavelength * ctx->geometry.wavelength;
+    gcop = ctx->geometry.wavelength * ctx->geometry.wavelength * 2.0 * PI / (376.73 * ctx->fpat.power_in);
     prad = ctx->fpat.power_in - ctx->fpat.ohmic_loss - ctx->fpat.network_loss;
     gcon = gcop;
     if (ctx->fpat.gain_type != 0)
@@ -521,7 +521,7 @@ void rdpat(nec_context_t *ctx)
         pt->erda = 0.0;
       }
       else {
-        gfld(ctx, ctx->fpat.range / ctx->geometry.wlam, pha, thet / ctx->geometry.wlam,
+        gfld(ctx, ctx->fpat.range / ctx->geometry.wavelength, pha, thet / ctx->geometry.wavelength,
              &eth, &eph, &erd, ctx->gnd.impedance_ratio, ctx->gnd.has_ground);
         pt->erdm = cabs(erd);
         pt->erda = cang(ctx, erd);
@@ -626,8 +626,8 @@ void rdpat(nec_context_t *ctx)
         }
         
         /* Scale and adjust E-field values for output */
-        ethm = ethm * ctx->geometry.wlam;
-        ephm = ephm * ctx->geometry.wlam;
+        ethm = ethm * ctx->geometry.wavelength;
+        ephm = ephm * ctx->geometry.wavelength;
         
         if (ctx->fpat.range >= 1.0e-20) {
           ethm = ethm * ctx->rpat.exrm;

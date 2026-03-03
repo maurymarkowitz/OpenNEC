@@ -52,7 +52,7 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
   
   assert(s >= 0. && "INTERNAL: rom2() called with b < a; segment length is negative (geometry corruption)");
   
-  ep= s/(1.e4* ctx->geometry.npm);
+  ep= s/(1.e4* ctx->geometry.num_segs_and_patches);
   zend= ze- ep;
   
   for( i = 0; i < n; i++ )
@@ -158,7 +158,7 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
     if( tr > rx)
     {
       nt=0;
-      if( ns < ctx->geometry.npm )
+      if( ns < ctx->geometry.num_segs_and_patches )
       {
         ns= ns*2;
         dz= s/ ns;

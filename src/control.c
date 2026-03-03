@@ -39,9 +39,9 @@ static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card, int
  */
 static int count_tag_segments(const nec_context_t *ctx, int tag)
 {
-    if (tag == 0) return ctx->geometry.n;
+    if (tag == 0) return ctx->geometry.num_segs;
     int count = 0;
-    for (int i = 0; i < ctx->geometry.n; i++) {
+    for (int i = 0; i < ctx->geometry.num_segs; i++) {
         if (ctx->geometry.tag_nums[i] == tag) count++;
     }
     return count;
@@ -108,7 +108,7 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
     // Step 1: Calculate geometry.
     // Skip if already populated — nec_estimate_time() may have done this as a
     // side effect (e.g. a GUI calling the estimator before launching the run).
-    if (ctx->geometry.n == 0 && ctx->geometry.m == 0) {
+    if (ctx->geometry.num_segs == 0 && ctx->geometry.num_patches == 0) {
         calculate_geometry(ctx, deck, &geometry_errors, &ctx->outputs);
 
         // Check for geometry errors
@@ -129,8 +129,8 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
     // nec_estimate_time() reuses the geometry already computed above (no re-calc).
     {
         double T = nec_estimate_time(ctx, deck);
-        int n_total = ctx->geometry.n;
-        int n_cell  = ctx->geometry.np > 0 ? ctx->geometry.np : n_total;
+        int n_total = ctx->geometry.num_segs;
+        int n_cell  = ctx->geometry.num_segs_sym > 0 ? ctx->geometry.num_segs_sym : n_total;
         int m_sym   = (n_cell > 0) ? n_total / n_cell : 1;
         if (T >= 1.0e11) {
             char cmsg[256];
@@ -343,16 +343,16 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
 static int nec_calculation_defaults(nec_context_t *ctx)
 {
     // validate that geometry has been calculated
-    if (ctx->geometry.np <= 0 && ctx->geometry.mp <= 0) {
+    if (ctx->geometry.num_segs_sym <= 0 && ctx->geometry.num_patches_sym <= 0) {
         return -1;
     }
     
     // set geometry-dependent matrix parameters
-    ctx->netcx.num_eq_sym = ctx->geometry.np + 2 * ctx->geometry.mp;
+    ctx->netcx.num_eq_sym = ctx->geometry.num_segs_sym + 2 * ctx->geometry.num_patches_sym;
     
     // matrix parameters (from oldmain.c lines 289-292)
     if (ctx->matpar.core_used == 0) {
-        ctx->netcx.num_eq = ctx->geometry.n + 2 * ctx->geometry.m;
+        ctx->netcx.num_eq = ctx->geometry.num_segs + 2 * ctx->geometry.num_patches;
         ctx->netcx.num_eq_ngf = 0;
     }
     
@@ -1005,7 +1005,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         return -1;
     }
     
-    if (ctx->geometry.n > 0 && (ctx->geometry.icon1 == NULL || ctx->geometry.icon2 == NULL)) {
+    if (ctx->geometry.num_segs > 0 && (ctx->geometry.seg_end1_conn == NULL || ctx->geometry.seg_end2_conn == NULL)) {
         add_error(ctx, &ctx->errors, "Geometry connection data not allocated", FATAL);
         return -1;
     }
@@ -1025,11 +1025,11 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
     mem_alloc(ctx, (void **)&ctx->smat.mode_matrix, mreq);
     
     // Allocate current array
-    mreq = (size_t)ctx->geometry.np3m * sizeof(complex double);
+    mreq = (size_t)ctx->geometry.num_segs_3xpatches * sizeof(complex double);
     mem_alloc(ctx, (void **)&ctx->crnt.surface_cur, mreq);
     
     // Allocate current basis function coefficient arrays
-    mreq = (size_t)ctx->geometry.npm * sizeof(double);
+    mreq = (size_t)ctx->geometry.num_segs_and_patches * sizeof(double);
     mem_alloc(ctx, (void **)&ctx->crnt.a_real, mreq);
     mem_alloc(ctx, (void **)&ctx->crnt.a_imag, mreq);
     mem_alloc(ctx, (void **)&ctx->crnt.b_real, mreq);
@@ -1041,8 +1041,8 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
     double *xtemp = NULL, *ytemp = NULL, *ztemp = NULL;
     double *sitemp = NULL, *bitemp = NULL;
     
-    if (ctx->geometry.n > 0 || ctx->geometry.m > 0) {
-        mreq = (ctx->geometry.n + ctx->geometry.m) * sizeof(double);
+    if (ctx->geometry.num_segs > 0 || ctx->geometry.num_patches > 0) {
+        mreq = (ctx->geometry.num_segs + ctx->geometry.num_patches) * sizeof(double);
         mem_alloc(ctx, (void **)&xtemp, mreq);
         mem_alloc(ctx, (void **)&ytemp, mreq);
         mem_alloc(ctx, (void **)&ztemp, mreq);
@@ -1050,29 +1050,29 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         mem_alloc(ctx, (void **)&bitemp, mreq);
         
         // Save wire geometry
-        for (int i = 0; i < ctx->geometry.n; i++) {
-            xtemp[i] = ctx->geometry.x[i];
-            ytemp[i] = ctx->geometry.y[i];
-            ztemp[i] = ctx->geometry.z[i];
-            sitemp[i] = ctx->geometry.si[i];
-            bitemp[i] = ctx->geometry.bi[i];
+        for (int i = 0; i < ctx->geometry.num_segs; i++) {
+            xtemp[i] = ctx->geometry.x_center[i];
+            ytemp[i] = ctx->geometry.y_center[i];
+            ztemp[i] = ctx->geometry.z_center[i];
+            sitemp[i] = ctx->geometry.half_len[i];
+            bitemp[i] = ctx->geometry.radius[i];
         }
         
         // Save patch geometry (patch-only decks have n==0 but m>0)
-        if (ctx->geometry.m > 0) {
-            for (int i = 0; i < ctx->geometry.m; i++) {
-                int j = i + ctx->geometry.n;
-                xtemp[j] = ctx->geometry.px[i];
-                ytemp[j] = ctx->geometry.py[i];
-                ztemp[j] = ctx->geometry.pz[i];
-                bitemp[j] = ctx->geometry.pbi[i];
+        if (ctx->geometry.num_patches > 0) {
+            for (int i = 0; i < ctx->geometry.num_patches; i++) {
+                int j = i + ctx->geometry.num_segs;
+                xtemp[j] = ctx->geometry.patch_x_center[i];
+                ytemp[j] = ctx->geometry.patch_y_center[i];
+                ztemp[j] = ctx->geometry.patch_z_center[i];
+                bitemp[j] = ctx->geometry.patch_area[i];
             }
         }
     }
     
     // Perform fblock matrix setup if needed
     if (ctx->matpar.core_used == 0) {
-        fblock(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, iresrv, ctx->geometry.ipsym);
+        fblock(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, iresrv, ctx->geometry.symmetry_flag);
     }
     
     // Frequency loop
@@ -1088,27 +1088,27 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         
         // Calculate wavelength and frequency ratio
         double fr = ctx->save.freq_mhz / CVEL;
-        ctx->geometry.wlam = CVEL / ctx->save.freq_mhz;
+        ctx->geometry.wavelength = CVEL / ctx->save.freq_mhz;
         
         // Scale geometry to current frequency
-        if (ctx->geometry.n > 0) {
-            for (int i = 0; i < ctx->geometry.n; i++) {
-                ctx->geometry.x[i] = xtemp[i] * fr;
-                ctx->geometry.y[i] = ytemp[i] * fr;
-                ctx->geometry.z[i] = ztemp[i] * fr;
-                ctx->geometry.si[i] = sitemp[i] * fr;
-                ctx->geometry.bi[i] = bitemp[i] * fr;
+        if (ctx->geometry.num_segs > 0) {
+            for (int i = 0; i < ctx->geometry.num_segs; i++) {
+                ctx->geometry.x_center[i] = xtemp[i] * fr;
+                ctx->geometry.y_center[i] = ytemp[i] * fr;
+                ctx->geometry.z_center[i] = ztemp[i] * fr;
+                ctx->geometry.half_len[i] = sitemp[i] * fr;
+                ctx->geometry.radius[i] = bitemp[i] * fr;
             }
         }
         
-        if (ctx->geometry.m > 0) {
+        if (ctx->geometry.num_patches > 0) {
             double fr2 = fr * fr;
-            for (int i = 0; i < ctx->geometry.m; i++) {
-                int j = i + ctx->geometry.n;
-                ctx->geometry.px[i] = xtemp[j] * fr;
-                ctx->geometry.py[i] = ytemp[j] * fr;
-                ctx->geometry.pz[i] = ztemp[j] * fr;
-                ctx->geometry.pbi[i] = bitemp[j] * fr2;
+            for (int i = 0; i < ctx->geometry.num_patches; i++) {
+                int j = i + ctx->geometry.num_segs;
+                ctx->geometry.patch_x_center[i] = xtemp[j] * fr;
+                ctx->geometry.patch_y_center[i] = ytemp[j] * fr;
+                ctx->geometry.patch_z_center[i] = ztemp[j] * fr;
+                ctx->geometry.patch_area[i] = bitemp[j] * fr2;
             }
         }
         
@@ -1133,19 +1133,19 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
             if (ctx->gnd.is_perfect != 1) {
                 double sig = ctx->save.ground_sigma;
                 if (sig < 0.0) {
-                    sig = -sig / (59.96 * ctx->geometry.wlam);
+                    sig = -sig / (59.96 * ctx->geometry.wavelength);
                     ctx->save.ground_sigma = sig;
                 }
                 
-                complex double epsc = ctx->save.ground_epsr - I * sig * ctx->geometry.wlam * 59.96;
+                complex double epsc = ctx->save.ground_epsr - I * sig * ctx->geometry.wavelength * 59.96;
                 ctx->gnd.impedance_ratio = 1.0 / csqrt(epsc);
                 ctx->gwav.impedance_ratio = ctx->gnd.impedance_ratio;
                 ctx->gwav.impedance_ratio_sq = ctx->gwav.impedance_ratio * ctx->gwav.impedance_ratio;
                 
                 // Handle radial wire ground screen
                 if (ctx->gnd.num_radials != 0) {
-                    ctx->gnd.screen_wire_len = ctx->save.screen_wire_len / ctx->geometry.wlam;
-                    ctx->gnd.screen_wire_radius = ctx->save.screen_wire_radius / ctx->geometry.wlam;
+                    ctx->gnd.screen_wire_len = ctx->save.screen_wire_len / ctx->geometry.wavelength;
+                    ctx->gnd.screen_wire_radius = ctx->save.screen_wire_radius / ctx->geometry.wavelength;
                     ctx->gnd.screen_impedance = CPLX_01 * 2367.067 / (double)ctx->gnd.num_radials;
                     ctx->gnd.screen_inner_r = ctx->gnd.screen_wire_radius * (double)ctx->gnd.num_radials;
                 }
@@ -1217,21 +1217,21 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
             
             // Calculate power loss in structure
             ctx->fpat.ohmic_loss = 0.0;
-            if (ctx->geometry.n > 0) {
-                for (int i = 0; i < ctx->geometry.n; i++) {
-                    complex double curi = ctx->crnt.surface_cur[i] * ctx->geometry.wlam;
+            if (ctx->geometry.num_segs > 0) {
+                for (int i = 0; i < ctx->geometry.num_segs; i++) {
+                    complex double curi = ctx->crnt.surface_cur[i] * ctx->geometry.wavelength;
                     double cmag = cabs(curi);
                     
                     if (ctx->zload.num_loads > 0 && fabs(creal(ctx->zload.seg_impedance[i])) >= 1.e-20) {
                         ctx->fpat.ohmic_loss += 0.5 * cmag * cmag * 
-                                          creal(ctx->zload.seg_impedance[i]) * ctx->geometry.si[i];
+                                          creal(ctx->zload.seg_impedance[i]) * ctx->geometry.half_len[i];
                     }
                 }
             }
             
             // Handle coupling calculations if requested
             if (ctx->yparm.num_pairs > 0) {
-                couple(ctx, ctx->crnt.surface_cur, ctx->geometry.wlam);
+                couple(ctx, ctx->crnt.surface_cur, ctx->geometry.wavelength);
             }
             
             // Near field calculation if requested

@@ -40,17 +40,17 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
     if ((ctx->netcx.net_types[j] >= 2) && (ctx->netcx.y11_imag[j] <= 0.0)) {
       int seg1_idx = ctx->netcx.net_seg1[j] - 1;
       int seg2_idx = ctx->netcx.net_seg2[j] - 1;
-      double xx = ctx->geometry.x[seg2_idx] - ctx->geometry.x[seg1_idx];
-      double yy = ctx->geometry.y[seg2_idx] - ctx->geometry.y[seg1_idx];
-      double zz = ctx->geometry.z[seg2_idx] - ctx->geometry.z[seg1_idx];
-      ctx->netcx.y11_imag[j] = ctx->geometry.wlam * sqrt(xx*xx + yy*yy + zz*zz);
+      double xx = ctx->geometry.x_center[seg2_idx] - ctx->geometry.x_center[seg1_idx];
+      double yy = ctx->geometry.y_center[seg2_idx] - ctx->geometry.y_center[seg1_idx];
+      double zz = ctx->geometry.z_center[seg2_idx] - ctx->geometry.z_center[seg1_idx];
+      ctx->netcx.y11_imag[j] = ctx->geometry.wavelength * sqrt(xx*xx + yy*yy + zz*zz);
     }
   }
 
   /* Allocate network buffers */
   if( ctx->netcx.num_networks != 0 )
   {
-    mreq = (size_t)ctx->geometry.np3m;
+    mreq = (size_t)ctx->geometry.num_segs_3xpatches;
     mreq *= sizeof(complex double);
     mem_alloc(ctx, (void *)&rhs, mreq );
 
@@ -151,13 +151,13 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
         for( i = 0; i < irow1; i++ )
         {
           isc1= ipnt[i]-1;
-          asmx= ctx->geometry.si[isc1];
+          asmx= ctx->geometry.half_len[isc1];
 
           for( j = 0; j < neqt; j++ )
             rhs[j] = CPLX_00;
 
           rhs[isc1] = CPLX_10;
-          solves(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.np, ctx->geometry.n, ctx->geometry.mp, ctx->geometry.m);
+          solves(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
           cabc(ctx, rhs);
 
           for( j = 0; j < irow1; j++ )
@@ -239,7 +239,7 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
         }
         else
         {
-          y22r= TP* ctx->netcx.y11_imag[j]/ ctx->geometry.wlam;
+          y22r= TP* ctx->netcx.y11_imag[j]/ ctx->geometry.wavelength;
           y12r=0.;
           y12i=1./( ctx->netcx.y11_real[j]* sin( y22r));
           y11r= ctx->netcx.y12_real[j];
@@ -387,24 +387,24 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
         /* network short-circuit admittance matrix coefficients. */
         if( isc1 == -1)
         {
-          cmn[irow1+irow1*ndimn] -= cmplx( y11r, y11i)* ctx->geometry.si[nseg1-1];
-          cmn[irow1+irow2*ndimn] -= cmplx( y12r, y12i)* ctx->geometry.si[nseg1-1];
+          cmn[irow1+irow1*ndimn] -= cmplx( y11r, y11i)* ctx->geometry.half_len[nseg1-1];
+          cmn[irow1+irow2*ndimn] -= cmplx( y12r, y12i)* ctx->geometry.half_len[nseg1-1];
         }
         else
         {
-          rhnx[irow1] += cmplx( y11r, y11i)* ctx->vsorc.vsrc_voltages[isc1]/ctx->geometry.wlam;
-          rhnx[irow2] += cmplx( y12r, y12i)* ctx->vsorc.vsrc_voltages[isc1]/ctx->geometry.wlam;
+          rhnx[irow1] += cmplx( y11r, y11i)* ctx->vsorc.vsrc_voltages[isc1]/ctx->geometry.wavelength;
+          rhnx[irow2] += cmplx( y12r, y12i)* ctx->vsorc.vsrc_voltages[isc1]/ctx->geometry.wavelength;
         }
 
         if( isc2 == -1)
         {
-          cmn[irow2+irow2*ndimn] -= cmplx( y22r, y22i)* ctx->geometry.si[nseg2-1];
-          cmn[irow2+irow1*ndimn] -= cmplx( y12r, y12i)* ctx->geometry.si[nseg2-1];
+          cmn[irow2+irow2*ndimn] -= cmplx( y22r, y22i)* ctx->geometry.half_len[nseg2-1];
+          cmn[irow2+irow1*ndimn] -= cmplx( y12r, y12i)* ctx->geometry.half_len[nseg2-1];
         }
         else
         {
-          rhnx[irow1] += cmplx( y12r, y12i)* ctx->vsorc.vsrc_voltages[isc2]/ctx->geometry.wlam;
-          rhnx[irow2] += cmplx( y22r, y22i)* ctx->vsorc.vsrc_voltages[isc2]/ctx->geometry.wlam;
+          rhnx[irow1] += cmplx( y12r, y12i)* ctx->vsorc.vsrc_voltages[isc2]/ctx->geometry.wavelength;
+          rhnx[irow2] += cmplx( y22r, y22i)* ctx->vsorc.vsrc_voltages[isc2]/ctx->geometry.wavelength;
         }
 
       } /* for( j = 0; j < ctx->netcx.num_networks; j++ ) */
@@ -418,7 +418,7 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
 
         irow1= nteqa[i]-1;
         rhs[irow1]=CPLX_10;
-        solves(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.np, ctx->geometry.n, ctx->geometry.mp, ctx->geometry.m);
+        solves(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
         cabc(ctx, rhs);
 
         for( j = 0; j < nteq; j++ )
@@ -443,7 +443,7 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
     for( i = 0; i < neqt; i++ )
       rhs[i]= einc[i];
 
-    solves(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.np, ctx->geometry.n, ctx->geometry.mp, ctx->geometry.m);
+    solves(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
     cabc(ctx, rhs);
 
     for( i = 0; i < nteq; i++ )
@@ -463,7 +463,7 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
       einc[irow1] -= rhnt[i];
     }
 
-    solves(ctx, cm, ip, einc, ctx->netcx.num_eq, 1, ctx->geometry.np, ctx->geometry.n, ctx->geometry.mp, ctx->geometry.m);
+    solves(ctx, cm, ip, einc, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
     cabc(ctx, einc);
 
     /* Allocate arrays for network excitation data */
@@ -480,8 +480,8 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
     for( i = 0; i < nteq; i++ )
     {
       irow1= nteqa[i]-1;
-      vlt= rhnt[i]* ctx->geometry.si[irow1]* ctx->geometry.wlam;
-      cux= einc[irow1]* ctx->geometry.wlam;
+      vlt= rhnt[i]* ctx->geometry.half_len[irow1]* ctx->geometry.wavelength;
+      cux= einc[irow1]* ctx->geometry.wavelength;
       ymit= cux/ vlt;
       ctx->netcx.input_impedance= vlt/ cux;
       irow2= ctx->geometry.tag_nums[irow1];
@@ -504,7 +504,7 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
       {
         irow1= ntsca[i]-1;
         vlt= vsrc[i];
-        cux= einc[irow1]* ctx->geometry.wlam;
+        cux= einc[irow1]* ctx->geometry.wavelength;
         ymit= cux/ vlt;
         ctx->netcx.input_impedance= vlt/ cux;
         irow2= ctx->geometry.tag_nums[irow1];
@@ -529,7 +529,7 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
   else
   {
     /* solve for currents when no networks are present */
-    solves(ctx, cm, ip, einc, ctx->netcx.num_eq, 1, ctx->geometry.np, ctx->geometry.n, ctx->geometry.mp, ctx->geometry.m);
+    solves(ctx, cm, ip, einc, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
     cabc(ctx, einc);
     ntsc=0;
   }
@@ -559,7 +559,7 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
 
       if( ntsc == 0)
       {
-        cux= einc[isc1]* ctx->geometry.wlam;
+        cux= einc[isc1]* ctx->geometry.wavelength;
         irow1=0;
       }
       else
@@ -572,7 +572,7 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
         cux= rhnx[irow1];
         for( j = 0; j < nteq; j++ )
           cux -= cmn[j+irow1*ndimn]*rhnt[j];
-        cux=(einc[isc1]+ cux)* ctx->geometry.wlam;
+        cux=(einc[isc1]+ cux)* ctx->geometry.wavelength;
         irow1++;
 
       } /* if( ntsc == 0) */
@@ -608,8 +608,8 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
       cux= cmplx( ctx->crnt.a_real[isc1], ctx->crnt.a_imag[isc1]);
       ymit= cmplx( ctx->crnt.b_real[isc1], ctx->crnt.b_imag[isc1]);
       ctx->netcx.input_impedance= cmplx( ctx->crnt.c_real[isc1], ctx->crnt.c_imag[isc1]);
-      pwr= ctx->geometry.si[isc1]* TP*.5;
-      cux=( cux- ymit* sin( pwr)+ ctx->netcx.input_impedance* cos( pwr))* ctx->geometry.wlam;
+      pwr= ctx->geometry.half_len[isc1]* TP*.5;
+      cux=( cux- ymit* sin( pwr)+ ctx->netcx.input_impedance* cos( pwr))* ctx->geometry.wavelength;
       ymit= cux/ vlt;
       ctx->netcx.input_impedance= vlt/ cux;
       pwr=.5* creal( vlt* conj( cux));

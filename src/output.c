@@ -701,10 +701,10 @@ bool write_greens_binary(FILE *file, const nec_context_t *ctx,
   if (!file || !cm || neq <= 0)
     return false;
 
-  const int N = ctx->geometry.n;
-  const int NP = ctx->geometry.np; /* segs per symmetry copy (= N for no symmetry) */
-  const int M = ctx->geometry.m;
-  const int MP = ctx->geometry.mp;
+  const int N = ctx->geometry.num_segs;
+  const int NP = ctx->geometry.num_segs_sym; /* segs per symmetry copy (= N for no symmetry) */
+  const int M = ctx->geometry.num_patches;
+  const int MP = ctx->geometry.num_patches_sym;
 
   /* ---------- Record 1: header (88 bytes) ---------- */
   {
@@ -728,9 +728,9 @@ bool write_greens_binary(FILE *file, const nec_context_t *ctx,
     AP4(NP);
     AP4(M);
     AP4(MP);
-    AP8(ctx->geometry.wlam);
+    AP8(ctx->geometry.wavelength);
     AP8(ctx->save.freq_mhz);
-    AP4(ctx->geometry.ipsym);
+    AP4(ctx->geometry.symmetry_flag);
     AP4(ctx->gnd.has_ground);
     /* Write IPERF <= 1: OpenNEC does not write a patch-coefficient record
      * for finite-ground (iperf==2).  The reader will try to skip that record
@@ -762,20 +762,20 @@ bool write_greens_binary(FILE *file, const nec_context_t *ctx,
     int32_t n4 = (int32_t)(N * 4); /* bytes in one  int32[N] array */
 
     /* Rec 2: X[N], Y[N], Z[N] */
-    if (!fw3(file, ctx->geometry.x, n8,
-             ctx->geometry.y, n8,
-             ctx->geometry.z, n8))
+    if (!fw3(file, ctx->geometry.x_center, n8,
+             ctx->geometry.y_center, n8,
+             ctx->geometry.z_center, n8))
       return false;
 
     /* Rec 3: SI[N], BI[N], ALP[N]  (ALP = cab = x-direction cosine) */
-    if (!fw3(file, ctx->geometry.si, n8,
-             ctx->geometry.bi, n8,
-             ctx->geometry.cab, n8))
+    if (!fw3(file, ctx->geometry.half_len, n8,
+             ctx->geometry.radius, n8,
+             ctx->geometry.dir_cos_x, n8))
       return false;
 
     /* Rec 4: BET[N], SALP[N]  (BET = sab, SALP = salp) */
-    if (!fw2(file, ctx->geometry.sab, n8,
-             ctx->geometry.salp, n8))
+    if (!fw2(file, ctx->geometry.dir_cos_y, n8,
+             ctx->geometry.dir_cos_z, n8))
       return false;
 
     /* Rec 5: ICON1[N], ICON2[N] — OpenNEC stores as int; cast to int32_t */
@@ -784,9 +784,9 @@ bool write_greens_binary(FILE *file, const nec_context_t *ctx,
       if (!tmp)
         return false;
       for (int i = 0; i < N; i++)
-        tmp[i] = (int32_t)ctx->geometry.icon1[i];
+        tmp[i] = (int32_t)ctx->geometry.seg_end1_conn[i];
       for (int i = 0; i < N; i++)
-        tmp[N + i] = (int32_t)ctx->geometry.icon2[i];
+        tmp[N + i] = (int32_t)ctx->geometry.seg_end2_conn[i];
       bool ok = fw1(file, tmp, n4 * 2);
       free(tmp);
       if (!ok)
@@ -850,7 +850,7 @@ bool write_greens_binary(FILE *file, const nec_context_t *ctx,
     if (!ssx)
       return false;
 
-    if (ctx->geometry.ipsym <= 0)
+    if (ctx->geometry.symmetry_flag <= 0)
     {
       /* Rotational symmetry (GR): NOP-point DFT matrix.
        * SSX[i][j] = exp(2πi * i * j / NOP)  for i,j = 0..NOP-1 (0-indexed). */
@@ -994,24 +994,24 @@ bool read_greens_binary(FILE *file, nec_context_t *ctx)
     size_t nd = (size_t)N * sizeof(double);
     size_t ni = (size_t)N * sizeof(int);
 
-    mem_realloc(ctx, (void *)&ctx->geometry.x, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.y, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.z, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.si, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.bi, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.cab, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.sab, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.salp, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.icon1, ni);
-    mem_realloc(ctx, (void *)&ctx->geometry.icon2, ni);
+    mem_realloc(ctx, (void *)&ctx->geometry.x_center, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.y_center, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.z_center, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.half_len, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.radius, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.dir_cos_x, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.dir_cos_y, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.dir_cos_z, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.seg_end1_conn, ni);
+    mem_realloc(ctx, (void *)&ctx->geometry.seg_end2_conn, ni);
     mem_realloc(ctx, (void *)&ctx->geometry.tag_nums, ni);
     mem_realloc(ctx, (void *)&ctx->geometry.card_nums, ni);
-    mem_realloc(ctx, (void *)&ctx->geometry.x1, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.y1, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.z1, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.x2, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.y2, nd);
-    mem_realloc(ctx, (void *)&ctx->geometry.z2, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.end1_x, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.end1_y, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.end1_z, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.end2_x, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.end2_y, nd);
+    mem_realloc(ctx, (void *)&ctx->geometry.end2_z, nd);
 
     /* Rec 2: X[N], Y[N], Z[N] (wavelength units) */
     {
@@ -1024,9 +1024,9 @@ bool read_greens_binary(FILE *file, nec_context_t *ctx)
         free(buf);
         goto err;
       }
-      memcpy(ctx->geometry.x, (double *)buf, N * sizeof(double));
-      memcpy(ctx->geometry.y, (double *)buf + N, N * sizeof(double));
-      memcpy(ctx->geometry.z, (double *)buf + 2 * N, N * sizeof(double));
+      memcpy(ctx->geometry.x_center, (double *)buf, N * sizeof(double));
+      memcpy(ctx->geometry.y_center, (double *)buf + N, N * sizeof(double));
+      memcpy(ctx->geometry.z_center, (double *)buf + 2 * N, N * sizeof(double));
       free(buf);
     }
 
@@ -1041,9 +1041,9 @@ bool read_greens_binary(FILE *file, nec_context_t *ctx)
         free(buf);
         goto err;
       }
-      memcpy(ctx->geometry.si, (double *)buf, N * sizeof(double));
-      memcpy(ctx->geometry.bi, (double *)buf + N, N * sizeof(double));
-      memcpy(ctx->geometry.cab, (double *)buf + 2 * N, N * sizeof(double));
+      memcpy(ctx->geometry.half_len, (double *)buf, N * sizeof(double));
+      memcpy(ctx->geometry.radius, (double *)buf + N, N * sizeof(double));
+      memcpy(ctx->geometry.dir_cos_x, (double *)buf + 2 * N, N * sizeof(double));
       free(buf);
     }
 
@@ -1058,8 +1058,8 @@ bool read_greens_binary(FILE *file, nec_context_t *ctx)
         free(buf);
         goto err;
       }
-      memcpy(ctx->geometry.sab, (double *)buf, N * sizeof(double));
-      memcpy(ctx->geometry.salp, (double *)buf + N, N * sizeof(double));
+      memcpy(ctx->geometry.dir_cos_y, (double *)buf, N * sizeof(double));
+      memcpy(ctx->geometry.dir_cos_z, (double *)buf + N, N * sizeof(double));
       free(buf);
     }
 
@@ -1074,9 +1074,9 @@ bool read_greens_binary(FILE *file, nec_context_t *ctx)
         goto err;
       }
       for (int i = 0; i < N; i++)
-        ctx->geometry.icon1[i] = (int)tmp[i];
+        ctx->geometry.seg_end1_conn[i] = (int)tmp[i];
       for (int i = 0; i < N; i++)
-        ctx->geometry.icon2[i] = (int)tmp[N + i];
+        ctx->geometry.seg_end2_conn[i] = (int)tmp[N + i];
       free(tmp);
     }
 
@@ -1105,23 +1105,23 @@ bool read_greens_binary(FILE *file, nec_context_t *ctx)
     /* Convert coordinates and lengths: wavelengths -> metres */
     for (int i = 0; i < N; i++)
     {
-      ctx->geometry.x[i] *= WLAM;
-      ctx->geometry.y[i] *= WLAM;
-      ctx->geometry.z[i] *= WLAM;
-      ctx->geometry.si[i] *= WLAM;
-      ctx->geometry.bi[i] *= WLAM;
+      ctx->geometry.x_center[i] *= WLAM;
+      ctx->geometry.y_center[i] *= WLAM;
+      ctx->geometry.z_center[i] *= WLAM;
+      ctx->geometry.half_len[i] *= WLAM;
+      ctx->geometry.radius[i] *= WLAM;
     }
 
     /* Reconstruct wire endpoints from midpoint + direction cosines */
     for (int i = 0; i < N; i++)
     {
-      double hs = ctx->geometry.si[i] * 0.5;
-      ctx->geometry.x1[i] = ctx->geometry.x[i] - hs * ctx->geometry.cab[i];
-      ctx->geometry.y1[i] = ctx->geometry.y[i] - hs * ctx->geometry.sab[i];
-      ctx->geometry.z1[i] = ctx->geometry.z[i] - hs * ctx->geometry.salp[i];
-      ctx->geometry.x2[i] = ctx->geometry.x[i] + hs * ctx->geometry.cab[i];
-      ctx->geometry.y2[i] = ctx->geometry.y[i] + hs * ctx->geometry.sab[i];
-      ctx->geometry.z2[i] = ctx->geometry.z[i] + hs * ctx->geometry.salp[i];
+      double hs = ctx->geometry.half_len[i] * 0.5;
+      ctx->geometry.end1_x[i] = ctx->geometry.x_center[i] - hs * ctx->geometry.dir_cos_x[i];
+      ctx->geometry.end1_y[i] = ctx->geometry.y_center[i] - hs * ctx->geometry.dir_cos_y[i];
+      ctx->geometry.end1_z[i] = ctx->geometry.z_center[i] - hs * ctx->geometry.dir_cos_z[i];
+      ctx->geometry.end2_x[i] = ctx->geometry.x_center[i] + hs * ctx->geometry.dir_cos_x[i];
+      ctx->geometry.end2_y[i] = ctx->geometry.y_center[i] + hs * ctx->geometry.dir_cos_y[i];
+      ctx->geometry.end2_z[i] = ctx->geometry.z_center[i] + hs * ctx->geometry.dir_cos_z[i];
       ctx->geometry.card_nums[i] = -1; /* sourced from NGF file */
     }
   }
@@ -1186,15 +1186,15 @@ bool read_greens_binary(FILE *file, nec_context_t *ctx)
   ctx->has_ngf = true;
 
   /* Update geometry bookkeeping */
-  ctx->geometry.n = (int)N;
-  ctx->geometry.np = (NP > 0) ? (int)NP : (int)N;
-  ctx->geometry.m = (int)M;
-  ctx->geometry.mp = (int)MP;
-  ctx->geometry.wlam = WLAM;
-  ctx->geometry.ipsym = (int)IPSYM;
-  ctx->geometry.npm = (int)(N + M);
-  ctx->geometry.np2m = (int)(N + 2 * M);
-  ctx->geometry.np3m = (int)(N + 3 * M);
+  ctx->geometry.num_segs = (int)N;
+  ctx->geometry.num_segs_sym = (NP > 0) ? (int)NP : (int)N;
+  ctx->geometry.num_patches = (int)M;
+  ctx->geometry.num_patches_sym = (int)MP;
+  ctx->geometry.wavelength = WLAM;
+  ctx->geometry.symmetry_flag = (int)IPSYM;
+  ctx->geometry.num_segs_and_patches = (int)(N + M);
+  ctx->geometry.num_segs_2xpatches = (int)(N + 2 * M);
+  ctx->geometry.num_segs_3xpatches = (int)(N + 3 * M);
 
   /* Restore ground and frequency parameters from the NGF */
   ctx->gnd.has_ground = (int)KSYMP;
@@ -1421,25 +1421,25 @@ static int write_structure(nec_context_t *ctx, const deck_t *deck, FILE *file)
   fprintf(ctx->output_fp, "\n\n"
                           "     TOTAL SEGMENTS USED: %d   SEGMENTS IN A"
                           " SYMMETRIC CELL: %d   SYMMETRY FLAG: %d",
-          ctx->geometry.n, ctx->geometry.np, ctx->geometry.ipsym);
+          ctx->geometry.num_segs, ctx->geometry.num_segs_sym, ctx->geometry.symmetry_flag);
 
-  if (ctx->geometry.m > 0)
+  if (ctx->geometry.num_patches > 0)
     fprintf(ctx->output_fp, "\n"
                             "       TOTAL PATCHES USED: %d   PATCHES"
                             " IN A SYMMETRIC CELL: %d",
-            ctx->geometry.m, ctx->geometry.mp);
+            ctx->geometry.num_patches, ctx->geometry.num_patches_sym);
 
-  int iseg = (ctx->geometry.n + ctx->geometry.m) / (ctx->geometry.np + ctx->geometry.mp);
+  int iseg = (ctx->geometry.num_segs + ctx->geometry.num_patches) / (ctx->geometry.num_segs_sym + ctx->geometry.num_patches_sym);
   if (iseg != 1)
   {
     /*** may be error condition?? ***/
-    if (ctx->geometry.ipsym == 0)
+    if (ctx->geometry.symmetry_flag == 0)
     {
       add_error(ctx, &ctx->errors, "ERROR: IPSYM=0 IN CONECT()", FATAL);
       return -1;
     }
 
-    if (ctx->geometry.ipsym < 0)
+    if (ctx->geometry.symmetry_flag < 0)
       fprintf(ctx->output_fp,
               "\n  STRUCTURE HAS %d FOLD ROTATIONAL SYMMETRY\n", iseg);
     else
@@ -1449,7 +1449,7 @@ static int write_structure(nec_context_t *ctx, const deck_t *deck, FILE *file)
         ic = 3;
       fprintf(ctx->output_fp,
               "\n  STRUCTURE HAS %d PLANES OF SYMMETRY\n", ic);
-    } /* if(ctx->geometry.ipsym < 0 ) */
+    } /* if(ctx->geometry.symmetry_flag < 0 ) */
   } /* if( iseg != 1) */
 
   // Output any informational messages collected during geometry processing
@@ -1470,7 +1470,7 @@ static int write_structure(nec_context_t *ctx, const deck_t *deck, FILE *file)
 static int write_segments(nec_context_t *ctx, const deck_t *deck, FILE *file)
 {
   // exit now if there's no segments
-  if (ctx->geometry.n == 0)
+  if (ctx->geometry.num_segs == 0)
     return 0;
 
   fprintf(ctx->output_fp, "\n\n\n"
@@ -1495,20 +1495,20 @@ static int write_segments(nec_context_t *ctx, const deck_t *deck, FILE *file)
   // We need to divide by fr to get back to the original meter values
   double fr = ctx->save.freq_mhz / CVEL;
 
-  for (int i = 0; i < ctx->geometry.n; i++)
+  for (int i = 0; i < ctx->geometry.num_segs; i++)
   {
-    xw1 = ctx->geometry.x2[i] - ctx->geometry.x1[i];
-    yw1 = ctx->geometry.y2[i] - ctx->geometry.y1[i];
-    zw1 = ctx->geometry.z2[i] - ctx->geometry.z1[i];
-    ctx->geometry.x[i] = (ctx->geometry.x1[i] + ctx->geometry.x2[i]) / 2.0;
-    ctx->geometry.y[i] = (ctx->geometry.y1[i] + ctx->geometry.y2[i]) / 2.0;
-    ctx->geometry.z[i] = (ctx->geometry.z1[i] + ctx->geometry.z2[i]) / 2.0;
+    xw1 = ctx->geometry.end2_x[i] - ctx->geometry.end1_x[i];
+    yw1 = ctx->geometry.end2_y[i] - ctx->geometry.end1_y[i];
+    zw1 = ctx->geometry.end2_z[i] - ctx->geometry.end1_z[i];
+    ctx->geometry.x_center[i] = (ctx->geometry.end1_x[i] + ctx->geometry.end2_x[i]) / 2.0;
+    ctx->geometry.y_center[i] = (ctx->geometry.end1_y[i] + ctx->geometry.end2_y[i]) / 2.0;
+    ctx->geometry.z_center[i] = (ctx->geometry.end1_z[i] + ctx->geometry.end2_z[i]) / 2.0;
     xw2 = xw1 * xw1 + yw1 * yw1 + zw1 * zw1;
     yw2 = sqrt(xw2);
     yw2 = (xw2 / yw2 + yw2) * .5;
-    ctx->geometry.si[i] = yw2;
-    ctx->geometry.cab[i] = xw1 / yw2;
-    ctx->geometry.sab[i] = yw1 / yw2;
+    ctx->geometry.half_len[i] = yw2;
+    ctx->geometry.dir_cos_x[i] = xw1 / yw2;
+    ctx->geometry.dir_cos_y[i] = yw1 / yw2;
     xw2 = zw1 / yw2;
 
     if (xw2 > 1.0)
@@ -1516,23 +1516,23 @@ static int write_segments(nec_context_t *ctx, const deck_t *deck, FILE *file)
     if (xw2 < -1.0)
       xw2 = -1.0;
 
-    ctx->geometry.salp[i] = xw2;
+    ctx->geometry.dir_cos_z[i] = xw2;
     xw2 = asin(xw2) * TD;
     yw2 = atan2(yw1, xw1) * TD;
 
     fprintf(ctx->output_fp, "\n"
                             " %5d %9.4f %9.4f %9.4f %9.4f"
                             " %9.4f %9.4f %9.4f %5d %5d %5d %5d",
-            i + 1, ctx->geometry.x[i], ctx->geometry.y[i], ctx->geometry.z[i], ctx->geometry.si[i], xw2, yw2,
-            ctx->geometry.bi[i] / fr, ctx->geometry.icon1[i], i + 1, ctx->geometry.icon2[i], ctx->geometry.tag_nums[i]);
+            i + 1, ctx->geometry.x_center[i], ctx->geometry.y_center[i], ctx->geometry.z_center[i], ctx->geometry.half_len[i], xw2, yw2,
+            ctx->geometry.radius[i] / fr, ctx->geometry.seg_end1_conn[i], i + 1, ctx->geometry.seg_end2_conn[i], ctx->geometry.tag_nums[i]);
 
     if (ctx->plot.plot_type == 1)
       fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E "
                             "%12.4E %12.4E %12.4E %12.4E %5d %5d %5d\n",
-              ctx->geometry.x[i], ctx->geometry.y[i], ctx->geometry.z[i], ctx->geometry.si[i], xw2, yw2,
-              ctx->geometry.bi[i], ctx->geometry.icon1[i], i + 1, ctx->geometry.icon2[i]);
+              ctx->geometry.x_center[i], ctx->geometry.y_center[i], ctx->geometry.z_center[i], ctx->geometry.half_len[i], xw2, yw2,
+              ctx->geometry.radius[i], ctx->geometry.seg_end1_conn[i], i + 1, ctx->geometry.seg_end2_conn[i]);
 
-    if ((ctx->geometry.si[i] <= 1.e-20) || (ctx->geometry.bi[i] <= 0.0))
+    if ((ctx->geometry.half_len[i] <= 1.e-20) || (ctx->geometry.radius[i] <= 0.0))
     {
       add_error(ctx, &ctx->errors, "SEGMENT DATA ERROR", FATAL);
       return -1;
@@ -1553,7 +1553,7 @@ static int write_segments(nec_context_t *ctx, const deck_t *deck, FILE *file)
 static void write_patches(const nec_context_t *ctx, const deck_t *deck, FILE *file)
 {
   // exit now if there's no patches
-  if (ctx->geometry.m == 0)
+  if (ctx->geometry.num_patches == 0)
     return;
 
   fprintf(ctx->output_fp, "\n\n\n"
@@ -1567,17 +1567,17 @@ static void write_patches(const nec_context_t *ctx, const deck_t *deck, FILE *fi
                           " AREA         X1       Y1       Z1        X2       Y2      Z2");
 
   double xw1, yw1, zw1;
-  for (int i = 0; i < ctx->geometry.m; i++)
+  for (int i = 0; i < ctx->geometry.num_patches; i++)
   {
-    xw1 = (ctx->geometry.t1y[i] * ctx->geometry.t2z[i] - ctx->geometry.t1z[i] * ctx->geometry.t2y[i]) * ctx->geometry.psalp[i];
-    yw1 = (ctx->geometry.t1z[i] * ctx->geometry.t2x[i] - ctx->geometry.t1x[i] * ctx->geometry.t2z[i]) * ctx->geometry.psalp[i];
-    zw1 = (ctx->geometry.t1x[i] * ctx->geometry.t2y[i] - ctx->geometry.t1y[i] * ctx->geometry.t2x[i]) * ctx->geometry.psalp[i];
+    xw1 = (ctx->geometry.patch_t1y[i] * ctx->geometry.patch_t2z[i] - ctx->geometry.patch_t1z[i] * ctx->geometry.patch_t2y[i]) * ctx->geometry.patch_normal_z[i];
+    yw1 = (ctx->geometry.patch_t1z[i] * ctx->geometry.patch_t2x[i] - ctx->geometry.patch_t1x[i] * ctx->geometry.patch_t2z[i]) * ctx->geometry.patch_normal_z[i];
+    zw1 = (ctx->geometry.patch_t1x[i] * ctx->geometry.patch_t2y[i] - ctx->geometry.patch_t1y[i] * ctx->geometry.patch_t2x[i]) * ctx->geometry.patch_normal_z[i];
 
     fprintf(ctx->output_fp, "\n"
                             " %4d %10.5f %10.5f %10.5f  %8.4f %8.4f %8.4f"
                             " %10.5f  %8.4f %8.4f %8.4f  %8.4f %8.4f %8.4f",
-            i + 1, ctx->geometry.px[i], ctx->geometry.py[i], ctx->geometry.pz[i], xw1, yw1, zw1, ctx->geometry.pbi[i],
-            ctx->geometry.t1x[i], ctx->geometry.t1y[i], ctx->geometry.t1z[i], ctx->geometry.t2x[i], ctx->geometry.t2y[i], ctx->geometry.t2z[i]);
+            i + 1, ctx->geometry.patch_x_center[i], ctx->geometry.patch_y_center[i], ctx->geometry.patch_z_center[i], xw1, yw1, zw1, ctx->geometry.patch_area[i],
+            ctx->geometry.patch_t1x[i], ctx->geometry.patch_t1y[i], ctx->geometry.patch_t1z[i], ctx->geometry.patch_t2x[i], ctx->geometry.patch_t2y[i], ctx->geometry.patch_t2z[i]);
   } /* for( i = 0; i < data.m; i++ ) */
 }
 
@@ -1703,7 +1703,7 @@ static void write_frequency_data(FILE *file, const nec_context_t *ctx)
                 "                                "
                 "WAVELENGTH:%11.4E Mtr",
           ctx->save.freq_mhz,
-          ctx->geometry.wlam);
+          ctx->geometry.wavelength);
 
   fprintf(file, "\n\n"
                 "                        "
@@ -1830,7 +1830,7 @@ static void write_environment_data(FILE *file, const nec_context_t *ctx)
       }
 
       // Ground parameters
-      complex double epsc = cmplx(ctx->save.ground_epsr, -ctx->save.ground_sigma * ctx->geometry.wlam * 59.96);
+      complex double epsc = cmplx(ctx->save.ground_epsr, -ctx->save.ground_sigma * ctx->geometry.wavelength * 59.96);
       fprintf(file, "\n"
                     "                            "
                     "RELATIVE DIELECTRIC CONST: %.3f\n"
@@ -1923,10 +1923,10 @@ static void write_network_data(FILE *file, const nec_context_t *ctx)
 
         if ((itmp2 >= 2) && (ctx->netcx.y11_imag[j] <= 0.0))
         {
-          double xx = ctx->geometry.x[idx5] - ctx->geometry.x[idx4];
-          double yy = ctx->geometry.y[idx5] - ctx->geometry.y[idx4];
-          double zz = ctx->geometry.z[idx5] - ctx->geometry.z[idx4];
-          ctx->netcx.y11_imag[j] = ctx->geometry.wlam * sqrt(xx * xx + yy * yy + zz * zz);
+          double xx = ctx->geometry.x_center[idx5] - ctx->geometry.x_center[idx4];
+          double yy = ctx->geometry.y_center[idx5] - ctx->geometry.y_center[idx4];
+          double zz = ctx->geometry.z_center[idx5] - ctx->geometry.z_center[idx4];
+          ctx->netcx.y11_imag[j] = ctx->geometry.wavelength * sqrt(xx * xx + yy * yy + zz * zz);
         }
 
         fprintf(file, "\n"
@@ -2053,7 +2053,7 @@ static void write_antenna_input_parameters(FILE *file, const nec_context_t *ctx)
  */
 static void write_currents(FILE *file, const nec_context_t *ctx)
 {
-  if (ctx->geometry.n == 0)
+  if (ctx->geometry.num_segs == 0)
   {
     return; // No segments to write
   }
@@ -2075,19 +2075,19 @@ static void write_currents(FILE *file, const nec_context_t *ctx)
   // We need to multiply by fr (= 1/wlam) to convert to wavelengths
   double fr = ctx->save.freq_mhz / CVEL;
 
-  for (int i = 0; i < ctx->geometry.n; i++)
+  for (int i = 0; i < ctx->geometry.num_segs; i++)
   {
-    complex double curi = ctx->crnt.surface_cur[i] * ctx->geometry.wlam;
+    complex double curi = ctx->crnt.surface_cur[i] * ctx->geometry.wavelength;
     double cmag = cabs(curi);
     double ph = carg(curi) * TD; // Convert to degrees (TD = 57.29577951)
 
     fprintf(file, "\n"
                   " %5d %4d %9.4f %9.4f %9.4f %8.5f %11.4E %11.4E %11.4E %9.3f",
             i + 1, ctx->geometry.tag_nums[i],
-            ctx->geometry.x[i] * fr,
-            ctx->geometry.y[i] * fr,
-            ctx->geometry.z[i] * fr,
-            ctx->geometry.si[i] * fr,
+            ctx->geometry.x_center[i] * fr,
+            ctx->geometry.y_center[i] * fr,
+            ctx->geometry.z_center[i] * fr,
+            ctx->geometry.half_len[i] * fr,
             creal(curi), cimag(curi), cmag, ph);
   }
 }

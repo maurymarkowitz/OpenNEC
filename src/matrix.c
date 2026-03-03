@@ -67,9 +67,9 @@ int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, do
   int im1, im2, ist, ij, ipr, jss, jm1, jm2, jst, k, ka, kk;
   complex double zaj, deter, *scm = NULL;
 
-  mp2 = 2 * ctx->geometry.mp;
-  npeq = ctx->geometry.np + mp2;
-  neq = ctx->geometry.n + 2 * ctx->geometry.m;
+  mp2 = 2 * ctx->geometry.num_patches_sym;
+  npeq = ctx->geometry.num_segs_sym + mp2;
+  neq = ctx->geometry.num_segs + 2 * ctx->geometry.num_patches;
   ctx->smat.num_sections = neq / npeq;
 
   ctx->dataj.k_half_len = rkhx;
@@ -84,30 +84,30 @@ int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, do
   i2= it;
   in2= i2;
 
-  if( in2 > ctx->geometry.np)
-	in2= ctx->geometry.np;
+  if( in2 > ctx->geometry.num_segs_sym)
+	in2= ctx->geometry.num_segs_sym;
 
-  im1= i1- ctx->geometry.np;
-  im2= i2- ctx->geometry.np;
+  im1= i1- ctx->geometry.num_segs_sym;
+  im2= i2- ctx->geometry.num_segs_sym;
 
   if( im1 < 1)
 	im1=1;
 
   ist=1;
-  if( i1 <= ctx->geometry.np)
-	ist= ctx->geometry.np- i1+2;
+  if( i1 <= ctx->geometry.num_segs_sym)
+	ist= ctx->geometry.num_segs_sym- i1+2;
 
   /* wire source loop */
-  if( ctx->geometry.n != 0)
+  if( ctx->geometry.num_segs != 0)
   {
-	for( j = 1; j <= ctx->geometry.n; j++ )
+	for( j = 1; j <= ctx->geometry.num_segs; j++ )
 	{
 	  if (trio(ctx, j) != 0)
 	    return -1;
 	  for( i = 0; i < ctx->segj.num_junction_segs; i++ )
 	  {
 		ij = ctx->segj.junction_segs[i];
-		ctx->segj.junction_segs[i] = (( ij - 1 ) / ctx->geometry.np) * mp2 + ij;
+		ctx->segj.junction_segs[i] = (( ij - 1 ) / ctx->geometry.num_segs_sym) * mp2 + ij;
 	  }
 
 	  if( i1 <= in2)
@@ -120,7 +120,7 @@ int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, do
 	  if( ctx->zload.num_loads == 0)
 		continue;
 
-	  if( j > ctx->geometry.np)
+	  if( j > ctx->geometry.num_segs_sym)
 		continue;
 
 	  ipr = j;
@@ -139,17 +139,17 @@ int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, do
 
   } /* if( n != 0) */
 
-  if( ctx->geometry.m != 0)
+  if( ctx->geometry.num_patches != 0)
   {
 	/* matrix elements for patch current sources */
-	jm1 = 1 - ctx->geometry.mp;
+	jm1 = 1 - ctx->geometry.num_patches_sym;
 	jm2 = 0;
 	jst = 1 - mp2;
 
 	for( i = 0; i < ctx->smat.num_sections; i++ )
 	{
-	  jm1 += ctx->geometry.mp;
-	  jm2 += ctx->geometry.mp;
+	  jm1 += ctx->geometry.num_patches_sym;
+	  jm2 += ctx->geometry.num_patches_sym;
 	  jst += npeq;
 
 	  if( i1 <= in2)
@@ -165,7 +165,7 @@ int cmset(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, do
 	return 0;
 
   /* Allocate to scratch memory */
-  size_t mreq = (size_t)ctx->geometry.np2m;
+  size_t mreq = (size_t)ctx->geometry.num_segs_2xpatches;
   mreq *= sizeof(complex double);
   mem_alloc(ctx, (void *)&scm, mreq );
 
@@ -235,15 +235,15 @@ void cmss(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2,
 	ii1 += 2;
 	ii2 = ii1+1;
 
-	t1xi = ctx->geometry.t1x[il] * ctx->geometry.psalp[il];
-	t1yi = ctx->geometry.t1y[il] * ctx->geometry.psalp[il];
-	t1zi = ctx->geometry.t1z[il] * ctx->geometry.psalp[il];
-	t2xi = ctx->geometry.t2x[il] * ctx->geometry.psalp[il];
-	t2yi = ctx->geometry.t2y[il] * ctx->geometry.psalp[il];
-	t2zi = ctx->geometry.t2z[il] * ctx->geometry.psalp[il];
-	xi = ctx->geometry.px[il];
-	yi = ctx->geometry.py[il];
-	zi = ctx->geometry.pz[il];
+	t1xi = ctx->geometry.patch_t1x[il] * ctx->geometry.patch_normal_z[il];
+	t1yi = ctx->geometry.patch_t1y[il] * ctx->geometry.patch_normal_z[il];
+	t1zi = ctx->geometry.patch_t1z[il] * ctx->geometry.patch_normal_z[il];
+	t2xi = ctx->geometry.patch_t2x[il] * ctx->geometry.patch_normal_z[il];
+	t2yi = ctx->geometry.patch_t2y[il] * ctx->geometry.patch_normal_z[il];
+	t2zi = ctx->geometry.patch_t2z[il] * ctx->geometry.patch_normal_z[il];
+	xi = ctx->geometry.patch_x_center[il];
+	yi = ctx->geometry.patch_y_center[il];
+	zi = ctx->geometry.patch_z_center[il];
 
 	/* loop over source patches */
 	jj1=-2;
@@ -253,16 +253,16 @@ void cmss(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2,
 	  jj1 += 2;
 	  jj2 = jj1+1;
 
-	  ctx->dataj.seg_half_len = ctx->geometry.pbi[jl];
-	  ctx->dataj.src_x = ctx->geometry.px[jl];
-	  ctx->dataj.src_y = ctx->geometry.py[jl];
-	  ctx->dataj.src_z = ctx->geometry.pz[jl];
-	  ctx->dataj.patch_t1x = ctx->geometry.t1x[jl];
-	  ctx->dataj.patch_t1y = ctx->geometry.t1y[jl];
-	  ctx->dataj.patch_t1z = ctx->geometry.t1z[jl];
-	  ctx->dataj.patch_t2x = ctx->geometry.t2x[jl];
-	  ctx->dataj.patch_t2y = ctx->geometry.t2y[jl];
-	  ctx->dataj.patch_t2z = ctx->geometry.t2z[jl];
+	  ctx->dataj.seg_half_len = ctx->geometry.patch_area[jl];
+	  ctx->dataj.src_x = ctx->geometry.patch_x_center[jl];
+	  ctx->dataj.src_y = ctx->geometry.patch_y_center[jl];
+	  ctx->dataj.src_z = ctx->geometry.patch_z_center[jl];
+	  ctx->dataj.patch_t1x = ctx->geometry.patch_t1x[jl];
+	  ctx->dataj.patch_t1y = ctx->geometry.patch_t1y[jl];
+	  ctx->dataj.patch_t1z = ctx->geometry.patch_t1z[jl];
+	  ctx->dataj.patch_t2x = ctx->geometry.patch_t2x[jl];
+	  ctx->dataj.patch_t2y = ctx->geometry.patch_t2y[jl];
+	  ctx->dataj.patch_t2z = ctx->geometry.patch_t2z[jl];
 
 	  hintg(ctx, xi, yi, zi);
 
@@ -338,23 +338,23 @@ void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex d
 	for( i = i1-1; i < i2; i++ )
 	{
 	  k++;
-	  xi = ctx->geometry.x[i];
-	  yi = ctx->geometry.y[i];
-	  zi = ctx->geometry.z[i];
-	  cabi = ctx->geometry.cab[i];
-	  sabi = ctx->geometry.sab[i];
-	  salpi = ctx->geometry.salp[i];
+	  xi = ctx->geometry.x_center[i];
+	  yi = ctx->geometry.y_center[i];
+	  zi = ctx->geometry.z_center[i];
+	  cabi = ctx->geometry.dir_cos_x[i];
+	  sabi = ctx->geometry.dir_cos_y[i];
+	  salpi = ctx->geometry.dir_cos_z[i];
 	  ipch=0;
 
-	  if( ctx->geometry.icon1[i] >= PCHCON)
+	  if( ctx->geometry.seg_end1_conn[i] >= PCHCON)
 	  {
-		ipch= ctx->geometry.icon1[i]-PCHCON;
+		ipch= ctx->geometry.seg_end1_conn[i]-PCHCON;
 		fsign=-1.;
 	  }
 
-	  if( ctx->geometry.icon2[i] >= PCHCON)
+	  if( ctx->geometry.seg_end2_conn[i] >= PCHCON)
 	  {
-		ipch= ctx->geometry.icon2[i]-PCHCON;
+		ipch= ctx->geometry.seg_end2_conn[i]-PCHCON;
 		fsign=1.;
 	  }
 
@@ -364,16 +364,16 @@ void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex d
 	  {
 		jl += 2;
 		js = j-1;
-		ctx->dataj.patch_t1x = ctx->geometry.t1x[js];
-		ctx->dataj.patch_t1y = ctx->geometry.t1y[js];
-		ctx->dataj.patch_t1z = ctx->geometry.t1z[js];
-		ctx->dataj.patch_t2x = ctx->geometry.t2x[js];
-		ctx->dataj.patch_t2y = ctx->geometry.t2y[js];
-		ctx->dataj.patch_t2z = ctx->geometry.t2z[js];
-		ctx->dataj.src_x = ctx->geometry.px[js];
-		ctx->dataj.src_y = ctx->geometry.py[js];
-		ctx->dataj.src_z = ctx->geometry.pz[js];
-		ctx->dataj.seg_half_len = ctx->geometry.pbi[js];
+		ctx->dataj.patch_t1x = ctx->geometry.patch_t1x[js];
+		ctx->dataj.patch_t1y = ctx->geometry.patch_t1y[js];
+		ctx->dataj.patch_t1z = ctx->geometry.patch_t1z[js];
+		ctx->dataj.patch_t2x = ctx->geometry.patch_t2x[js];
+		ctx->dataj.patch_t2y = ctx->geometry.patch_t2y[js];
+		ctx->dataj.patch_t2z = ctx->geometry.patch_t2z[js];
+		ctx->dataj.src_x = ctx->geometry.patch_x_center[js];
+		ctx->dataj.src_y = ctx->geometry.patch_y_center[js];
+		ctx->dataj.src_z = ctx->geometry.patch_z_center[js];
+		ctx->dataj.seg_half_len = ctx->geometry.patch_area[js];
 
 		/* ground loop */
 		for( ip = 1; ip <= ctx->gnd.has_ground; ip++ )
@@ -386,7 +386,7 @@ void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex d
 			{
 			  pcint(ctx, xi, yi, zi, cabi, sabi, salpi, emel);
 
-			  pyl= PI* ctx->geometry.si[i]* fsign;
+			  pyl= PI* ctx->geometry.half_len[i]* fsign;
 			  pxl= sin( pyl);
 			  pyl= cos( pyl);
 			  ctx->dataj.e_cos_x= emel[8]* fsign;
@@ -395,8 +395,8 @@ void cmsw(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex d
 			    return;
 
 			  il= i-ncw;
-			  if( i < ctx->geometry.np)
-				il += (il/ctx->geometry.np)*2*ctx->geometry.mp;
+			  if( i < ctx->geometry.num_segs_sym)
+				il += (il/ctx->geometry.num_segs_sym)*2*ctx->geometry.num_patches_sym;
 
 			  if( itrp == 0 )
 				cw[k+il*nrow] +=
@@ -462,14 +462,14 @@ void cmws(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
   complex double etk, ets, etc;
 
   j--;
-  ctx->dataj.seg_half_len = ctx->geometry.si[j];
-  ctx->dataj.seg_radius = ctx->geometry.bi[j];
-  ctx->dataj.src_x = ctx->geometry.x[j];
-  ctx->dataj.src_y = ctx->geometry.y[j];
-  ctx->dataj.src_z = ctx->geometry.z[j];
-  ctx->dataj.src_dir_cos_x = ctx->geometry.cab[j];
-  ctx->dataj.src_dir_cos_y = ctx->geometry.sab[j];
-  ctx->dataj.src_dir_cos_z = ctx->geometry.salp[j];
+  ctx->dataj.seg_half_len = ctx->geometry.half_len[j];
+  ctx->dataj.seg_radius = ctx->geometry.radius[j];
+  ctx->dataj.src_x = ctx->geometry.x_center[j];
+  ctx->dataj.src_y = ctx->geometry.y_center[j];
+  ctx->dataj.src_z = ctx->geometry.z_center[j];
+  ctx->dataj.src_dir_cos_x = ctx->geometry.dir_cos_x[j];
+  ctx->dataj.src_dir_cos_y = ctx->geometry.dir_cos_y[j];
+  ctx->dataj.src_dir_cos_z = ctx->geometry.dir_cos_z[j];
 
   /* observation loop */
   ipr= -1;
@@ -482,36 +482,36 @@ void cmws(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
 	if( (ik != 0) || (ipr == 0) )
 	{
 	  js= ipatch-1;
-	  xi= ctx->geometry.px[js];
-	  yi= ctx->geometry.py[js];
-	  zi= ctx->geometry.pz[js];
+	  xi= ctx->geometry.patch_x_center[js];
+	  yi= ctx->geometry.patch_y_center[js];
+	  zi= ctx->geometry.patch_z_center[js];
 	  hsfld(ctx, xi, yi, zi, 0.);
 
 	  if( ik != 0 )
 	  {
-		tx= ctx->geometry.t2x[js];
-		ty= ctx->geometry.t2y[js];
-		tz= ctx->geometry.t2z[js];
+		tx= ctx->geometry.patch_t2x[js];
+		ty= ctx->geometry.patch_t2y[js];
+		tz= ctx->geometry.patch_t2z[js];
 	  }
 	  else
 	  {
-		tx= ctx->geometry.t1x[js];
-		ty= ctx->geometry.t1y[js];
-		tz= ctx->geometry.t1z[js];
+		tx= ctx->geometry.patch_t1x[js];
+		ty= ctx->geometry.patch_t1y[js];
+		tz= ctx->geometry.patch_t1z[js];
 	  }
 
 	} /* if( (ik != 0) || (ipr == 0) ) */
 	else
 	{
-	  tx= ctx->geometry.t1x[js];
-	  ty= ctx->geometry.t1y[js];
-	  tz= ctx->geometry.t1z[js];
+	  tx= ctx->geometry.patch_t1x[js];
+	  ty= ctx->geometry.patch_t1y[js];
+	  tz= ctx->geometry.patch_t1z[js];
 
 	} /* if( (ik != 0) || (ipr == 0) ) */
 
-	etk=-( ctx->dataj.e_const_x* tx+ ctx->dataj.e_const_y* ty+ ctx->dataj.e_const_z* tz)* ctx->geometry.psalp[js];
-	ets=-( ctx->dataj.e_sin_x* tx+ ctx->dataj.e_sin_y* ty+ ctx->dataj.e_sin_z* tz)* ctx->geometry.psalp[js];
-	etc=-( ctx->dataj.e_cos_x* tx+ ctx->dataj.e_cos_y* ty+ ctx->dataj.e_cos_z* tz)* ctx->geometry.psalp[js];
+	etk=-( ctx->dataj.e_const_x* tx+ ctx->dataj.e_const_y* ty+ ctx->dataj.e_const_z* tz)* ctx->geometry.patch_normal_z[js];
+	ets=-( ctx->dataj.e_sin_x* tx+ ctx->dataj.e_sin_y* ty+ ctx->dataj.e_sin_z* tz)* ctx->geometry.patch_normal_z[js];
+	etc=-( ctx->dataj.e_cos_x* tx+ ctx->dataj.e_cos_y* ty+ ctx->dataj.e_cos_z* tz)* ctx->geometry.patch_normal_z[js];
 
 	/* fill matrix elements.  element locations */
 	/* determined by connection data. */
@@ -571,31 +571,31 @@ void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
   /* set source segment parameters */
   jx = j;
   j--;
-  ctx->dataj.seg_half_len = ctx->geometry.si[j];
-  ctx->dataj.seg_radius = ctx->geometry.bi[j];
-  ctx->dataj.src_x = ctx->geometry.x[j];
-  ctx->dataj.src_y = ctx->geometry.y[j];
-  ctx->dataj.src_z = ctx->geometry.z[j];
-  ctx->dataj.src_dir_cos_x = ctx->geometry.cab[j];
-  ctx->dataj.src_dir_cos_y = ctx->geometry.sab[j];
-  ctx->dataj.src_dir_cos_z = ctx->geometry.salp[j];
+  ctx->dataj.seg_half_len = ctx->geometry.half_len[j];
+  ctx->dataj.seg_radius = ctx->geometry.radius[j];
+  ctx->dataj.src_x = ctx->geometry.x_center[j];
+  ctx->dataj.src_y = ctx->geometry.y_center[j];
+  ctx->dataj.src_z = ctx->geometry.z_center[j];
+  ctx->dataj.src_dir_cos_x = ctx->geometry.dir_cos_x[j];
+  ctx->dataj.src_dir_cos_y = ctx->geometry.dir_cos_y[j];
+  ctx->dataj.src_dir_cos_z = ctx->geometry.dir_cos_z[j];
 
   /* decide whether ext. t.w. approx. can be used */
   if( ctx->dataj.use_extended_kernel != 0)
   {
-	ipr = ctx->geometry.icon1[j];
+	ipr = ctx->geometry.seg_end1_conn[j];
 	if (ipr > PCHCON) ctx->dataj.end1_kernel_type = 0;
 	else if( ipr < 0 )
 	{
 	  ipr= -ipr;
 	  iprx= ipr-1;
 
-	  if( -ctx->geometry.icon1[iprx] != jx )	ctx->dataj.end1_kernel_type = 2;
+	  if( -ctx->geometry.seg_end1_conn[iprx] != jx )	ctx->dataj.end1_kernel_type = 2;
 	  else
 	  {
-		xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
-			ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
-		if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.e-6) )
+		xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.dir_cos_x[iprx]+ ctx->dataj.src_dir_cos_y*
+			ctx->geometry.dir_cos_y[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.dir_cos_z[iprx]);
+		if( (xi < 0.999999) || (fabs(ctx->geometry.radius[iprx]/ctx->dataj.seg_radius-1.) > 1.e-6) )
 		  ctx->dataj.end1_kernel_type=2;
 		else
 		  ctx->dataj.end1_kernel_type=0;
@@ -611,12 +611,12 @@ void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
 	  {
 		if( ipr != jx )
 		{
-		  if( ctx->geometry.icon2[iprx] != jx ) ctx->dataj.end1_kernel_type=2;
+		  if( ctx->geometry.seg_end2_conn[iprx] != jx ) ctx->dataj.end1_kernel_type=2;
 		  else
 		  {
-			xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
-				ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
-			if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.e-6) )
+			xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.dir_cos_x[iprx]+ ctx->dataj.src_dir_cos_y*
+				ctx->geometry.dir_cos_y[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.dir_cos_z[iprx]);
+			if( (xi < 0.999999) || (fabs(ctx->geometry.radius[iprx]/ctx->dataj.seg_radius-1.) > 1.e-6) )
 			  ctx->dataj.end1_kernel_type=2;
 			else
 			  ctx->dataj.end1_kernel_type=0;
@@ -634,19 +634,19 @@ void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
 
 	} /* if( ipr < 0 ) */
 
-	ipr = ctx->geometry.icon2[j];
+	ipr = ctx->geometry.seg_end2_conn[j];
 	if (ipr > PCHCON) ctx->dataj.end2_kernel_type = 2;
 	else if( ipr < 0 )
 	{
 	  ipr= -ipr;
 	  iprx = ipr-1;
-	  if( -ctx->geometry.icon2[iprx] != jx )
+	  if( -ctx->geometry.seg_end2_conn[iprx] != jx )
 		ctx->dataj.end2_kernel_type=2;
 	  else
 	  {
-		xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
-			ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
-		if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.e-6) )
+		xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.dir_cos_x[iprx]+ ctx->dataj.src_dir_cos_y*
+			ctx->geometry.dir_cos_y[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.dir_cos_z[iprx]);
+		if( (xi < 0.999999) || (fabs(ctx->geometry.radius[iprx]/ctx->dataj.seg_radius-1.) > 1.e-6) )
 		  ctx->dataj.end2_kernel_type=2;
 		else
 		  ctx->dataj.end2_kernel_type=0;
@@ -662,13 +662,13 @@ void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
 	  {
 		if( ipr != jx )
 		{
-		  if( ctx->geometry.icon1[iprx] != jx )
+		  if( ctx->geometry.seg_end1_conn[iprx] != jx )
 			ctx->dataj.end2_kernel_type=2;
 		  else
 		  {
-			xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
-				ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
-			if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.e-6) )
+			xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.dir_cos_x[iprx]+ ctx->dataj.src_dir_cos_y*
+				ctx->geometry.dir_cos_y[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.dir_cos_z[iprx]);
+			if( (xi < 0.999999) || (fabs(ctx->geometry.radius[iprx]/ctx->dataj.seg_radius-1.) > 1.e-6) )
 			  ctx->dataj.end2_kernel_type=2;
 			else
 			  ctx->dataj.end2_kernel_type=0;
@@ -694,13 +694,13 @@ void cmww(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *re
   {
 	ipr++;
 	ij= i-j;
-	xi= ctx->geometry.x[i];
-	yi= ctx->geometry.y[i];
-	zi= ctx->geometry.z[i];
-	ai= ctx->geometry.bi[i];
-	cabi= ctx->geometry.cab[i];
-	sabi= ctx->geometry.sab[i];
-	salpi= ctx->geometry.salp[i];
+	xi= ctx->geometry.x_center[i];
+	yi= ctx->geometry.y_center[i];
+	zi= ctx->geometry.z_center[i];
+	ai= ctx->geometry.radius[i];
+	cabi= ctx->geometry.dir_cos_x[i];
+	sabi= ctx->geometry.dir_cos_y[i];
+	salpi= ctx->geometry.dir_cos_z[i];
 
 	efld( ctx, xi, yi, zi, ai, ij);
 
@@ -764,7 +764,7 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
   double wy, wz, qx, qy, qz, arg, ds, dsh, rs, r;
   complex double cx, cy, cz, er, et, ezh, erh, rrv=CPLX_00, rrh=CPLX_00, tt1, tt2;
 
-  neq = ctx->geometry.n + 2 * ctx->geometry.m;
+  neq = ctx->geometry.num_segs + 2 * ctx->geometry.num_patches;
   ctx->vsorc.num_qdsrcs_used = 0;
 
   /* applied field of voltage sources for transmitting case */
@@ -778,7 +778,7 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
 	  for( i = 0; i < ctx->vsorc.num_vsrcs; i++ )
 	  {
 		is = ctx->vsorc.vsrc_segs[i] - 1;
-		e[is] = -ctx->vsorc.vsrc_voltages[i] / ( ctx->geometry.si[is] * ctx->geometry.wlam );
+		e[is] = -ctx->vsorc.vsrc_voltages[i] / ( ctx->geometry.half_len[is] * ctx->geometry.wavelength );
 	  }
 	}
 
@@ -833,12 +833,12 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
 
 	if( ipr == 1)
 	{
-	  if( ctx->geometry.n != 0)
+	  if( ctx->geometry.num_segs != 0)
 	  {
-		for( i = 0; i < ctx->geometry.n; i++ )
+		for( i = 0; i < ctx->geometry.num_segs; i++ )
 		{
-		  arg= -TP*( wx * ctx->geometry.x[i] + wy * ctx->geometry.y[i] + wz * ctx->geometry.z[i] );
-		  e[i]=-( pxl * ctx->geometry.cab[i] + pyl * ctx->geometry.sab[i] + pzl * ctx->geometry.salp[i] ) * cmplx( cos( arg ), sin( arg) );
+		  arg= -TP*( wx * ctx->geometry.x_center[i] + wy * ctx->geometry.y_center[i] + wz * ctx->geometry.z_center[i] );
+		  e[i]=-( pxl * ctx->geometry.dir_cos_x[i] + pyl * ctx->geometry.dir_cos_y[i] + pzl * ctx->geometry.dir_cos_z[i] ) * cmplx( cos( arg ), sin( arg) );
 		}
 
 		if( ctx->gnd.has_ground != 1)
@@ -848,31 +848,31 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
 		  cy= rrv* pyl+ tt1* cph;
 		  cz= -rrv* pzl;
 
-		  for( i = 0; i < ctx->geometry.n; i++ )
+		  for( i = 0; i < ctx->geometry.num_segs; i++ )
 		  {
-			arg= -TP*( wx* ctx->geometry.x[i]+ wy* ctx->geometry.y[i]- wz* ctx->geometry.z[i]);
-			e[i]= e[i]-( cx* ctx->geometry.cab[i]+ cy* ctx->geometry.sab[i]+
-				cz* ctx->geometry.salp[i])* cmplx(cos( arg), sin( arg));
+			arg= -TP*( wx* ctx->geometry.x_center[i]+ wy* ctx->geometry.y_center[i]- wz* ctx->geometry.z_center[i]);
+			e[i]= e[i]-( cx* ctx->geometry.dir_cos_x[i]+ cy* ctx->geometry.dir_cos_y[i]+
+				cz* ctx->geometry.dir_cos_z[i])* cmplx(cos( arg), sin( arg));
 		  }
 
 		} /* if( gnd.has_ground != 1) */
 
 	  } /* if( data.n != 0) */
 
-	  if( ctx->geometry.m == 0)
+	  if( ctx->geometry.num_patches == 0)
 		return;
 
 	  i= -1;
-	  i1= ctx->geometry.n-2;
-	  for( is = 0; is < ctx->geometry.m; is++ )
+	  i1= ctx->geometry.num_segs-2;
+	  for( is = 0; is < ctx->geometry.num_patches; is++ )
 	  {
 		i++;
 		i1 += 2;
 		i2 = i1+1;
-		arg= -TP*( wx* ctx->geometry.px[i]+ wy* ctx->geometry.py[i]+ wz* ctx->geometry.pz[i]);
-		tt1= cmplx( cos( arg), sin( arg))* ctx->geometry.psalp[i]* RETA;
-		e[i2]=( qx* ctx->geometry.t1x[i]+ qy* ctx->geometry.t1y[i]+ qz* ctx->geometry.t1z[i])* tt1;
-		e[i1]=( qx* ctx->geometry.t2x[i]+ qy* ctx->geometry.t2y[i]+ qz* ctx->geometry.t2z[i])* tt1;
+		arg= -TP*( wx* ctx->geometry.patch_x_center[i]+ wy* ctx->geometry.patch_y_center[i]+ wz* ctx->geometry.patch_z_center[i]);
+		tt1= cmplx( cos( arg), sin( arg))* ctx->geometry.patch_normal_z[i]* RETA;
+		e[i2]=( qx* ctx->geometry.patch_t1x[i]+ qy* ctx->geometry.patch_t1y[i]+ qz* ctx->geometry.patch_t1z[i])* tt1;
+		e[i1]=( qx* ctx->geometry.patch_t2x[i]+ qy* ctx->geometry.patch_t2y[i]+ qz* ctx->geometry.patch_t2z[i])* tt1;
 	  }
 
 	  if( ctx->gnd.has_ground == 1)
@@ -884,16 +884,16 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
 	  cz= rrh* qz;
 
 	  i= -1;
-	  i1= ctx->geometry.n-2;
-	  for( is = 0; is < ctx->geometry.m; is++ )
+	  i1= ctx->geometry.num_segs-2;
+	  for( is = 0; is < ctx->geometry.num_patches; is++ )
 	  {
 		i++;
 		i1 += 2;
 		i2 = i1+1;
-		arg= -TP*( wx* ctx->geometry.px[i]+ wy* ctx->geometry.py[i]- wz* ctx->geometry.pz[i]);
-		tt1= cmplx( cos( arg), sin( arg))* ctx->geometry.psalp[i]* RETA;
-		e[i2]= e[i2]+( cx* ctx->geometry.t1x[i]+ cy* ctx->geometry.t1y[i]+ cz* ctx->geometry.t1z[i])* tt1;
-		e[i1]= e[i1]+( cx* ctx->geometry.t2x[i]+ cy* ctx->geometry.t2y[i]+ cz* ctx->geometry.t2z[i])* tt1;
+		arg= -TP*( wx* ctx->geometry.patch_x_center[i]+ wy* ctx->geometry.patch_y_center[i]- wz* ctx->geometry.patch_z_center[i]);
+		tt1= cmplx( cos( arg), sin( arg))* ctx->geometry.patch_normal_z[i]* RETA;
+		e[i2]= e[i2]+( cx* ctx->geometry.patch_t1x[i]+ cy* ctx->geometry.patch_t1y[i]+ cz* ctx->geometry.patch_t1z[i])* tt1;
+		e[i1]= e[i1]+( cx* ctx->geometry.patch_t2x[i]+ cy* ctx->geometry.patch_t2y[i]+ cz* ctx->geometry.patch_t2z[i])* tt1;
 	  }
 	  return;
 
@@ -904,17 +904,17 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
 	if( ipr == 3)
 	  tt1= -tt1;
 
-	if( ctx->geometry.n != 0)
+	if( ctx->geometry.num_segs != 0)
 	{
 	  cx= pxl+ tt1* qx;
 	  cy= pyl+ tt1* qy;
 	  cz= pzl+ tt1* qz;
 
-	  for( i = 0; i < ctx->geometry.n; i++ )
+	  for( i = 0; i < ctx->geometry.num_segs; i++ )
 	  {
-		arg= -TP*( wx* ctx->geometry.x[i]+ wy* ctx->geometry.y[i]+ wz* ctx->geometry.z[i]);
-		e[i]=-( cx* ctx->geometry.cab[i]+ cy* ctx->geometry.sab[i]+ cz*
-			ctx->geometry.salp[i])* cmplx( cos( arg), sin( arg));
+		arg= -TP*( wx* ctx->geometry.x_center[i]+ wy* ctx->geometry.y_center[i]+ wz* ctx->geometry.z_center[i]);
+		e[i]=-( cx* ctx->geometry.dir_cos_x[i]+ cy* ctx->geometry.dir_cos_y[i]+ cz*
+			ctx->geometry.dir_cos_z[i])* cmplx( cos( arg), sin( arg));
 	  }
 
 	  if( ctx->gnd.has_ground != 1)
@@ -924,18 +924,18 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
 		cy= rrv* cy+ tt2* cph;
 		cz= -rrv* cz;
 
-		for( i = 0; i < ctx->geometry.n; i++ )
+		for( i = 0; i < ctx->geometry.num_segs; i++ )
 		{
-		  arg= -TP*( wx* ctx->geometry.x[i]+ wy* ctx->geometry.y[i]- wz* ctx->geometry.z[i]);
-		  e[i]= e[i]-( cx* ctx->geometry.cab[i]+ cy* ctx->geometry.sab[i]+
-			  cz* ctx->geometry.salp[i])* cmplx(cos( arg), sin( arg));
+		  arg= -TP*( wx* ctx->geometry.x_center[i]+ wy* ctx->geometry.y_center[i]- wz* ctx->geometry.z_center[i]);
+		  e[i]= e[i]-( cx* ctx->geometry.dir_cos_x[i]+ cy* ctx->geometry.dir_cos_y[i]+
+			  cz* ctx->geometry.dir_cos_z[i])* cmplx(cos( arg), sin( arg));
 		}
 
 	  } /* if( gnd.has_ground != 1) */
 
 	} /* if( n != 0) */
 
-	if( ctx->geometry.m == 0)
+	if( ctx->geometry.num_patches == 0)
 	  return;
 
 	cx= qx- tt1* pxl;
@@ -943,16 +943,16 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
 	cz= qz- tt1* pzl;
 
 	i= -1;
-	i1= ctx->geometry.n-2;
-	for( is = 0; is < ctx->geometry.m; is++ )
+	i1= ctx->geometry.num_segs-2;
+	for( is = 0; is < ctx->geometry.num_patches; is++ )
 	{
 	  i++;
 	  i1 += 2;
 	  i2 = i1+1;
-	  arg= -TP*( wx* ctx->geometry.px[i]+ wy* ctx->geometry.py[i]+ wz* ctx->geometry.pz[i]);
-	  tt2= cmplx( cos( arg), sin( arg))* ctx->geometry.psalp[i]* RETA;
-	  e[i2]=( cx* ctx->geometry.t1x[i]+ cy* ctx->geometry.t1y[i]+ cz* ctx->geometry.t1z[i])* tt2;
-	  e[i1]=( cx* ctx->geometry.t2x[i]+ cy* ctx->geometry.t2y[i]+ cz* ctx->geometry.t2z[i])* tt2;
+	  arg= -TP*( wx* ctx->geometry.patch_x_center[i]+ wy* ctx->geometry.patch_y_center[i]+ wz* ctx->geometry.patch_z_center[i]);
+	  tt2= cmplx( cos( arg), sin( arg))* ctx->geometry.patch_normal_z[i]* RETA;
+	  e[i2]=( cx* ctx->geometry.patch_t1x[i]+ cy* ctx->geometry.patch_t1y[i]+ cz* ctx->geometry.patch_t1z[i])* tt2;
+	  e[i1]=( cx* ctx->geometry.patch_t2x[i]+ cy* ctx->geometry.patch_t2y[i]+ cz* ctx->geometry.patch_t2z[i])* tt2;
 	}
 
 	if( ctx->gnd.has_ground == 1)
@@ -964,16 +964,16 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
 	cz= rrh* cz;
 
 	i= -1;
-	i1= ctx->geometry.n-2;
-	for( is=0; is < ctx->geometry.m; is++ )
+	i1= ctx->geometry.num_segs-2;
+	for( is=0; is < ctx->geometry.num_patches; is++ )
 	{
 	  i++;
 	  i1 += 2;
 	  i2 = i1+1;
-	  arg= -TP*( wx* ctx->geometry.px[i]+ wy* ctx->geometry.py[i]- wz* ctx->geometry.pz[i]);
-	  tt1= cmplx( cos( arg), sin( arg))* ctx->geometry.psalp[i]* RETA;
-	  e[i2]= e[i2]+( cx* ctx->geometry.t1x[i]+ cy* ctx->geometry.t1y[i]+ cz* ctx->geometry.t1z[i])* tt1;
-	  e[i1]= e[i1]+( cx* ctx->geometry.t2x[i]+ cy* ctx->geometry.t2y[i]+ cz* ctx->geometry.t2z[i])* tt1;
+	  arg= -TP*( wx* ctx->geometry.patch_x_center[i]+ wy* ctx->geometry.patch_y_center[i]- wz* ctx->geometry.patch_z_center[i]);
+	  tt1= cmplx( cos( arg), sin( arg))* ctx->geometry.patch_normal_z[i]* RETA;
+	  e[i2]= e[i2]+( cx* ctx->geometry.patch_t1x[i]+ cy* ctx->geometry.patch_t1y[i]+ cz* ctx->geometry.patch_t1z[i])* tt1;
+	  e[i1]= e[i1]+( cx* ctx->geometry.patch_t2x[i]+ cy* ctx->geometry.patch_t2y[i]+ cz* ctx->geometry.patch_t2z[i])* tt1;
 	}
 
 	return;
@@ -989,22 +989,22 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
   dsh= p6/(2.* TP);
 
   is= 0;
-  i1= ctx->geometry.n-2;
-  for( i = 0; i < ctx->geometry.npm; i++ )
+  i1= ctx->geometry.num_segs-2;
+  for( i = 0; i < ctx->geometry.num_segs_and_patches; i++ )
   {
-	if( i >= ctx->geometry.n )
+	if( i >= ctx->geometry.num_segs )
 	{
 	  i1 += 2;
 	  i2 = i1+1;
-	  pxl= ctx->geometry.px[is]- p1;
-	  pyl= ctx->geometry.py[is]- p2;
-	  pzl= ctx->geometry.pz[is]- p3;
+	  pxl= ctx->geometry.patch_x_center[is]- p1;
+	  pyl= ctx->geometry.patch_y_center[is]- p2;
+	  pzl= ctx->geometry.patch_z_center[is]- p3;
 	}
 	else
 	{
-	  pxl= ctx->geometry.x[i]- p1;
-	  pyl= ctx->geometry.y[i]- p2;
-	  pzl= ctx->geometry.z[i]- p3;
+	  pxl= ctx->geometry.x_center[i]- p1;
+	  pyl= ctx->geometry.y_center[i]- p2;
+	  pzl= ctx->geometry.z_center[i]- p3;
 	}
 
 	rs= pxl* pxl+ pyl* pyl+ pzl* pzl;
@@ -1039,7 +1039,7 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
 	arg= -TP* r;
 	tt1= cmplx( cos( arg), sin( arg));
 
-	if( i < ctx->geometry.n )
+	if( i < ctx->geometry.num_segs )
 	{
 	  tt2= cmplx(1.0,-1.0/( r* TP))/ rs;
 	  er= ds* tt1* tt2* cth;
@@ -1049,23 +1049,23 @@ void etmns(nec_context_t *restrict ctx, double p1, double p2, double p3, double 
 	  cx= ezh* wx+ erh* qx;
 	  cy= ezh* wy+ erh* qy;
 	  cz= ezh* wz+ erh* qz;
-	  e[i]=-( cx* ctx->geometry.cab[i]+ cy* ctx->geometry.sab[i]+ cz* ctx->geometry.salp[i]);
+	  e[i]=-( cx* ctx->geometry.dir_cos_x[i]+ cy* ctx->geometry.dir_cos_y[i]+ cz* ctx->geometry.dir_cos_z[i]);
 	}
 	else
 	{
 	  pxl= wy* qz- wz* qy;
 	  pyl= wz* qx- wx* qz;
 	  pzl= wx* qy- wy* qx;
-	  tt2= dsh* tt1* cmplx(1./ r, TP)/ r* sth* ctx->geometry.psalp[is];
+	  tt2= dsh* tt1* cmplx(1./ r, TP)/ r* sth* ctx->geometry.patch_normal_z[is];
 	  cx= tt2* pxl;
 	  cy= tt2* pyl;
 	  cz= tt2* pzl;
-	  e[i2]= cx* ctx->geometry.t1x[is]+ cy* ctx->geometry.t1y[is]+ cz* ctx->geometry.t1z[is];
-	  e[i1]= cx* ctx->geometry.t2x[is]+ cy* ctx->geometry.t2y[is]+ cz* ctx->geometry.t2z[is];
+	  e[i2]= cx* ctx->geometry.patch_t1x[is]+ cy* ctx->geometry.patch_t1y[is]+ cz* ctx->geometry.patch_t1z[is];
+	  e[i1]= cx* ctx->geometry.patch_t2x[is]+ cy* ctx->geometry.patch_t2y[is]+ cz* ctx->geometry.patch_t2z[is];
 	  is++;
-	} /* if( i < ctx->geometry.n) */
+	} /* if( i < ctx->geometry.num_segs) */
 
-  } /* for( i = 0; i < ctx->geometry.npm; i++ ) */
+  } /* for( i = 0; i < ctx->geometry.num_segs_and_patches; i++ ) */
 
   return;
 }
@@ -1143,7 +1143,7 @@ void factr(const nec_context_t *restrict ctx, int n, complex double *restrict a,
   complex double arj, *scm = NULL;
 
   /* Allocate to scratch memory */
-  size_t mreq = (size_t)ctx->geometry.np2m;
+  size_t mreq = (size_t)ctx->geometry.num_segs_2xpatches;
   mreq *= sizeof(complex double);
   mem_alloc(ctx, (void *)&scm, mreq );
 
@@ -1392,7 +1392,7 @@ void solve(const nec_context_t *restrict ctx, int n, complex double *restrict a,
   complex double sum, *scm = NULL;
 
   /* Allocate to scratch memory */
-  size_t mreq = (size_t)ctx->geometry.np2m;
+  size_t mreq = (size_t)ctx->geometry.num_segs_2xpatches;
   mreq *= sizeof(complex double);
   mem_alloc(ctx, (void *)&scm, mreq );
 
@@ -1448,7 +1448,7 @@ void solves(nec_context_t *restrict ctx, complex double *restrict a, int *restri
   nrow= neq;
 
   /* Allocate to scratch memory */
-  size_t mreq = (size_t)ctx->geometry.np2m;
+  size_t mreq = (size_t)ctx->geometry.num_segs_2xpatches;
   mreq *= sizeof(complex double);
   mem_alloc(ctx, (void *)&scm, mreq );
 

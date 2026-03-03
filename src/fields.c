@@ -1140,20 +1140,20 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
   *ez=CPLX_00;
   ax=0.;
   
-  if( ctx->geometry.n != 0)
+  if( ctx->geometry.num_segs != 0)
   {
-    for( i = 0; i < ctx->geometry.n; i++ )
+    for( i = 0; i < ctx->geometry.num_segs; i++ )
     {
-      ctx->dataj.src_x= xob- ctx->geometry.x[i];
-      ctx->dataj.src_y= yob- ctx->geometry.y[i];
-      ctx->dataj.src_z= zob- ctx->geometry.z[i];
-      zp= ctx->geometry.cab[i]* ctx->dataj.src_x+ ctx->geometry.sab[i]* ctx->dataj.src_y+ ctx->geometry.salp[i]* ctx->dataj.src_z;
+      ctx->dataj.src_x= xob- ctx->geometry.x_center[i];
+      ctx->dataj.src_y= yob- ctx->geometry.y_center[i];
+      ctx->dataj.src_z= zob- ctx->geometry.z_center[i];
+      zp= ctx->geometry.dir_cos_x[i]* ctx->dataj.src_x+ ctx->geometry.dir_cos_y[i]* ctx->dataj.src_y+ ctx->geometry.dir_cos_z[i]* ctx->dataj.src_z;
       
-      if( fabs( zp) > 0.5001* ctx->geometry.si[i])
+      if( fabs( zp) > 0.5001* ctx->geometry.half_len[i])
         continue;
       
       zp= ctx->dataj.src_x* ctx->dataj.src_x+ ctx->dataj.src_y* ctx->dataj.src_y+ ctx->dataj.src_z* ctx->dataj.src_z- zp* zp;
-      ctx->dataj.src_x= ctx->geometry.bi[i];
+      ctx->dataj.src_x= ctx->geometry.radius[i];
       
       if( zp > 0.9* ctx->dataj.src_x* ctx->dataj.src_x)
         continue;
@@ -1163,21 +1163,21 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
       
     } /* for( i = 0; i < n; i++ ) */
     
-    for( i = 0; i < ctx->geometry.n; i++ )
+    for( i = 0; i < ctx->geometry.num_segs; i++ )
     {
       ix = i+1;
-      ctx->dataj.seg_half_len= ctx->geometry.si[i];
-      ctx->dataj.seg_radius= ctx->geometry.bi[i];
-      ctx->dataj.src_x= ctx->geometry.x[i];
-      ctx->dataj.src_y= ctx->geometry.y[i];
-      ctx->dataj.src_z= ctx->geometry.z[i];
-      ctx->dataj.src_dir_cos_x= ctx->geometry.cab[i];
-      ctx->dataj.src_dir_cos_y= ctx->geometry.sab[i];
-      ctx->dataj.src_dir_cos_z= ctx->geometry.salp[i];
+      ctx->dataj.seg_half_len= ctx->geometry.half_len[i];
+      ctx->dataj.seg_radius= ctx->geometry.radius[i];
+      ctx->dataj.src_x= ctx->geometry.x_center[i];
+      ctx->dataj.src_y= ctx->geometry.y_center[i];
+      ctx->dataj.src_z= ctx->geometry.z_center[i];
+      ctx->dataj.src_dir_cos_x= ctx->geometry.dir_cos_x[i];
+      ctx->dataj.src_dir_cos_y= ctx->geometry.dir_cos_y[i];
+      ctx->dataj.src_dir_cos_z= ctx->geometry.dir_cos_z[i];
       
       if( ctx->dataj.use_extended_kernel != 0)
       {
-        ipr= ctx->geometry.icon1[i];
+        ipr= ctx->geometry.seg_end1_conn[i];
         
         if(ipr > PCHCON) ctx->dataj.end1_kernel_type = 2;
         else if( ipr < 0 )
@@ -1185,13 +1185,13 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
           ipr = -ipr;
           iprx = ipr-1;
           
-          if( -ctx->geometry.icon1[iprx] != ix )
+          if( -ctx->geometry.seg_end1_conn[iprx] != ix )
             ctx->dataj.end1_kernel_type=2;
           else
           {
-            xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
-                     ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
-            if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+            xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.dir_cos_x[iprx]+ ctx->dataj.src_dir_cos_y*
+                     ctx->geometry.dir_cos_y[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.dir_cos_z[iprx]);
+            if( (xi < 0.999999) || (fabs(ctx->geometry.radius[iprx]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
               ctx->dataj.end1_kernel_type=2;
             else
               ctx->dataj.end1_kernel_type=0;
@@ -1206,13 +1206,13 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
             
             if( ipr != ix )
             {
-              if( ctx->geometry.icon2[iprx] != ix )
+              if( ctx->geometry.seg_end2_conn[iprx] != ix )
                 ctx->dataj.end1_kernel_type=2;
               else
               {
-                xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
-                         ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
-                if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+                xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.dir_cos_x[iprx]+ ctx->dataj.src_dir_cos_y*
+                         ctx->geometry.dir_cos_y[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.dir_cos_z[iprx]);
+                if( (xi < 0.999999) || (fabs(ctx->geometry.radius[iprx]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
                   ctx->dataj.end1_kernel_type=2;
                 else
                   ctx->dataj.end1_kernel_type=0;
@@ -1227,7 +1227,7 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
             }
           } /* else */
         
-        ipr= ctx->geometry.icon2[i];
+        ipr= ctx->geometry.seg_end2_conn[i];
         
         if (ipr > PCHCON) ctx->dataj.end2_kernel_type = 2;
         else if( ipr < 0 )
@@ -1235,13 +1235,13 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
           ipr = -ipr;
           iprx = ipr-1;
           
-          if( -ctx->geometry.icon2[iprx] != ix )
+          if( -ctx->geometry.seg_end2_conn[iprx] != ix )
             ctx->dataj.end1_kernel_type=2;
           else
           {
-            xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
-                     ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
-            if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+            xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.dir_cos_x[iprx]+ ctx->dataj.src_dir_cos_y*
+                     ctx->geometry.dir_cos_y[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.dir_cos_z[iprx]);
+            if( (xi < 0.999999) || (fabs(ctx->geometry.radius[iprx]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
               ctx->dataj.end1_kernel_type=2;
             else
               ctx->dataj.end1_kernel_type=0;
@@ -1256,13 +1256,13 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
             
             if( ipr != ix )
             {
-              if( ctx->geometry.icon1[iprx] != ix )
+              if( ctx->geometry.seg_end1_conn[iprx] != ix )
                 ctx->dataj.end2_kernel_type=2;
               else
               {
-                xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[iprx]+ ctx->dataj.src_dir_cos_y*
-                         ctx->geometry.sab[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[iprx]);
-                if( (xi < 0.999999) || (fabs(ctx->geometry.bi[iprx]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+                xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.dir_cos_x[iprx]+ ctx->dataj.src_dir_cos_y*
+                         ctx->geometry.dir_cos_y[iprx]+ ctx->dataj.src_dir_cos_z* ctx->geometry.dir_cos_z[iprx]);
+                if( (xi < 0.999999) || (fabs(ctx->geometry.radius[iprx]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
                   ctx->dataj.end2_kernel_type=2;
                 else
                   ctx->dataj.end2_kernel_type=0;
@@ -1290,24 +1290,24 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
       
     } /* for( i = 0; i < n; i++ ) */
     
-    if( ctx->geometry.m == 0)
+    if( ctx->geometry.num_patches == 0)
       return;
     
   } /* if( n != 0) */
   
-  jc= ctx->geometry.n-1;
-  for( i = 0; i < ctx->geometry.m; i++ )
+  jc= ctx->geometry.num_segs-1;
+  for( i = 0; i < ctx->geometry.num_patches; i++ )
   {
-    ctx->dataj.seg_half_len= ctx->geometry.pbi[i];
-    ctx->dataj.src_x= ctx->geometry.px[i];
-    ctx->dataj.src_y= ctx->geometry.py[i];
-    ctx->dataj.src_z= ctx->geometry.pz[i];
-    ctx->dataj.patch_t1x= ctx->geometry.t1x[i];
-    ctx->dataj.patch_t1y= ctx->geometry.t1y[i];
-    ctx->dataj.patch_t1z= ctx->geometry.t1z[i];
-    ctx->dataj.patch_t2x= ctx->geometry.t2x[i];
-    ctx->dataj.patch_t2y= ctx->geometry.t2y[i];
-    ctx->dataj.patch_t2z= ctx->geometry.t2z[i];
+    ctx->dataj.seg_half_len= ctx->geometry.patch_area[i];
+    ctx->dataj.src_x= ctx->geometry.patch_x_center[i];
+    ctx->dataj.src_y= ctx->geometry.patch_y_center[i];
+    ctx->dataj.src_z= ctx->geometry.patch_z_center[i];
+    ctx->dataj.patch_t1x= ctx->geometry.patch_t1x[i];
+    ctx->dataj.patch_t1y= ctx->geometry.patch_t1y[i];
+    ctx->dataj.patch_t1z= ctx->geometry.patch_t1z[i];
+    ctx->dataj.patch_t2x= ctx->geometry.patch_t2x[i];
+    ctx->dataj.patch_t2y= ctx->geometry.patch_t2y[i];
+    ctx->dataj.patch_t2z= ctx->geometry.patch_t2z[i];
     jc += 3;
     acx= ctx->dataj.patch_t1x* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.patch_t1y* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.patch_t1z* ctx->crnt.surface_cur[jc];
     bcx= ctx->dataj.patch_t2x* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.patch_t2y* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.patch_t2z* ctx->crnt.surface_cur[jc];
@@ -1336,14 +1336,14 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
   complex double curd, etk, ets, etc;
   
   is--;
-  i= ctx->geometry.icon1[is];
-  ctx->geometry.icon1[is] = 0;
+  i= ctx->geometry.seg_end1_conn[is];
+  ctx->geometry.seg_end1_conn[is] = 0;
   if (tbf(ctx, is+1, 0) != 0)
     return;
-  ctx->geometry.icon1[is]= i;
-  ctx->dataj.seg_half_len= ctx->geometry.si[is]*.5;
-  curd= CCJ* v/(( log(2.* ctx->dataj.seg_half_len/ ctx->geometry.bi[is])-1.)*( ctx->segj.coeff_sine[ctx->segj.num_junction_segs-1]*
-                                                         cos( TP* ctx->dataj.seg_half_len)+ ctx->segj.coeff_cos[ctx->segj.num_junction_segs-1]* sin( TP* ctx->dataj.seg_half_len))* ctx->geometry.wlam);
+  ctx->geometry.seg_end1_conn[is]= i;
+  ctx->dataj.seg_half_len= ctx->geometry.half_len[is]*.5;
+  curd= CCJ* v/(( log(2.* ctx->dataj.seg_half_len/ ctx->geometry.radius[is])-1.)*( ctx->segj.coeff_sine[ctx->segj.num_junction_segs-1]*
+                                                         cos( TP* ctx->dataj.seg_half_len)+ ctx->segj.coeff_cos[ctx->segj.num_junction_segs-1]* sin( TP* ctx->dataj.seg_half_len))* ctx->geometry.wavelength);
   ctx->vsorc.qdsrc_voltages_saved[ctx->vsorc.num_qdsrcs_used]= v;
   ctx->vsorc.qdsrc_indices[ctx->vsorc.num_qdsrcs_used]= is+1;
   ctx->vsorc.num_qdsrcs_used++;
@@ -1352,31 +1352,31 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
   {
     j= ctx->segj.junction_segs[jx]-1;
     jp1 = j+1;
-    ctx->dataj.seg_half_len= ctx->geometry.si[j];
-    ctx->dataj.seg_radius= ctx->geometry.bi[j];
-    ctx->dataj.src_x= ctx->geometry.x[j];
-    ctx->dataj.src_y= ctx->geometry.y[j];
-    ctx->dataj.src_z= ctx->geometry.z[j];
-    ctx->dataj.src_dir_cos_x= ctx->geometry.cab[j];
-    ctx->dataj.src_dir_cos_y= ctx->geometry.sab[j];
-    ctx->dataj.src_dir_cos_z= ctx->geometry.salp[j];
+    ctx->dataj.seg_half_len= ctx->geometry.half_len[j];
+    ctx->dataj.seg_radius= ctx->geometry.radius[j];
+    ctx->dataj.src_x= ctx->geometry.x_center[j];
+    ctx->dataj.src_y= ctx->geometry.y_center[j];
+    ctx->dataj.src_z= ctx->geometry.z_center[j];
+    ctx->dataj.src_dir_cos_x= ctx->geometry.dir_cos_x[j];
+    ctx->dataj.src_dir_cos_y= ctx->geometry.dir_cos_y[j];
+    ctx->dataj.src_dir_cos_z= ctx->geometry.dir_cos_z[j];
     
     if( ctx->dataj.use_extended_kernel != 0)
     {
-      ipr= ctx->geometry.icon1[j];
+      ipr= ctx->geometry.seg_end1_conn[j];
       
       if (ipr > PCHCON) ctx->dataj.end1_kernel_type=2;
       else if( ipr < 0 )
       {
         ipr= -ipr;
         ipr--;
-        if( -ctx->geometry.icon1[ipr-1] != jp1 )
+        if( -ctx->geometry.seg_end1_conn[ipr-1] != jp1 )
           ctx->dataj.end1_kernel_type=2;
         else
         {
-          xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[ipr]+ ctx->dataj.src_dir_cos_y*
-                   ctx->geometry.sab[ipr]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[ipr]);
-          if( (xi < 0.999999) || (fabs(ctx->geometry.bi[ipr]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+          xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.dir_cos_x[ipr]+ ctx->dataj.src_dir_cos_y*
+                   ctx->geometry.dir_cos_y[ipr]+ ctx->dataj.src_dir_cos_z* ctx->geometry.dir_cos_z[ipr]);
+          if( (xi < 0.999999) || (fabs(ctx->geometry.radius[ipr]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
             ctx->dataj.end1_kernel_type=2;
           else
             ctx->dataj.end1_kernel_type=0;
@@ -1390,13 +1390,13 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
           ipr--;
           if( ipr != j )
           {
-            if( ctx->geometry.icon2[ipr] != jp1)
+            if( ctx->geometry.seg_end2_conn[ipr] != jp1)
               ctx->dataj.end1_kernel_type=2;
             else
             {
-              xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[ipr]+ ctx->dataj.src_dir_cos_y*
-                       ctx->geometry.sab[ipr]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[ipr]);
-              if( (xi < 0.999999) || (fabs(ctx->geometry.bi[ipr]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+              xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.dir_cos_x[ipr]+ ctx->dataj.src_dir_cos_y*
+                       ctx->geometry.dir_cos_y[ipr]+ ctx->dataj.src_dir_cos_z* ctx->geometry.dir_cos_z[ipr]);
+              if( (xi < 0.999999) || (fabs(ctx->geometry.radius[ipr]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
                 ctx->dataj.end1_kernel_type=2;
               else
                 ctx->dataj.end1_kernel_type=0;
@@ -1411,19 +1411,19 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
           }
         } /* else */
       
-      ipr= ctx->geometry.icon2[j];
+      ipr= ctx->geometry.seg_end2_conn[j];
       if (ipr > PCHCON) ctx->dataj.end2_kernel_type=2;
       else if( ipr < 0 )
       {
         ipr = -ipr;
         ipr--;
-        if( -ctx->geometry.icon2[ipr] != jp1 )
+        if( -ctx->geometry.seg_end2_conn[ipr] != jp1 )
           ctx->dataj.end1_kernel_type=2;
         else
         {
-          xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[ipr]+ ctx->dataj.src_dir_cos_y*
-                   ctx->geometry.sab[ipr]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[ipr]);
-          if( (xi < 0.999999) || (fabs(ctx->geometry.bi[ipr]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+          xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.dir_cos_x[ipr]+ ctx->dataj.src_dir_cos_y*
+                   ctx->geometry.dir_cos_y[ipr]+ ctx->dataj.src_dir_cos_z* ctx->geometry.dir_cos_z[ipr]);
+          if( (xi < 0.999999) || (fabs(ctx->geometry.radius[ipr]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
             ctx->dataj.end1_kernel_type=2;
           else
             ctx->dataj.end1_kernel_type=0;
@@ -1437,13 +1437,13 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
           ipr--;
           if( ipr != j )
           {
-            if( ctx->geometry.icon1[ipr] != jp1)
+            if( ctx->geometry.seg_end1_conn[ipr] != jp1)
               ctx->dataj.end2_kernel_type=2;
             else
             {
-              xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.cab[ipr]+ ctx->dataj.src_dir_cos_y*
-                       ctx->geometry.sab[ipr]+ ctx->dataj.src_dir_cos_z* ctx->geometry.salp[ipr]);
-              if( (xi < 0.999999) || (fabs(ctx->geometry.bi[ipr]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
+              xi= fabs( ctx->dataj.src_dir_cos_x* ctx->geometry.dir_cos_x[ipr]+ ctx->dataj.src_dir_cos_y*
+                       ctx->geometry.dir_cos_y[ipr]+ ctx->dataj.src_dir_cos_z* ctx->geometry.dir_cos_z[ipr]);
+              if( (xi < 0.999999) || (fabs(ctx->geometry.radius[ipr]/ctx->dataj.seg_radius-1.) > 1.0e-6) )
                 ctx->dataj.end2_kernel_type=2;
               else
                 ctx->dataj.end2_kernel_type=0;
@@ -1460,50 +1460,50 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
       
     } /* if( ctx->dataj.use_extended_kernel != 0) */
     
-    for( i = 0; i < ctx->geometry.n; i++ )
+    for( i = 0; i < ctx->geometry.num_segs; i++ )
     {
       ij= i- j;
-      xi= ctx->geometry.x[i];
-      yi= ctx->geometry.y[i];
-      zi= ctx->geometry.z[i];
-      ai= ctx->geometry.bi[i];
+      xi= ctx->geometry.x_center[i];
+      yi= ctx->geometry.y_center[i];
+      zi= ctx->geometry.z_center[i];
+      ai= ctx->geometry.radius[i];
       efld(ctx,  xi, yi, zi, ai, ij);
-      cabi= ctx->geometry.cab[i];
-      sabi= ctx->geometry.sab[i];
-      salpi= ctx->geometry.salp[i];
+      cabi= ctx->geometry.dir_cos_x[i];
+      sabi= ctx->geometry.dir_cos_y[i];
+      salpi= ctx->geometry.dir_cos_z[i];
       etk= ctx->dataj.e_const_x* cabi+ ctx->dataj.e_const_y* sabi+ ctx->dataj.e_const_z* salpi;
       ets= ctx->dataj.e_sin_x* cabi+ ctx->dataj.e_sin_y* sabi+ ctx->dataj.e_sin_z* salpi;
       etc= ctx->dataj.e_cos_x* cabi+ ctx->dataj.e_cos_y* sabi+ ctx->dataj.e_cos_z* salpi;
       e[i]= e[i]-( etk* ctx->segj.coeff_const[jx]+ ets* ctx->segj.coeff_sine[jx]+ etc* ctx->segj.coeff_cos[jx])* curd;
     }
     
-    if( ctx->geometry.m != 0)
+    if( ctx->geometry.num_patches != 0)
     {
-      i1= ctx->geometry.n-1;
-      for( i = 0; i < ctx->geometry.m; i++ )
+      i1= ctx->geometry.num_segs-1;
+      for( i = 0; i < ctx->geometry.num_patches; i++ )
       {
-        xi= ctx->geometry.px[i];
-        yi= ctx->geometry.py[i];
-        zi= ctx->geometry.pz[i];
+        xi= ctx->geometry.patch_x_center[i];
+        yi= ctx->geometry.patch_y_center[i];
+        zi= ctx->geometry.patch_z_center[i];
         hsfld(ctx,  xi, yi, zi,0.);
         i1++;
-        tx= ctx->geometry.t2x[i];
-        ty= ctx->geometry.t2y[i];
-        tz= ctx->geometry.t2z[i];
+        tx= ctx->geometry.patch_t2x[i];
+        ty= ctx->geometry.patch_t2y[i];
+        tz= ctx->geometry.patch_t2z[i];
         etk= ctx->dataj.e_const_x* tx+ ctx->dataj.e_const_y* ty+ ctx->dataj.e_const_z* tz;
         ets= ctx->dataj.e_sin_x* tx+ ctx->dataj.e_sin_y* ty+ ctx->dataj.e_sin_z* tz;
         etc= ctx->dataj.e_cos_x* tx+ ctx->dataj.e_cos_y* ty+ ctx->dataj.e_cos_z* tz;
         e[i1] += ( etk* ctx->segj.coeff_const[jx]+ ets* ctx->segj.coeff_sine[jx]+
-                  etc* ctx->segj.coeff_cos[jx] )* curd* ctx->geometry.psalp[i];
+                  etc* ctx->segj.coeff_cos[jx] )* curd* ctx->geometry.patch_normal_z[i];
         i1++;
-        tx= ctx->geometry.t1x[i];
-        ty= ctx->geometry.t1y[i];
-        tz= ctx->geometry.t1z[i];
+        tx= ctx->geometry.patch_t1x[i];
+        ty= ctx->geometry.patch_t1y[i];
+        tz= ctx->geometry.patch_t1z[i];
         etk= ctx->dataj.e_const_x* tx+ ctx->dataj.e_const_y* ty+ ctx->dataj.e_const_z* tz;
         ets= ctx->dataj.e_sin_x* tx+ ctx->dataj.e_sin_y* ty+ ctx->dataj.e_sin_z* tz;
         etc= ctx->dataj.e_cos_x* tx+ ctx->dataj.e_cos_y* ty+ ctx->dataj.e_cos_z* tz;
         e[i1] += ( etk* ctx->segj.coeff_const[jx]+ ets* ctx->segj.coeff_sine[jx]+
-                  etc* ctx->segj.coeff_cos[jx])* curd* ctx->geometry.psalp[i];
+                  etc* ctx->segj.coeff_cos[jx])* curd* ctx->geometry.patch_normal_z[i];
       }
       
     } /* if( m != 0) */
@@ -1572,9 +1572,9 @@ void nfpat(nec_context_t *ctx)
           zob= znrt;
         }
         
-        tmp1= xob/ ctx->geometry.wlam;
-        tmp2= yob/ ctx->geometry.wlam;
-        tmp3= zob/ ctx->geometry.wlam;
+        tmp1= xob/ ctx->geometry.wavelength;
+        tmp2= yob/ ctx->geometry.wavelength;
+        tmp3= zob/ ctx->geometry.wavelength;
         
         if( ctx->fpat.near_field_type != 1)
           nefld(ctx,  tmp1, tmp2, tmp3, &ex, &ey, &ez);
@@ -1618,18 +1618,18 @@ void nhfld(nec_context_t *restrict ctx,  double xob, double yob, double zob,
   *hz=CPLX_00;
   ax=0.;
   
-  if(ctx->geometry.n != 0) {
-    for(i = 0; i < ctx->geometry.n; i++) {
-      ctx->dataj.src_x= xob- ctx->geometry.x[i];
-      ctx->dataj.src_y= yob- ctx->geometry.y[i];
-      ctx->dataj.src_z= zob- ctx->geometry.z[i];
-      zp= ctx->geometry.cab[i]* ctx->dataj.src_x+ ctx->geometry.sab[i]* ctx->dataj.src_y+ ctx->geometry.salp[i]* ctx->dataj.src_z;
+  if(ctx->geometry.num_segs != 0) {
+    for(i = 0; i < ctx->geometry.num_segs; i++) {
+      ctx->dataj.src_x= xob- ctx->geometry.x_center[i];
+      ctx->dataj.src_y= yob- ctx->geometry.y_center[i];
+      ctx->dataj.src_z= zob- ctx->geometry.z_center[i];
+      zp= ctx->geometry.dir_cos_x[i]* ctx->dataj.src_x+ ctx->geometry.dir_cos_y[i]* ctx->dataj.src_y+ ctx->geometry.dir_cos_z[i]* ctx->dataj.src_z;
       
-      if( fabs( zp) > 0.5001* ctx->geometry.si[i])
+      if( fabs( zp) > 0.5001* ctx->geometry.half_len[i])
         continue;
       
       zp= ctx->dataj.src_x* ctx->dataj.src_x+ ctx->dataj.src_y* ctx->dataj.src_y+ ctx->dataj.src_z* ctx->dataj.src_z- zp* zp;
-      ctx->dataj.src_x= ctx->geometry.bi[i];
+      ctx->dataj.src_x= ctx->geometry.radius[i];
       
       if( zp > 0.9* ctx->dataj.src_x* ctx->dataj.src_x)
         continue;
@@ -1638,15 +1638,15 @@ void nhfld(nec_context_t *restrict ctx,  double xob, double yob, double zob,
       break;
     }
     
-    for(i = 0; i < ctx->geometry.n; i++) {
-      ctx->dataj.seg_half_len= ctx->geometry.si[i];
-      ctx->dataj.seg_radius= ctx->geometry.bi[i];
-      ctx->dataj.src_x= ctx->geometry.x[i];
-      ctx->dataj.src_y= ctx->geometry.y[i];
-      ctx->dataj.src_z= ctx->geometry.z[i];
-      ctx->dataj.src_dir_cos_x= ctx->geometry.cab[i];
-      ctx->dataj.src_dir_cos_y= ctx->geometry.sab[i];
-      ctx->dataj.src_dir_cos_z= ctx->geometry.salp[i];
+    for(i = 0; i < ctx->geometry.num_segs; i++) {
+      ctx->dataj.seg_half_len= ctx->geometry.half_len[i];
+      ctx->dataj.seg_radius= ctx->geometry.radius[i];
+      ctx->dataj.src_x= ctx->geometry.x_center[i];
+      ctx->dataj.src_y= ctx->geometry.y_center[i];
+      ctx->dataj.src_z= ctx->geometry.z_center[i];
+      ctx->dataj.src_dir_cos_x= ctx->geometry.dir_cos_x[i];
+      ctx->dataj.src_dir_cos_y= ctx->geometry.dir_cos_y[i];
+      ctx->dataj.src_dir_cos_z= ctx->geometry.dir_cos_z[i];
       hsfld(ctx,  xob, yob, zob, ax);
       acx= cmplx( ctx->crnt.a_real[i], ctx->crnt.a_imag[i]);
       bcx= cmplx( ctx->crnt.b_real[i], ctx->crnt.b_imag[i]);
@@ -1656,23 +1656,23 @@ void nhfld(nec_context_t *restrict ctx,  double xob, double yob, double zob,
       *hz += ctx->dataj.e_const_z* acx+ ctx->dataj.e_sin_z* bcx+ ctx->dataj.e_cos_z* ccx;
     }
     
-    if(ctx->geometry.m == 0)
+    if(ctx->geometry.num_patches == 0)
       return;
     
   } /* if( data.n != 0) */
   
-  jc = ctx->geometry.n - 1;
-  for(i = 0; i < ctx->geometry.m; i++) {
-    ctx->dataj.seg_half_len= ctx->geometry.pbi[i];
-    ctx->dataj.src_x= ctx->geometry.px[i];
-    ctx->dataj.src_y= ctx->geometry.py[i];
-    ctx->dataj.src_z= ctx->geometry.pz[i];
-    ctx->dataj.patch_t1x= ctx->geometry.t1x[i];
-    ctx->dataj.patch_t1y= ctx->geometry.t1y[i];
-    ctx->dataj.patch_t1z= ctx->geometry.t1z[i];
-    ctx->dataj.patch_t2x= ctx->geometry.t2x[i];
-    ctx->dataj.patch_t2y= ctx->geometry.t2y[i];
-    ctx->dataj.patch_t2z= ctx->geometry.t2z[i];
+  jc = ctx->geometry.num_segs - 1;
+  for(i = 0; i < ctx->geometry.num_patches; i++) {
+    ctx->dataj.seg_half_len= ctx->geometry.patch_area[i];
+    ctx->dataj.src_x= ctx->geometry.patch_x_center[i];
+    ctx->dataj.src_y= ctx->geometry.patch_y_center[i];
+    ctx->dataj.src_z= ctx->geometry.patch_z_center[i];
+    ctx->dataj.patch_t1x= ctx->geometry.patch_t1x[i];
+    ctx->dataj.patch_t1y= ctx->geometry.patch_t1y[i];
+    ctx->dataj.patch_t1z= ctx->geometry.patch_t1z[i];
+    ctx->dataj.patch_t2x= ctx->geometry.patch_t2x[i];
+    ctx->dataj.patch_t2y= ctx->geometry.patch_t2y[i];
+    ctx->dataj.patch_t2z= ctx->geometry.patch_t2z[i];
     hintg(ctx,  xob, yob, zob);
     jc += 3;
     acx= ctx->dataj.patch_t1x* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.patch_t1y* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.patch_t1z* ctx->crnt.surface_cur[jc];
