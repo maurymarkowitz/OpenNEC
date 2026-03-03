@@ -192,13 +192,13 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
         // (e.g., ending with EN) accumulate state but perform no computation.
         bool has_xq = (!is_termination && batch_end >= 0 &&
                        strcmp(deck->cards[batch_end].card_code, "XQ") == 0);
-        bool has_output_request = (ctx->gnd.ifar != -1 ||
-                                   ctx->fpat.near != -1 ||
+        bool has_output_request = (ctx->gnd.far_field_type != -1 ||
+                                   ctx->fpat.is_near_field != -1 ||
                                    has_xq ||
                                    ctx->wg_after_cmset);
         if (!is_termination && has_output_request) {
             ctx->frequency_loop_ran = true;
-            if (execute_frequency_loop(ctx, ctx->save.nfrq, ctx->save.ifrq, ctx->save.delfrq) != 0) {
+            if (execute_frequency_loop(ctx, ctx->save.num_freq, ctx->save.freq_step_type, ctx->save.freq_step) != 0) {
                 return -1;
             }
         }
@@ -348,34 +348,34 @@ static int nec_calculation_defaults(nec_context_t *ctx)
     }
     
     // set geometry-dependent matrix parameters
-    ctx->netcx.npeq = ctx->geometry.np + 2 * ctx->geometry.mp;
+    ctx->netcx.num_eq_sym = ctx->geometry.np + 2 * ctx->geometry.mp;
     
     // matrix parameters (from oldmain.c lines 289-292)
-    if (ctx->matpar.imat == 0) {
-        ctx->netcx.neq = ctx->geometry.n + 2 * ctx->geometry.m;
-        ctx->netcx.neq2 = 0;
+    if (ctx->matpar.core_used == 0) {
+        ctx->netcx.num_eq = ctx->geometry.n + 2 * ctx->geometry.m;
+        ctx->netcx.num_eq_ngf = 0;
     }
     
     // reset all calculation defaults to initial values
     // these are reset for each run to support multiple calculations
-    ctx->fpat.ixtyp = 0;
-    ctx->fpat.near = -1;
-    ctx->zload.nload = 0;
+    ctx->fpat.excitation_type = 0;
+    ctx->fpat.is_near_field = -1;
+    ctx->zload.num_loads = 0;
     ctx->loading_outputs.count = 0;
     ctx->loading_outputs.capacity = 0;
     ctx->loading_outputs.entries = NULL;
-    ctx->netcx.nonet = 0;
-    ctx->plot.iplp1 = 0;
-    ctx->plot.iplp2 = 0;
-    ctx->plot.iplp3 = 0;
-    ctx->plot.iplp4 = 0;
-    ctx->yparm.ncoup = 0;
-    ctx->yparm.icoup = 0;
-    ctx->gnd.iperf = 0;
-    ctx->gnd.nradl = 0;
+    ctx->netcx.num_networks = 0;
+    ctx->plot.plot_type = 0;
+    ctx->plot.plot_axis = 0;
+    ctx->plot.plot_component = 0;
+    ctx->plot.plot_gain_type = 0;
+    ctx->yparm.num_pairs = 0;
+    ctx->yparm.coupling_flag = 0;
+    ctx->gnd.is_perfect = 0;
+    ctx->gnd.num_radials = 0;
     ctx->dataj.k_half_len = 1.0;  // Default matrix integration limit
     ctx->dataj.use_extended_kernel = 0;   // Extended thin-wire kernel off by default
-    ctx->gnd.ifar = -1;
+    ctx->gnd.far_field_type = -1;
     ctx->frequency_loop_ran = false;
     
     // Note: The following old main.c local variables are not stored in ctx
@@ -399,16 +399,16 @@ static int nec_calculation_defaults(nec_context_t *ctx)
  */
 static void reset_loading_buffers(nec_context_t *ctx)
 {
-    if (ctx->zload.nload > 0) {
-        mem_free(ctx, (void **)&ctx->zload.ldtyp);
-        mem_free(ctx, (void **)&ctx->zload.ldtag);
-        mem_free(ctx, (void **)&ctx->zload.ldtagf);
-        mem_free(ctx, (void **)&ctx->zload.ldtagt);
+    if (ctx->zload.num_loads > 0) {
+        mem_free(ctx, (void **)&ctx->zload.load_types);
+        mem_free(ctx, (void **)&ctx->zload.load_tags);
+        mem_free(ctx, (void **)&ctx->zload.load_tag_from);
+        mem_free(ctx, (void **)&ctx->zload.load_tag_to);
         mem_free(ctx, (void **)&ctx->zload.ldcard_num);
-        mem_free(ctx, (void **)&ctx->zload.zlr);
-        mem_free(ctx, (void **)&ctx->zload.zli);
-        mem_free(ctx, (void **)&ctx->zload.zlc);
-        ctx->zload.nload = 0;
+        mem_free(ctx, (void **)&ctx->zload.load_r);
+        mem_free(ctx, (void **)&ctx->zload.load_l);
+        mem_free(ctx, (void **)&ctx->zload.load_c);
+        ctx->zload.num_loads = 0;
     }
     if (ctx->loading_outputs.entries != NULL) {
         mem_free(ctx, (void **)&ctx->loading_outputs.entries);
@@ -424,17 +424,17 @@ static void reset_loading_buffers(nec_context_t *ctx)
  */
 static void reset_network_buffers(nec_context_t *ctx)
 {
-    if (ctx->netcx.nonet > 0) {
-        mem_free(ctx, (void **)&ctx->netcx.ntyp);
-        mem_free(ctx, (void **)&ctx->netcx.iseg1);
-        mem_free(ctx, (void **)&ctx->netcx.iseg2);
-        mem_free(ctx, (void **)&ctx->netcx.x11r);
-        mem_free(ctx, (void **)&ctx->netcx.x11i);
-        mem_free(ctx, (void **)&ctx->netcx.x12r);
-        mem_free(ctx, (void **)&ctx->netcx.x12i);
-        mem_free(ctx, (void **)&ctx->netcx.x22r);
-        mem_free(ctx, (void **)&ctx->netcx.x22i);
-        ctx->netcx.nonet = 0;
+    if (ctx->netcx.num_networks > 0) {
+        mem_free(ctx, (void **)&ctx->netcx.net_types);
+        mem_free(ctx, (void **)&ctx->netcx.net_seg1);
+        mem_free(ctx, (void **)&ctx->netcx.net_seg2);
+        mem_free(ctx, (void **)&ctx->netcx.y11_real);
+        mem_free(ctx, (void **)&ctx->netcx.y11_imag);
+        mem_free(ctx, (void **)&ctx->netcx.y12_real);
+        mem_free(ctx, (void **)&ctx->netcx.y12_imag);
+        mem_free(ctx, (void **)&ctx->netcx.y22_real);
+        mem_free(ctx, (void **)&ctx->netcx.y22_imag);
+        ctx->netcx.num_networks = 0;
     }
 }
 
@@ -445,10 +445,10 @@ static void reset_network_buffers(nec_context_t *ctx)
  */
 static void reset_coupling_buffers(nec_context_t *ctx)
 {
-    if (ctx->yparm.ncoup > 0) {
-        mem_free(ctx, (void **)&ctx->yparm.nctag);
-        mem_free(ctx, (void **)&ctx->yparm.ncseg);
-        ctx->yparm.ncoup = 0;
+    if (ctx->yparm.num_pairs > 0) {
+        mem_free(ctx, (void **)&ctx->yparm.pair_tags);
+        mem_free(ctx, (void **)&ctx->yparm.pair_segs);
+        ctx->yparm.num_pairs = 0;
     }
 }
 
@@ -459,18 +459,18 @@ static void reset_coupling_buffers(nec_context_t *ctx)
  */
 static void reset_vsorc_buffers(nec_context_t *ctx)
 {
-    if (ctx->vsorc.nsant > 0) {
-        mem_free(ctx, (void **)&ctx->vsorc.isant);
-        mem_free(ctx, (void **)&ctx->vsorc.vsant);
-        ctx->vsorc.nsant = 0;
+    if (ctx->vsorc.num_vsrcs > 0) {
+        mem_free(ctx, (void **)&ctx->vsorc.vsrc_segs);
+        mem_free(ctx, (void **)&ctx->vsorc.vsrc_voltages);
+        ctx->vsorc.num_vsrcs = 0;
     }
-    if (ctx->vsorc.nvqd > 0) {
-        mem_free(ctx, (void **)&ctx->vsorc.ivqd);
-        mem_free(ctx, (void **)&ctx->vsorc.iqds);
-        mem_free(ctx, (void **)&ctx->vsorc.vqd);
-        mem_free(ctx, (void **)&ctx->vsorc.vqds);
-        ctx->vsorc.nvqd = 0;
-        ctx->vsorc.nqds = 0;
+    if (ctx->vsorc.num_qdsrcs > 0) {
+        mem_free(ctx, (void **)&ctx->vsorc.qdsrc_segs);
+        mem_free(ctx, (void **)&ctx->vsorc.qdsrc_indices);
+        mem_free(ctx, (void **)&ctx->vsorc.qdsrc_voltages);
+        mem_free(ctx, (void **)&ctx->vsorc.qdsrc_voltages_saved);
+        ctx->vsorc.num_qdsrcs = 0;
+        ctx->vsorc.num_qdsrcs_used = 0;
     }
 }
 
@@ -600,10 +600,10 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             if (ctx->iflow != 1) {
                 ctx->iflow = 1;
             }
-            ctx->save.ifrq = i1;
-            ctx->save.nfrq = (i2 == 0) ? 1 : i2;
-            ctx->save.fmhz = f1;
-            ctx->save.delfrq = f2;
+            ctx->save.freq_step_type = i1;
+            ctx->save.num_freq = (i2 == 0) ? 1 : i2;
+            ctx->save.freq_mhz = f1;
+            ctx->save.freq_step = f2;
         }
         else if (strcmp(code, "LD") == 0) {
             // LD card - Loading
@@ -619,33 +619,33 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             }
             
             // First LD in batch resets loading (iflow transition to 3)
-            if (ctx->iflow != 3 && ctx->zload.nload == 0) {
+            if (ctx->iflow != 3 && ctx->zload.num_loads == 0) {
                 reset_loading_buffers(ctx);
                 ctx->iflow = 3;
             }
             
             // Reallocate loading buffers
-            ctx->zload.nload++;
-            size_t mreq = (size_t)ctx->zload.nload * sizeof(int);
-            mem_realloc(ctx, (void **)&ctx->zload.ldtyp, mreq);
-            mem_realloc(ctx, (void **)&ctx->zload.ldtag, mreq);
-            mem_realloc(ctx, (void **)&ctx->zload.ldtagf, mreq);
-            mem_realloc(ctx, (void **)&ctx->zload.ldtagt, mreq);
+            ctx->zload.num_loads++;
+            size_t mreq = (size_t)ctx->zload.num_loads * sizeof(int);
+            mem_realloc(ctx, (void **)&ctx->zload.load_types, mreq);
+            mem_realloc(ctx, (void **)&ctx->zload.load_tags, mreq);
+            mem_realloc(ctx, (void **)&ctx->zload.load_tag_from, mreq);
+            mem_realloc(ctx, (void **)&ctx->zload.load_tag_to, mreq);
             mem_realloc(ctx, (void **)&ctx->zload.ldcard_num, mreq);
             
-            mreq = (size_t)ctx->zload.nload * sizeof(double);
-            mem_realloc(ctx, (void **)&ctx->zload.zlr, mreq);
-            mem_realloc(ctx, (void **)&ctx->zload.zli, mreq);
-            mem_realloc(ctx, (void **)&ctx->zload.zlc, mreq);
+            mreq = (size_t)ctx->zload.num_loads * sizeof(double);
+            mem_realloc(ctx, (void **)&ctx->zload.load_r, mreq);
+            mem_realloc(ctx, (void **)&ctx->zload.load_l, mreq);
+            mem_realloc(ctx, (void **)&ctx->zload.load_c, mreq);
             
-            int idx = ctx->zload.nload - 1;
-            ctx->zload.ldtyp[idx] = i1;
-            ctx->zload.ldtag[idx] = i2;
+            int idx = ctx->zload.num_loads - 1;
+            ctx->zload.load_types[idx] = i1;
+            ctx->zload.load_tags[idx] = i2;
             ctx->zload.ldcard_num[idx] = card_idx + 1;
-            ctx->zload.ldtagf[idx] = (i4 == 0) ? i3 : i3;
-            ctx->zload.ldtagt[idx] = (i4 == 0) ? i3 : i4;
+            ctx->zload.load_tag_from[idx] = (i4 == 0) ? i3 : i3;
+            ctx->zload.load_tag_to[idx] = (i4 == 0) ? i3 : i4;
             
-            if (ctx->zload.ldtagt[idx] < ctx->zload.ldtagf[idx]) {
+            if (ctx->zload.load_tag_to[idx] < ctx->zload.load_tag_from[idx]) {
                 char msg[MAX_ERROR_LEN];
                 snprintf(msg, sizeof(msg),
                     "LD on line %d: ITAG start %d is greater than ITAG end %d",
@@ -654,27 +654,27 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                 return -1;
             }
             
-            ctx->zload.zlr[idx] = f1;
-            ctx->zload.zli[idx] = f2;
-            ctx->zload.zlc[idx] = f3;
+            ctx->zload.load_r[idx] = f1;
+            ctx->zload.load_l[idx] = f2;
+            ctx->zload.load_c[idx] = f3;
         }
         else if (strcmp(code, "GN") == 0) {
             // GN card - Ground parameters  
             if (i1 == -1) {
-                ctx->gnd.ksymp = 1;
-                ctx->gnd.nradl = 0;
-                ctx->gnd.iperf = 0;
+                ctx->gnd.has_ground = 1;
+                ctx->gnd.num_radials = 0;
+                ctx->gnd.is_perfect = 0;
                 continue;
             }
             
-            ctx->gnd.iperf = i1;
-            ctx->gnd.nradl = i2;
-            ctx->gnd.ksymp = 2;
-            ctx->save.epsr = f1;
-            ctx->save.sig = f2;
+            ctx->gnd.is_perfect = i1;
+            ctx->gnd.num_radials = i2;
+            ctx->gnd.has_ground = 2;
+            ctx->save.ground_epsr = f1;
+            ctx->save.ground_sigma = f2;
             
-            if (ctx->gnd.nradl != 0) {
-                if (ctx->gnd.iperf == 2) {
+            if (ctx->gnd.num_radials != 0) {
+                if (ctx->gnd.is_perfect == 2) {
                     char msg[MAX_ERROR_LEN];
                     snprintf(msg, sizeof(msg),
                         "GN on line %d: radial wire ground screen cannot be used with Sommerfeld ground option.",
@@ -683,16 +683,16 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                     return -1;
                 }
                 if (f3 >= 1.0e-20 || f4 >= 1.0e-20) {
-                    ctx->save.scrwlt = f3;
-                    ctx->save.scrwrt = f4;
+                    ctx->save.screen_wire_len = f3;
+                    ctx->save.screen_wire_radius = f4;
                 }
             }
         }
         // Continue processing other cards...
         else if (strcmp(code, "EX") == 0) {
             // EX card - Excitation
-            ctx->fpat.ixtyp = i1;
-            ctx->netcx.masym = i4 / 10;
+            ctx->fpat.excitation_type = i1;
+            ctx->netcx.check_asymmetry = i4 / 10;
             
             // warn about unsupported EX types
             if (i1 == 6 || i1 == 7) {
@@ -703,20 +703,20 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             
             // For voltage source types (0 and 5)
             if (i1 == 0 || i1 == 5) {
-                ctx->netcx.ntsol = 0;
+                ctx->netcx.network_type = 0;
                 
                 if (i1 == 5) {
                     // Incident plane wave or elementary current source
-                    ctx->vsorc.nvqd++;
-                    size_t mreq = (size_t)ctx->vsorc.nvqd * sizeof(int);
-                    mem_realloc(ctx, (void **)&ctx->vsorc.ivqd, mreq);
-                    mem_realloc(ctx, (void **)&ctx->vsorc.iqds, mreq);
+                    ctx->vsorc.num_qdsrcs++;
+                    size_t mreq = (size_t)ctx->vsorc.num_qdsrcs * sizeof(int);
+                    mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_segs, mreq);
+                    mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_indices, mreq);
                     
-                    mreq = (size_t)ctx->vsorc.nvqd * sizeof(complex double);
-                    mem_realloc(ctx, (void **)&ctx->vsorc.vqd, mreq);
-                    mem_realloc(ctx, (void **)&ctx->vsorc.vqds, mreq);
+                    mreq = (size_t)ctx->vsorc.num_qdsrcs * sizeof(complex double);
+                    mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_voltages, mreq);
+                    mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_voltages_saved, mreq);
                     
-                    int idx = ctx->vsorc.nvqd - 1;
+                    int idx = ctx->vsorc.num_qdsrcs - 1;
                     int i3_resolved = resolve_pct_segment(ctx, card, 3, i2);
                     int seg_num = segment_number(ctx, i2, i3_resolved);
                     if (seg_num == 0) {
@@ -725,21 +725,21 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                         add_error(ctx, &ctx->errors, msg, FATAL);
                         return -1;
                     }
-                    ctx->vsorc.ivqd[idx] = seg_num;
-                    ctx->vsorc.vqd[idx] = f1 + I * f2;
-                    if (cabs(ctx->vsorc.vqd[idx]) < 1.e-20) {
-                        ctx->vsorc.vqd[idx] = CPLX_10;
+                    ctx->vsorc.qdsrc_segs[idx] = seg_num;
+                    ctx->vsorc.qdsrc_voltages[idx] = f1 + I * f2;
+                    if (cabs(ctx->vsorc.qdsrc_voltages[idx]) < 1.e-20) {
+                        ctx->vsorc.qdsrc_voltages[idx] = CPLX_10;
                     }
                 } else {
                     // Applied voltage source
-                    ctx->vsorc.nsant++;
-                    size_t mreq = (size_t)ctx->vsorc.nsant * sizeof(int);
-                    mem_realloc(ctx, (void **)&ctx->vsorc.isant, mreq);
+                    ctx->vsorc.num_vsrcs++;
+                    size_t mreq = (size_t)ctx->vsorc.num_vsrcs * sizeof(int);
+                    mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_segs, mreq);
                     
-                    mreq = (size_t)ctx->vsorc.nsant * sizeof(complex double);
-                    mem_realloc(ctx, (void **)&ctx->vsorc.vsant, mreq);
+                    mreq = (size_t)ctx->vsorc.num_vsrcs * sizeof(complex double);
+                    mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_voltages, mreq);
                     
-                    int idx = ctx->vsorc.nsant - 1;
+                    int idx = ctx->vsorc.num_vsrcs - 1;
                     int i3_resolved = resolve_pct_segment(ctx, card, 3, i2);
                     int seg_num = segment_number(ctx, i2, i3_resolved);
                     if (seg_num == 0) {
@@ -748,17 +748,17 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                         add_error(ctx, &ctx->errors, msg, FATAL);
                         return -1;
                     }
-                    ctx->vsorc.isant[idx] = seg_num;
-                    ctx->vsorc.vsant[idx] = f1 + I * f2;
-                    if (cabs(ctx->vsorc.vsant[idx]) < 1.e-20) {
-                        ctx->vsorc.vsant[idx] = CPLX_10;
+                    ctx->vsorc.vsrc_segs[idx] = seg_num;
+                    ctx->vsorc.vsrc_voltages[idx] = f1 + I * f2;
+                    if (cabs(ctx->vsorc.vsrc_voltages[idx]) < 1.e-20) {
+                        ctx->vsorc.vsrc_voltages[idx] = CPLX_10;
                     }
                 }
             } else {
                 // Far field pattern for receiving antenna
-                ctx->fpat.xpr6 = f6;
-                ctx->vsorc.nsant = 0;
-                ctx->vsorc.nvqd = 0;
+                ctx->fpat.exc_param6 = f6;
+                ctx->vsorc.num_vsrcs = 0;
+                ctx->vsorc.num_qdsrcs = 0;
             }
         }
         else if (strcmp(code, "NT") == 0 || strcmp(code, "TL") == 0) {
@@ -768,58 +768,58 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             }
             
             // First NT/TL in batch resets network (iflow transition to 6)
-            if (ctx->iflow != 6 && ctx->netcx.nonet == 0) {
+            if (ctx->iflow != 6 && ctx->netcx.num_networks == 0) {
                 reset_network_buffers(ctx);
                 ctx->iflow = 6;
             }
             
             // Reallocate network buffers
-            ctx->netcx.nonet++;
-            size_t mreq = (size_t)ctx->netcx.nonet * sizeof(int);
-            mem_realloc(ctx, (void **)&ctx->netcx.ntyp, mreq);
-            mem_realloc(ctx, (void **)&ctx->netcx.iseg1, mreq);
-            mem_realloc(ctx, (void **)&ctx->netcx.iseg2, mreq);
+            ctx->netcx.num_networks++;
+            size_t mreq = (size_t)ctx->netcx.num_networks * sizeof(int);
+            mem_realloc(ctx, (void **)&ctx->netcx.net_types, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.net_seg1, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.net_seg2, mreq);
             
-            mreq = (size_t)ctx->netcx.nonet * sizeof(double);
-            mem_realloc(ctx, (void **)&ctx->netcx.x11r, mreq);
-            mem_realloc(ctx, (void **)&ctx->netcx.x11i, mreq);
-            mem_realloc(ctx, (void **)&ctx->netcx.x12r, mreq);
-            mem_realloc(ctx, (void **)&ctx->netcx.x12i, mreq);
-            mem_realloc(ctx, (void **)&ctx->netcx.x22r, mreq);
-            mem_realloc(ctx, (void **)&ctx->netcx.x22i, mreq);
+            mreq = (size_t)ctx->netcx.num_networks * sizeof(double);
+            mem_realloc(ctx, (void **)&ctx->netcx.y11_real, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.y11_imag, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.y12_real, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.y12_imag, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.y22_real, mreq);
+            mem_realloc(ctx, (void **)&ctx->netcx.y22_imag, mreq);
             
-            int idx = ctx->netcx.nonet - 1;
+            int idx = ctx->netcx.num_networks - 1;
             if (strcmp(code, "NT") == 0) {
-                ctx->netcx.ntyp[idx] = 1;
+                ctx->netcx.net_types[idx] = 1;
             } else {
-                ctx->netcx.ntyp[idx] = 2;
+                ctx->netcx.net_types[idx] = 2;
             }
             
-            ctx->netcx.iseg1[idx] = segment_number(ctx, i1, i2);
-            if (ctx->netcx.iseg1[idx] == 0) {
+            ctx->netcx.net_seg1[idx] = segment_number(ctx, i1, i2);
+            if (ctx->netcx.net_seg1[idx] == 0) {
                 char msg[MAX_ERROR_LEN];
                 snprintf(msg, sizeof(msg), "%s on line %d: references invalid tag %d, segment %d", code, card_idx + 1, i1, i2);
                 add_error(ctx, &ctx->errors, msg, FATAL);
                 return -1;
             }
-            ctx->netcx.iseg2[idx] = segment_number(ctx, i3, i4);
-            if (ctx->netcx.iseg2[idx] == 0) {
+            ctx->netcx.net_seg2[idx] = segment_number(ctx, i3, i4);
+            if (ctx->netcx.net_seg2[idx] == 0) {
                 char msg[MAX_ERROR_LEN];
                 snprintf(msg, sizeof(msg), "%s on line %d: references invalid tag %d, segment %d", code, card_idx + 1, i3, i4);
                 add_error(ctx, &ctx->errors, msg, FATAL);
                 return -1;
             }
-            ctx->netcx.x11r[idx] = f1;
-            ctx->netcx.x11i[idx] = f2;
-            ctx->netcx.x12r[idx] = f3;
-            ctx->netcx.x12i[idx] = f4;
-            ctx->netcx.x22r[idx] = f5;
-            ctx->netcx.x22i[idx] = f6;
+            ctx->netcx.y11_real[idx] = f1;
+            ctx->netcx.y11_imag[idx] = f2;
+            ctx->netcx.y12_real[idx] = f3;
+            ctx->netcx.y12_imag[idx] = f4;
+            ctx->netcx.y22_real[idx] = f5;
+            ctx->netcx.y22_imag[idx] = f6;
             
             // Check for transmission line with impedance
-            if ((ctx->netcx.ntyp[idx] == 2) && (f1 <= 0.0)) {
-                ctx->netcx.ntyp[idx] = 3;
-                ctx->netcx.x11r[idx] = -f1;
+            if ((ctx->netcx.net_types[idx] == 2) && (f1 <= 0.0)) {
+                ctx->netcx.net_types[idx] = 3;
+                ctx->netcx.y11_real[idx] = -f1;
             }
         }
         else if (strcmp(code, "CP") == 0) {
@@ -829,37 +829,37 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             }
             
             // First CP in batch resets coupling (iflow transition to 2)
-            if (ctx->iflow != 2 && ctx->yparm.ncoup == 0) {
+            if (ctx->iflow != 2 && ctx->yparm.num_pairs == 0) {
                 reset_coupling_buffers(ctx);
                 ctx->iflow = 2;
             }
             
-            ctx->yparm.icoup = 0;
+            ctx->yparm.coupling_flag = 0;
             
             // First antenna
-            ctx->yparm.ncoup++;
-            size_t mreq = (size_t)ctx->yparm.ncoup * sizeof(int);
-            mem_realloc(ctx, (void **)&ctx->yparm.nctag, mreq);
-            mem_realloc(ctx, (void **)&ctx->yparm.ncseg, mreq);
-            ctx->yparm.nctag[ctx->yparm.ncoup - 1] = i1;
-            ctx->yparm.ncseg[ctx->yparm.ncoup - 1] = i2;
+            ctx->yparm.num_pairs++;
+            size_t mreq = (size_t)ctx->yparm.num_pairs * sizeof(int);
+            mem_realloc(ctx, (void **)&ctx->yparm.pair_tags, mreq);
+            mem_realloc(ctx, (void **)&ctx->yparm.pair_segs, mreq);
+            ctx->yparm.pair_tags[ctx->yparm.num_pairs - 1] = i1;
+            ctx->yparm.pair_segs[ctx->yparm.num_pairs - 1] = i2;
             
             // Second antenna (if specified)
             if (i4 != 0) {
-                ctx->yparm.ncoup++;
-                mreq = (size_t)ctx->yparm.ncoup * sizeof(int);
-                mem_realloc(ctx, (void **)&ctx->yparm.nctag, mreq);
-                mem_realloc(ctx, (void **)&ctx->yparm.ncseg, mreq);
-                ctx->yparm.nctag[ctx->yparm.ncoup - 1] = i3;
-                ctx->yparm.ncseg[ctx->yparm.ncoup - 1] = i4;
+                ctx->yparm.num_pairs++;
+                mreq = (size_t)ctx->yparm.num_pairs * sizeof(int);
+                mem_realloc(ctx, (void **)&ctx->yparm.pair_tags, mreq);
+                mem_realloc(ctx, (void **)&ctx->yparm.pair_segs, mreq);
+                ctx->yparm.pair_tags[ctx->yparm.num_pairs - 1] = i3;
+                ctx->yparm.pair_segs[ctx->yparm.num_pairs - 1] = i4;
             }
         }
         else if (strcmp(code, "GD") == 0) {
             // GD card - Ground representation (for patterns)
             ctx->fpat.epsr2 = f1;
-            ctx->fpat.sig2 = f2;
-            ctx->fpat.clt = f3;
-            ctx->fpat.cht = f4;
+            ctx->fpat.sigma2 = f2;
+            ctx->fpat.cliff_dist = f3;
+            ctx->fpat.cliff_height = f4;
         }
         else if (strcmp(code, "PT") == 0 || strcmp(code, "PQ") == 0 || strcmp(code, "PL") == 0) {
             // These cards are print control - skip in batch processing
@@ -867,43 +867,43 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
         }
         else if (strcmp(code, "RP") == 0) {
             // RP card - Radiation pattern parameters
-            ctx->gnd.ifar = i1;
-            ctx->fpat.nth = (i2 == 0) ? 1 : i2;
-            ctx->fpat.nph = (i3 == 0) ? 1 : i3;
+            ctx->gnd.far_field_type = i1;
+            ctx->fpat.num_theta = (i2 == 0) ? 1 : i2;
+            ctx->fpat.num_phi = (i3 == 0) ? 1 : i3;
             
-            ctx->fpat.ipd = i4 / 10;
-            ctx->fpat.iavp = i4 - ctx->fpat.ipd * 10;
-            ctx->fpat.inor = ctx->fpat.ipd / 10;
-            ctx->fpat.ipd = ctx->fpat.ipd - ctx->fpat.inor * 10;
-            ctx->fpat.iax = ctx->fpat.inor / 10;
-            ctx->fpat.inor = ctx->fpat.inor - ctx->fpat.iax * 10;
+            ctx->fpat.gain_type = i4 / 10;
+            ctx->fpat.avg_power_flag = i4 - ctx->fpat.gain_type * 10;
+            ctx->fpat.normalize_gain = ctx->fpat.gain_type / 10;
+            ctx->fpat.gain_type = ctx->fpat.gain_type - ctx->fpat.normalize_gain * 10;
+            ctx->fpat.pol_axis = ctx->fpat.normalize_gain / 10;
+            ctx->fpat.normalize_gain = ctx->fpat.normalize_gain - ctx->fpat.pol_axis * 10;
             
-            if (ctx->fpat.iax != 0) ctx->fpat.iax = 1;
-            if (ctx->fpat.ipd != 0) ctx->fpat.ipd = 1;
-            if ((ctx->fpat.nth < 2) || (ctx->fpat.nph < 2) || (ctx->gnd.ifar == 1)) {
-                ctx->fpat.iavp = 0;
+            if (ctx->fpat.pol_axis != 0) ctx->fpat.pol_axis = 1;
+            if (ctx->fpat.gain_type != 0) ctx->fpat.gain_type = 1;
+            if ((ctx->fpat.num_theta < 2) || (ctx->fpat.num_phi < 2) || (ctx->gnd.far_field_type == 1)) {
+                ctx->fpat.avg_power_flag = 0;
             }
             
-            ctx->fpat.thets = f1;
-            ctx->fpat.phis = f2;
-            ctx->fpat.dth = f3;
-            ctx->fpat.dph = f4;
-            ctx->fpat.rfld = f5;
-            ctx->fpat.gnor = f6;
+            ctx->fpat.theta_start = f1;
+            ctx->fpat.phi_start = f2;
+            ctx->fpat.theta_step = f3;
+            ctx->fpat.phi_step = f4;
+            ctx->fpat.range = f5;
+            ctx->fpat.norm_gain = f6;
         }
         else if (strcmp(code, "NE") == 0 || strcmp(code, "NH") == 0) {
             // NE/NH cards - Near field calculation
-            ctx->fpat.nfeh = (strcmp(code, "NH") == 0) ? 1 : 0;
-            ctx->fpat.near = i1;
-            ctx->fpat.nrx = i2;
-            ctx->fpat.nry = i3;
-            ctx->fpat.nrz = i4;
-            ctx->fpat.xnr = f1;
-            ctx->fpat.ynr = f2;
-            ctx->fpat.znr = f3;
-            ctx->fpat.dxnr = f4;
-            ctx->fpat.dynr = f5;
-            ctx->fpat.dznr = f6;
+            ctx->fpat.near_field_type = (strcmp(code, "NH") == 0) ? 1 : 0;
+            ctx->fpat.is_near_field = i1;
+            ctx->fpat.grid_nx = i2;
+            ctx->fpat.grid_ny = i3;
+            ctx->fpat.grid_nz = i4;
+            ctx->fpat.grid_x0 = f1;
+            ctx->fpat.grid_y0 = f2;
+            ctx->fpat.grid_z0 = f3;
+            ctx->fpat.grid_dx = f4;
+            ctx->fpat.grid_dy = f5;
+            ctx->fpat.grid_dz = f6;
         }
         else if (strcmp(code, "EK") == 0) {
             // Extended thin-wire kernel
@@ -1000,7 +1000,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         nfrq = 1;
     }
     // Validate geometry exists
-    if (ctx->netcx.neq == 0 || ctx->netcx.npeq == 0) {
+    if (ctx->netcx.num_eq == 0 || ctx->netcx.num_eq_sym == 0) {
         add_error(ctx, &ctx->errors, "Geometry not initialized before frequency loop", FATAL);
         return -1;
     }
@@ -1011,18 +1011,18 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
     }
     
     // Allocate memory for interaction matrix and IP array
-    size_t iresrv = ctx->netcx.neq * (ctx->netcx.neq + 2);
+    size_t iresrv = ctx->netcx.num_eq * (ctx->netcx.num_eq + 2);
     size_t mreq = iresrv * sizeof(complex double);
     complex double *cm = NULL;
     mem_alloc(ctx, (void **)&cm, mreq);
     
-    mreq = ctx->netcx.neq * sizeof(int);
-    mem_alloc(ctx, (void **)&ctx->save.ip, mreq);
+    mreq = ctx->netcx.num_eq * sizeof(int);
+    mem_alloc(ctx, (void **)&ctx->save.pivot, mreq);
     
     // Allocate symmetry array
-    ctx->smat.nop = ctx->netcx.neq / ctx->netcx.npeq;
-    mreq = (size_t)(ctx->smat.nop * ctx->smat.nop) * sizeof(complex double);
-    mem_alloc(ctx, (void **)&ctx->smat.ssx, mreq);
+    ctx->smat.num_sections = ctx->netcx.num_eq / ctx->netcx.num_eq_sym;
+    mreq = (size_t)(ctx->smat.num_sections * ctx->smat.num_sections) * sizeof(complex double);
+    mem_alloc(ctx, (void **)&ctx->smat.mode_matrix, mreq);
     
     // Allocate current array
     mreq = (size_t)ctx->geometry.np3m * sizeof(complex double);
@@ -1071,8 +1071,8 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
     }
     
     // Perform fblock matrix setup if needed
-    if (ctx->matpar.imat == 0) {
-        fblock(ctx, ctx->netcx.npeq, ctx->netcx.neq, iresrv, ctx->geometry.ipsym);
+    if (ctx->matpar.core_used == 0) {
+        fblock(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, iresrv, ctx->geometry.ipsym);
     }
     
     // Frequency loop
@@ -1080,15 +1080,15 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         // Update frequency
         if (mhz > 1) {
             if (ifrq == 1) {
-                ctx->save.fmhz *= delfrq;
+                ctx->save.freq_mhz *= delfrq;
             } else {
-                ctx->save.fmhz += delfrq;
+                ctx->save.freq_mhz += delfrq;
             }
         }
         
         // Calculate wavelength and frequency ratio
-        double fr = ctx->save.fmhz / CVEL;
-        ctx->geometry.wlam = CVEL / ctx->save.fmhz;
+        double fr = ctx->save.freq_mhz / CVEL;
+        ctx->geometry.wlam = CVEL / ctx->save.freq_mhz;
         
         // Scale geometry to current frequency
         if (ctx->geometry.n > 0) {
@@ -1113,47 +1113,47 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         }
         
         // Apply loading to structure
-        if (ctx->zload.nload > 0) {
-            int *ldtyp = ctx->zload.ldtyp;
-            int *ldtag = ctx->zload.ldtag;
-            int *ldtagf = ctx->zload.ldtagf;
-            int *ldtagt = ctx->zload.ldtagt;
-            double *zlr = ctx->zload.zlr;
-            double *zli = ctx->zload.zli;
-            double *zlc = ctx->zload.zlc;
+        if (ctx->zload.num_loads > 0) {
+            int *ldtyp = ctx->zload.load_types;
+            int *ldtag = ctx->zload.load_tags;
+            int *ldtagf = ctx->zload.load_tag_from;
+            int *ldtagt = ctx->zload.load_tag_to;
+            double *zlr = ctx->zload.load_r;
+            double *zli = ctx->zload.load_l;
+            double *zlc = ctx->zload.load_c;
             
             if (load(ctx, ldtyp, ldtag, ldtagf, ldtagt, zlr, zli, zlc) != 0)
                 return -1;
         }
         
         // Set up ground parameters
-        if (ctx->gnd.ksymp != 1) {
-            ctx->gnd.frati = CPLX_10;
+        if (ctx->gnd.has_ground != 1) {
+            ctx->gnd.fresnel_ratio = CPLX_10;
             
-            if (ctx->gnd.iperf != 1) {
-                double sig = ctx->save.sig;
+            if (ctx->gnd.is_perfect != 1) {
+                double sig = ctx->save.ground_sigma;
                 if (sig < 0.0) {
                     sig = -sig / (59.96 * ctx->geometry.wlam);
-                    ctx->save.sig = sig;
+                    ctx->save.ground_sigma = sig;
                 }
                 
-                complex double epsc = ctx->save.epsr - I * sig * ctx->geometry.wlam * 59.96;
-                ctx->gnd.zrati = 1.0 / csqrt(epsc);
-                ctx->gwav.u = ctx->gnd.zrati;
-                ctx->gwav.u2 = ctx->gwav.u * ctx->gwav.u;
+                complex double epsc = ctx->save.ground_epsr - I * sig * ctx->geometry.wlam * 59.96;
+                ctx->gnd.impedance_ratio = 1.0 / csqrt(epsc);
+                ctx->gwav.impedance_ratio = ctx->gnd.impedance_ratio;
+                ctx->gwav.impedance_ratio_sq = ctx->gwav.impedance_ratio * ctx->gwav.impedance_ratio;
                 
                 // Handle radial wire ground screen
-                if (ctx->gnd.nradl != 0) {
-                    ctx->gnd.scrwl = ctx->save.scrwlt / ctx->geometry.wlam;
-                    ctx->gnd.scrwr = ctx->save.scrwrt / ctx->geometry.wlam;
-                    ctx->gnd.t1 = CPLX_01 * 2367.067 / (double)ctx->gnd.nradl;
-                    ctx->gnd.t2 = ctx->gnd.scrwr * (double)ctx->gnd.nradl;
+                if (ctx->gnd.num_radials != 0) {
+                    ctx->gnd.screen_wire_len = ctx->save.screen_wire_len / ctx->geometry.wlam;
+                    ctx->gnd.screen_wire_radius = ctx->save.screen_wire_radius / ctx->geometry.wlam;
+                    ctx->gnd.screen_impedance = CPLX_01 * 2367.067 / (double)ctx->gnd.num_radials;
+                    ctx->gnd.screen_inner_r = ctx->gnd.screen_wire_radius * (double)ctx->gnd.num_radials;
                 }
                 
                 // Use Sommerfeld ground solution if requested
-                if (ctx->gnd.iperf == 2) {
-                    somnec(ctx, ctx->save.epsr, ctx->save.sig, ctx->save.fmhz);
-                    ctx->gnd.frati = (epsc - 1.0) / (epsc + 1.0);
+                if (ctx->gnd.is_perfect == 2) {
+                    somnec(ctx, ctx->save.ground_epsr, ctx->save.ground_sigma, ctx->save.freq_mhz);
+                    ctx->gnd.fresnel_ratio = (epsc - 1.0) / (epsc + 1.0);
                 }
             }
         }
@@ -1161,7 +1161,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         // Fill and factor primary interaction matrix
         double tim1, tim2;
         nec_get_time_ms(ctx, &tim1);
-        if (cmset(ctx, ctx->netcx.neq, cm, ctx->dataj.k_half_len, ctx->dataj.use_extended_kernel) != 0) {
+        if (cmset(ctx, ctx->netcx.num_eq, cm, ctx->dataj.k_half_len, ctx->dataj.use_extended_kernel) != 0) {
             mem_free(ctx, (void *)&cm);
             return -1;
         }
@@ -1174,7 +1174,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
          * or different solver options). */
         if (ctx->has_ngf && ctx->ngf_cm != NULL) {
             int nn  = ctx->ngf_neq;
-            int neq = ctx->netcx.neq;
+            int neq = ctx->netcx.num_eq;
             for (int col = 0; col < nn && col < neq; col++)
                 for (int row = 0; row < nn && row < neq; row++)
                     cm[row + col * neq] = ctx->ngf_cm[row + col * nn];
@@ -1182,7 +1182,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
 
         /* Export the (possibly NGF-injected) matrix if green_fp is open */
         if (ctx->green_fp != NULL) {
-            write_greens_binary(ctx->green_fp, ctx, ctx->netcx.neq, cm);
+            write_greens_binary(ctx->green_fp, ctx, ctx->netcx.num_eq, cm);
             fclose(ctx->green_fp);
             ctx->green_fp = NULL;
             if (ctx->wg_after_cmset) {
@@ -1197,40 +1197,40 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         nec_get_time_ms(ctx, &tim2);
         ctx->mat_fill_time = tim2 - tim1;
 
-        factrs(ctx, ctx->netcx.npeq, ctx->netcx.neq, cm, ctx->save.ip);
+        factrs(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, cm, ctx->save.pivot);
         nec_get_time_ms(ctx, &tim1);
         ctx->mat_factor_time = tim1 - tim2;
         
         // Reset solution counter
-        ctx->netcx.ntsol = 0;
-        ctx->netcx.nprint = 0;
+        ctx->netcx.network_type = 0;
+        ctx->netcx.print_net_data = 0;
         
         // Set up excitation and solve
         // For voltage source excitation (most common case)
-        if (ctx->fpat.ixtyp == 0 || ctx->fpat.ixtyp == 5) {
+        if (ctx->fpat.excitation_type == 0 || ctx->fpat.excitation_type == 5) {
             // Fill right-hand side matrix (excitation)
-            etmns(ctx, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ctx->fpat.ixtyp, ctx->crnt.surface_cur);
+            etmns(ctx, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ctx->fpat.excitation_type, ctx->crnt.surface_cur);
             
             // Solve with network
-            network(ctx, cm, ctx->save.ip, ctx->crnt.surface_cur);
-            ctx->netcx.ntsol = 1;
+            network(ctx, cm, ctx->save.pivot, ctx->crnt.surface_cur);
+            ctx->netcx.network_type = 1;
             
             // Calculate power loss in structure
-            ctx->fpat.ploss = 0.0;
+            ctx->fpat.ohmic_loss = 0.0;
             if (ctx->geometry.n > 0) {
                 for (int i = 0; i < ctx->geometry.n; i++) {
                     complex double curi = ctx->crnt.surface_cur[i] * ctx->geometry.wlam;
                     double cmag = cabs(curi);
                     
-                    if (ctx->zload.nload > 0 && fabs(creal(ctx->zload.zarray[i])) >= 1.e-20) {
-                        ctx->fpat.ploss += 0.5 * cmag * cmag * 
-                                          creal(ctx->zload.zarray[i]) * ctx->geometry.si[i];
+                    if (ctx->zload.num_loads > 0 && fabs(creal(ctx->zload.seg_impedance[i])) >= 1.e-20) {
+                        ctx->fpat.ohmic_loss += 0.5 * cmag * cmag * 
+                                          creal(ctx->zload.seg_impedance[i]) * ctx->geometry.si[i];
                     }
                 }
             }
             
             // Handle coupling calculations if requested
-            if (ctx->yparm.ncoup > 0) {
+            if (ctx->yparm.num_pairs > 0) {
                 couple(ctx, ctx->crnt.surface_cur, ctx->geometry.wlam);
             }
             
@@ -1238,14 +1238,14 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
             // Note: do NOT reset near to -1 here after the last frequency;
             // the output guard in main.c reads it after execute_frequency_loop
             // returns, and nec_calculation_defaults resets it per-batch.
-            if (ctx->fpat.near != -1) {
+            if (ctx->fpat.is_near_field != -1) {
                 nfpat(ctx);
             }
             
             // Store data for radiation pattern output (calculation happens in output.c)
-            if (ctx->gnd.ifar != -1) {
-                ctx->fpat.pinr = ctx->netcx.pin;
-                ctx->fpat.pnlr = ctx->netcx.pnls;
+            if (ctx->gnd.far_field_type != -1) {
+                ctx->fpat.power_in = ctx->netcx.power_in;
+                ctx->fpat.network_loss = ctx->netcx.power_net_loss;
                 rdpat(ctx);
             }
         }

@@ -68,7 +68,7 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
   ijx= ij;
   rfl=-1.;
   
-  for( ip = 0; ip < ctx->gnd.ksymp; ip++ )
+  for( ip = 0; ip < ctx->gnd.has_ground; ip++ )
   {
     if( ip == 1)
       ijx=1;
@@ -142,25 +142,25 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
     
     if( ip == 1)
     {
-      if( ctx->gnd.iperf <= 0)
+      if( ctx->gnd.is_perfect <= 0)
       {
-        zratx= ctx->gnd.zrati;
+        zratx= ctx->gnd.impedance_ratio;
         rmag= r;
         xymag= sqrt( xij* xij+ yij* yij);
         
         /* set parameters for radial wire ground screen. */
-        if( ctx->gnd.nradl != 0)
+        if( ctx->gnd.num_radials != 0)
         {
           xspec=( xi* ctx->dataj.src_z+ zi* ctx->dataj.src_x)/( zi+ ctx->dataj.src_z);
           yspec=( yi* ctx->dataj.src_z+ zi* ctx->dataj.src_y)/( zi+ ctx->dataj.src_z);
-          rhospc= sqrt( xspec* xspec+ yspec* yspec+ ctx->gnd.t2* ctx->gnd.t2);
+          rhospc= sqrt( xspec* xspec+ yspec* yspec+ ctx->gnd.screen_inner_r* ctx->gnd.screen_inner_r);
           
-          if( rhospc <= ctx->gnd.scrwl)
+          if( rhospc <= ctx->gnd.screen_wire_len)
           {
-            zscrn= ctx->gnd.t1* rhospc* log( rhospc/ ctx->gnd.t2);
-            zratx=( zscrn* ctx->gnd.zrati)/( ETA* ctx->gnd.zrati+ zscrn);
+            zscrn= ctx->gnd.screen_impedance* rhospc* log( rhospc/ ctx->gnd.screen_inner_r);
+            zratx=( zscrn* ctx->gnd.impedance_ratio)/( ETA* ctx->gnd.impedance_ratio+ zscrn);
           }
-        } /* if( ctx->gnd.nradl != 0) */
+        } /* if( ctx->gnd.num_radials != 0) */
         
         /* calculation of reflection coefficients when ground is specified. */
         if( xymag <= 1.0e-6)
@@ -201,17 +201,17 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
         tyc= refs* tyc+ refps* epy;
         tzc= refs* tzc;
         
-      } /* if( ctx->gnd.iperf <= 0) */
+      } /* if( ctx->gnd.is_perfect <= 0) */
       
-      ctx->dataj.e_const_x= ctx->dataj.e_const_x- txk* ctx->gnd.frati;
-      ctx->dataj.e_const_y= ctx->dataj.e_const_y- tyk* ctx->gnd.frati;
-      ctx->dataj.e_const_z= ctx->dataj.e_const_z- tzk* ctx->gnd.frati;
-      ctx->dataj.e_sin_x= ctx->dataj.e_sin_x- txs* ctx->gnd.frati;
-      ctx->dataj.e_sin_y= ctx->dataj.e_sin_y- tys* ctx->gnd.frati;
-      ctx->dataj.e_sin_z= ctx->dataj.e_sin_z- tzs* ctx->gnd.frati;
-      ctx->dataj.e_cos_x= ctx->dataj.e_cos_x- txc* ctx->gnd.frati;
-      ctx->dataj.e_cos_y= ctx->dataj.e_cos_y- tyc* ctx->gnd.frati;
-      ctx->dataj.e_cos_z= ctx->dataj.e_cos_z- tzc* ctx->gnd.frati;
+      ctx->dataj.e_const_x= ctx->dataj.e_const_x- txk* ctx->gnd.fresnel_ratio;
+      ctx->dataj.e_const_y= ctx->dataj.e_const_y- tyk* ctx->gnd.fresnel_ratio;
+      ctx->dataj.e_const_z= ctx->dataj.e_const_z- tzk* ctx->gnd.fresnel_ratio;
+      ctx->dataj.e_sin_x= ctx->dataj.e_sin_x- txs* ctx->gnd.fresnel_ratio;
+      ctx->dataj.e_sin_y= ctx->dataj.e_sin_y- tys* ctx->gnd.fresnel_ratio;
+      ctx->dataj.e_sin_z= ctx->dataj.e_sin_z- tzs* ctx->gnd.fresnel_ratio;
+      ctx->dataj.e_cos_x= ctx->dataj.e_cos_x- txc* ctx->gnd.fresnel_ratio;
+      ctx->dataj.e_cos_y= ctx->dataj.e_cos_y- tyc* ctx->gnd.fresnel_ratio;
+      ctx->dataj.e_cos_z= ctx->dataj.e_cos_z- tzc* ctx->gnd.fresnel_ratio;
       continue;
       
     } /* if( ip == 1) */
@@ -226,23 +226,23 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
     ctx->dataj.e_cos_y= tyc;
     ctx->dataj.e_cos_z= tzc;
     
-  } /* for( ip = 0; ip < ctx->gnd.ksymp; ip++ ) */
+  } /* for( ip = 0; ip < ctx->gnd.has_ground; ip++ ) */
   
-  if( ctx->gnd.iperf != 2)
+  if( ctx->gnd.is_perfect != 2)
     return;
   
   /* field due to ground using sommerfeld/norton */
-  ctx->incom.sn= sqrt( ctx->dataj.src_dir_cos_x* ctx->dataj.src_dir_cos_x+ ctx->dataj.src_dir_cos_y* ctx->dataj.src_dir_cos_y);
-  if( ctx->incom.sn >= 1.0e-5)
+  ctx->incom.sin_alpha= sqrt( ctx->dataj.src_dir_cos_x* ctx->dataj.src_dir_cos_x+ ctx->dataj.src_dir_cos_y* ctx->dataj.src_dir_cos_y);
+  if( ctx->incom.sin_alpha >= 1.0e-5)
   {
-    ctx->incom.xsn= ctx->dataj.src_dir_cos_x/ ctx->incom.sn;
-    ctx->incom.ysn= ctx->dataj.src_dir_cos_y/ ctx->incom.sn;
+    ctx->incom.dir_cos_x= ctx->dataj.src_dir_cos_x/ ctx->incom.sin_alpha;
+    ctx->incom.dir_cos_y= ctx->dataj.src_dir_cos_y/ ctx->incom.sin_alpha;
   }
   else
   {
-    ctx->incom.sn=0.;
-    ctx->incom.xsn=1.;
-    ctx->incom.ysn=0.;
+    ctx->incom.sin_alpha=0.;
+    ctx->incom.dir_cos_x=1.;
+    ctx->incom.dir_cos_y=0.;
   }
   
   /* displace observation point for thin wire approximation */
@@ -255,18 +255,18 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
   
   if( rh <= 1.e-10)
   {
-    ctx->incom.xo= xi- ai* ctx->incom.ysn;
-    ctx->incom.yo= yi+ ai* ctx->incom.xsn;
-    ctx->incom.zo= zi;
+    ctx->incom.obs_x= xi- ai* ctx->incom.dir_cos_y;
+    ctx->incom.obs_y= yi+ ai* ctx->incom.dir_cos_x;
+    ctx->incom.obs_z= zi;
   }
   else
   {
     rh= ai/ sqrt( rh);
     if( rhoz < 0.)
       rh= -rh;
-    ctx->incom.xo= xi+ rh* rhox;
-    ctx->incom.yo= yi+ rh* rhoy;
-    ctx->incom.zo= zi+ rh* rhoz;
+    ctx->incom.obs_x= xi+ rh* rhox;
+    ctx->incom.obs_y= yi+ rh* rhoy;
+    ctx->incom.obs_z= zi+ rh* rhoz;
     
   } /* if( rh <= 1.e-10) */
   
@@ -275,7 +275,7 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
   {
     double shaf;
     /* field from interpolation is integrated over segment */
-    ctx->incom.isnor=1;
+    ctx->incom.use_sommerfeld=1;
     dmin= creal(ctx->dataj.e_const_x*conj(ctx->dataj.e_const_x)) +
     creal(ctx->dataj.e_const_y*conj(ctx->dataj.e_const_y)) +
     creal(ctx->dataj.e_const_z*conj(ctx->dataj.e_const_z) );
@@ -287,7 +287,7 @@ void efld(nec_context_t *restrict ctx, double xi, double yi, double zi, double a
   else
   {
     /* norton field equations and lumped current element approximation */
-    ctx->incom.isnor=2;
+    ctx->incom.use_sommerfeld=2;
     sflds(ctx, 0., egnd);
   } /* if( r <= .95) */
   
@@ -344,10 +344,10 @@ void eksc(nec_context_t *ctx, double s, double z, double rh, double xk, int ij,
   double rhk, sh, shk, ss, cs, z1a, z2a, cint, sint;
   complex double gz1, gz2, gp1, gp2, gzp1, gzp2;
   
-  ctx->tmi.ij= ij;
-  ctx->tmi.zpk= xk* z;
+  ctx->tmi.kernel_type= ij;
+  ctx->tmi.seg_center_z= xk* z;
   rhk= xk* rh;
-  ctx->tmi.rkb2= rhk* rhk;
+  ctx->tmi.k_radius_sq= rhk* rhk;
   sh=.5* s;
   shk= xk* sh;
   ss= sin( shk);
@@ -410,10 +410,10 @@ void ekscx(nec_context_t *ctx, double bx, double s, double z,
   }
   
   sh=.5* s;
-  ctx->tmi.ij= ij;
-  ctx->tmi.zpk= xk* z;
+  ctx->tmi.kernel_type= ij;
+  ctx->tmi.seg_center_z= xk* z;
   rhk= xk* rh;
-  ctx->tmi.rkb2= rhk* rhk;
+  ctx->tmi.k_radius_sq= rhk* rhk;
   shk= xk* sh;
   ss= sin( shk);
   cs= cos( shk);
@@ -468,8 +468,8 @@ void gh(nec_context_t *ctx, double zk, double *hr, double *hi)
 {
   double rs, r, ckr, skr, rr2, rr3;
   
-  rs= zk- ctx->tmh.zpka;
-  rs= ctx->tmh.rhks+ rs* rs;
+  rs= zk- ctx->tmh.seg_center_z;
+  rs= ctx->tmh.k_radius+ rs* rs;
   r= sqrt( rs);
   ckr= cos( r);
   skr= sin( r);
@@ -495,7 +495,7 @@ void gwave(nec_context_t *restrict ctx, complex double *restrict erv, complex do
   complex double omr, w, f, q1, rh, v, g, xr1, xr2;
   complex double x1, x2, x3, x4, x5, x6, x7;
   
-  sppp= ctx->gwav.zmh/ ctx->gwav.r1;
+  sppp= ctx->gwav.z_img1/ ctx->gwav.range1;
   sppp2= sppp* sppp;
   cppp2=1.- sppp2;
   
@@ -503,7 +503,7 @@ void gwave(nec_context_t *restrict ctx, complex double *restrict erv, complex do
     cppp2=1.0e-20;
   
   cppp= sqrt( cppp2);
-  spp= ctx->gwav.zph/ ctx->gwav.r2;
+  spp= ctx->gwav.z_img2/ ctx->gwav.range2;
   spp2= spp* spp;
   cpp2=1.- spp2;
   
@@ -511,54 +511,54 @@ void gwave(nec_context_t *restrict ctx, complex double *restrict erv, complex do
     cpp2=1.0e-20;
   
   cpp= sqrt( cpp2);
-  rk1= -TPJ* ctx->gwav.r1;
-  rk2= -TPJ* ctx->gwav.r2;
-  t1=1. -ctx->gwav.u2* cpp2;
+  rk1= -TPJ* ctx->gwav.range1;
+  rk2= -TPJ* ctx->gwav.range2;
+  t1=1. -ctx->gwav.impedance_ratio_sq* cpp2;
   t2= csqrt( t1);
   t3=(1. -1./ rk1)/ rk1;
   t4=(1. -1./ rk2)/ rk2;
-  p1= rk2* ctx->gwav.u2* t1/(2.* cpp2);
-  rv=( spp- ctx->gwav.u* t2)/( spp+ ctx->gwav.u* t2);
+  p1= rk2* ctx->gwav.impedance_ratio_sq* t1/(2.* cpp2);
+  rv=( spp- ctx->gwav.impedance_ratio* t2)/( spp+ ctx->gwav.impedance_ratio* t2);
   omr=1.- rv;
   w=1./ omr;
   w=(4.0 + I*0.0)* p1* w* w;
   fbar(ctx,  w, &f );
-  q1= rk2* t1/(2.* ctx->gwav.u2* cpp2);
-  rh=( t2- ctx->gwav.u* spp)/( t2+ ctx->gwav.u* spp);
+  q1= rk2* t1/(2.* ctx->gwav.impedance_ratio_sq* cpp2);
+  rh=( t2- ctx->gwav.impedance_ratio* spp)/( t2+ ctx->gwav.impedance_ratio* spp);
   v=1./(1.+ rh);
   v=(4.0 + I*0.0)* q1* v* v;
   fbar(ctx,  v, &g );
-  xr1= ctx->gwav.xx1/ ctx->gwav.r1;
-  xr2= ctx->gwav.xx2/ ctx->gwav.r2;
+  xr1= ctx->gwav.cur_phase1/ ctx->gwav.range1;
+  xr2= ctx->gwav.cur_phase2/ ctx->gwav.range2;
   x1= cppp2* xr1;
   x2= rv* cpp2* xr2;
   x3= omr* cpp2* f* xr2;
-  x4= ctx->gwav.u* t2* spp*2.* xr2/ rk2;
+  x4= ctx->gwav.impedance_ratio* t2* spp*2.* xr2/ rk2;
   x5= xr1* t3*(1.-3.* sppp2);
   x6= xr2* t4*(1.-3.* spp2);
   *ezv=( x1+ x2+ x3- x4- x5- x6)* (-CONST4);
   x1= sppp* cppp* xr1;
   x2= rv* spp* cpp* xr2;
-  x3= cpp* omr* ctx->gwav.u* t2* f* xr2;
+  x3= cpp* omr* ctx->gwav.impedance_ratio* t2* f* xr2;
   x4= spp* cpp* omr* xr2/ rk2;
   x5=3.* sppp* cppp* t3* xr1;
-  x6= cpp* ctx->gwav.u* t2* omr* xr2/ rk2*.5;
+  x6= cpp* ctx->gwav.impedance_ratio* t2* omr* xr2/ rk2*.5;
   x7=3.* spp* cpp* t4* xr2;
   *erv=-( x1+ x2- x3+ x4- x5+ x6- x7)* (-CONST4);
   *ezh=-( x1- x2+ x3- x4- x5- x6+ x7)* (-CONST4);
   x1= sppp2* xr1;
   x2= rv* spp2* xr2;
-  x4= ctx->gwav.u2* t1* omr* f* xr2;
+  x4= ctx->gwav.impedance_ratio_sq* t1* omr* f* xr2;
   x5= t3*(1.-3.* cppp2)* xr1;
-  x6= t4*(1.-3.* cpp2)*(1.- ctx->gwav.u2*(1.+ rv)- ctx->gwav.u2* omr* f)* xr2;
-  x7= ctx->gwav.u2* cpp2* omr*(1.-1./ rk2)*( f*( ctx->gwav.u2* t1- spp2-1./ rk2)+1./rk2)* xr2;
+  x6= t4*(1.-3.* cpp2)*(1.- ctx->gwav.impedance_ratio_sq*(1.+ rv)- ctx->gwav.impedance_ratio_sq* omr* f)* xr2;
+  x7= ctx->gwav.impedance_ratio_sq* cpp2* omr*(1.-1./ rk2)*( f*( ctx->gwav.impedance_ratio_sq* t1- spp2-1./ rk2)+1./rk2)* xr2;
   *erh=( x1- x2- x4- x5+ x6+ x7)* (-CONST4);
   x1= xr1;
   x2= rh* xr2;
   x3=( rh+1.)* g* xr2;
   x4= t3* xr1;
-  x5= t4*(1.- ctx->gwav.u2*(1.+ rv)- ctx->gwav.u2* omr* f)* xr2;
-  x6=.5* ctx->gwav.u2* omr*( f*( ctx->gwav.u2* t1- spp2-1./ rk2)+1./ rk2)* xr2/ rk2;
+  x5= t4*(1.- ctx->gwav.impedance_ratio_sq*(1.+ rv)- ctx->gwav.impedance_ratio_sq* omr* f)* xr2;
+  x6=.5* ctx->gwav.impedance_ratio_sq* omr*( f*( ctx->gwav.impedance_ratio_sq* t1- spp2-1./ rk2)+1./ rk2)* xr2/ rk2;
   *eph=-( x1- x2+ x3- x4+ x5+ x6)* (-CONST4);
   
   return;
@@ -655,8 +655,8 @@ void hfk(nec_context_t *ctx, double el1, double el2, double rhk,
   double g1i, g5i=0., t01r, g3r=0, t01i, g3i=0, t10r, t10i, te1i, te1r, t02r;
   double g2r, g4r, t02i, g2i, g4i, t11r, t11i, t20r, t20i, te2i, te2r;
   
-  ctx->tmh.zpka= zpkx;
-  ctx->tmh.rhks= rhk* rhk;
+  ctx->tmh.seg_center_z= zpkx;
+  ctx->tmh.k_radius= rhk* rhk;
   z= el1;
   ze= el2;
   s= ze- z;
@@ -827,7 +827,7 @@ void hintg(nec_context_t *ctx, double xi, double yi, double zi )
   ctx->dataj.e_sin_y=CPLX_00;
   ctx->dataj.e_sin_z=CPLX_00;
   
-  for( ip = 1; ip <= ctx->gnd.ksymp; ip++ )
+  for( ip = 1; ip <= ctx->gnd.has_ground; ip++ )
   {
     rfl= -rfl;
     rz= zi- ctx->dataj.src_z* rfl;
@@ -855,7 +855,7 @@ void hintg(nec_context_t *ctx, double xi, double yi, double zi )
     
     if( ip != 1)
     {
-      if( ctx->gnd.iperf == 1)
+      if( ctx->gnd.is_perfect == 1)
       {
         f1x= -f1x;
         f1y= -f1y;
@@ -879,13 +879,13 @@ void hintg(nec_context_t *ctx, double xi, double yi, double zi )
           pxx= -ry/ xymag;
           pyy= rx/ xymag;
           cth= rz/ r;
-          rrv= csqrt(1.- ctx->gnd.zrati* ctx->gnd.zrati*(1.- cth* cth));
+          rrv= csqrt(1.- ctx->gnd.impedance_ratio* ctx->gnd.impedance_ratio*(1.- cth* cth));
           
         } /* if( xymag <= 1.0e-6) */
         
-        rrh= ctx->gnd.zrati* cth;
+        rrh= ctx->gnd.impedance_ratio* cth;
         rrh=( rrh- rrv)/( rrh+ rrv);
-        rrv= ctx->gnd.zrati* rrv;
+        rrv= ctx->gnd.impedance_ratio* rrv;
         rrv=-( cth- rrv)/( cth+ rrv);
         gam=( f1x* pxx+ f1y* pyy)*( rrv- rrh);
         f1x= f1x* rrh+ gam* pxx;
@@ -896,7 +896,7 @@ void hintg(nec_context_t *ctx, double xi, double yi, double zi )
         f2y= f2y* rrh+ gam* pyy;
         f2z= f2z* rrh;
         
-      } /* if( ctx->gnd.iperf == 1) */
+      } /* if( ctx->gnd.is_perfect == 1) */
       
     } /* if( ip != 1) */
     
@@ -907,7 +907,7 @@ void hintg(nec_context_t *ctx, double xi, double yi, double zi )
     ctx->dataj.e_sin_y += f2y;
     ctx->dataj.e_sin_z += f2z;
     
-  } /* for( ip = 1; ip <= ctx->gnd.ksymp; ip++ ) */
+  } /* for( ip = 1; ip <= ctx->gnd.has_ground; ip++ ) */
   
   return;
 }
@@ -927,7 +927,7 @@ void hsfld(nec_context_t *ctx,  double xi, double yi, double zi, double ai )
   yij= yi- ctx->dataj.src_y;
   rfl=-1.;
   
-  for( ip = 0; ip < ctx->gnd.ksymp; ip++ )
+  for( ip = 0; ip < ctx->gnd.has_ground; ip++ )
   {
     rfl= -rfl;
     salpr= ctx->dataj.src_dir_cos_z* rfl;
@@ -963,23 +963,23 @@ void hsfld(nec_context_t *ctx,  double xi, double yi, double zi, double ai )
     
     if( ip == 1 )
     {
-      if( ctx->gnd.iperf != 1 )
+      if( ctx->gnd.is_perfect != 1 )
       {
-        zratx= ctx->gnd.zrati;
+        zratx= ctx->gnd.impedance_ratio;
         rmag= sqrt( zp* zp+ rh* rh);
         xymag= sqrt( xij* xij+ yij* yij);
         
         /* set parameters for radial wire ground screen. */
-        if( ctx->gnd.nradl != 0)
+        if( ctx->gnd.num_radials != 0)
         {
           xspec=( xi* ctx->dataj.src_z+ zi* ctx->dataj.src_x)/( zi+ ctx->dataj.src_z);
           yspec=( yi* ctx->dataj.src_z+ zi* ctx->dataj.src_y)/( zi+ ctx->dataj.src_z);
-          rhospc= sqrt( xspec* xspec+ yspec* yspec+ ctx->gnd.t2* ctx->gnd.t2);
+          rhospc= sqrt( xspec* xspec+ yspec* yspec+ ctx->gnd.screen_inner_r* ctx->gnd.screen_inner_r);
           
-          if( rhospc <= ctx->gnd.scrwl)
+          if( rhospc <= ctx->gnd.screen_wire_len)
           {
-            rrv= ctx->gnd.t1* rhospc* log( rhospc/ ctx->gnd.t2);
-            zratx=( rrv* ctx->gnd.zrati)/( ETA* ctx->gnd.zrati+ rrv);
+            rrv= ctx->gnd.screen_impedance* rhospc* log( rhospc/ ctx->gnd.screen_inner_r);
+            zratx=( rrv* ctx->gnd.impedance_ratio)/( ETA* ctx->gnd.impedance_ratio+ rrv);
           }
         }
         
@@ -1018,7 +1018,7 @@ void hsfld(nec_context_t *ctx,  double xi, double yi, double zi, double ai )
         ctx->dataj.e_cos_z= ctx->dataj.e_cos_z- hpc* qz;
         continue;
         
-      } /* if( ctx->gnd.iperf != 1 ) */
+      } /* if( ctx->gnd.is_perfect != 1 ) */
       
       ctx->dataj.e_const_x= ctx->dataj.e_const_x- hpk* phx;
       ctx->dataj.e_const_y= ctx->dataj.e_const_y- hpk* phy;
@@ -1043,7 +1043,7 @@ void hsfld(nec_context_t *ctx,  double xi, double yi, double zi, double ai )
     ctx->dataj.e_cos_y= hpc* phy;
     ctx->dataj.e_cos_z= hpc* phz;
     
-  } /* for( ip = 0; ip < ctx->gnd.ksymp; ip++ ) */
+  } /* for( ip = 0; ip < ctx->gnd.has_ground; ip++ ) */
   
   return;
 }
@@ -1312,7 +1312,7 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
     acx= ctx->dataj.patch_t1x* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.patch_t1y* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.patch_t1z* ctx->crnt.surface_cur[jc];
     bcx= ctx->dataj.patch_t2x* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.patch_t2y* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.patch_t2z* ctx->crnt.surface_cur[jc];
     
-    for( ipa = 0; ipa < ctx->gnd.ksymp; ipa++ )
+    for( ipa = 0; ipa < ctx->gnd.has_ground; ipa++ )
     {
       ctx->dataj.ground_image_pass= ipa+1;
       unere(ctx,  xob, yob, zob);
@@ -1342,15 +1342,15 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
     return;
   ctx->geometry.icon1[is]= i;
   ctx->dataj.seg_half_len= ctx->geometry.si[is]*.5;
-  curd= CCJ* v/(( log(2.* ctx->dataj.seg_half_len/ ctx->geometry.bi[is])-1.)*( ctx->segj.bx[ctx->segj.jsno-1]*
-                                                         cos( TP* ctx->dataj.seg_half_len)+ ctx->segj.cx[ctx->segj.jsno-1]* sin( TP* ctx->dataj.seg_half_len))* ctx->geometry.wlam);
-  ctx->vsorc.vqds[ctx->vsorc.nqds]= v;
-  ctx->vsorc.iqds[ctx->vsorc.nqds]= is+1;
-  ctx->vsorc.nqds++;
+  curd= CCJ* v/(( log(2.* ctx->dataj.seg_half_len/ ctx->geometry.bi[is])-1.)*( ctx->segj.coeff_sine[ctx->segj.num_junction_segs-1]*
+                                                         cos( TP* ctx->dataj.seg_half_len)+ ctx->segj.coeff_cos[ctx->segj.num_junction_segs-1]* sin( TP* ctx->dataj.seg_half_len))* ctx->geometry.wlam);
+  ctx->vsorc.qdsrc_voltages_saved[ctx->vsorc.num_qdsrcs_used]= v;
+  ctx->vsorc.qdsrc_indices[ctx->vsorc.num_qdsrcs_used]= is+1;
+  ctx->vsorc.num_qdsrcs_used++;
   
-  for( jx = 0; jx < ctx->segj.jsno; jx++ )
+  for( jx = 0; jx < ctx->segj.num_junction_segs; jx++ )
   {
-    j= ctx->segj.jco[jx]-1;
+    j= ctx->segj.junction_segs[jx]-1;
     jp1 = j+1;
     ctx->dataj.seg_half_len= ctx->geometry.si[j];
     ctx->dataj.seg_radius= ctx->geometry.bi[j];
@@ -1474,7 +1474,7 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
       etk= ctx->dataj.e_const_x* cabi+ ctx->dataj.e_const_y* sabi+ ctx->dataj.e_const_z* salpi;
       ets= ctx->dataj.e_sin_x* cabi+ ctx->dataj.e_sin_y* sabi+ ctx->dataj.e_sin_z* salpi;
       etc= ctx->dataj.e_cos_x* cabi+ ctx->dataj.e_cos_y* sabi+ ctx->dataj.e_cos_z* salpi;
-      e[i]= e[i]-( etk* ctx->segj.ax[jx]+ ets* ctx->segj.bx[jx]+ etc* ctx->segj.cx[jx])* curd;
+      e[i]= e[i]-( etk* ctx->segj.coeff_const[jx]+ ets* ctx->segj.coeff_sine[jx]+ etc* ctx->segj.coeff_cos[jx])* curd;
     }
     
     if( ctx->geometry.m != 0)
@@ -1493,8 +1493,8 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
         etk= ctx->dataj.e_const_x* tx+ ctx->dataj.e_const_y* ty+ ctx->dataj.e_const_z* tz;
         ets= ctx->dataj.e_sin_x* tx+ ctx->dataj.e_sin_y* ty+ ctx->dataj.e_sin_z* tz;
         etc= ctx->dataj.e_cos_x* tx+ ctx->dataj.e_cos_y* ty+ ctx->dataj.e_cos_z* tz;
-        e[i1] += ( etk* ctx->segj.ax[jx]+ ets* ctx->segj.bx[jx]+
-                  etc* ctx->segj.cx[jx] )* curd* ctx->geometry.psalp[i];
+        e[i1] += ( etk* ctx->segj.coeff_const[jx]+ ets* ctx->segj.coeff_sine[jx]+
+                  etc* ctx->segj.coeff_cos[jx] )* curd* ctx->geometry.psalp[i];
         i1++;
         tx= ctx->geometry.t1x[i];
         ty= ctx->geometry.t1y[i];
@@ -1502,16 +1502,16 @@ void qdsrc(nec_context_t *ctx, int is, complex double v, complex double *e )
         etk= ctx->dataj.e_const_x* tx+ ctx->dataj.e_const_y* ty+ ctx->dataj.e_const_z* tz;
         ets= ctx->dataj.e_sin_x* tx+ ctx->dataj.e_sin_y* ty+ ctx->dataj.e_sin_z* tz;
         etc= ctx->dataj.e_cos_x* tx+ ctx->dataj.e_cos_y* ty+ ctx->dataj.e_cos_z* tz;
-        e[i1] += ( etk* ctx->segj.ax[jx]+ ets* ctx->segj.bx[jx]+
-                  etc* ctx->segj.cx[jx])* curd* ctx->geometry.psalp[i];
+        e[i1] += ( etk* ctx->segj.coeff_const[jx]+ ets* ctx->segj.coeff_sine[jx]+
+                  etc* ctx->segj.coeff_cos[jx])* curd* ctx->geometry.psalp[i];
       }
       
     } /* if( m != 0) */
     
-    if( ctx->zload.nload > 0 )
-      e[j] += ctx->zload.zarray[j]* curd*(ctx->segj.ax[jx]+ ctx->segj.cx[jx]);
+    if( ctx->zload.num_loads > 0 )
+      e[j] += ctx->zload.seg_impedance[j]* curd*(ctx->segj.coeff_const[jx]+ ctx->segj.coeff_cos[jx]);
     
-  } /* for( jx = 0; jx < ctx->segj.jsno; jx++ ) */
+  } /* for( jx = 0; jx < ctx->segj.num_junction_segs; jx++ ) */
   
   return;
 }
@@ -1533,33 +1533,33 @@ void nfpat(nec_context_t *ctx)
     ctx->nfr.points = NULL;
     ctx->nfr.num_points = 0;
   }
-  ctx->nfr.nfeh = ctx->fpat.nfeh;
+  ctx->nfr.nfeh = ctx->fpat.near_field_type;
 
-  znrt= ctx->fpat.znr- ctx->fpat.dznr;
-  for( i = 0; i < ctx->fpat.nrz; i++ )
+  znrt= ctx->fpat.grid_z0- ctx->fpat.grid_dz;
+  for( i = 0; i < ctx->fpat.grid_nz; i++ )
   {
-    znrt += ctx->fpat.dznr;
-    if( ctx->fpat.near != 0)
+    znrt += ctx->fpat.grid_dz;
+    if( ctx->fpat.is_near_field != 0)
     {
       cth= cos( TA* znrt);
       sth= sin( TA* znrt);
     }
     
-    ynrt= ctx->fpat.ynr- ctx->fpat.dynr;
-    for( j = 0; j < ctx->fpat.nry; j++ )
+    ynrt= ctx->fpat.grid_y0- ctx->fpat.grid_dy;
+    for( j = 0; j < ctx->fpat.grid_ny; j++ )
     {
-      ynrt += ctx->fpat.dynr;
-      if( ctx->fpat.near != 0)
+      ynrt += ctx->fpat.grid_dy;
+      if( ctx->fpat.is_near_field != 0)
       {
         cph= cos( TA* ynrt);
         sph= sin( TA* ynrt);
       }
       
-      xnrt= ctx->fpat.xnr- ctx->fpat.dxnr;
-      for( kk = 0; kk < ctx->fpat.nrx; kk++ )
+      xnrt= ctx->fpat.grid_x0- ctx->fpat.grid_dx;
+      for( kk = 0; kk < ctx->fpat.grid_nx; kk++ )
       {
-        xnrt += ctx->fpat.dxnr;
-        if( ctx->fpat.near != 0)
+        xnrt += ctx->fpat.grid_dx;
+        if( ctx->fpat.is_near_field != 0)
         {
           xob= xnrt* sth* cph;
           yob= xnrt* sth* sph;
@@ -1576,7 +1576,7 @@ void nfpat(nec_context_t *ctx)
         tmp2= yob/ ctx->geometry.wlam;
         tmp3= zob/ ctx->geometry.wlam;
         
-        if( ctx->fpat.nfeh != 1)
+        if( ctx->fpat.near_field_type != 1)
           nefld(ctx,  tmp1, tmp2, tmp3, &ex, &ey, &ez);
         else
           nhfld(ctx,  tmp1, tmp2, tmp3, &ex, &ey, &ez);
@@ -1592,11 +1592,11 @@ void nfpat(nec_context_t *ctx)
         nfpt->ey  = ey;
         nfpt->ez  = ez;
 
-      } /* for( kk = 0; kk < ctx->fpat.nrx; kk++ ) */
+      } /* for( kk = 0; kk < ctx->fpat.grid_nx; kk++ ) */
       
-    } /* for( j = 0; j < ctx->fpat.nry; j++ ) */
+    } /* for( j = 0; j < ctx->fpat.grid_ny; j++ ) */
     
-  } /* for( i = 0; i < ctx->fpat.nrz; i++ ) */
+  } /* for( i = 0; i < ctx->fpat.grid_nz; i++ ) */
   
   return;
 }
@@ -1837,7 +1837,7 @@ void unere(nec_context_t *ctx,  double xob, double yob, double zob )
   if( ctx->dataj.ground_image_pass == 1)
     return;
   
-  if( ctx->gnd.iperf == 1)
+  if( ctx->gnd.is_perfect == 1)
   {
     ctx->dataj.e_const_x= -ctx->dataj.e_const_x;
     ctx->dataj.e_const_y= -ctx->dataj.e_const_y;
@@ -1861,12 +1861,12 @@ void unere(nec_context_t *ctx,  double xob, double yob, double zob )
     px= -ry/ xymag;
     py= rx/ xymag;
     cth= rz/ sqrt( xymag* xymag+ rz* rz);
-    rrv= csqrt(1.- ctx->gnd.zrati* ctx->gnd.zrati*(1.- cth* cth));
+    rrv= csqrt(1.- ctx->gnd.impedance_ratio* ctx->gnd.impedance_ratio*(1.- cth* cth));
   }
   
-  rrh= ctx->gnd.zrati* cth;
+  rrh= ctx->gnd.impedance_ratio* cth;
   rrh=( rrh- rrv)/( rrh+ rrv);
-  rrv= ctx->gnd.zrati* rrv;
+  rrv= ctx->gnd.impedance_ratio* rrv;
   rrv=-( cth- rrv)/( cth+ rrv);
   edp=( ctx->dataj.e_const_x* px+ ctx->dataj.e_const_y* py)*( rrh- rrv);
   ctx->dataj.e_const_x= ctx->dataj.e_const_x* rrv+ edp* px;

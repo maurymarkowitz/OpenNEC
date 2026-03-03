@@ -45,20 +45,20 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
 
   if(sig >= 0.) {
     wlam=CVEL/fmhz;
-    ctx->ggrid.epscf=cmplx(epr,-sig*wlam*59.96);
+    ctx->ggrid.dielectric=cmplx(epr,-sig*wlam*59.96);
   }
   else
-    ctx->ggrid.epscf=cmplx(epr,sig);
+    ctx->ggrid.dielectric=cmplx(epr,sig);
 
   nec_get_time_ms(ctx, &tst);
   ctx->somnec.evlcom.ck2 = TP;
   ctx->somnec.evlcom.ck2sq = ctx->somnec.evlcom.ck2 * ctx->somnec.evlcom.ck2;
 
   /* sommerfeld integral evaluation uses exp(-jwt), nec uses exp(+jwt), */
-  /* hence need conjg(ggrid.epscf).  conjugate of fields occurs in subroutine */
+  /* hence need conjg(ggrid.dielectric).  conjugate of fields occurs in subroutine */
   /* evlua. */
 
-  ctx->somnec.evlcom.ck1sq=ctx->somnec.evlcom.ck2sq*conj(ctx->ggrid.epscf);
+  ctx->somnec.evlcom.ck1sq=ctx->somnec.evlcom.ck2sq*conj(ctx->ggrid.dielectric);
   ctx->somnec.evlcom.ck1=csqrt(ctx->somnec.evlcom.ck1sq);
   ctx->somnec.evlcom.ck1r=creal(ctx->somnec.evlcom.ck1);
   ctx->somnec.evlcom.tkmag=100.*cabs(ctx->somnec.evlcom.ck1);
@@ -74,21 +74,21 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
 
   /* loop over 3 grid regions */
   for(k = 0; k < 3; k++) {
-    nr=ctx->ggrid.nxa[k];
-    nth=ctx->ggrid.nya[k];
-    dr=ctx->ggrid.dxa[k];
-    dth=ctx->ggrid.dya[k];
-    r=ctx->ggrid.xsa[k]-dr;
+    nr=ctx->ggrid.grid_nx[k];
+    nth=ctx->ggrid.grid_ny[k];
+    dr=ctx->ggrid.grid_dx[k];
+    dth=ctx->ggrid.grid_dy[k];
+    r=ctx->ggrid.grid_x0[k]-dr;
     irs=1;
     if(k == 0) {
-      r=ctx->ggrid.xsa[k];
+      r=ctx->ggrid.grid_x0[k];
       irs=2;
     }
     
     /*  loop over r.  (r=sqrt(rho**2 + (z+h)**2)) */
     for(ir = irs-1; ir < nr; ir++) {
       r += dr;
-      thet = ctx->ggrid.ysa[k]-dth;
+      thet = ctx->ggrid.grid_y0[k]-dth;
       
       /* loop over theta.  (theta=atan((z+h)/rho)) */
       for(ith = 0; ith < nth; ith++) {
@@ -107,24 +107,24 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
         
         switch( k ) {
           case 0:
-            ctx->ggrid.ar1[ir+ith*11+  0]=erv*con;
-            ctx->ggrid.ar1[ir+ith*11+110]=ezv*con;
-            ctx->ggrid.ar1[ir+ith*11+220]=erh*con;
-            ctx->ggrid.ar1[ir+ith*11+330]=eph*con;
+            ctx->ggrid.table1[ir+ith*11+  0]=erv*con;
+            ctx->ggrid.table1[ir+ith*11+110]=ezv*con;
+            ctx->ggrid.table1[ir+ith*11+220]=erh*con;
+            ctx->ggrid.table1[ir+ith*11+330]=eph*con;
             break;
             
           case 1:
-            ctx->ggrid.ar2[ir+ith*17+  0]=erv*con;
-            ctx->ggrid.ar2[ir+ith*17+ 85]=ezv*con;
-            ctx->ggrid.ar2[ir+ith*17+170]=erh*con;
-            ctx->ggrid.ar2[ir+ith*17+255]=eph*con;
+            ctx->ggrid.table2[ir+ith*17+  0]=erv*con;
+            ctx->ggrid.table2[ir+ith*17+ 85]=ezv*con;
+            ctx->ggrid.table2[ir+ith*17+170]=erh*con;
+            ctx->ggrid.table2[ir+ith*17+255]=eph*con;
             break;
             
           case 2:
-            ctx->ggrid.ar3[ir+ith*9+  0]=erv*con;
-            ctx->ggrid.ar3[ir+ith*9+ 72]=ezv*con;
-            ctx->ggrid.ar3[ir+ith*9+144]=erh*con;
-            ctx->ggrid.ar3[ir+ith*9+216]=eph*con;
+            ctx->ggrid.table3[ir+ith*9+  0]=erv*con;
+            ctx->ggrid.table3[ir+ith*9+ 72]=ezv*con;
+            ctx->ggrid.table3[ir+ith*9+144]=erh*con;
+            ctx->ggrid.table3[ir+ith*9+216]=eph*con;
             
         } /* switch( k ) */
       } /* for( ith = 0; ith < nth; ith++ ) */
@@ -132,11 +132,11 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
   } /* for( k = 0; k < 3; k++) */
 
   /* fill grid 1 for r equal to zero. */
-  cl2=-CONST4*(ctx->ggrid.epscf-1.)/(ctx->ggrid.epscf+1.);
-  cl1=cl2/(ctx->ggrid.epscf+1.);
-  ezv=ctx->ggrid.epscf*cl1;
+  cl2=-CONST4*(ctx->ggrid.dielectric-1.)/(ctx->ggrid.dielectric+1.);
+  cl1=cl2/(ctx->ggrid.dielectric+1.);
+  ezv=ctx->ggrid.dielectric*cl1;
   thet=-dth;
-  nth=ctx->ggrid.nya[0];
+  nth=ctx->ggrid.grid_ny[0];
 
   for( ith = 0; ith < nth; ith++ )
   {
@@ -146,7 +146,7 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
     tfac2=cos(thet);
     tfac1=(1.-sin(thet))/tfac2;
     tfac2=tfac1/tfac2;
-    erv=ctx->ggrid.epscf*cl1*tfac1;
+    erv=ctx->ggrid.dielectric*cl1*tfac1;
     erh=cl1*(tfac2-1.)+cl2;
     eph=cl1*tfac2-cl2;
   }
@@ -157,10 +157,10 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
     eph=-erh;
   }
 
-  ctx->ggrid.ar1[0+ith*11+  0]=erv;
-  ctx->ggrid.ar1[0+ith*11+110]=ezv;
-  ctx->ggrid.ar1[0+ith*11+220]=erh;
-  ctx->ggrid.ar1[0+ith*11+330]=eph;
+  ctx->ggrid.table1[0+ith*11+  0]=erv;
+  ctx->ggrid.table1[0+ith*11+110]=ezv;
+  ctx->ggrid.table1[0+ith*11+220]=erh;
+  ctx->ggrid.table1[0+ith*11+330]=eph;
   }
 
   nec_get_time_ms(ctx, &tim);

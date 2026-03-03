@@ -315,8 +315,8 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
         //  perhaps it is  clearing out the ns from the previous line? but why bother when it's
         //  about to return anyway?
         if(segs != 0) {
-          ctx->plot.iplp1 = 1;
-          ctx->plot.iplp2 = 1;
+          ctx->plot.plot_type = 1;
+          ctx->plot.plot_axis = 1;
         }
         
         // if we're at the end of the geometry section, we have all the segments
@@ -640,7 +640,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
   ctx->geometry.mp = ctx->geometry.m;
   ctx->geometry.ipsym = 0;
 
-  ctx->segj.maxcon = 1;
+  ctx->segj.max_connections = 1;
   
   if(ignd != 0) {
     add_message(ctx, outputs, "\n\n     GROUND PLANE SPECIFIED.");
@@ -824,9 +824,9 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
   }
   
   // allocate to connection buffers
-  mreq = (size_t)ctx->segj.maxcon;
+  mreq = (size_t)ctx->segj.max_connections;
   mreq *= sizeof(int);
-  mem_realloc(ctx, (void *)&ctx->segj.jco, mreq);
+  mem_realloc(ctx, (void *)&ctx->segj.junction_segs, mreq);
   
   /* adjust connected segment ends to exactly coincide.  print junctions */
   /* of 3 or more seg.  also find old seg. connecting to new seg. */
@@ -838,7 +838,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
     jend = -1;
     ix = ctx->geometry.icon1[j];
     ic = 1;
-    ctx->segj.jco[0] = -jx;
+    ctx->segj.junction_segs[0] = -jx;
     xa = ctx->geometry.x1[j];
     ya = ctx->geometry.y1[j];
     za = ctx->geometry.z1[j];
@@ -884,13 +884,13 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
           
           /* Record max. no. of connections */
           ic++;
-          if(ic >= ctx->segj.maxcon) {
-            ctx->segj.maxcon = ic + 1;
-            mreq = (size_t)ctx->segj.maxcon;
+          if(ic >= ctx->segj.max_connections) {
+            ctx->segj.max_connections = ic + 1;
+            mreq = (size_t)ctx->segj.max_connections;
             mreq *= sizeof(int);
-            mem_realloc(ctx, (void *)&ctx->segj.jco, mreq);
+            mem_realloc(ctx, (void *)&ctx->segj.junction_segs, mreq);
           }
-          ctx->segj.jco[ic-1]= ix* jend;
+          ctx->segj.junction_segs[ic-1]= ix* jend;
           
           ixx = ix-1;
           if(jend != 1) {
@@ -917,7 +917,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
             jend = 1;
             ix = ctx->geometry.icon2[j];
             ic = 1;
-            ctx->segj.jco[0] = jx;
+            ctx->segj.junction_segs[0] = jx;
             xa = ctx->geometry.x2[j];
             ya = ctx->geometry.y2[j];
             za = ctx->geometry.z2[j];
@@ -930,7 +930,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
         za= za / sep;
         
         for(i = 0; i < ic; i++) {
-          ix = ctx->segj.jco[i];
+          ix = ctx->segj.junction_segs[i];
           if(ix <= 0) {
             ix = -ix;
             ixx = ix - 1;
@@ -962,7 +962,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
               snprintf(msg + len, sizeof(msg) - len, " ...");
               break;
             }
-            snprintf(msg + len, sizeof(msg) - len, "%5d", ctx->segj.jco[i-1]);
+            snprintf(msg + len, sizeof(msg) - len, "%5d", ctx->segj.junction_segs[i-1]);
             if(!(i % 20) && (i < ic)) {
               len = strlen(msg);
               if (len + 16 > sizeof(msg)) {
@@ -984,7 +984,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
       jend = 1;
       ix = ctx->geometry.icon2[j];
       ic = 1;
-      ctx->segj.jco[0] = jx;
+      ctx->segj.junction_segs[0] = jx;
       xa = ctx->geometry.x2[j];
       ya = ctx->geometry.y2[j];
       za = ctx->geometry.z2[j];
@@ -992,11 +992,11 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
     } /* while( true ) */
   } /* for( j = 0; j < data.n; j++ ) */
   
-  mreq = (size_t)ctx->segj.maxcon;
+  mreq = (size_t)ctx->segj.max_connections;
   mreq *= sizeof(double);
-  mem_realloc(ctx, (void *)&ctx->segj.ax, mreq);
-  mem_realloc(ctx, (void *)&ctx->segj.bx, mreq);
-  mem_realloc(ctx, (void *)&ctx->segj.cx, mreq);
+  mem_realloc(ctx, (void *)&ctx->segj.coeff_const, mreq);
+  mem_realloc(ctx, (void *)&ctx->segj.coeff_sine, mreq);
+  mem_realloc(ctx, (void *)&ctx->segj.coeff_cos, mreq);
   return 0;
 } /* end of connect_segments */
 

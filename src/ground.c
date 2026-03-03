@@ -219,8 +219,8 @@ void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
   xt= ctx->dataj.src_x+ t* ctx->dataj.src_dir_cos_x;
   yt= ctx->dataj.src_y+ t* ctx->dataj.src_dir_cos_y;
   zt= ctx->dataj.src_z+ t* ctx->dataj.src_dir_cos_z;
-  rhx= ctx->incom.xo- xt;
-  rhy= ctx->incom.yo- yt;
+  rhx= ctx->incom.obs_x- xt;
+  rhy= ctx->incom.obs_y- yt;
   rhs= rhx* rhx+ rhy* rhy;
   rho= sqrt( rhs);
   
@@ -239,35 +239,35 @@ void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
     phy= rhx;
   }
   
-  cph= rhx* ctx->incom.xsn+ rhy* ctx->incom.ysn;
-  sph= rhy* ctx->incom.xsn- rhx* ctx->incom.ysn;
+  cph= rhx* ctx->incom.dir_cos_x+ rhy* ctx->incom.dir_cos_y;
+  sph= rhy* ctx->incom.dir_cos_x- rhx* ctx->incom.dir_cos_y;
   
   if( fabs( cph) < 1.0e-10)
     cph=0.;
   if( fabs( sph) < 1.0e-10)
     sph=0.;
   
-  ctx->gwav.zph= ctx->incom.zo+ zt;
-  zphs= ctx->gwav.zph* ctx->gwav.zph;
+  ctx->gwav.z_img2= ctx->incom.obs_z+ zt;
+  zphs= ctx->gwav.z_img2* ctx->gwav.z_img2;
   r2s= rhs+ zphs;
-  ctx->gwav.r2= sqrt( r2s);
-  rk= ctx->gwav.r2* TP;
-  ctx->gwav.xx2= cmplx( cos( rk),- sin( rk));
+  ctx->gwav.range2= sqrt( r2s);
+  rk= ctx->gwav.range2* TP;
+  ctx->gwav.cur_phase2= cmplx( cos( rk),- sin( rk));
   
   /* use norton approximation for field due to ground.  current is */
   /* lumped at segment center with current moment for constant, sine, */
   /* or cosine distribution. */
-  if( ctx->incom.isnor != 1)
+  if( ctx->incom.use_sommerfeld != 1)
   {
-    ctx->gwav.zmh=1.;
-    ctx->gwav.r1=1.;
-    ctx->gwav.xx1=0.;
+    ctx->gwav.z_img1=1.;
+    ctx->gwav.range1=1.;
+    ctx->gwav.cur_phase1=0.;
     gwave(ctx, &erv, &ezv, &erh, &ezh, &eph);
     
-    et=-CONST1* ctx->gnd.frati* ctx->gwav.xx2/( r2s* ctx->gwav.r2);
+    et=-CONST1* ctx->gnd.fresnel_ratio* ctx->gwav.cur_phase2/( r2s* ctx->gwav.range2);
     er=2.* et* cmplx(1.0, rk);
     et= et* cmplx(1.0 - rk* rk, rk);
-    hrv=( er+ et)* rho* ctx->gwav.zph/ r2s;
+    hrv=( er+ et)* rho* ctx->gwav.z_img2/ r2s;
     hzv=( zphs* er- rhs* et)/ r2s;
     hrh=( rhs* er- zphs* et)/ r2s;
     erv= erv- hrv;
@@ -277,9 +277,9 @@ void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
     eph= eph+ et;
     erv= erv* ctx->dataj.src_dir_cos_z;
     ezv= ezv* ctx->dataj.src_dir_cos_z;
-    erh= erh* ctx->incom.sn* cph;
-    ezh= ezh* ctx->incom.sn* cph;
-    eph= eph* ctx->incom.sn* sph;
+    erh= erh* ctx->incom.sin_alpha* cph;
+    ezh= ezh* ctx->incom.sin_alpha* cph;
+    eph= eph* ctx->incom.sin_alpha* sph;
     erh= erv+ erh;
     e[0]=( erh* rhx+ eph* phx)* ctx->dataj.seg_half_len;
     e[1]=( erh* rhy+ eph* phy)* ctx->dataj.seg_half_len;
@@ -298,19 +298,19 @@ void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
   
   /* interpolate in sommerfeld field tables */
   if( rho >= 1.0e-12)
-    thet= atan( ctx->gwav.zph/ rho);
+    thet= atan( ctx->gwav.z_img2/ rho);
   else
     thet= POT;
   
   /* combine vertical and horizontal components and convert */
   /* to x,y,z components. multiply by exp(-jkr)/r. */
-  intrp(ctx, ctx->gwav.r2, thet, &erv, &ezv, &erh, &eph );
-  ctx->gwav.xx2= ctx->gwav.xx2/ ctx->gwav.r2;
-  sfac= ctx->incom.sn* cph;
-  erh= ctx->gwav.xx2*( ctx->dataj.src_dir_cos_z* erv+ sfac* erh);
-  ezh= ctx->gwav.xx2*( ctx->dataj.src_dir_cos_z* ezv- sfac* erv);
+  intrp(ctx, ctx->gwav.range2, thet, &erv, &ezv, &erh, &eph );
+  ctx->gwav.cur_phase2= ctx->gwav.cur_phase2/ ctx->gwav.range2;
+  sfac= ctx->incom.sin_alpha* cph;
+  erh= ctx->gwav.cur_phase2*( ctx->dataj.src_dir_cos_z* erv+ sfac* erh);
+  ezh= ctx->gwav.cur_phase2*( ctx->dataj.src_dir_cos_z* ezv- sfac* erv);
   /* x,y,z fields for constant current */
-  eph= ctx->incom.sn* sph* ctx->gwav.xx2* eph;
+  eph= ctx->incom.sin_alpha* sph* ctx->gwav.cur_phase2* eph;
   e[0]= erh* rhx+ eph* phx;
   e[1]= erh* rhy+ eph* phy;
   e[2]= ezh;

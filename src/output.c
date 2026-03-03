@@ -729,21 +729,21 @@ bool write_greens_binary(FILE *file, const nec_context_t *ctx,
     AP4(M);
     AP4(MP);
     AP8(ctx->geometry.wlam);
-    AP8(ctx->save.fmhz);
+    AP8(ctx->save.freq_mhz);
     AP4(ctx->geometry.ipsym);
-    AP4(ctx->gnd.ksymp);
+    AP4(ctx->gnd.has_ground);
     /* Write IPERF <= 1: OpenNEC does not write a patch-coefficient record
      * for finite-ground (iperf==2).  The reader will try to skip that record
      * when IPERF==2 in the header, so cap it at 1 so the skip is never
      * attempted when reading back an OpenNEC-written NGF file.
      * (Fortran-generated .wgf files with IPERF==2 still work because they
      *  contain the patch-coefficient record that the read-side fr_skip needs.) */
-    AP4(ctx->gnd.iperf > 1 ? 1 : ctx->gnd.iperf);
-    AP4(ctx->gnd.nradl);
-    AP8(ctx->save.epsr);
-    AP8(ctx->save.sig);
-    AP8(ctx->gnd.scrwl);
-    AP8(ctx->gnd.scrwr);
+    AP4(ctx->gnd.is_perfect > 1 ? 1 : ctx->gnd.is_perfect);
+    AP4(ctx->gnd.num_radials);
+    AP8(ctx->save.ground_epsr);
+    AP8(ctx->save.ground_sigma);
+    AP8(ctx->gnd.screen_wire_len);
+    AP8(ctx->gnd.screen_wire_radius);
     AP4(0); /* NLOAD — loads not stored in NGF */
     AP4(0); /* KCOM  — comments not stored in NGF */
 #undef AP4
@@ -1197,14 +1197,14 @@ bool read_greens_binary(FILE *file, nec_context_t *ctx)
   ctx->geometry.np3m = (int)(N + 3 * M);
 
   /* Restore ground and frequency parameters from the NGF */
-  ctx->gnd.ksymp = (int)KSYMP;
-  ctx->gnd.iperf = (int)IPERF;
-  ctx->gnd.nradl = (int)NRADL;
-  ctx->gnd.scrwl = SCRWLT;
-  ctx->gnd.scrwr = SCRWRT;
-  ctx->save.epsr = EPSR;
-  ctx->save.sig = SIG;
-  ctx->save.fmhz = FMHZ;
+  ctx->gnd.has_ground = (int)KSYMP;
+  ctx->gnd.is_perfect = (int)IPERF;
+  ctx->gnd.num_radials = (int)NRADL;
+  ctx->gnd.screen_wire_len = SCRWLT;
+  ctx->gnd.screen_wire_radius = SCRWRT;
+  ctx->save.ground_epsr = EPSR;
+  ctx->save.ground_sigma = SIG;
+  ctx->save.freq_mhz = FMHZ;
 
   return true;
 
@@ -1493,7 +1493,7 @@ static int write_segments(nec_context_t *ctx, const deck_t *deck, FILE *file)
   // Calculate frequency ratio to unscale geometry back to meters
   // The geometry has been scaled by fr = fmhz / CVEL during frequency loop
   // We need to divide by fr to get back to the original meter values
-  double fr = ctx->save.fmhz / CVEL;
+  double fr = ctx->save.freq_mhz / CVEL;
 
   for (int i = 0; i < ctx->geometry.n; i++)
   {
@@ -1526,7 +1526,7 @@ static int write_segments(nec_context_t *ctx, const deck_t *deck, FILE *file)
             i + 1, ctx->geometry.x[i], ctx->geometry.y[i], ctx->geometry.z[i], ctx->geometry.si[i], xw2, yw2,
             ctx->geometry.bi[i] / fr, ctx->geometry.icon1[i], i + 1, ctx->geometry.icon2[i], ctx->geometry.tag_nums[i]);
 
-    if (ctx->plot.iplp1 == 1)
+    if (ctx->plot.plot_type == 1)
       fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E "
                             "%12.4E %12.4E %12.4E %12.4E %5d %5d %5d\n",
               ctx->geometry.x[i], ctx->geometry.y[i], ctx->geometry.z[i], ctx->geometry.si[i], xw2, yw2,
@@ -1702,7 +1702,7 @@ static void write_frequency_data(FILE *file, const nec_context_t *ctx)
                 "FREQUENCY :%11.4E MHz\n"
                 "                                "
                 "WAVELENGTH:%11.4E Mtr",
-          ctx->save.fmhz,
+          ctx->save.freq_mhz,
           ctx->geometry.wlam);
 
   fprintf(file, "\n\n"
@@ -1733,7 +1733,7 @@ static void write_loading_data(FILE *file, const nec_context_t *ctx)
                 "                          "
                 "------ STRUCTURE IMPEDANCE LOADING ------");
 
-  if (ctx->zload.nload == 0)
+  if (ctx->zload.num_loads == 0)
   {
     fprintf(file, "\n"
                   "                                 "
@@ -1780,7 +1780,7 @@ static void write_environment_data(FILE *file, const nec_context_t *ctx)
                 "                            "
                 "-------- ANTENNA ENVIRONMENT --------");
 
-  if (ctx->gnd.ksymp == 1)
+  if (ctx->gnd.has_ground == 1)
   {
     fprintf(file, "\n"
                   "                            "
@@ -1788,7 +1788,7 @@ static void write_environment_data(FILE *file, const nec_context_t *ctx)
   }
   else
   {
-    if (ctx->gnd.iperf == 1)
+    if (ctx->gnd.is_perfect == 1)
     {
       fprintf(file, "\n"
                     "                            "
@@ -1797,7 +1797,7 @@ static void write_environment_data(FILE *file, const nec_context_t *ctx)
     else
     {
       // Radial wire ground screen
-      if (ctx->gnd.nradl != 0)
+      if (ctx->gnd.num_radials != 0)
       {
         fprintf(file, "\n"
                       "                            "
@@ -1808,7 +1808,7 @@ static void write_environment_data(FILE *file, const nec_context_t *ctx)
                       "WIRE LENGTH: %8.2f METERS\n"
                       "                            "
                       "WIRE RADIUS: %10.3E METERS",
-                ctx->gnd.nradl, ctx->save.scrwlt, ctx->save.scrwrt);
+                ctx->gnd.num_radials, ctx->save.screen_wire_len, ctx->save.screen_wire_radius);
 
         fprintf(file, "\n"
                       "                            "
@@ -1816,7 +1816,7 @@ static void write_environment_data(FILE *file, const nec_context_t *ctx)
       }
 
       // Ground type
-      if (ctx->gnd.iperf != 2)
+      if (ctx->gnd.is_perfect != 2)
       {
         fprintf(file, "\n"
                       "                            "
@@ -1830,7 +1830,7 @@ static void write_environment_data(FILE *file, const nec_context_t *ctx)
       }
 
       // Ground parameters
-      complex double epsc = cmplx(ctx->save.epsr, -ctx->save.sig * ctx->geometry.wlam * 59.96);
+      complex double epsc = cmplx(ctx->save.ground_epsr, -ctx->save.ground_sigma * ctx->geometry.wlam * 59.96);
       fprintf(file, "\n"
                     "                            "
                     "RELATIVE DIELECTRIC CONST: %.3f\n"
@@ -1838,7 +1838,7 @@ static void write_environment_data(FILE *file, const nec_context_t *ctx)
                     "CONDUCTIVITY: %10.3E MHOS/METER\n"
                     "                            "
                     "COMPLEX DIELECTRIC CONSTANT: %11.4E%+11.4Ej",
-              ctx->save.epsr, ctx->save.sig, creal(epsc), cimag(epsc));
+              ctx->save.ground_epsr, ctx->save.ground_sigma, creal(epsc), cimag(epsc));
     }
   }
 }
@@ -1867,7 +1867,7 @@ static void write_matrix_timing(FILE *file, const nec_context_t *ctx)
  */
 static void write_network_data(FILE *file, const nec_context_t *ctx)
 {
-  if (ctx->netcx.nonet == 0)
+  if (ctx->netcx.num_networks == 0)
   {
     return; // No network data to write
   }
@@ -1876,7 +1876,7 @@ static void write_network_data(FILE *file, const nec_context_t *ctx)
                 "                                            "
                 "---------- NETWORK DATA ----------");
 
-  int itmp1 = ctx->netcx.ntyp[0];
+  int itmp1 = ctx->netcx.net_types[0];
   int itmp3 = 0;
   const char *pnet[3] = {"  ", "NON-CROSSED", "CROSSED"};
 
@@ -1906,9 +1906,9 @@ static void write_network_data(FILE *file, const nec_context_t *ctx)
                     " REAL     IMAGINARY       REAL      IMAGINARY");
     }
 
-    for (int j = 0; j < ctx->netcx.nonet; j++)
+    for (int j = 0; j < ctx->netcx.num_networks; j++)
     {
-      int itmp2 = ctx->netcx.ntyp[j];
+      int itmp2 = ctx->netcx.net_types[j];
 
       if ((itmp2 / itmp1) != 1)
       {
@@ -1916,17 +1916,17 @@ static void write_network_data(FILE *file, const nec_context_t *ctx)
       }
       else
       {
-        int itmp4 = ctx->netcx.iseg1[j];
-        int itmp5 = ctx->netcx.iseg2[j];
+        int itmp4 = ctx->netcx.net_seg1[j];
+        int itmp5 = ctx->netcx.net_seg2[j];
         int idx4 = itmp4 - 1;
         int idx5 = itmp5 - 1;
 
-        if ((itmp2 >= 2) && (ctx->netcx.x11i[j] <= 0.0))
+        if ((itmp2 >= 2) && (ctx->netcx.y11_imag[j] <= 0.0))
         {
           double xx = ctx->geometry.x[idx5] - ctx->geometry.x[idx4];
           double yy = ctx->geometry.y[idx5] - ctx->geometry.y[idx4];
           double zz = ctx->geometry.z[idx5] - ctx->geometry.z[idx4];
-          ctx->netcx.x11i[j] = ctx->geometry.wlam * sqrt(xx * xx + yy * yy + zz * zz);
+          ctx->netcx.y11_imag[j] = ctx->geometry.wlam * sqrt(xx * xx + yy * yy + zz * zz);
         }
 
         fprintf(file, "\n"
@@ -1934,9 +1934,9 @@ static void write_network_data(FILE *file, const nec_context_t *ctx)
                       "%11.4E %11.4E  %11.4E %11.4E  %s",
                 ctx->geometry.tag_nums[idx4], itmp4,
                 ctx->geometry.tag_nums[idx5], itmp5,
-                ctx->netcx.x11r[j], ctx->netcx.x11i[j],
-                ctx->netcx.x12r[j], ctx->netcx.x12i[j],
-                ctx->netcx.x22r[j], ctx->netcx.x22i[j],
+                ctx->netcx.y11_real[j], ctx->netcx.y11_imag[j],
+                ctx->netcx.y12_real[j], ctx->netcx.y12_imag[j],
+                ctx->netcx.y22_real[j], ctx->netcx.y22_imag[j],
                 pnet[itmp2 - 1]);
       }
     }
@@ -1957,7 +1957,7 @@ static void write_network_data(FILE *file, const nec_context_t *ctx)
 static void write_matrix_asymmetry(FILE *file, const nec_context_t *ctx)
 {
   // Only write if asymmetry check was performed and data exists
-  if (ctx->netcx.masym == 0 || ctx->netcx.asmx == 0.0)
+  if (ctx->netcx.check_asymmetry == 0 || ctx->netcx.max_asymmetry == 0.0)
   {
     return;
   }
@@ -1966,7 +1966,7 @@ static void write_matrix_asymmetry(FILE *file, const nec_context_t *ctx)
                 "   MAXIMUM RELATIVE ASYMMETRY OF THE DRIVING POINT ADMITTANCE\n"
                 "   MATRIX IS %10.3E FOR SEGMENTS %d AND %d\n"
                 "   RMS RELATIVE ASYMMETRY IS %10.3E",
-          ctx->netcx.asmx, ctx->netcx.nteq_asym, ctx->netcx.ntsc_asym, ctx->netcx.asa);
+          ctx->netcx.max_asymmetry, ctx->netcx.nteq_asym, ctx->netcx.ntsc_asym, ctx->netcx.rms_asymmetry);
 }
 
 /******************************************************************************
@@ -1977,7 +1977,7 @@ static void write_matrix_asymmetry(FILE *file, const nec_context_t *ctx)
  */
 static void write_network_excitation(FILE *file, const nec_context_t *ctx)
 {
-  if (ctx->netcx.nexc == 0 || ctx->netcx.nprint != 0)
+  if (ctx->netcx.nexc == 0 || ctx->netcx.print_net_data != 0)
   {
     return; // No excitation data or printing suppressed
   }
@@ -2073,7 +2073,7 @@ static void write_currents(FILE *file, const nec_context_t *ctx)
   // Calculate frequency ratio to convert meters to wavelengths
   // The geometry arrays have been recalculated in meters by write_segments
   // We need to multiply by fr (= 1/wlam) to convert to wavelengths
-  double fr = ctx->save.fmhz / CVEL;
+  double fr = ctx->save.freq_mhz / CVEL;
 
   for (int i = 0; i < ctx->geometry.n; i++)
   {
@@ -2101,13 +2101,13 @@ static void write_currents(FILE *file, const nec_context_t *ctx)
 static void write_power_budget(FILE *file, const nec_context_t *ctx)
 {
   // Only write for standard radiation pattern types
-  if ((ctx->fpat.ixtyp != 0) && (ctx->fpat.ixtyp != 5))
+  if ((ctx->fpat.excitation_type != 0) && (ctx->fpat.excitation_type != 5))
   {
     return;
   }
 
-  double tmp1 = ctx->netcx.pin - ctx->netcx.pnls - ctx->fpat.ploss;
-  double tmp2 = 100.0 * tmp1 / ctx->netcx.pin;
+  double tmp1 = ctx->netcx.power_in - ctx->netcx.power_net_loss - ctx->fpat.ohmic_loss;
+  double tmp2 = 100.0 * tmp1 / ctx->netcx.power_in;
 
   fprintf(file, "\n\n\n"
                 "                               "
@@ -2122,7 +2122,7 @@ static void write_power_budget(FILE *file, const nec_context_t *ctx)
                 "NETWORK LOSS  = %11.4E Watts\n"
                 "                               "
                 "EFFICIENCY    = %7.2f Percent",
-          ctx->netcx.pin, tmp1, ctx->fpat.ploss, ctx->netcx.pnls, tmp2);
+          ctx->netcx.power_in, tmp1, ctx->fpat.ohmic_loss, ctx->netcx.power_net_loss, tmp2);
 }
 
 /******************************************************************************
@@ -2142,13 +2142,13 @@ static void write_radiation_pattern_header(FILE *file, const nec_context_t *ctx)
   }
 
   /* Write ground parameters if applicable */
-  if (ctx->gnd.ifar > 1)
+  if (ctx->gnd.far_field_type > 1)
   {
     fprintf(file, "\n\n\n"
                   "                               "
                   "------ FAR FIELD GROUND PARAMETERS ------\n\n");
 
-    if (ctx->gnd.ifar > 3)
+    if (ctx->gnd.far_field_type > 3)
     {
       fprintf(file, "\n"
                     "                               "
@@ -2159,10 +2159,10 @@ static void write_radiation_pattern_header(FILE *file, const nec_context_t *ctx)
                     "WIRE LENGTH= %8.2f METERS\n"
                     "                               "
                     "WIRE RADIUS= %10.3E METERS",
-              ctx->gnd.nradl, ctx->save.scrwlt, ctx->save.scrwrt);
+              ctx->gnd.num_radials, ctx->save.screen_wire_len, ctx->save.screen_wire_radius);
     }
 
-    if (ctx->gnd.ifar != 4 && strlen(ctx->rpat.ground_cliff_type) > 0)
+    if (ctx->gnd.far_field_type != 4 && strlen(ctx->rpat.ground_cliff_type) > 0)
     {
       fprintf(file, "\n"
                     "                               "
@@ -2177,13 +2177,13 @@ static void write_radiation_pattern_header(FILE *file, const nec_context_t *ctx)
                     "RELATIVE DIELECTRIC CONST= %10.3f\n"
                     "                               "
                     "      GROUND CONDUCTIVITY= %10.3f MHOS",
-              ctx->rpat.ground_cliff_type, ctx->fpat.clt, ctx->fpat.cht,
-              ctx->fpat.epsr2, ctx->fpat.sig2);
+              ctx->rpat.ground_cliff_type, ctx->fpat.cliff_dist, ctx->fpat.cliff_height,
+              ctx->fpat.epsr2, ctx->fpat.sigma2);
     }
   }
 
   /* Write main header */
-  if (ctx->gnd.ifar == 1)
+  if (ctx->gnd.far_field_type == 1)
   {
     fprintf(file, "\n\n\n"
                   "                             "
@@ -2197,21 +2197,21 @@ static void write_radiation_pattern_header(FILE *file, const nec_context_t *ctx)
   }
   else
   {
-    int itmp1 = 2 * ctx->fpat.iax;
+    int itmp1 = 2 * ctx->fpat.pol_axis;
     int itmp2 = itmp1 + 1;
 
     fprintf(file, "\n\n\n"
                   "                             "
                   "---------- RADIATION PATTERNS -----------\n");
 
-    if (ctx->fpat.rfld >= 1.0e-20)
+    if (ctx->fpat.range >= 1.0e-20)
     {
       fprintf(file, "\n"
                     "                             "
                     "RANGE: %13.6E METERS\n"
                     "                             "
                     "EXP(-JKR)/R: %12.5E AT PHASE: %7.2f DEGREES\n",
-              ctx->fpat.rfld, ctx->rpat.exrm, ctx->rpat.exra);
+              ctx->fpat.range, ctx->rpat.exrm, ctx->rpat.exra);
     }
 
     fprintf(file, "\n"
@@ -2221,7 +2221,7 @@ static void write_radiation_pattern_header(FILE *file, const nec_context_t *ctx)
                   "  TILT  SENSE   MAGNITUDE    PHASE    MAGNITUDE     PHASE\n"
                   " DEGREES   DEGREES        DB       DB       DB       RATIO  "
                   " DEGREES            VOLTS/M   DEGREES     VOLTS/M   DEGREES",
-            igtp[ctx->fpat.ipd], igax[itmp1], igax[itmp2]);
+            igtp[ctx->fpat.gain_type], igax[itmp1], igax[itmp2]);
   }
 }
 
@@ -2246,18 +2246,18 @@ static void write_radiation_pattern_data(FILE *file, const nec_context_t *ctx)
   {
     rpat_point_t *pt = &ctx->rpat.points[i];
 
-    if (ctx->gnd.ifar == 1)
+    if (ctx->gnd.far_field_type == 1)
     {
       /* Near field output */
       fprintf(file, "\n"
                     " %9.2f %7.2f %9.2f  %11.4E %7.2f  %11.4E %7.2f  %11.4E %7.2f",
-              ctx->fpat.rfld, pt->phi, pt->theta,
+              ctx->fpat.range, pt->phi, pt->theta,
               pt->ethm, pt->etha, pt->ephm, pt->epha, pt->erdm, pt->erda);
     }
     else
     {
       /* Far field output */
-      if (ctx->fpat.iax != 1)
+      if (ctx->fpat.pol_axis != 1)
       {
         tmp5 = pt->gnmj;
         tmp6 = pt->gnmn;
@@ -2285,7 +2285,7 @@ static void write_radiation_pattern_data(FILE *file, const nec_context_t *ctx)
  */
 static void write_average_power_gain(FILE *file, const nec_context_t *ctx)
 {
-  if (ctx->fpat.iavp == 0)
+  if (ctx->fpat.avg_power_flag == 0)
   {
     return;
   }
@@ -2306,12 +2306,12 @@ static void write_normalized_gain(FILE *file, const nec_context_t *ctx)
   char *igntp[5] = {" MAJOR AXIS", "  MINOR AXIS",
                     "    VERTICAL", "  HORIZONTAL", "       TOTAL "};
 
-  if (ctx->fpat.inor == 0 || ctx->rpat.num_points == 0)
+  if (ctx->fpat.normalize_gain == 0 || ctx->rpat.num_points == 0)
   {
     return;
   }
 
-  int itmp1 = ctx->fpat.inor - 1;
+  int itmp1 = ctx->fpat.normalize_gain - 1;
 
   fprintf(file, "\n\n\n"
                 "                             "
@@ -2342,7 +2342,7 @@ static void write_normalized_gain(FILE *file, const nec_context_t *ctx)
     rpat_point_t *pt1 = &ctx->rpat.points[i];
     double gain1;
 
-    switch (ctx->fpat.inor)
+    switch (ctx->fpat.normalize_gain)
     {
     case 1:
       gain1 = pt1->gnmj;
@@ -2372,7 +2372,7 @@ static void write_normalized_gain(FILE *file, const nec_context_t *ctx)
       {
         rpat_point_t *pt2 = &ctx->rpat.points[idx1];
         double gain2;
-        switch (ctx->fpat.inor)
+        switch (ctx->fpat.normalize_gain)
         {
         case 1:
           gain2 = pt2->gnmj;
@@ -2414,7 +2414,7 @@ static void write_normalized_gain(FILE *file, const nec_context_t *ctx)
       rpat_point_t *pt3 = &ctx->rpat.points[idx2];
       double gain2, gain3;
 
-      switch (ctx->fpat.inor)
+      switch (ctx->fpat.normalize_gain)
       {
       case 1:
         gain2 = pt2->gnmj;
@@ -2511,7 +2511,7 @@ static void write_near_field_plot(const nec_context_t *ctx)
 {
   if (ctx->nfr.num_points == 0 || ctx->nfr.points == NULL)
     return;
-  if (ctx->plot.iplp1 != 2 || ctx->plot_fp == NULL)
+  if (ctx->plot.plot_type != 2 || ctx->plot_fp == NULL)
     return;
 
   for (int i = 0; i < ctx->nfr.num_points; i++)
@@ -2519,9 +2519,9 @@ static void write_near_field_plot(const nec_context_t *ctx)
     near_field_point_t *pt = &ctx->nfr.points[i];
 
     double xxx;
-    if (ctx->plot.iplp4 < 0)
+    if (ctx->plot.plot_gain_type < 0)
       xxx = pt->xob;
-    else if (ctx->plot.iplp4 == 0)
+    else if (ctx->plot.plot_gain_type == 0)
       xxx = pt->yob;
     else
       xxx = pt->zob;
@@ -2533,9 +2533,9 @@ static void write_near_field_plot(const nec_context_t *ctx)
     double tmp5 = cabs(pt->ez);
     double tmp6 = cang(ctx, pt->ez);
 
-    if (ctx->plot.iplp2 == 2)
+    if (ctx->plot.plot_axis == 2)
     {
-      switch (ctx->plot.iplp3)
+      switch (ctx->plot.plot_component)
       {
         case 1:
           fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E\n", xxx, tmp1, tmp2);
@@ -2551,9 +2551,9 @@ static void write_near_field_plot(const nec_context_t *ctx)
                   xxx, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6);
       }
     }
-    else if (ctx->plot.iplp2 == 1)
+    else if (ctx->plot.plot_axis == 1)
     {
-      switch (ctx->plot.iplp3)
+      switch (ctx->plot.plot_component)
       {
         case 1:
           fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E\n",
