@@ -129,7 +129,7 @@ void nec_context_init(nec_context_t *ctx)
     nec_get_time_ms(ctx, &ctx->start_time);
     
     // Initialize ground grid parameters for somnec (from old main.c lines 145-175)
-    ctx->ggrid = (ggrid_t){
+    ctx->ggrid = (green_grid_t){
         .nxa = {11, 17, 9},
         .nya = {10, 5, 8},
         .dxa = {0.02, 0.05, 0.1},

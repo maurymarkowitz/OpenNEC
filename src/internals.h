@@ -59,7 +59,7 @@ typedef struct
     *cii;	/* Ci/lambda, imaginary part */
 
   complex double *cur; /* Amplitude of basis function */
-} crnt_t;
+} current_t;
 
 /** common  /geometry/ (geometry data)
  */
@@ -142,7 +142,7 @@ typedef struct
 		eyc,
 		ezc;
 
-} dataj_t;
+} segment_t;
 
 /* common  /fpat/ */
 typedef struct
@@ -183,7 +183,7 @@ typedef struct
 		dynr,
 		dznr;
 
-} fpat_t;
+} field_pattern_t;
 
 /* Radiation pattern data point */
 typedef struct
@@ -253,7 +253,7 @@ typedef struct
 		*ar2,
 		*ar3;
 
-} ggrid_t;
+} green_grid_t;
 
 /* common  /gnd/ */
 typedef struct
@@ -277,7 +277,7 @@ typedef struct
 		t1,		  /* Const for radial wire ground impedance */
 		frati;	/* (k1^2-k2^2)/(k1^2+k2^2), k1=w(E0Mu0)^1/2, k1=k2/ZRATI */
 
-} gnd_t;
+} ground_params_t;
 
 /* common  /gwav/ */
 typedef struct
@@ -294,7 +294,7 @@ typedef struct
 		xx1,	  /* G1*exp(jkR1.r[i])  */
 		xx2;	  /* G2*exp(jkR2.r'[i]) */
 
-} gwav_t;
+} ground_wave_t;
 
 /* common  /incom/ */
 typedef struct
@@ -309,7 +309,7 @@ typedef struct
 		xsn,
 		ysn;
 
-} incom_t;
+} green_params_t;
 
 /* common  /matpar/ (matrix parameters) */
 typedef struct
@@ -320,7 +320,7 @@ typedef struct
 		nlast,	/* Num of blocks in last block */
 		imat;	  /* Storage reserved in CM for primary NGF matrix A */
 
-} matpar_t;
+} matrix_params_t;
 
 /* common  /netcx/ */
 typedef struct
@@ -375,7 +375,7 @@ typedef struct
 
 	complex double zped;
 
-} netcx_t;
+} network_context_t;
 
 /* common  /plot/ */
 typedef struct
@@ -387,7 +387,7 @@ typedef struct
 		iplp3,
 		iplp4;
 
-} plot_t;
+} plot_params_t;
 
 /* common  /save/ */
 typedef struct
@@ -406,7 +406,7 @@ typedef struct
 		fmhz,	  /* Frequency in MHz */
 		delfrq;	/* Frequency step size */
 
-} save_t;
+} run_params_t;
 
 /* common  /segj/ */
 typedef struct
@@ -419,7 +419,7 @@ typedef struct
 	double
 		*ax, *bx, *cx;	/* Store constants A, B, C used in current expansion */
 
-} segj_t;
+} segment_junction_t;
 
 /* common  /smat/ */
 typedef struct
@@ -428,7 +428,7 @@ typedef struct
 
 	complex double *ssx;
 
-} smat_t;
+} symmetry_matrix_t;
 
 /* common  /tmi/ */
 typedef struct
@@ -439,7 +439,7 @@ typedef struct
 		zpk,
 		rkb2;
 
-} tmi_t;
+} wire_e_integration_t;
 
 /* common /evlcom/ (formerly static globals in somnec.c) */
 typedef struct
@@ -508,7 +508,7 @@ typedef struct
 		zpka,
 		rhks;
 
-} tmh_t;
+} wire_h_integration_t;
 
 /* common  /vsorc/ */
 typedef struct
@@ -526,7 +526,7 @@ typedef struct
 		*vqds,	/* Same as above (?) */
 		*vsant;	/* Voltages of applied field voltage sources */
 
-} vsorc_t;
+} voltage_sources_t;
 
 /* One row of CP (coupling) output, accumulated during calculation */
 typedef struct {
@@ -557,7 +557,7 @@ typedef struct
   int num_coupling_rows;
   int coupling_rows_cap;
 
-} yparm_t;
+} coupling_params_t;
 
 /* common  /zload/ */
 typedef struct
@@ -577,7 +577,7 @@ typedef struct
 		*zlc;	/* Loading capacitance */
 	
 	complex double *zarray;	/* = Zi/(Di/lambda) */
-} zload_t;
+} impedance_loading_t;
 
 /* Structure for storing loading output data */
 typedef struct loading_output_t {
@@ -599,8 +599,8 @@ struct nec_context_t
 {
 	geometry_t geometry;
 	geometry_t ignored_geometry;
-	crnt_t crnt;
-	dataj_t dataj;
+	current_t crnt;
+	segment_t dataj;
 	FILE *input_fp;
 	FILE *output_fp;
 	FILE *error_fp;
@@ -614,27 +614,27 @@ struct nec_context_t
 	int ngf_neq;               /* Matrix size stored in the NGF file */
 	double ngf_fmhz;           /* Frequency (MHz) at which NGF was computed */
 	complex double *ngf_cm;    /* Cached CM matrix from NGF file (ngf_neq x ngf_neq, col-major) */
-	fpat_t fpat;
-	ggrid_t ggrid;
-	gnd_t gnd;
-	gwav_t gwav;
-	incom_t incom;
-	matpar_t matpar;
-	netcx_t netcx;
-	plot_t plot;
-	save_t save;
-	segj_t segj;
-	smat_t smat;
-	tmi_t tmi;
-	vsorc_t vsorc;
-	yparm_t yparm;
-	zload_t zload;
+	field_pattern_t fpat;
+	green_grid_t ggrid;
+	ground_params_t gnd;
+	ground_wave_t gwav;
+	green_params_t incom;
+	matrix_params_t matpar;
+	network_context_t netcx;
+	plot_params_t plot;
+	run_params_t save;
+	segment_junction_t segj;
+	symmetry_matrix_t smat;
+	wire_e_integration_t tmi;
+	voltage_sources_t vsorc;
+	coupling_params_t yparm;
+	impedance_loading_t zload;
 	loading_outputs_t loading_outputs;
 	
 	/* Thread-safety state (formerly static globals) */
 	somnec_t somnec;
 	intrp_t intrp;
-	tmh_t tmh;
+	wire_h_integration_t tmh;
 	
 	/* Radiation pattern results */
 	rpat_results_t rpat;
