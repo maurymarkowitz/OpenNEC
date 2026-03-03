@@ -34,7 +34,7 @@ Items still to be implemented:
   ~0.1-0.2% differences vs nec2c but is technically less accurate.
 
 * known numerical differences vs nec2c (not yet fixed):
-- VHFbeams/BIQDFEED.nec: 63% power difference. EX 0 tag=9 with all GW tag=0 —
+- 4nec2/VHFbeams/BIQDFEED.nec: 63% power difference. EX 0 tag=9 with all GW tag=0 —
   the source gets auto-assigned to segment 1143 correctly, but the matrix solve
   gives a different impedance (49.6-59.6j vs 44+0.6j). Root cause unknown;
   likely related to all-tag-0 wire auto-numbering affecting the GM-replicated mesh.
@@ -45,10 +45,10 @@ Items still to be implemented:
   receiving pattern) — complex receiving-pattern feature, output sections missing.
 - DL5SAY/EX4.nec: SP/GX (surface patches + geometry mirror) gives 40% power
   difference. Surface patch + GX interaction not fully implemented.
-- HFcollinear/4 Dipole Trans-lines.nec: TL length ≈ 1 wavelength causes
+- 4nec2/HFcollinear/4 Dipole Trans-lines.nec: TL length ≈ 1 wavelength causes
   near-singular 1/sin(βL); result is hyper-sensitive to CVEL precision — not
   meaningfully fixable without the exact same floating-point path as nec2c.
-- VHFsimple/Generator.nec: numerical artifact (near-zero average power gain
+- 4nec2/VHFsimple/Generator.nec: numerical artifact (near-zero average power gain
   produces 100% relative difference on a ~10^11 number).
 
 * files to examine:
