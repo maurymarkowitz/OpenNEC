@@ -11,7 +11,9 @@
 #include "types.h"
 
 /* Ground field functions - called from fields.c */
-int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restrict sum, double dmin);
-void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e);
+/* Formerly nec2c: rom2 */
+int romberg_integrate_sommerfeld(nec_context_t *restrict ctx, double a, double b, complex double *restrict sum, double dmin);
+/* Formerly nec2c: sflds */
+void sommerfeld_field(nec_context_t *restrict ctx, double t, complex double *restrict e);
 
 #endif /* GROUND_H */

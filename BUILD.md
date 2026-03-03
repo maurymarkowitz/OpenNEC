@@ -1,7 +1,7 @@
 OpenNEC Build Notes
 ===================
 
-OpenNEC is designed to build on any system with a working makefile system. It uses standard ANSI-C, and has no *required* external dependencies. It does not need a `make configure` or other setup, a simple `make` should produce a runnable binary. If it does not, please file bug reports and/or pull requests.
+OpenNEC is designed to build on any system with a working makefile system. It uses standard ANSI-C99, and has no *required* external dependencies. It does not need a `make configure` or other setup, a simple `make` should produce a runnable binary. If it does not, please file bug reports and/or pull requests.
 
 The original NEC-2 used internal code to perform various matrix calculations. OpenNEC allows the optional use of a number of math libraries that can dramatically improve performance on large models, especially those over 1000 segments. These optional components can be specified during `make` using the `BACKEND` directive on the command line.
 
@@ -47,11 +47,15 @@ sudo apt install -y build-essential pkg-config libblas-dev liblapack-dev
 sudo dnf install -y make gcc pkgconf-pkg-config blas-devel lapack-devel
 ```
 
-Build and Test on Linux
------------------------
+### Build and Test on Linux
+
 Choose a backend and build:
 
 ```bash
+# original fortran matrix solver
+make clean
+make BACKEND=original
+
 # OpenBLAS
 make clean
 make BACKEND=openblas
@@ -65,6 +69,19 @@ Run a quick test:
 
 ```bash
 ./onec test/example5.deck
+```
+
+### Troubleshooting
+
+- pkg-config missing:
+  - Debian/Ubuntu: `sudo apt install -y pkg-config`
+  - RHEL/Fedora: `sudo dnf install -y pkgconf-pkg-config`
+
+- OpenBLAS not detected on Linux via pkg-config: verify the `.pc` file exists and is visible to pkg-config.
+
+```bash
+pkg-config --modversion openblas
+pkg-config --cflags --libs openblas
 ```
 
 macOS Setup
@@ -114,16 +131,20 @@ make clean
 make BACKEND=openblas
 ```
 
-Performance Notes
------------------
-Recent timing runs on macOS (Apple Silicon) show that OpenBLAS is slightly faster than Accelerate overall, with the original built-in backend being significantly slower on large models:
+### Performance Notes
+
+Recent timing runs on macOS (Apple Silicon) using a batch of files on the command line show that OpenBLAS is noticably faster than Accelerate, with the original built-in backend being significantly slower on large models:
 
 - Accelerate: average real ≈ 0.477s across 7 decks
 - OpenBLAS: average real ≈ 0.383s across 7 decks
 - Original (internal): average real ≈ 3.139s across 7 decks
 
-Troubleshooting
----------------
+These times include the time needed to open and parse the deck and write the results, which is generally on the order of 50 to 100 ms. This means the improvement under OpenBLAS is fairly significant, especially when used as a library as opposed to the command line.
+
+### Troubleshooting
+
+- pkg-config missing: `brew install pkg-config`
+  
 - Homebrew PATH (Apple Silicon): ensure `/opt/homebrew/bin` is on your `PATH` and shell environment is initialized so `pkg-config` can find OpenBLAS.
 
 ```bash
@@ -135,19 +156,7 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openblas/lib/pkgconfig:${PKG_CONFIG_PATH}"
 ```
 
-- Intel Homebrew on Apple Silicon: builds are blocked if OpenBLAS resides under `/usr/local/opt/openblas`, which is the Intel install path. For these machines, install OpenBLAS with Apple Silicon Homebrew in `/opt/homebrew`. If you use Homebrew to install OpenBLAS, and it does not install it in `/opt/homebrew`, you are running the Intel version of the Homebrew code and need to re-install it.
-
-- pkg-config missing:
-  - macOS (Homebrew): `brew install pkg-config`
-  - Debian/Ubuntu: `sudo apt install -y pkg-config`
-  - RHEL/Fedora: `sudo dnf install -y pkgconf-pkg-config`
-
-- OpenBLAS not detected on Linux via pkg-config: verify the `.pc` file exists and is visible to pkg-config.
-
-```bash
-pkg-config --modversion openblas
-pkg-config --cflags --libs openblas
-```
+- Builds are blocked on Apple Silicon if OpenBLAS resides under `/usr/local/opt/openblas`, which is the Intel install path. For these machines, install OpenBLAS with Apple Silicon Homebrew in `/opt/homebrew`. If you use Homebrew to install OpenBLAS, and it does not install it in `/opt/homebrew`, you are running the Intel version of the Homebrew code and need to re-install the Apple Silicon version.
 
 - Accelerate deprecation warnings: you may see CLAPACK deprecation notes when using auto-detected Accelerate; these are benign for builds here.
 
@@ -187,8 +196,8 @@ There are two practical ways to build and run OpenNEC on Windows:
   ./onec test/example5.deck
   ```
 
-Intel MKL (Advanced)
---------------------
+### Intel MKL (Advanced)
+
 OpenNEC can link against Intel MKL on Linux/WSL when `MKL_ROOT` points to the MKL install. MKL setup varies by platform; prefer OpenBLAS unless you specifically need MKL.
 
 - Install Intel oneAPI Base Toolkit (includes MKL) and set `MKL_ROOT`.

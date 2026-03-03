@@ -119,33 +119,33 @@ void nec_context_init(nec_context_t *ctx)
     ctx->outputs.messages = NULL;
     
     // Initialize default values (matching original NEC2 initialization)
-    ctx->gnd.ksymp = 1;  // Default to free space
-    ctx->gnd.ifar = -1;
-    ctx->fpat.near = -1;  // -1 = sentinel "no NE/NH card" (0 is a valid near-field mode)
-    ctx->gnd.zrati = CPLX_10;
-    ctx->save.fmhz = CVEL;
+    ctx->gnd.has_ground = 1;  // Default to free space
+    ctx->gnd.far_field_type = -1;
+    ctx->fpat.is_near_field = -1;  // -1 = sentinel "no NE/NH card" (0 is a valid near-field mode)
+    ctx->gnd.impedance_ratio = CPLX_10;
+    ctx->save.freq_mhz = CVEL;
     
     // Start timing for total runtime
     nec_get_time_ms(ctx, &ctx->start_time);
     
     // Initialize ground grid parameters for somnec (from old main.c lines 145-175)
-    ctx->ggrid = (ggrid_t){
-        .nxa = {11, 17, 9},
-        .nya = {10, 5, 8},
-        .dxa = {0.02, 0.05, 0.1},
-        .dya = {0.1745329252, 0.0872664626, 0.1745329252},
-        .xsa = {0.0, 0.2, 0.2},
-        .ysa = {0.0, 0.0, 0.3490658504}
+    ctx->ggrid = (green_grid_t){
+        .grid_nx = {11, 17, 9},
+        .grid_ny = {10, 5, 8},
+        .grid_dx = {0.02, 0.05, 0.1},
+        .grid_dy = {0.1745329252, 0.0872664626, 0.1745329252},
+        .grid_x0 = {0.0, 0.2, 0.2},
+        .grid_y0 = {0.0, 0.0, 0.3490658504}
     };
     
     // Allocate ggrid arrays for SOMNEC ground calculations
     size_t mreq;
-    mreq = sizeof(complex double) * ctx->ggrid.nxa[0] * ctx->ggrid.nya[0] * 4;
-    ctx->ggrid.ar1 = malloc(mreq);
-    mreq = sizeof(complex double) * ctx->ggrid.nxa[1] * ctx->ggrid.nya[1] * 4;
-    ctx->ggrid.ar2 = malloc(mreq);
-    mreq = sizeof(complex double) * ctx->ggrid.nxa[2] * ctx->ggrid.nya[2] * 4;
-    ctx->ggrid.ar3 = malloc(mreq);
+    mreq = sizeof(complex double) * ctx->ggrid.grid_nx[0] * ctx->ggrid.grid_ny[0] * 4;
+    ctx->ggrid.table1 = malloc(mreq);
+    mreq = sizeof(complex double) * ctx->ggrid.grid_nx[1] * ctx->ggrid.grid_ny[1] * 4;
+    ctx->ggrid.table2 = malloc(mreq);
+    mreq = sizeof(complex double) * ctx->ggrid.grid_nx[2] * ctx->ggrid.grid_ny[2] * 4;
+    ctx->ggrid.table3 = malloc(mreq);
 
     // Initialize interpolation state for thread-safety
     ctx->intrp = (intrp_t){
@@ -160,17 +160,17 @@ void nec_context_init(nec_context_t *ctx)
 void nec_context_cleanup(nec_context_t *ctx)
 {
     // Free ggrid arrays
-    if (ctx->ggrid.ar1 != NULL) {
-        free(ctx->ggrid.ar1);
-        ctx->ggrid.ar1 = NULL;
+    if (ctx->ggrid.table1 != NULL) {
+        free(ctx->ggrid.table1);
+        ctx->ggrid.table1 = NULL;
     }
-    if (ctx->ggrid.ar2 != NULL) {
-        free(ctx->ggrid.ar2);
-        ctx->ggrid.ar2 = NULL;
+    if (ctx->ggrid.table2 != NULL) {
+        free(ctx->ggrid.table2);
+        ctx->ggrid.table2 = NULL;
     }
-    if (ctx->ggrid.ar3 != NULL) {
-        free(ctx->ggrid.ar3);
-        ctx->ggrid.ar3 = NULL;
+    if (ctx->ggrid.table3 != NULL) {
+        free(ctx->ggrid.table3);
+        ctx->ggrid.table3 = NULL;
     }
     
     // Note: File pointers are managed by the caller (main.c) and should not be closed here

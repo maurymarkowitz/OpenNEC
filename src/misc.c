@@ -209,8 +209,8 @@ void abort_on_error(const nec_context_t *ctx, int why)
 	  nec_report(ctx, ONEC_SEV_FATAL, "onec: NGF solution option not supported - aborting");
 	  break;
 
-	case -6: /* No convergence in gshank() */
-	  nec_report(ctx, ONEC_SEV_FATAL, "onec: No convergence in gshank() - aborting");
+	case -6: /* No convergence in shanks_integration() */
+	  nec_report(ctx, ONEC_SEV_FATAL, "onec: No convergence in shanks_integration() - aborting");
 	  break;
 
 	case -7: /* Error in hankel() */
@@ -744,7 +744,7 @@ double nec_estimate_time(nec_context_t *ctx, deck_t *deck)
    * calculate_geometry() is coordinate math only — no matrix work.
    * If it was already called (e.g. by a preceding nec_run_simulation,
    * or by a GUI that built the geometry view), we reuse the result. */
-  if (ctx->geometry.n == 0 && ctx->geometry.m == 0) {
+  if (ctx->geometry.num_segs == 0 && ctx->geometry.num_patches == 0) {
     errors_list_t tmp_errs = {0};
     calculate_geometry(ctx, deck, &tmp_errs, &ctx->outputs);
     for (int i = 0; i < tmp_errs.num_errors; i++) free(tmp_errs.errors[i].message);
@@ -758,14 +758,14 @@ double nec_estimate_time(nec_context_t *ctx, deck_t *deck)
   nec_estimate_setup(deck, &ns_scan, &np_scan, &nf, &m_sym_scan, &k_gnd, &nfreq);
 
   /* Derive ns / np / m_sym from the expanded geometry.
-   *  ctx->geometry.np  = segments in one symmetry cell (< .n when GR is used)
-   *  ctx->geometry.mp  = patches   in one symmetry cell
+   *  ctx->geometry.num_segs_sym  = segments in one symmetry cell (< .n when GR is used)
+   *  ctx->geometry.num_patches_sym  = patches   in one symmetry cell
    *  m_sym             = n / np  (>1 for GR; ==1 after GM expansion) */
   int ns, np, m_sym;
-  if (ctx->geometry.n > 0 || ctx->geometry.m > 0) {
-    ns    = ctx->geometry.np;
-    np    = ctx->geometry.mp;
-    m_sym = (ctx->geometry.np > 0) ? ctx->geometry.n / ctx->geometry.np : 1;
+  if (ctx->geometry.num_segs > 0 || ctx->geometry.num_patches > 0) {
+    ns    = ctx->geometry.num_segs_sym;
+    np    = ctx->geometry.num_patches_sym;
+    m_sym = (ctx->geometry.num_segs_sym > 0) ? ctx->geometry.num_segs / ctx->geometry.num_segs_sym : 1;
   } else {
     /* Empty or failed geometry — fall back to deck-scan values. */
     ns    = ns_scan;

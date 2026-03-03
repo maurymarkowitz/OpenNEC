@@ -51,139 +51,141 @@
 typedef struct
 {
   double
-    *air,	/* Ai/lambda, real part */
-    *aii,	/* Ai/lambda, imaginary part */
-    *bir,	/* Bi/lambda, real part */
-    *bii,	/* Bi/lambda, imaginary part */
-    *cir,	/* Ci/lambda, real part */
-    *cii;	/* Ci/lambda, imaginary part */
+    *a_real,	/* Ai/lambda, real part */      /* air — Fortran AIR */
+    *a_imag,	/* Ai/lambda, imaginary part */  /* aii — Fortran AII */
+    *b_real,	/* Bi/lambda, real part */       /* bir — Fortran BIR */
+    *b_imag,	/* Bi/lambda, imaginary part */  /* bii — Fortran BII */
+    *c_real,	/* Ci/lambda, real part */       /* cir — Fortran CIR */
+    *c_imag;	/* Ci/lambda, imaginary part */  /* cii — Fortran CII */
 
-  complex double *cur; /* Amplitude of basis function */
-} crnt_t;
+  complex double *surface_cur; /* Amplitude of basis function */ /* cur — Fortran CUR */
+} current_t; /* Formerly: Fortran /CRNT/ → nec2c: crnt_t */
 
 /** common  /geometry/ (geometry data)
  */
-typedef struct geometry_t
+typedef struct geometry_t /* Formerly: Fortran /DATA/ → nec2c: data_t */
 {
 	int
-		n,		      	// Number of wire segments in total
-		np,		      	// Number of wire segments in symmetry cell
-		m,		      	// Number of surface patches
-		mp,		      	// Number of surface patches in symmetry cell
-		npm,	      	// = n+m
-		np2m,	      	// = n+2m
-		np3m,	      	// = n+3m
-		ipsym,	    	// Symmetry flag
-		*icon1,     	// Segments connections on end 1
-		*icon2,	    	// Segments connections on end 2
-		*tag_nums,		// Segment's tag number, which may be zero
-    	*card_nums; 	// which card number generated this bit, never zero
+		num_segs,         /* n — Fortran N: total wire segment count */
+		num_segs_sym,     /* np — Fortran NP: segments in symmetry cell */
+		num_patches,      /* m — Fortran M: surface patch count */
+		num_patches_sym,  /* mp — Fortran MP: patches in symmetry cell */
+		num_segs_and_patches, /* npm — N+M */
+		num_segs_2xpatches,   /* np2m — N+2M */
+		num_segs_3xpatches,   /* np3m — N+3M */
+		symmetry_flag,    /* ipsym — Fortran IPSYM: symmetry flag (0/1/2/3/negative) */
+		*seg_end1_conn,   /* icon1 — Fortran ICON1: segment end-1 connection index */
+		*seg_end2_conn,   /* icon2 — Fortran ICON2: segment end-2 connection index */
+		*tag_nums,        /* Fortran ITAG: segment tag numbers */
+    	*card_nums;       /* OpenNEC: source card line numbers */
   
 	double
     	// Wire segment data
-    	*x1, *y1, *z1,	// End 1 coordinates of wire segments
-		*x2, *y2, *z2,	// End 2 coordinates of wire segments
-		*x, *y, *z,		// Coordinates of segment centers
-		*si, *bi,		// Length and radius of segments
-		*cab,			// cos(a)*cos(b)
-		*sab,			// cos(a)*sin(b)
-		*salp,			// Z component - sin(a)
+    	*end1_x, *end1_y, *end1_z, /* x1/y1/z1 — Fortran X/Y/Z (pre-CABC): seg end-1 coords */
+		*end2_x, *end2_y, *end2_z, /* x2/y2/z2 — SI/ALP/BET (EQUIV): seg end-2 coords */
+		*x_center, *y_center, *z_center, /* x/y/z — Fortran X/Y/Z: seg center coords (wavelengths) */
+		*half_len,   /* si — Fortran SI: segment half-length (wavelengths) */
+		*radius,     /* bi — Fortran BI: segment radius (wavelengths) */
+		*dir_cos_x,  /* cab — Fortran CAB: cos(α)·cos(β) direction cosine */
+		*dir_cos_y,  /* sab — Fortran SAB: cos(α)·sin(β) direction cosine */
+		*dir_cos_z,  /* salp — Fortran SALP: sin(α) direction cosine */
 
     	// Surface patch data
-		*px, *py, *pz,		// Coordinates of patch center
-		*t1x, *t1y, *t1z,	// Coordinates of t1 vector
-		*t2x, *t2y, *t2z,	// Coordinates of t2 vector
-		*pbi,				// Patch surface area
-		*psalp,				// Z component - sin(a)
+		*patch_x_center, *patch_y_center, *patch_z_center, /* px/py/pz — patch center coords */
+		*patch_t1x, *patch_t1y, *patch_t1z, /* t1x/t1y/t1z — patch tangent vector T1 */
+		*patch_t2x, *patch_t2y, *patch_t2z, /* t2x/t2y/t2z — patch tangent vector T2 */
+		*patch_area,      /* pbi — Fortran BI (patch EQUIV): patch area (wavelengths²) */
+		*patch_normal_z,  /* psalp — Fortran SALP (patch EQUIV): patch normal direction cosine */
 
-    /* Wavelength in meters */
-    wlam;
+    	wavelength; /* wlam — Fortran WLAM: wavelength in meters */
   
   // list of errors added while processing this geometry
   errors_list_t errors;
 } geometry_t;
 
 /* common  /dataj/ */
+/* Formerly: Fortran /DATAJ/ → nec2c: dataj_t */
 typedef struct
 {
 	int
-		iexk,
-		ind1,
-		indd1,
-		ind2,
-		indd2,
-		ipgnd;
+		use_extended_kernel,  /* iexk — Fortran IEXK: extended thin-wire kernel flag */
+		end1_kernel_type,     /* ind1 — Fortran IND1: end-1 kernel indicator */
+		end1_kernel_deferred, /* indd1 — Fortran INDD1: end-1 deferred kernel indicator */
+		end2_kernel_type,     /* ind2 — Fortran IND2: end-2 kernel indicator */
+		end2_kernel_deferred, /* indd2 — Fortran INDD2: end-2 deferred kernel indicator */
+		ground_image_pass;    /* ipgnd — Fortran IPGND: ground image loop pass (1 or 2) */
 
 	double
-		s,
-		b,
-		xj,
-		yj,
-		zj,
-		cabj,
-		sabj,
-		salpj,
-		rkh,
-		t1xj,
-		t1yj,
-		t1zj,
-		t2xj,
-		t2yj,
-		t2zj;
+		seg_half_len,    /* s — Fortran S: source segment half-length */
+		seg_radius,      /* b — Fortran B: source segment radius / patch T2X */
+		src_x,           /* xj — Fortran XJ: source segment center x */
+		src_y,           /* yj — Fortran YJ: source segment center y */
+		src_z,           /* zj — Fortran ZJ: source segment center z */
+		src_dir_cos_x,   /* cabj — Fortran CABJ: cos(α)cos(β) for source segment */
+		src_dir_cos_y,   /* sabj — Fortran SABJ: cos(α)sin(β) for source segment */
+		src_dir_cos_z,   /* salpj — Fortran SALPJ: sin(α) for source segment */
+		k_half_len,      /* rkh — Fortran RKH: k × half-length */
+		patch_t1x,       /* t1xj — Fortran CABJ(EQUIV): patch T1 x-component */
+		patch_t1y,       /* t1yj — Fortran SABJ(EQUIV): patch T1 y-component */
+		patch_t1z,       /* t1zj — Fortran SALPJ(EQUIV): patch T1 z-component */
+		patch_t2x,       /* t2xj — Fortran B(EQUIV): patch T2 x-component */
+		patch_t2y,       /* t2yj — Fortran IND1(EQUIV): patch T2 y-component */
+		patch_t2z;       /* t2zj — Fortran IND2(EQUIV): patch T2 z-component */
 
 	complex double
-		exk,
-		eyk,
-		ezk,
-		exs,
-		eys,
-		ezs,
-		exc,
-		eyc,
-		ezc;
+		e_const_x,  /* exk — Fortran EXK: E-field contribution (constant current), x */
+		e_const_y,  /* eyk — Fortran EYK: E-field contribution (constant current), y */
+		e_const_z,  /* ezk — Fortran EZK: E-field contribution (constant current), z */
+		e_sin_x,    /* exs — Fortran EXS: E-field contribution (sine current), x */
+		e_sin_y,    /* eys — Fortran EYS: E-field contribution (sine current), y */
+		e_sin_z,    /* ezs — Fortran EZS: E-field contribution (sine current), z */
+		e_cos_x,    /* exc — Fortran EXC: E-field contribution (cosine current), x */
+		e_cos_y,    /* eyc — Fortran EYC: E-field contribution (cosine current), y */
+		e_cos_z;    /* ezc — Fortran EZC: E-field contribution (cosine current), z */
 
-} dataj_t;
+} segment_t;
 
 /* common  /fpat/ */
+/* Formerly: Fortran /FPAT/ → nec2c: fpat_t */
 typedef struct
 {
 	int
-		near,
-		nfeh,
-		nrx,
-		nry,
-		nrz,
-		nth,
-		nph,
-		ipd,
-		iavp,
-		inor,
-		iax,
-		ixtyp;
+		is_near_field,  /* near — Fortran NEAR: near-field flag */
+		near_field_type, /* nfeh — Fortran NFEH: 0=E, 1=H */
+		grid_nx,        /* nrx — Fortran NRX: near-field grid x dimension */
+		grid_ny,        /* nry — Fortran NRY: near-field grid y dimension */
+		grid_nz,        /* nrz — Fortran NRZ: near-field grid z dimension */
+		num_theta,      /* nth — Fortran NTH: number of theta angles */
+		num_phi,        /* nph — Fortran NPH: number of phi angles */
+		gain_type,      /* ipd — Fortran IPD: power/directive gain selector */
+		avg_power_flag, /* iavp — Fortran IAVP: average power integration */
+		normalize_gain, /* inor — Fortran INOR: normalized gain flag */
+		pol_axis,       /* iax — Fortran IAX: polarization axis selector */
+		excitation_type; /* ixtyp — Fortran IXTYP: excitation type */
 
 	double
-		thets,
-		phis,
-		dth,
-		dph,
-		rfld,
-		gnor,
-		clt,
-		cht,
-		epsr2,
-		sig2,
-		xpr6,
-		pinr,
-		pnlr,
-		ploss,
-		xnr,
-		ynr,
-		znr,
-		dxnr,
-		dynr,
-		dznr;
+		theta_start,    /* thets — Fortran THETS: starting theta (deg) */
+		phi_start,      /* phis — Fortran PHIS: starting phi (deg) */
+		theta_step,     /* dth — Fortran DTH: theta step (deg) */
+		phi_step,       /* dph — Fortran DPH: phi step (deg) */
+		range,          /* rfld — Fortran RFLD: range to field point */
+		norm_gain,      /* gnor — Fortran GNOR: normalization gain */
+		cliff_dist,     /* clt — Fortran CLT: cliff edge distance */
+		cliff_height,   /* cht — Fortran CHT: cliff height */
+		epsr2,          /* Fortran EPSR2: second ground medium dielectric */
+		sigma2,         /* sig2 — Fortran SIG2: second ground conductivity */
+		exc_param6,     /* xpr6 — Fortran XPR6: excitation parameter 6 */
+		power_in,       /* pinr — Fortran PINR: input power (watts) */
+		network_loss,   /* pnlr — Fortran PNLR: network power loss (watts) */
+		ohmic_loss,     /* ploss — Fortran PLOSS: ohmic loss (watts) */
+		grid_x0,        /* xnr — Fortran XNR: near-field grid origin x */
+		grid_y0,        /* ynr — Fortran YNR: near-field grid origin y */
+		grid_z0,        /* znr — Fortran ZNR: near-field grid origin z */
+		grid_dx,        /* dxnr — Fortran DXNR: near-field grid spacing x */
+		grid_dy,        /* dynr — Fortran DYNR: near-field grid spacing y */
+		grid_dz;        /* dznr — Fortran DZNR: near-field grid spacing z */
 
-} fpat_t;
+} field_pattern_t;
 
 /* Radiation pattern data point */
 typedef struct
@@ -226,7 +228,7 @@ typedef struct
 	complex double ex, ey, ez;  /* field components (E or H) */
 } near_field_point_t;
 
-/* Near-field results accumulated by nfpat() */
+/* Near-field results accumulated by compute_near_field() */
 typedef struct
 {
 	int num_points;
@@ -235,119 +237,124 @@ typedef struct
 } near_field_results_t;
 
 /*common  /ggrid/ */
+/* Formerly: Fortran /GGRID/ → nec2c: ggrid_t */
 typedef struct
 {
 	int
-		nxa[3],
-		nya[3];
+		grid_nx[3],  /* nxa — Fortran NXA(3): grid point counts */
+		grid_ny[3];  /* nya — Fortran NYA(3) */
 
 	double
-		dxa[3],
-		dya[3],
-		xsa[3],
-		ysa[3];
+		grid_dx[3],  /* dxa — Fortran DXA(3): grid spacing */
+		grid_dy[3],  /* dya — Fortran DYA(3) */
+		grid_x0[3],  /* xsa — Fortran XSA(3): grid origin */
+		grid_y0[3];  /* ysa — Fortran YSA(3) */
 
 	complex double
-		epscf,
-		*ar1,
-		*ar2,
-		*ar3;
+		dielectric,  /* epscf — Fortran EPSCF: complex ground dielectric */
+		*table1,     /* ar1 — Fortran AR1(11,10,4): Sommerfeld table 1 */
+		*table2,     /* ar2 — Fortran AR2(17,5,4): Sommerfeld table 2 */
+		*table3;     /* ar3 — Fortran AR3(9,8,4): Sommerfeld table 3 */
 
-} ggrid_t;
+} green_grid_t;
 
 /* common  /gnd/ */
+/* Formerly: Fortran /GND/ → nec2c: gnd_t */
 typedef struct
 {
 	int
-		ksymp,	/* Ground flag */
-		ifar,	  /* Int flag in RP card, for far field calculations */
-		iperf,	/* Type of ground flag */
-		nradl;	/* Number of radials in ground screen */
+		has_ground,   /* ksymp — Fortran KSYMP: ground presence flag (1=none, 2=ground) */
+		far_field_type, /* ifar — Fortran IFAR: far-field ground interaction type */
+		is_perfect,   /* iperf — Fortran IPERF: perfect ground flag */
+		num_radials;  /* nradl — Fortran NRADL: number of radial wires in screen */
 
 	double
-		t2,		  /* Const for radial wire ground impedance */
-		cl,		  /* Distance in wavelengths of cliff edge from origin */
-		ch,		  /* Cliff height in wavelengths */
-		scrwl,	/* Wire length in radial ground screen normalized to w/length */
-		scrwr;	/* Radius of wires in screen in wavelengths */
+		screen_inner_r, /* t2 — Fortran T2: screen inner radius intermediate */
+		cliff_dist,     /* cl — Fortran CL: cliff edge distance (wavelengths) */
+		cliff_height,   /* ch — Fortran CH: cliff height (wavelengths) */
+		screen_wire_len,    /* scrwl — Fortran SCRWL: screen wire length */
+		screen_wire_radius; /* scrwr — Fortran SCRWR: screen wire radius */
 
 	complex double
-		zrati,	/* Ground medium [Er-js/wE0]^-1/2 */
-		zrati2,	/* As above for 2nd ground medium */
-		t1,		  /* Const for radial wire ground impedance */
-		frati;	/* (k1^2-k2^2)/(k1^2+k2^2), k1=w(E0Mu0)^1/2, k1=k2/ZRATI */
+		impedance_ratio,  /* zrati — Fortran ZRATI: ground impedance ratio */
+		impedance_ratio2, /* zrati2 — Fortran ZRATI2: second medium impedance ratio */
+		screen_impedance, /* t1 — Fortran T1: wire screen impedance intermediate */
+		fresnel_ratio;    /* frati — Fortran FRATI: Fresnel reflection boundary param */
 
-} gnd_t;
+} ground_params_t;
 
 /* common  /gwav/ */
+/* Formerly: Fortran /GWAV/ → nec2c: gwav_t */
 typedef struct
 {
 	double
-		r1,		  /* Distance from current element to point where field is evaluated  */
-		r2,		  /* Distance from image of element to point where field is evaluated */
-		zmh,	  /* Z-Z', Z is height of field evaluation point */
-		zph;	  /* Z+Z', Z' is height of current element */
+		range1,   /* r1 — Fortran R1: distance to source (image 1) */
+		range2,   /* r2 — Fortran R2: distance to source (image 2) */
+		z_img1,   /* zmh — Fortran ZMH: z − z', height difference */
+		z_img2;   /* zph — Fortran ZPH: z + z', height sum */
 
 	complex double
-		u,		  /* (Er-jS/WE0)^-1/2 */
-		u2,		  /* u^2 */
-		xx1,	  /* G1*exp(jkR1.r[i])  */
-		xx2;	  /* G2*exp(jkR2.r'[i]) */
+		impedance_ratio,    /* u — Fortran U: ground impedance ratio */
+		impedance_ratio_sq, /* u2 — Fortran U2: impedance ratio squared */
+		cur_phase1,         /* xx1 — Fortran XX1: current moment × phase factor 1 */
+		cur_phase2;         /* xx2 — Fortran XX2: current moment × phase factor 2 */
 
-} gwav_t;
+} ground_wave_t;
 
 /* common  /incom/ */
+/* Formerly: Fortran /INCOM/ → nec2c: incom_t */
 typedef struct
 {
-	int32_t isnor;
+	int32_t use_sommerfeld; /* isnor — Fortran ISNOR: 1=Sommerfeld, 0=Norton */
 
 	double
-		xo,
-		yo,
-		zo,
-		sn,
-		xsn,
-		ysn;
+		obs_x,      /* xo — Fortran XO: observation point x */
+		obs_y,      /* yo — Fortran YO: observation point y */
+		obs_z,      /* zo — Fortran ZO: observation point z */
+		sin_alpha,  /* sn — Fortran SN: sin(α) of source segment */
+		dir_cos_x,  /* xsn — Fortran XSN: horizontal direction cosine x */
+		dir_cos_y;  /* ysn — Fortran YSN: horizontal direction cosine y */
 
-} incom_t;
+} green_params_t;
 
 /* common  /matpar/ (matrix parameters) */
+/* Formerly: Fortran /MATPAR/ → nec2c: matpar_t */
 typedef struct
 {
 	int
-		icase,	/* Storage mode of primary matrix */
-		npblk,	/* Num of blocks in first (NBLOKS-1) blocks */
-		nlast,	/* Num of blocks in last block */
-		imat;	  /* Storage reserved in CM for primary NGF matrix A */
+		storage_case,    /* icase — Fortran ICASE: matrix storage mode (1-5) */
+		block_rows,      /* npblk — Fortran NPBLK: rows per block */
+		last_block_rows, /* nlast — Fortran NLAST: rows in last block */
+		core_used;       /* imat — Fortran IMAT: complex words of core storage */
 
-} matpar_t;
+} matrix_params_t;
 
 /* common  /netcx/ */
 typedef struct
 {
 	int
-		masym,	/* Matrix symmetry flags */
-		neq,
-		npeq,
-		neq2,
-		nonet,	/* Number of two-port networks */
-		ntsol,	/* "Network equations are solved" flag */
-		nprint,	/* Print control flag */
-		*iseg1,	/* Num of seg to which port 1 of network is connected */
-		*iseg2,	/* Num of seg to which port 2 of network is connected */
-		*ntyp;	/* Type of networks */
+		check_asymmetry,  /* masym — Fortran MASYM: matrix asymmetry check flag */
+		num_eq,           /* neq — Fortran NEQ: total equations (matrix size) */
+		num_eq_sym,       /* npeq — Fortran NPEQ: equations per symmetry section */
+		num_eq_ngf,       /* neq2 — Fortran NEQ2: NGF new-structure unknowns */
+		num_networks,     /* nonet — Fortran NONET: number of two-port networks */
+		network_type,     /* ntsol — Fortran NTSOL: network solution type */
+		print_net_data,   /* nprint — Fortran NPRINT: network data print flag */
+		*net_seg1,        /* iseg1 — Fortran ISEG1: network port-1 segment numbers */
+		*net_seg2,        /* iseg2 — Fortran ISEG2: network port-2 segment numbers */
+		*net_types;       /* ntyp — Fortran NTYP: network type codes */
 
 	double
-		*x11r,	/* Real and imaginary parts of network impedances */
-		*x11i,
-		*x12r,
-		*x12i,
-		*x22r,
-		*x22i,
-		pin,	  /* Total input power from sources */
-		pnls,	  /* Power lost in networks */
-		asmx,     /* Maximum relative asymmetry */
-		asa,      /* RMS relative asymmetry */
+		*y11_real,  /* x11r — Fortran X11R: admittance Y11 real */
+		*y11_imag,  /* x11i — Fortran X11I: admittance Y11 imaginary */
+		*y12_real,  /* x12r — Fortran X12R: admittance Y12 real */
+		*y12_imag,  /* x12i — Fortran X12I: admittance Y12 imaginary */
+		*y22_real,  /* x22r — Fortran X22R: admittance Y22 real */
+		*y22_imag,  /* x22i — Fortran X22I: admittance Y22 imaginary */
+		power_in,         /* pin — Fortran PIN: total input power from sources */
+		power_net_loss,   /* pnls — Fortran PNLS: power lost in networks */
+		max_asymmetry,    /* asmx: maximum relative asymmetry */
+		rms_asymmetry,    /* asa: RMS relative asymmetry */
 		mat_fill_time,   /* Time to fill interaction matrix (msec) */
 		mat_factor_time; /* Time to factor interaction matrix (msec) */
 
@@ -373,73 +380,79 @@ typedef struct
 	complex double *inp_y;  /* Admittance at input points */
 	double *inp_pwr;        /* Power at input points */
 
-	complex double zped;
+	complex double input_impedance; /* zped — Fortran ZPED: network input impedance */
 
-} netcx_t;
+} network_context_t; /* Formerly: Fortran /NETCX/ → nec2c: netcx_t */
 
 /* common  /plot/ */
+/* Formerly: Fortran /PLOT/ → nec2c: plot_t */
 typedef struct
 {
 	int
-		/* Plot control flags */
-		iplp1,
-		iplp2,
-		iplp3,
-		iplp4;
+		plot_type,      /* iplp1 — Fortran IPLP1: plot type selector */
+		plot_axis,      /* iplp2 — Fortran IPLP2: plot axis/variable selector */
+		plot_component, /* iplp3 — Fortran IPLP3: plot component selector */
+		plot_gain_type; /* iplp4 — Fortran IPLP4: plot gain/field selector */
 
-} plot_t;
+} plot_params_t;
 
 /* common  /save/ */
+/* Formerly: Fortran /SAVE/ → nec2c: save_t */
 typedef struct
 {
-	int *ip;	/* Vector of indices of pivot elements used to factor matrix */
+	int *pivot; /* ip — Fortran IP: LU factorization pivot indices */
 
 	int
-		nfrq,	  /* Number of frequency steps */
-		ifrq;	  /* Frequency stepping type (0=linear, 1=multiplicative) */
+		num_freq,       /* nfrq: number of frequency steps */
+		freq_step_type; /* ifrq: frequency step type (0=linear, 1=multiplicative) */
 
 	double
-		epsr,	  /* Relative dielectric constant of ground */
-		sig,	  /* Conductivity of ground */
-		scrwlt,	/* Length of radials in ground screen approximation */
-		scrwrt,	/* Radius of wires in ground screen approximation */
-		fmhz,	  /* Frequency in MHz */
-		delfrq;	/* Frequency step size */
+		ground_epsr,        /* epsr — Fortran EPSR: relative dielectric constant */
+		ground_sigma,       /* sig — Fortran SIG: ground conductivity (S/m) */
+		screen_wire_len,    /* scrwlt — Fortran SCRWLT: screen radial wire length (m) */
+		screen_wire_radius, /* scrwrt — Fortran SCRWRT: screen radial wire radius (m) */
+		freq_mhz,           /* fmhz — Fortran FMHZ: current frequency (MHz) */
+		freq_step;          /* delfrq: frequency step size */
 
-} save_t;
+} run_params_t;
 
 /* common  /segj/ */
+/* Formerly: Fortran /SEGJ/ → nec2c: segj_t */
 typedef struct
 {
 	int
-		*jco,	  /* Stores connection data */
-		jsno,	  /* Total number of entries in ax, bx, cx */
-		maxcon; /* Max. no. connections */
+		*junction_segs,   /* jco — Fortran JCO: connection segment index array */
+		num_junction_segs, /* jsno — Fortran JSNO: number of junction entries */
+		max_connections;  /* maxcon: allocated connection capacity */
 
 	double
-		*ax, *bx, *cx;	/* Store constants A, B, C used in current expansion */
+		*coeff_const, /* ax — Fortran AX: constant-current basis coefficients */
+		*coeff_sine,  /* bx — Fortran BX: sine-current basis coefficients */
+		*coeff_cos;   /* cx — Fortran CX: cosine-current basis coefficients */
 
-} segj_t;
+} segment_junction_t;
 
 /* common  /smat/ */
+/* Formerly: Fortran /SMAT/ → nec2c: smat_t */
 typedef struct
 {
-	int nop; /* My addition */
+	int num_sections; /* nop: number of symmetry sections (= NEQ/NPEQ) */
 
-	complex double *ssx;
+	complex double *mode_matrix; /* ssx — Fortran SSX(16,16): symmetry mode transformation matrix */
 
-} smat_t;
+} symmetry_matrix_t;
 
 /* common  /tmi/ */
+/* Formerly: Fortran /TMI/ → nec2c: tmi_t */
 typedef struct
 {
-	int ij;
+	int kernel_type; /* ij — Fortran IJX: kernel type selector (0/±1) */
 
 	double
-		zpk,
-		rkb2;
+		seg_center_z, /* zpk — Fortran ZPK: segment center z-coordinate */
+		k_radius_sq;  /* rkb2 — Fortran RKB2: (k·radius)² */
 
-} tmi_t;
+} wire_e_integration_t;
 
 /* common /evlcom/ (formerly static globals in somnec.c) */
 typedef struct
@@ -502,31 +515,33 @@ typedef struct
 } intrp_t;
 
 /*common  /tmh/ */
+/* Formerly: Fortran local HFK vars → nec2c: tmh_t */
 typedef struct
 {
 	double
-		zpka,
-		rhks;
+		seg_center_z, /* zpka — Fortran ZPKA: segment center z-coord */
+		k_radius;     /* rhks — Fortran RHKS: k·radius (H-field version) */
 
-} tmh_t;
+} wire_h_integration_t;
 
 /* common  /vsorc/ */
+/* Formerly: Fortran /VSORC/ → nec2c: vsorc_t */
 typedef struct
 {
 	int
-		*isant,	/* Num of segs on which an aplied field source is located */
-		*ivqd,	/* Num of segs on which a current-slope discontinuity source is located */
-		*iqds,	/* Same as above (?) */
-		nsant,	/* Number of applied field voltage sources */
-		nvqd,	  /* Number of applied current-slope discontinuity sources */
-		nqds;	  /* Same as above (?) */
+		*vsrc_segs,       /* isant — Fortran ISANT: voltage source segment numbers */
+		*qdsrc_segs,      /* ivqd — Fortran IVQD: charge-disc source segment numbers */
+		*qdsrc_indices,   /* iqds — Fortran IQDS: charge-disc source indices */
+		num_vsrcs,        /* nsant — Fortran NSANT: number of voltage sources */
+		num_qdsrcs,       /* nvqd — Fortran NVQD: number of charge-disc sources */
+		num_qdsrcs_used;  /* nqds — Fortran NQDS: charge-disc sources used */
 
 	complex double
-		*vqd,	  /* Voltage of applied-current slope discontinuity sources */
-		*vqds,	/* Same as above (?) */
-		*vsant;	/* Voltages of applied field voltage sources */
+		*qdsrc_voltages,        /* vqd — Fortran VQD: charge-disc source voltages */
+		*qdsrc_voltages_saved,  /* vqds — Fortran VQDS: charge-disc voltages (saved) */
+		*vsrc_voltages;         /* vsant — Fortran VSANT: voltage source voltages */
 
-} vsorc_t;
+} voltage_sources_t;
 
 /* One row of CP (coupling) output, accumulated during calculation */
 typedef struct {
@@ -543,48 +558,51 @@ typedef struct {
 typedef struct
 {
 	int
-		ncoup,	/* Num of segs between which coupling will be computed */
-		icoup,	/* Num of segs in the coupling array that have been excited */
-		*nctag,	/* Tag number of segments */
-		*ncseg;	/* Num of segs in set of segs that have same tag number */
+		num_pairs,    /* ncoup — Fortran NCOUP: number of coupling pairs */
+		coupling_flag, /* icoup — Fortran ICOUP: coupling computation flag */
+		*pair_tags,   /* nctag — Fortran NCTAG: coupling pair tag numbers */
+		*pair_segs;   /* ncseg — Fortran NCSEG: coupling pair segment numbers */
 
 	complex double
-		*y11a,	/* Self admittance of segments */
-		*y12a;	/* Mutual admittances stored in order 1,2 1,3 2,3 2,4 etc */
+		*y11,  /* y11a — Fortran Y11A: self-admittance Y11 array */
+		*y12;  /* y12a — Fortran Y12A: mutual admittance Y12 array */
 
   /* accumulated CP output rows — rendered by write_nec_output() */
   coupling_row_t *coupling_rows;
   int num_coupling_rows;
   int coupling_rows_cap;
 
-} yparm_t;
+} coupling_params_t;
 
 /* common  /zload/ */
+/* Formerly: Fortran /ZLOAD/ → nec2c: zload_t */
 typedef struct
 {
-	int nload;	/* Number of loading networks */
+	int num_loads;	/* nload — Fortran NLOAD: number of loading networks */
 	
 	int
-		*ldtyp,	    /* Type of loading (0=series RLC, 1=parallel RLC, etc.) */
-		*ldtag,	    /* Tag number for loading */
-		*ldtagf,	/* Segment start for loading */
-		*ldtagt,	/* Segment end for loading */
+		*load_types,    /* ldtyp — Fortran LDTYP: loading type codes */
+		*load_tags,     /* ldtag — Fortran LDTAG: loading tag numbers */
+		*load_tag_from, /* ldtagf — Fortran LDTAGF: loading tag range start */
+		*load_tag_to,   /* ldtagt — Fortran LDTAGT: loading tag range end */
 		*ldcard_num;	/* Deck line number of the originating LD card */
 	
 	double
-		*zlr,	/* Loading resistance or impedance (real) */
-		*zli,	/* Loading reactance or impedance (imaginary) */
-		*zlc;	/* Loading capacitance */
+		*load_r,  /* zlr — Fortran ZLR: R value (Ω, H, or F depending on type) */
+		*load_l,  /* zli — Fortran ZLI: L value */
+		*load_c;  /* zlc — Fortran ZLC: C value */
 	
-	complex double *zarray;	/* = Zi/(Di/lambda) */
-} zload_t;
+	complex double *seg_impedance; /* zarray — Fortran ZARRAY: per-segment normalized impedance */
+} impedance_loading_t;
 
 /* Structure for storing loading output data */
 typedef struct loading_output_t {
     int tag;           /* Tag number */
     int tagf;          /* Segment start */
     int tagt;          /* Segment end */
-    double conductivity; /* Conductivity value */
+    double conductivity; /* Conductivity value (WIRE type) */
+    double f1;         /* Real impedance / resistance (FIXED IMPEDANCE: zlr) */
+    double f2;         /* Imaginary impedance / reactance (FIXED IMPEDANCE: zli) */
     char type[20];     /* Loading type description */
 } loading_output_t;
 
@@ -599,8 +617,8 @@ struct nec_context_t
 {
 	geometry_t geometry;
 	geometry_t ignored_geometry;
-	crnt_t crnt;
-	dataj_t dataj;
+	current_t crnt;
+	segment_t dataj;
 	FILE *input_fp;
 	FILE *output_fp;
 	FILE *error_fp;
@@ -614,27 +632,27 @@ struct nec_context_t
 	int ngf_neq;               /* Matrix size stored in the NGF file */
 	double ngf_fmhz;           /* Frequency (MHz) at which NGF was computed */
 	complex double *ngf_cm;    /* Cached CM matrix from NGF file (ngf_neq x ngf_neq, col-major) */
-	fpat_t fpat;
-	ggrid_t ggrid;
-	gnd_t gnd;
-	gwav_t gwav;
-	incom_t incom;
-	matpar_t matpar;
-	netcx_t netcx;
-	plot_t plot;
-	save_t save;
-	segj_t segj;
-	smat_t smat;
-	tmi_t tmi;
-	vsorc_t vsorc;
-	yparm_t yparm;
-	zload_t zload;
+	field_pattern_t fpat;
+	green_grid_t ggrid;
+	ground_params_t gnd;
+	ground_wave_t gwav;
+	green_params_t incom;
+	matrix_params_t matpar;
+	network_context_t netcx;
+	plot_params_t plot;
+	run_params_t save;
+	segment_junction_t segj;
+	symmetry_matrix_t smat;
+	wire_e_integration_t tmi;
+	voltage_sources_t vsorc;
+	coupling_params_t yparm;
+	impedance_loading_t zload;
 	loading_outputs_t loading_outputs;
 	
 	/* Thread-safety state (formerly static globals) */
 	somnec_t somnec;
 	intrp_t intrp;
-	tmh_t tmh;
+	wire_h_integration_t tmh;
 	
 	/* Radiation pattern results */
 	rpat_results_t rpat;
@@ -664,7 +682,9 @@ struct nec_context_t
 	int eval_depth;         /* To track recursion depth during symbol evaluation */
 	bool xt_terminated;       /* True if simulation was halted by an XT card; no output is expected */
 	bool wg_after_cmset;      /* True if WG card opened green_fp: write binary NGF then stop */
-	bool frequency_loop_ran;  /* True if execute_frequency_loop() was called for at least one batch */
+	bool frequency_loop_ran;        /* True if execute_frequency_loop() was called for at least one batch */
+	bool freq_step_output_written;  /* True once per-step output has been written inside the freq loop */
+	bool preamble_written;          /* True once the geometry preamble has been written for this section */
 	bool step_size_warned;    /* True once the Romberg step-size-limited warning has been emitted */
 };
 

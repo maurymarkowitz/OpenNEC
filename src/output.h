@@ -25,6 +25,35 @@
 void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *pfile);
 
 /**
+ * @brief Writes the one-time geometry preamble section.
+ *
+ * Writes the file header, structure specification, segments, patches, and
+ * input card listing.  Called once per simulation section before the
+ * frequency loop begins.
+ */
+void write_nec_preamble(nec_context_t *ctx, const deck_t *deck, FILE *file);
+
+/**
+ * @brief Writes all per-frequency-step output sections.
+ *
+ * Writes frequency data, loading, environment, matrix timing, network data,
+ * antenna input parameters, currents, power budget, radiation patterns, and
+ * near-field data for the current frequency step.  Called at the end of each
+ * frequency iteration inside execute_frequency_loop().
+ */
+void write_frequency_step_output(FILE *file, nec_context_t *ctx);
+
+/**
+ * @brief Writes only the radiation-pattern (or near-field) output section.
+ *
+ * Used by execute_extra_patterns() when a second RP/NE/NH card follows with
+ * no new FR card — mirrors nec2c's igo==4→5→6 path that skips the frequency
+ * header, loading, matrix timing, and power budget and jumps straight to
+ * the pattern computation.
+ */
+void write_extra_pattern_output(FILE *file, nec_context_t *ctx);
+
+/**
  * @brief Writes a deck in the original NEC-2 format.
  *
  * Extension cards (SY etc.) are omitted.  Formulas are emitted as their
@@ -64,7 +93,7 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *pfile);
  *
  * Stores all geometry and the unfactored CM interaction matrix so that a
  * subsequent simulation run using a GF card can restore them without
- * recomputing. Called by the WG control-card handler after cmset().
+ * recomputing. Called by the WG control-card handler after fill_interaction_matrix().
  *
  * @param file  Output file pointer (must be opened in binary mode).
  * @param ctx   The simulation context.

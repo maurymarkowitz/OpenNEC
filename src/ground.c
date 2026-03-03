@@ -9,9 +9,9 @@
  *
  * Major responsibilities include:
  * - Integrating ground-influenced field components using variable-interval
- *   Romberg integration (rom2()).
+ *   Romberg integration (romberg_integrate_sommerfeld()).
  * - Computing field due to ground for a current element on the source segment
- *   at position t relative to the segment center (sflds()).
+ *   at position t relative to the segment center (sommerfeld_field()).
  * - Applying reflection coefficients and handling special cases like the
  *   radial wire ground screen when enabled.
  * - Producing the x, y, z components of the field for constant, sine, and
@@ -35,7 +35,8 @@
 /* variable interval width romberg integration is used.  there are 9 */
 /* field components - the x, y, and z components due to constant, */
 /* sine, and cosine current distributions. */
-int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restrict sum, double dmin)
+/* Formerly nec2c: rom2 */
+int romberg_integrate_sommerfeld(nec_context_t *restrict ctx, double a, double b, complex double *restrict sum, double dmin)
 {
   int i, ns, nt;
   bool flag=true;
@@ -50,9 +51,9 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
   ze= b;
   s= b- a;
   
-  assert(s >= 0. && "INTERNAL: rom2() called with b < a; segment length is negative (geometry corruption)");
+  assert(s >= 0. && "INTERNAL: romberg_integrate_sommerfeld() called with b < a; segment length is negative (geometry corruption)");
   
-  ep= s/(1.e4* ctx->geometry.npm);
+  ep= s/(1.e4* ctx->geometry.num_segs_and_patches);
   zend= ze- ep;
   
   for( i = 0; i < n; i++ )
@@ -60,7 +61,7 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
   
   ns= nx;
   nt=0;
-  sflds(ctx, z, g1);
+  sommerfeld_field(ctx, z, g1);
   
   while( true )
   {
@@ -75,8 +76,8 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
       }
       
       dzot= dz*.5;
-      sflds(ctx, z+ dzot, g3);
-      sflds(ctx, z+ dz, g5);
+      sommerfeld_field(ctx, z+ dzot, g3);
+      sommerfeld_field(ctx, z+ dz, g5);
       
     } /* if( flag ) */
     
@@ -103,7 +104,7 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
     
     tmag1= sqrt( tmag1);
     tmag2= sqrt( tmag2);
-    test(ctx, tmag1, tmag2, &tr, 0., 0., &ti, dmin);
+    test_romberg_convergence(ctx, tmag1, tmag2, &tr, 0., 0., &ti, dmin);
     
     if( tr <= rx)
     {
@@ -128,8 +129,8 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
       
     } /* if( tr <= rx) */
     
-    sflds(ctx, z+ dz*.25, g2);
-    sflds(ctx, z+ dz*.75, g4);
+    sommerfeld_field(ctx, z+ dz*.25, g2);
+    sommerfeld_field(ctx, z+ dz*.75, g4);
     tmag1=0.;
     tmag2=0.;
     
@@ -153,12 +154,12 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
     
     tmag1= sqrt( tmag1);
     tmag2= sqrt( tmag2);
-    test(ctx, tmag1, tmag2, &tr, 0.,0., &ti, dmin);
+    test_romberg_convergence(ctx, tmag1, tmag2, &tr, 0.,0., &ti, dmin);
     
     if( tr > rx)
     {
       nt=0;
-      if( ns < ctx->geometry.npm )
+      if( ns < ctx->geometry.num_segs_and_patches )
       {
         ns= ns*2;
         dz= s/ ns;
@@ -180,7 +181,7 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
         nec_report(ctx, ONEC_SEV_WARNING,
           "Step size limited at Z= %12.5E near source segment (%.4g, %.4g, %.4g);"
           " further occurrences suppressed",
-          z, ctx->dataj.xj, ctx->dataj.yj, ctx->dataj.zj);
+          z, ctx->dataj.src_x, ctx->dataj.src_y, ctx->dataj.src_z);
       }
       
     } /* if( tr > rx) */
@@ -210,17 +211,18 @@ int rom2(nec_context_t *restrict ctx, double a, double b, complex double *restri
 
 /* sfldx returns the field due to ground for a current element on */
 /* the source segment at t relative to the segment center. */
-void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
+/* Formerly nec2c: sflds */
+void sommerfeld_field(nec_context_t *restrict ctx, double t, complex double *restrict e )
 {
   double xt, yt, zt, rhx, rhy, rhs, rho, phx, phy;
   double cph, sph, zphs, r2s, rk, sfac, thet;
   complex double  erv, ezv, erh, ezh, eph, er, et, hrv, hzv, hrh;
   
-  xt= ctx->dataj.xj+ t* ctx->dataj.cabj;
-  yt= ctx->dataj.yj+ t* ctx->dataj.sabj;
-  zt= ctx->dataj.zj+ t* ctx->dataj.salpj;
-  rhx= ctx->incom.xo- xt;
-  rhy= ctx->incom.yo- yt;
+  xt= ctx->dataj.src_x+ t* ctx->dataj.src_dir_cos_x;
+  yt= ctx->dataj.src_y+ t* ctx->dataj.src_dir_cos_y;
+  zt= ctx->dataj.src_z+ t* ctx->dataj.src_dir_cos_z;
+  rhx= ctx->incom.obs_x- xt;
+  rhy= ctx->incom.obs_y- yt;
   rhs= rhx* rhx+ rhy* rhy;
   rho= sqrt( rhs);
   
@@ -239,35 +241,35 @@ void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
     phy= rhx;
   }
   
-  cph= rhx* ctx->incom.xsn+ rhy* ctx->incom.ysn;
-  sph= rhy* ctx->incom.xsn- rhx* ctx->incom.ysn;
+  cph= rhx* ctx->incom.dir_cos_x+ rhy* ctx->incom.dir_cos_y;
+  sph= rhy* ctx->incom.dir_cos_x- rhx* ctx->incom.dir_cos_y;
   
   if( fabs( cph) < 1.0e-10)
     cph=0.;
   if( fabs( sph) < 1.0e-10)
     sph=0.;
   
-  ctx->gwav.zph= ctx->incom.zo+ zt;
-  zphs= ctx->gwav.zph* ctx->gwav.zph;
+  ctx->gwav.z_img2= ctx->incom.obs_z+ zt;
+  zphs= ctx->gwav.z_img2* ctx->gwav.z_img2;
   r2s= rhs+ zphs;
-  ctx->gwav.r2= sqrt( r2s);
-  rk= ctx->gwav.r2* TP;
-  ctx->gwav.xx2= cmplx( cos( rk),- sin( rk));
+  ctx->gwav.range2= sqrt( r2s);
+  rk= ctx->gwav.range2* TP;
+  ctx->gwav.cur_phase2= cmplx( cos( rk),- sin( rk));
   
   /* use norton approximation for field due to ground.  current is */
   /* lumped at segment center with current moment for constant, sine, */
   /* or cosine distribution. */
-  if( ctx->incom.isnor != 1)
+  if( ctx->incom.use_sommerfeld != 1)
   {
-    ctx->gwav.zmh=1.;
-    ctx->gwav.r1=1.;
-    ctx->gwav.xx1=0.;
-    gwave(ctx, &erv, &ezv, &erh, &ezh, &eph);
+    ctx->gwav.z_img1=1.;
+    ctx->gwav.range1=1.;
+    ctx->gwav.cur_phase1=0.;
+    ground_wave_field(ctx, &erv, &ezv, &erh, &ezh, &eph);
     
-    et=-CONST1* ctx->gnd.frati* ctx->gwav.xx2/( r2s* ctx->gwav.r2);
+    et=-CONST1* ctx->gnd.fresnel_ratio* ctx->gwav.cur_phase2/( r2s* ctx->gwav.range2);
     er=2.* et* cmplx(1.0, rk);
     et= et* cmplx(1.0 - rk* rk, rk);
-    hrv=( er+ et)* rho* ctx->gwav.zph/ r2s;
+    hrv=( er+ et)* rho* ctx->gwav.z_img2/ r2s;
     hzv=( zphs* er- rhs* et)/ r2s;
     hrh=( rhs* er- zphs* et)/ r2s;
     erv= erv- hrv;
@@ -275,19 +277,19 @@ void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
     erh= erh+ hrh;
     ezh= ezh+ hrv;
     eph= eph+ et;
-    erv= erv* ctx->dataj.salpj;
-    ezv= ezv* ctx->dataj.salpj;
-    erh= erh* ctx->incom.sn* cph;
-    ezh= ezh* ctx->incom.sn* cph;
-    eph= eph* ctx->incom.sn* sph;
+    erv= erv* ctx->dataj.src_dir_cos_z;
+    ezv= ezv* ctx->dataj.src_dir_cos_z;
+    erh= erh* ctx->incom.sin_alpha* cph;
+    ezh= ezh* ctx->incom.sin_alpha* cph;
+    eph= eph* ctx->incom.sin_alpha* sph;
     erh= erv+ erh;
-    e[0]=( erh* rhx+ eph* phx)* ctx->dataj.s;
-    e[1]=( erh* rhy+ eph* phy)* ctx->dataj.s;
-    e[2]=( ezv+ ezh)* ctx->dataj.s;
+    e[0]=( erh* rhx+ eph* phx)* ctx->dataj.seg_half_len;
+    e[1]=( erh* rhy+ eph* phy)* ctx->dataj.seg_half_len;
+    e[2]=( ezv+ ezh)* ctx->dataj.seg_half_len;
     e[3]=0.;
     e[4]=0.;
     e[5]=0.;
-    sfac= PI* ctx->dataj.s;
+    sfac= PI* ctx->dataj.seg_half_len;
     sfac= sin( sfac)/ sfac;
     e[6]= e[0]* sfac;
     e[7]= e[1]* sfac;
@@ -298,19 +300,19 @@ void sflds(nec_context_t *restrict ctx, double t, complex double *restrict e )
   
   /* interpolate in sommerfeld field tables */
   if( rho >= 1.0e-12)
-    thet= atan( ctx->gwav.zph/ rho);
+    thet= atan( ctx->gwav.z_img2/ rho);
   else
     thet= POT;
   
   /* combine vertical and horizontal components and convert */
   /* to x,y,z components. multiply by exp(-jkr)/r. */
-  intrp(ctx, ctx->gwav.r2, thet, &erv, &ezv, &erh, &eph );
-  ctx->gwav.xx2= ctx->gwav.xx2/ ctx->gwav.r2;
-  sfac= ctx->incom.sn* cph;
-  erh= ctx->gwav.xx2*( ctx->dataj.salpj* erv+ sfac* erh);
-  ezh= ctx->gwav.xx2*( ctx->dataj.salpj* ezv- sfac* erv);
+  interpolate_sommerfeld_grid(ctx, ctx->gwav.range2, thet, &erv, &ezv, &erh, &eph );
+  ctx->gwav.cur_phase2= ctx->gwav.cur_phase2/ ctx->gwav.range2;
+  sfac= ctx->incom.sin_alpha* cph;
+  erh= ctx->gwav.cur_phase2*( ctx->dataj.src_dir_cos_z* erv+ sfac* erh);
+  ezh= ctx->gwav.cur_phase2*( ctx->dataj.src_dir_cos_z* ezv- sfac* erv);
   /* x,y,z fields for constant current */
-  eph= ctx->incom.sn* sph* ctx->gwav.xx2* eph;
+  eph= ctx->incom.sin_alpha* sph* ctx->gwav.cur_phase2* eph;
   e[0]= erh* rhx+ eph* phx;
   e[1]= erh* rhy+ eph* phy;
   e[2]= ezh;
