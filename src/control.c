@@ -906,8 +906,9 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             ctx->fpat.grid_dz = f6;
         }
         else if (strcmp(code, "EK") == 0) {
-            // Extended thin-wire kernel
-            ctx->dataj.use_extended_kernel = i1;
+            // Extended thin-wire kernel. Per NEC-2 spec: a bare EK card (or
+            // I1=0) enables the extended kernel. I1=-1 disables/resets it.
+            ctx->dataj.use_extended_kernel = (i1 == -1) ? 0 : 1;
         }
         else if (strcmp(code, "KH") == 0) {
             // Matrix integration limit
