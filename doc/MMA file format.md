@@ -265,7 +265,7 @@ Examples
 
 ### Importer
 
-The following shows `Broadband 80m.5.maa` converted to NEC‑2 format by `read_deck_maa`. The title becomes the `CM` card, each wire line becomes a `GW` card, the source designator `w7c` resolves to wire 7 centre with a tinyexpr expression for the segment (because all wires use auto‑segmentation), the `***Segmentation***` parameters are preserved as a `!` comment, and the `###Comment###` block likewise becomes a `!` line.  This particular file specifies `gtype=0` (free‑space), so no `GN` card is emitted:
+The following shows `Broadband 80m.5.maa` converted to NEC‑2 format by `read_deck_maa`. The title (if present) becomes the `CM` card, each wire line becomes a `GW` card, the source designator `w7c` resolves to wire 7 centre with a formula for the segment (because all wires use auto‑segmentation), the `***Segmentation***` parameters are preserved as a `!` comment, and the `###Comment###` block likewise becomes a `!` line.  This particular file specifies `gtype=0` (free‑space), so no `GN` card is emitted:
 
 ```
 CM Broadband antenna 80m 3.5 - 3.8MHz (SWR<1,2)

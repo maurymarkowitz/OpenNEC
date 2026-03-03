@@ -25,6 +25,29 @@
 void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *pfile);
 
 /**
+ * @brief Writes a deck in the original NEC-2 format.
+ *
+ * Extension cards (SY etc.) are omitted.  Formulas are emitted as their
+ * original text (not yet evaluated).  Set remove_inline_comments=1 to
+ * produce a file compatible with the original Fortran NEC-2.
+ *
+ * @param ctx The simulation context.
+ * @param deck The deck to write.
+ * @param file Output file pointer.
+ * @param remove_inline_comments 1 to strip inline '!' comments, 0 to keep.
+ */
+void write_deck_nec2(const nec_context_t *ctx, const deck_t *deck, FILE *file, int remove_inline_comments);
+
+/**
+ * @brief Saves the current deck state in NEC-4 format. (TODO: stub)
+ *
+ * @param ctx The simulation context.
+ * @param deck The deck to write.
+ * @param file Output file pointer.
+ */
+void write_deck_nec4(const nec_context_t *ctx, const deck_t *deck, FILE *file);
+
+/**
  * @brief Saves the current deck state in OpenNEC format.
  * 
  * Maintains all formulas, symbols, and comments. Useful for saving 

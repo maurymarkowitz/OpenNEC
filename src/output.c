@@ -44,16 +44,16 @@ static void write_near_field_data(FILE *file, const nec_context_t *ctx);
 static void write_near_field_plot(const nec_context_t *ctx);
 
 /******************************************************************************
- * write_deck_nec
+ * write_deck_nec2
  *
- * Writes a deck in the original NEC2 format. This strips out any
+ * Writes a deck in the original NEC-2 format. This strips out any
  * extensions like SY, replaces formulas and variables with their
  * numeric values, and optionally strips out any inline or in-deck
  * comments. With this last option turned off, the deck is compatible
  * with nec2c, with it turned on, it is the original NEC2 format.
  *
  */
-void write_deck_nec(const nec_context_t *ctx, const deck_t *deck, FILE *file, int remove_inline_comments)
+void write_deck_nec2(const nec_context_t *ctx, const deck_t *deck, FILE *file, int remove_inline_comments)
 {
   card_t *card;
   int MAX_INTS, MAX_FLTS;
@@ -133,6 +133,19 @@ void write_deck_nec(const nec_context_t *ctx, const deck_t *deck, FILE *file, in
       fputc('\n', file);
     } /* if command or geometry */
   } /* for over cards */
+}
+
+/******************************************************************************
+ * write_deck_nec4
+ *
+ * Writes a deck in NEC-4 format. (TODO: NEC-4 has additional card types
+ * and field definitions; full implementation pending.)
+ *
+ */
+void write_deck_nec4(const nec_context_t *ctx, const deck_t *deck, FILE *file)
+{
+  (void)ctx; (void)deck; (void)file;
+  fprintf(stderr, "onec: NEC-4 output format is not yet implemented\n");
 }
 
 /******************************************************************************

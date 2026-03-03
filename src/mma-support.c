@@ -57,7 +57,7 @@ static int append_card_from_text(deck_t *deck, const char *text)
     card.card_code[1] = *p && *(p+1) ? *(p+1) : '\0';
     card.card_code[2] = '\0';
 
-    /* populate comment field for CM/CE/'!': write_deck_nec prints card_code+comment */
+    /* populate comment field for CM/CE/'!': write_deck_nec2 prints card_code+comment */
     {
         int code_end = 0;
         if (strcmp(card.card_code, "CM") == 0 || strcmp(card.card_code, "CE") == 0)

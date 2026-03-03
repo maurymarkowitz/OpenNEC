@@ -44,6 +44,7 @@ static char *input_file = "";
 static char *output_file = "";
 static char *error_file = "";
 static char *greens_file = "";
+static char *write_file = "";  /* -w / --write-file: convert deck to this format */
 static int jobs = 1; // number of parallel jobs (-j)
 
 /******************************************************************************
@@ -67,11 +68,14 @@ static void print_version(void)
  */
 void print_usage(char *argv[])
 {
-  printf("Usage: %s [-hvntgr] [-i input_file] [-o output_file] [-e error_file] <input_file...>\n", argv[0]);
+  printf("Usage: %s [-hvntgr] [-i input_file] [-o output_file] [-e error_file] [-w file] <input_file...>\n", argv[0]);
   puts("Options:");
   puts("  -h, --help: print this description");
   puts("  -v, --version: print version info");
   puts("  -r, --recursive: recurse into subdirectories");
+  puts("    With a bare directory (e.g. /models/) only .nec/.deck files are collected.");
+  puts("    With a quoted glob pattern (e.g. '/models/*.yo') files matching that");
+  puts("    extension are collected; the filter is inherited by all subdirectories.");
   puts("  -n, --no-run: don't run the simulation after parsing");
   puts("  -t, --test-deck: run various sanity tests");
   puts("  -i file, --input-file=file: read input file. this is not required if input_file is provided. if neither is provided, input is read from stdin");
@@ -79,6 +83,9 @@ void print_usage(char *argv[])
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -g, --greens[=file]: write a Green's function file; filename defaults to input path with .ngf extension");
   puts("  -j, --jobs N: process up to N files in parallel (default 1)");
+  puts("  -w file, --write-file=file: write the deck to file in the format inferred from its extension");
+  puts("    Supported: .nec/.deck (OpenNEC), .nec2 (NEC-2), .nec4 (NEC-4), .maa/.mma (MMANA-GAL), .yo/.ant/.yag (Yagi Optimizer)");
+  puts("    Pass a bare extension (e.g. -w .maa) to convert multiple input files in place.");
   puts("Multiple input files or folders can be specified; each file will generate a .out file.");
   puts("If no input_file is provided, input is read from stdin and output goes to stdout.");
   exit(0);
@@ -115,6 +122,7 @@ static struct option program_options[] =
         {"error-file", required_argument, NULL, 'e'},
         {"greens", optional_argument, NULL, 'g'},
         {"jobs", required_argument, NULL, 'j'},
+        {"write-file", required_argument, NULL, 'w'},
         {0, 0, 0, 0}};
 
 /******************************************************************************
@@ -132,7 +140,7 @@ void parse_options(int argc, char *argv[])
   {
     // eat an option and exit if we're done
     /* portable short options: 'g' has an optional argument */
-    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:", program_options, &option_index); // should match the items above
+    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:", program_options, &option_index); // should match the items above
     if (c == -1)
       break;
 
@@ -187,6 +195,10 @@ void parse_options(int argc, char *argv[])
         jobs = 1;
       break;
 
+    case 'w':
+      write_file = optarg;
+      break;
+
     default:
       abort();
     }
@@ -203,6 +215,8 @@ void parse_options(int argc, char *argv[])
 /* ---------- file-type detection ----------------------------------- */
 typedef enum {
   FILETYPE_NEC,          /* .nec  .deck  — native NEC/OpenNEC deck    */
+  FILETYPE_NEC2,         /* .nec2        — NEC-2 stripped output       */
+  FILETYPE_NEC4,         /* .nec4        — NEC-4 output (stub)         */
   FILETYPE_YO,           /* .yo   .ant   .yag — Yagi Optimizer         */
   FILETYPE_MAA,          /* .maa  .mma        — MMANA-GAL              */
   FILETYPE_UNSUPPORTED,  /* known format, importer not yet available   */
@@ -223,6 +237,9 @@ static filetype_t classify_by_extension(const char *filename)
 
   if (strcasecmp(ext, ".nec")  == 0) return FILETYPE_NEC;
   if (strcasecmp(ext, ".deck") == 0) return FILETYPE_NEC;
+
+  if (strcasecmp(ext, ".nec2") == 0) return FILETYPE_NEC2;
+  if (strcasecmp(ext, ".nec4") == 0) return FILETYPE_NEC4;
 
   if (strcasecmp(ext, ".yo")  == 0) return FILETYPE_YO;
   if (strcasecmp(ext, ".ant") == 0) return FILETYPE_YO;
@@ -247,6 +264,8 @@ static const char *filetype_name(filetype_t ft, const char *filename)
 {
   switch (ft) {
     case FILETYPE_NEC:   return "NEC deck";
+    case FILETYPE_NEC2:  return "NEC-2";
+    case FILETYPE_NEC4:  return "NEC-4";
     case FILETYPE_YO:    return "Yagi Optimizer";
     case FILETYPE_MAA:   return "MMANA-GAL";
     case FILETYPE_STDIN: return "stdin";
@@ -273,6 +292,52 @@ static int has_nec_extension(const char *filename)
   filetype_t ft = classify_by_extension(filename);
   return ft == FILETYPE_NEC;
 }
+
+/* Parse a quoted glob argument such as "/path/to/STAR.yo".
+ * The basename must start with '*' followed by an extension.
+ * Returns 1 and fills dir_buf / ext_buf on success, 0 otherwise. */
+static int parse_glob_arg(const char *arg,
+                          char *dir_buf, size_t dir_sz,
+                          char *ext_buf, size_t ext_sz)
+{
+  const char *last_slash = strrchr(arg, '/');
+  if (!last_slash) return 0;
+  const char *basename = last_slash + 1;
+  if (basename[0] != '*') return 0;  /* not a glob */
+  const char *dot = strchr(basename, '.');
+  if (!dot || dot[1] == '\0') return 0; /* no extension */
+
+  /* directory part */
+  size_t dir_len = (size_t)(last_slash - arg);
+  if (dir_len == 0) {
+    strncpy(dir_buf, "/", dir_sz - 1);
+  } else {
+    size_t copy = dir_len < dir_sz - 1 ? dir_len : dir_sz - 1;
+    strncpy(dir_buf, arg, copy);
+    dir_buf[copy] = '\0';
+  }
+
+  /* extension part (e.g. ".yo") */
+  strncpy(ext_buf, dot, ext_sz - 1);
+  ext_buf[ext_sz - 1] = '\0';
+  return 1;
+}
+
+/* Return 1 if entry_name should be collected from a directory scan.
+ * ext_filter == NULL or "" means collect NEC-only (legacy behaviour).
+ * Any other value is an explicit extension to match (case-insensitive). */
+static int file_matches_ext_filter(const char *entry_name, const char *ext_filter)
+{
+  if (!ext_filter || ext_filter[0] == '\0')
+    return has_nec_extension(entry_name);
+  const char *ext = strrchr(entry_name, '.');
+  if (!ext) return 0;
+  return strcasecmp(ext, ext_filter) == 0;
+}
+
+/* forward declaration — defined after process_single_file */
+static void resolve_write_filename(const char *input, const char *wf,
+                                   char *buf, size_t bufsz);
 
 /******************************************************************************
  * process_single_file()
@@ -420,6 +485,41 @@ static int process_single_file(const char *input_filename, const char *output_fi
 
   // Evaluate all formulas in the deck
   update_deck_values(ctx, &deck);
+
+  /* -w / --write-file: export the deck in the requested format.
+     This is independent of simulation; combine with -n for a pure conversion.
+     Format is inferred from the output file's extension. */
+  if (strlen(write_file) > 0) {
+    char wpath[512];
+    resolve_write_filename(input_filename, write_file, wpath, sizeof(wpath));
+    /* determine format from the resolved path; fall back to write_file extension
+       so that "-w .maa" with stdin still gives us a format hint */
+    const char *ext_src = wpath[0] ? wpath : write_file;
+    filetype_t wftype = classify_by_extension(ext_src);
+    if (wftype == FILETYPE_UNSUPPORTED || wftype == FILETYPE_UNKNOWN || wftype == FILETYPE_STDIN) {
+      fprintf(error_fp, "onec: -w: unrecognised output format for '%s' "
+              "(supported: .nec .deck .nec2 .nec4 .maa .mma .yo .ant .yag)\n", write_file);
+    } else {
+      FILE *wfp = (wpath[0] && strcmp(wpath, "-") != 0) ? fopen(wpath, "w") : stdout;
+      if (!wfp) {
+        fprintf(error_fp, "onec: cannot open '%s' for writing: %s\n",
+                wpath, strerror(errno));
+      } else {
+        if (wftype == FILETYPE_NEC) {
+          write_deck_onec(ctx, &deck, wfp);
+        } else if (wftype == FILETYPE_NEC2) {
+          write_deck_nec2(ctx, &deck, wfp, 0 /* keep inline comments */);
+        } else if (wftype == FILETYPE_NEC4) {
+          write_deck_nec4(ctx, &deck, wfp);
+        } else if (wftype == FILETYPE_MAA) {
+          write_deck_maa(&deck, wfp);
+        } else if (wftype == FILETYPE_YO) {
+          write_deck_yo(&deck, wfp);
+        }
+        if (wfp != stdout) fclose(wfp);
+      }
+    }
+  }
 
   // TESTING: print any file errors
   if (import_errors.num_errors > 0)
@@ -632,6 +732,37 @@ static void resolve_output(const char *input, const char *out_opt,
   }
 }
 
+/* Resolve the -w output path.
+ * A "bare extension" is an argument that starts with '.' and contains no '/';
+ * e.g. "-w .maa".  In that case the output path is the input filename with its
+ * extension replaced by the given one (suitable for multi-file batch use).
+ * Any other argument is used literally as a full output path.
+ * Empty write_file causes an empty result (no write).
+ */
+static void resolve_write_filename(const char *input, const char *wf,
+                                   char *buf, size_t bufsz)
+{
+  buf[0] = '\0';
+  if (!wf || wf[0] == '\0') return;
+  /* bare extension: starts with '.' and no '/' anywhere */
+  if (wf[0] == '.' && strchr(wf, '/') == NULL) {
+    /* derive from input by replacing extension */
+    if (strlen(input) > 0 && strcmp(input, "-") != 0) {
+      strncpy(buf, input, bufsz - 1);
+      buf[bufsz - 1] = '\0';
+      char *dot  = strrchr(buf, '.');
+      char *slash = strrchr(buf, '/');
+      if (dot && (!slash || dot > slash))
+        *dot = '\0';
+      strncat(buf, wf, bufsz - strlen(buf) - 1);
+    }
+    /* stdin + bare extension → leave empty (write to stdout) */
+  } else {
+    strncpy(buf, wf, bufsz - 1);
+    buf[bufsz - 1] = '\0';
+  }
+}
+
 /*-------------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
@@ -705,6 +836,17 @@ int main(int argc, char **argv)
     int dir_count = 0;
     int dir_cap = 4096;
     int dir_head = 0;
+    /* Parallel to dir_queue: per-directory extension filter.
+       "" = NEC-only (default); ".yo" etc = that specific extension. */
+    char **dir_ext_queue = NULL;
+    int dir_ext_count = 0;
+    int dir_ext_cap = 4096;
+
+    /* helper to add a directory+filter pair to both queues */
+    #define ADD_DIR(path, ext) do { \
+      add_to_string_list(&dir_queue,     &dir_count,     &dir_cap,     (path)); \
+      add_to_string_list(&dir_ext_queue, &dir_ext_count, &dir_ext_cap, (ext));  \
+    } while(0)
 
     // Initial files/dirs from command line
     for (int i = optind; i < argc; i++)
@@ -714,7 +856,7 @@ int main(int argc, char **argv)
       {
         if (S_ISDIR(st.st_mode))
         {
-          add_to_string_list(&dir_queue, &dir_count, &dir_cap, argv[i]);
+          ADD_DIR(argv[i], ""); /* bare directory → NEC-only filter */
         }
         else
         {
@@ -723,7 +865,26 @@ int main(int argc, char **argv)
       }
       else
       {
-        fprintf(error_fp, "Warning: cannot access '%s': %s\n", argv[i], strerror(errno));
+        /* stat failed — check whether it's a quoted glob like "/path/STAR.yo" */
+        char glob_dir[1024], glob_ext[32];
+        if (parse_glob_arg(argv[i], glob_dir, sizeof(glob_dir),
+                                    glob_ext, sizeof(glob_ext)))
+        {
+          struct stat dst;
+          if (stat(glob_dir, &dst) == 0 && S_ISDIR(dst.st_mode))
+          {
+            ADD_DIR(glob_dir, glob_ext); /* use explicit extension filter */
+          }
+          else
+          {
+            fprintf(error_fp, "Warning: cannot access directory '%s' from pattern '%s': %s\n",
+                    glob_dir, argv[i], strerror(errno));
+          }
+        }
+        else
+        {
+          fprintf(error_fp, "Warning: cannot access '%s': %s\n", argv[i], strerror(errno));
+        }
       }
     }
 
@@ -749,10 +910,26 @@ int main(int argc, char **argv)
       }
     }
 
+    /* -w with a full path (not a bare extension) is only valid for a single file */
+    if (strlen(write_file) > 0 &&
+        !(write_file[0] == '.' && strchr(write_file, '/') == NULL))
+    {
+      if (dir_count > 0 || num_files > 1)
+      {
+        fprintf(error_fp, "onec: '-w' with a full path cannot be used with multiple input files\n");
+        fprintf(error_fp, "      Use a bare extension (e.g. -w .maa) to convert many files.\n");
+        if (error_fp != stderr)
+          fclose(error_fp);
+        return EXIT_FAILURE;
+      }
+    }
+
     // BFS for directories
     while (dir_head < dir_count)
     {
-      char *current_dir = dir_queue[dir_head++];
+      char *current_dir = dir_queue[dir_head];
+      const char *current_ext = dir_ext_queue[dir_head]; /* "" = NEC-only */
+      dir_head++;
       DIR *d = opendir(current_dir);
       if (!d)
       {
@@ -789,9 +966,7 @@ int main(int argc, char **argv)
         }
         else
         {
-          // Only collect native NEC files from directories;
-          // other formats (YO, MAA, etc.) require an explicit filename.
-          if (has_nec_extension(entry_name))
+          if (file_matches_ext_filter(entry_name, current_ext))
           {
             add_to_string_list(&file_list, &num_files, &file_cap, path);
           }
@@ -799,10 +974,10 @@ int main(int argc, char **argv)
       }
       // closedir(d);
 
-      // Add subdirs to our BFS queue
+      // Add subdirs to our BFS queue — inherit the same extension filter
       for (int i = 0; i < subdir_count; i++)
       {
-        add_to_string_list(&dir_queue, &dir_count, &dir_cap, subdirs_in_dir[i]);
+        ADD_DIR(subdirs_in_dir[i], current_ext);
         free(subdirs_in_dir[i]);
       }
       free(subdirs_in_dir);
@@ -811,8 +986,11 @@ int main(int argc, char **argv)
     for (int i = 0; i < dir_count; i++)
     {
       free(dir_queue[i]);
+      free(dir_ext_queue[i]);
     }
     free(dir_queue);
+    free(dir_ext_queue);
+    #undef ADD_DIR
 
     if (num_files == 0)
     {

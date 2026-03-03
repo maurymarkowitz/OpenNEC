@@ -23,30 +23,29 @@ Running OpenNEC
 
 Although OpenNEC is primarily intended to be used as a library embedded in other programs, it also includes a command-line interace that can be used to parse decks from the shell, and will write the calculated results (if desired) to `stdout`, or to a specific file using the `-o` flag.
 
-To run it, use a command similar to this example, replacing the "PATH" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
+To run it, use a command similar to this example, replacing the "<FILE/PATH>" with the names or complete paths of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
 
-```./onec PATH...```
+```./onec <FILE/PATH>...```
 
 Command-line options include:
 
 `-h`, `--help`: print usage notes  
 `-v`, `--version`: print version info  
-`-r`, `--recursive`: process directories recursively  
+`-r`, `--recursive`: process directories recursively, parse every NEC file found  
 `-n`, `--no-run`: parse the deck but skip calculation/simulation  
 `-t`, `--test-deck`: run deck sanity checks (often used with -n)  
 `-j` <N>, `--jobs` <N>: if multiple files are passed in, run them in parallel up to <N> at a time  
 `-o`, `--output-file` <file>: write output to a specific file (single input only)  
 `-e`, `--error-file` <path>: write errors/logs to a file instead of `stderr`  
 `-g`, `--greens` <file>: write Greens function output to the given file (or default .ngf)  
-
-If you wish to use onec to simply check syntax or reformat a file, use the `-n` and `-t` switches.
+`-w`, `--write-file` <file>: writes the deck out to the named file type (see below) 
 
 Short options with no parameters can be ganged, for instance, `-nt`.
 
 Examples
 --------
 
-To run against an example file:
+To run against an example file and send the results to stdout:
 
 ```./onec example.nec```
 
@@ -56,15 +55,61 @@ To run against the same file and send the results to a file with the default nam
 
 Or you can change the output name:
 
-```./onec -oexample_output.out example.nec```
-
-Note: no space is allowed between the switches and any associated parameter.
+```./onec -o example_output.out example.nec```
 
 To run against a folder full of files, even in subdirectories:
 
-```./onec -t /example_files/```
+```./onec -r /example_files/```
 
 When using the `-r` switch, the output will always be sent to `<file>.out`, and stdout is used for reporting the filenames as they are processed, along with end-of-batch information.
+
+If you wish to use onec to simply check syntax or reformat a file, use the `-n` and `-t` switches:
+
+```./onec -nt example.nec```
+
+This will produce a series of warnings or errors detailing issues (if any) in the deck and then exit, without attempting to run the simulations.
+
+File conversion
+---------------
+
+onec has built-in readers for various 3rd party file formats. Normally non-NEC files will be ignored unless explicitely specified in the file name. For instance:
+
+```./onec example.mma```
+
+This will read the file `example.mma`, convert it to NEC format, and then run the simulations as if it were a NEC deck from the start. Currently, in version 1.0, it supported Yagi Optimizer and MMANA-GA files. More will be added over time.
+
+When used with a path, or with the `-r` option, normally only NEC files will be read. You can force it to read other files using a globbing expression:
+
+```./onec -r /example_files/*.mma```
+
+In this case it will ignore anything that is not an `.mma` file.
+
+onec can also write files in different formats using the `-w` option. This is normally used with a "bare" extension like `.nec`. For instance, one can convert a particular `.mma` file to NEC format using:
+
+```./onec -w .nec example.mma```
+
+This works along with `-r` and globbing, so one can convert a folder of files to NEC format with something like:
+
+```./onec -r -w .nec /example_files/*.mma```
+
+There are a number of limitations in these importers as the different formatters support different features and options. See the various "file format" documents in the doc folder for more details.
+
+The currently recognized formats and extensions are:
+
+| Extension(s) | Format | Read | Write |
+|---|---|---|---|
+| `.nec` `.deck` | OpenNEC / NEC-2 deck | ✓ | ✓ |
+| `.nec2` | NEC-2 (stripped, numeric) | ✓ | ✓ |
+| `.nec4` | NEC-4 | ✓ | stub |
+| `.maa` `.mma` | MMANA-GAL | ✓ | ✓ |
+| `.yo` `.ant` `.yag` | Yagi Optimizer | ✓ | ✓ |
+| `.ez` `.ezn` | EZNEC | recognised | — |
+| `.nwp` `.nwz` | NEC-Win Plus / Zip | recognised | — |
+| `.aci` | AntSolver | recognised | — |
+| `.4nec` | 4nec2 project | recognised | — |
+| `.mmae` | MMANA-EZ | recognised | — |
+
+"Recognised" means the extension is detected and a helpful error is shown, but no importer exists yet.
 
 Build & Setup
 -------------
