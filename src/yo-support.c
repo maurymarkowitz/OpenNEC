@@ -136,12 +136,12 @@ static double yo_unit_scale(const char *unit_str)
     u[0] = tolower((unsigned char)*p);
     if (*(p+1)) u[1] = tolower((unsigned char)*(p+1));
 
-    if (u[0] == 'm' && u[1] == 'm')            return 0.001;
-    if (u[0] == 'c' && u[1] == 'm')            return 0.01;
-    if (u[0] == 'm')                            return 1.0;     /* metres */
-    if (u[0] == 'i' || u[0] == '"')            return 0.0254;  /* inches */
-    if (u[0] == 'f' || u[0] == '\'')           return 0.3048;  /* feet   */
-    if (u[0] == 'w')                            return 0.0;     /* wavelengths – frequency needed */
+    if (u[0] == 'm' && u[1] == 'm')     return 0.001;
+    if (u[0] == 'c' && u[1] == 'm')     return 0.01;
+    if (u[0] == 'm')                    return 1.0;     /* metres */
+    if (u[0] == 'i' || u[0] == '"')     return 0.0254;  /* inches */
+    if (u[0] == 'f' || u[0] == '\'')    return 0.3048;  /* feet   */
+    if (u[0] == 'w')                    return 0.0;     /* wavelengths – frequency needed */
     return 0.0;
 }
 
@@ -217,10 +217,9 @@ typedef struct {
     int    taper_idx;                /* which taper definition applies              */
 } yo_elem_t;
 
-/* -------------------------------------------------------------------------
- * read_deck_yo — main importer
- * ---------------------------------------------------------------------- */
-
+/**
+ * @copydoc read_deck_yo
+ */
 int read_deck_yo(deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
@@ -600,10 +599,9 @@ int read_deck_yo(deck_t *deck, FILE *fp)
     return 0;
 }
 
-/* =========================================================================
- * write_deck_yo — exporter
- * ====================================================================== */
-
+/**
+ * @copydoc write_deck_yo
+ */
 int write_deck_yo(const deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;

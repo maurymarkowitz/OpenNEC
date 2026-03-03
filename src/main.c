@@ -16,6 +16,8 @@
 #include "control.h"
 #include "output.h"
 #include "deck_validations.h"
+#include "mma-support.h"
+#include "yo-support.h"
 
 #ifndef _GETOPT_H
 #include <getopt.h>
@@ -196,6 +198,80 @@ void parse_options(int argc, char *argv[])
   // if no input file, we'll use stdin
 }
 
+/* ---------- file-type detection ----------------------------------- */
+typedef enum {
+  FILETYPE_NEC,          /* .nec  .deck  — native NEC/OpenNEC deck    */
+  FILETYPE_YO,           /* .yo   .ant   .yag — Yagi Optimizer         */
+  FILETYPE_MAA,          /* .maa  .mma        — MMANA-GAL              */
+  FILETYPE_UNSUPPORTED,  /* known format, importer not yet available   */
+  FILETYPE_UNKNOWN,      /* unrecognised extension — try NEC parsing   */
+  FILETYPE_STDIN,        /* empty / "-" — stdin, no extension info     */
+} filetype_t;
+
+/* Maps extension to format.  Case-insensitive. */
+static filetype_t classify_by_extension(const char *filename)
+{
+  if (!filename || filename[0] == '\0' || strcmp(filename, "-") == 0)
+    return FILETYPE_STDIN;
+
+  const char *ext = strrchr(filename, '.');
+  const char *slash = strrchr(filename, '/');
+  if (!ext || (slash && ext < slash))
+    return FILETYPE_UNKNOWN;
+
+  if (strcasecmp(ext, ".nec")  == 0) return FILETYPE_NEC;
+  if (strcasecmp(ext, ".deck") == 0) return FILETYPE_NEC;
+
+  if (strcasecmp(ext, ".yo")  == 0) return FILETYPE_YO;
+  if (strcasecmp(ext, ".ant") == 0) return FILETYPE_YO;
+  if (strcasecmp(ext, ".yag") == 0) return FILETYPE_YO;
+
+  if (strcasecmp(ext, ".maa") == 0) return FILETYPE_MAA;
+  if (strcasecmp(ext, ".mma") == 0) return FILETYPE_MAA;
+
+  if (strcasecmp(ext, ".ez")   == 0) return FILETYPE_UNSUPPORTED; /* EZNEC         */
+  if (strcasecmp(ext, ".ezn")  == 0) return FILETYPE_UNSUPPORTED; /* EZNEC newer   */
+  if (strcasecmp(ext, ".nwp")  == 0) return FILETYPE_UNSUPPORTED; /* NEC-Win Plus  */
+  if (strcasecmp(ext, ".nwz")  == 0) return FILETYPE_UNSUPPORTED; /* NEC-Win Zip   */
+  if (strcasecmp(ext, ".aci")  == 0) return FILETYPE_UNSUPPORTED; /* AntSolver     */
+  if (strcasecmp(ext, ".4nec") == 0) return FILETYPE_UNSUPPORTED; /* 4nec2 project */
+  if (strcasecmp(ext, ".mmae") == 0) return FILETYPE_UNSUPPORTED; /* MMANA-EZ      */
+
+  return FILETYPE_UNKNOWN;
+}
+
+/* Human-readable format name for error messages. */
+static const char *filetype_name(filetype_t ft, const char *filename)
+{
+  switch (ft) {
+    case FILETYPE_NEC:   return "NEC/OpenNEC deck";
+    case FILETYPE_YO:    return "Yagi Optimizer";
+    case FILETYPE_MAA:   return "MMANA-GAL";
+    case FILETYPE_STDIN: return "stdin";
+    default: break;
+  }
+  if (filename) {
+    const char *ext = strrchr(filename, '.');
+    if (ext) {
+      if (strcasecmp(ext, ".ez")  == 0 || strcasecmp(ext, ".ezn") == 0) return "EZNEC";
+      if (strcasecmp(ext, ".nwp") == 0 || strcasecmp(ext, ".nwz") == 0) return "NEC-Win";
+      if (strcasecmp(ext, ".aci") == 0)   return "AntSolver";
+      if (strcasecmp(ext, ".4nec") == 0)  return "4nec2 project";
+      if (strcasecmp(ext, ".mmae") == 0)  return "MMANA-EZ";
+    }
+  }
+  return "unknown format";
+}
+
+/* True for extensions that should be picked up during directory scanning.
+ * Only native NEC formats are collected automatically; converter formats
+ * (YO, MAA, etc.) must be passed as explicit filenames on the command line. */
+static int has_nec_extension(const char *filename)
+{
+  filetype_t ft = classify_by_extension(filename);
+  return ft == FILETYPE_NEC;
+}
+
 /******************************************************************************
  * process_single_file()
  *
@@ -299,8 +375,39 @@ static int process_single_file(const char *input_filename, const char *output_fi
     }
   }
 
-  // read input file into a deck
-  read_deck(ctx, &deck, input_fp);
+  // detect format from extension and read/convert into the deck
+  filetype_t ftype = classify_by_extension(input_filename);
+
+  if (ftype == FILETYPE_UNSUPPORTED) {
+    const char *fmt = filetype_name(ftype, input_filename);
+    fprintf(error_fp, "onec: '%s' uses the %s format which is not yet supported for import.\n",
+            input_filename, fmt);
+    if (input_fp != stdin) fclose(input_fp);
+    if (output_fp != stdout) fclose(output_fp);
+    nec_destroy_context(ctx);
+    return -1;
+  }
+
+  if (ftype == FILETYPE_YO) {
+    if (read_deck_yo(&deck, input_fp) != 0) {
+      fprintf(error_fp, "onec: failed to parse Yagi Optimizer file '%s'\n", input_filename);
+      if (input_fp != stdin) fclose(input_fp);
+      if (output_fp != stdout) fclose(output_fp);
+      nec_destroy_context(ctx);
+      return -1;
+    }
+  } else if (ftype == FILETYPE_MAA) {
+    if (read_deck_maa(&deck, input_fp) != 0) {
+      fprintf(error_fp, "onec: failed to parse MMANA-GAL file '%s'\n", input_filename);
+      if (input_fp != stdin) fclose(input_fp);
+      if (output_fp != stdout) fclose(output_fp);
+      nec_destroy_context(ctx);
+      return -1;
+    }
+  } else {
+    /* NEC, STDIN, or UNKNOWN extension — attempt native NEC parsing */
+    read_deck(ctx, &deck, input_fp);
+  }
 
   // and then parse what we read into the card
   parse_deck(ctx, &deck, &import_errors);
@@ -523,15 +630,6 @@ static void resolve_output(const char *input, const char *out_opt,
   }
 }
 
-static int has_nec_extension(const char *filename)
-{
-  const char *ext = strrchr(filename, '.');
-  if (!ext)
-    return false;
-  return (strcasecmp(ext, ".nec") == 0 ||
-          strcasecmp(ext, ".deck") == 0);
-}
-
 /*-------------------------------------------------------------------*/
 int main(int argc, char **argv)
 {
@@ -689,7 +787,8 @@ int main(int argc, char **argv)
         }
         else
         {
-          // For files, just check extension
+          // Only collect native NEC files from directories;
+          // other formats (YO, MAA, etc.) require an explicit filename.
           if (has_nec_extension(entry_name))
           {
             add_to_string_list(&file_list, &num_files, &file_cap, path);

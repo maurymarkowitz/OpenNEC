@@ -4,20 +4,13 @@ EZNEC `.EZ` File Format
 Overview
 --------
 
-The `.EZ` file format is the proprietary binary format used by EZNEC and EZNEC Pro
-antenna-modelling software (by W7EL).  It stores antenna geometry, excitation,
-loading, ground parameters and display settings in a compact little-endian binary
-representation.
+The `.EZ` file format is the proprietary binary format used by EZNEC and EZNEC Pro antenna-modelling software (by W7EL).  It stores antenna geometry, excitation, loading, ground parameters and display settings in a compact little-endian binary representation.
 
-The format was reverse-engineered by inspecting 5,478 `.EZ` / `.ez` files from
-L.B. Cebik's published model collection, cross-referencing them with matching
-`.NEC` text files that EZNEC exports.
+The format was reverse-engineered by inspecting 5,478 `.EZ` / `.ez` files from L.B. Cebik's published model collection, cross-referencing them with matching `.NEC` text files that EZNEC exports.
 
-> **Status:** This is a **reverse-engineered** description.  Field names are
+> **Status:** This is a reverse-engineered description.  Field names are
 > inferred; no official specification has been published by W7EL.
 > Confirmed fields are marked ✓; uncertain fields are marked (?).
-
----
 
 File Identification
 -------------------
@@ -28,15 +21,9 @@ Almost all `.EZ` files begin with the byte sequence:
 xx xx 00 00 52 ...
 ```
 
-where `xx xx` is a little-endian 16-bit wire count and `0x52` = `'R'` appears to
-be a constant version/format marker.  A small number of files in the corpus are
-actually FrontPage/SharePoint web-metadata sidecars (starting with
-`vti_encoding:SR|`) — these should be ignored.
+where `xx xx` is a little-endian 16-bit wire count and `0x52` = `'R'` appears to be a constant version/format marker. A small number of files in the corpus are actually FrontPage/SharePoint web-metadata sidecars (starting with `vti_encoding:SR|`) — these should be ignored.
 
-File sizes range from ~680 bytes (1 wire, no loads) to several hundred kilobytes
-(models with hundreds of wires).
-
----
+File sizes range from ~680 bytes (1 wire, no loads) to several hundred kilobytes (models with hundreds of wires).
 
 Top-Level Structure
 -------------------
@@ -55,8 +42,6 @@ Top-Level Structure
 │    Partially decoded — see section below                       │
 └────────────────────────────────────────────────────────────────┘
 ```
-
----
 
 Header Block 1 (0x00–0x2F)
 --------------------------
@@ -89,8 +74,6 @@ Decoding:
 - `80 3f` → sentinel
 - bytes 0x12–0x2F → `"3.5 doublet 8 wl              "` ✓
 
----
-
 Header Block 2 (0x30–0xB9)
 --------------------------
 
@@ -110,8 +93,6 @@ Header Block 2 (0x30–0xB9)
 | 0x4C   | 4    | float32 LE | (?) Constant 360.0 — possibly display distance limit |
 | 0x50   | 2    | char       | (?) `'Z'` byte + padding |
 | 0x51   | 104  | —          | Antenna view / display settings (zoom, rotation, etc.) |
-
----
 
 Wire Records (0x00BA onward)
 ----------------------------
@@ -159,8 +140,6 @@ wire[k] at 0x00BA + k × 170
 - **Tag numbers** — EZNEC numbers wires 1…N.  The tag written by EZNEC to a
   NEC file equals the wire's sequential position, matching the record order.
 
----
-
 After the Wire Array
 --------------------
 
@@ -168,9 +147,7 @@ Immediately after the `N` wire records, the file contains blocks for:
 
 ### End-of-Wires Marker
 
-The last wire record already carries `0xFF 0xFF` at its `+0x1C` offset.  An
-additional `0xEC 0x45` or `EC xx` sequence has been observed shortly after the
-last wire record in some files and may act as a second-level sentinel.
+The last wire record already carries `0xFF 0xFF` at its `+0x1C` offset. An additional `0xEC 0x45` or `EC xx` sequence has been observed shortly after the last wire record in some files and may act as a second-level sentinel.
 
 ### Source (EX) Records
 
@@ -187,24 +164,15 @@ At varying offsets (not yet formula-derived) there is a region containing:
 
 ### Load (LD) Records
 
-Lumped loads are embedded within the per-wire record data starting around
-`+0x40` relative to each wire record.  Structure not yet fully decoded;
-observed patterns include load type, segment position, and R/L/C values.
+Lumped loads are embedded within the per-wire record data starting around `+0x40` relative to each wire record.  Structure not yet fully decoded; observed patterns include load type, segment position, and R/L/C values.
 
 ### Ground (GN) Parameters
 
-Ground type is stored in header block 2 at offset 0x36.  Additional ground
-parameters (conductivity, dielectric constant) appear in a block following the
-source records; values 13.0 and 0.005 (EZNEC "Average" ground) and 0.0 (free
-space) have been observed as float32 LE pairs.
+Ground type is stored in header block 2 at offset 0x36.  Additional ground parameters (conductivity, dielectric constant) appear in a block following the source records; values 13.0 and 0.005 (EZNEC "Average" ground) and 0.0 (free space) have been observed as float32 LE pairs.
 
 ### Radiation Pattern (RP) Settings
 
-Angular sweep parameters are stored at the tail of the file.  Two int16 values
-(elevation/azimuth step counts) and float32 start/increment pairs have been
-observed around offset 0x02A0 in single-wire files.
-
----
+Angular sweep parameters are stored at the tail of the file.  Two int16 values (elevation/azimuth step counts) and float32 start/increment pairs have been observed around offset 0x02A0 in single-wire files.
 
 Unit System
 -----------
@@ -221,15 +189,12 @@ The coordinate unit (feet vs. meters) is per-file.  Determination method:
 3. The byte at header 0x09 (`'A'` vs. `'E'`) and 0x41 (`'F'`/`'M'`/`'I'`) are
    candidate unit indicators, but their exact encoding remains uncertain.
 
-When converting to NEC, emit a `GS` scale card if the NEC engine expects a
-different unit:
+When converting to NEC, emit a `GS` scale card if the NEC engine expects a different unit:
 
 ```
 GS 0 0 0.3048    ' if EZ is in feet and NEC expects meters
 GS 0 0 1.0       ' if EZ is already in meters (no scaling)
 ```
-
----
 
 Mapping to NEC Cards
 --------------------
@@ -243,8 +208,6 @@ Mapping to NEC Cards
 | Ground type `'P'`               | `GN 1` (perfect) |
 | Source on wire w segment s      | `EX 0 w s 0 Vr Vi` |
 | Load R,L,C on wire w segment s  | `LD 0 w s s R_Ω X L C` |
-
----
 
 Example: Simple Dipole
 ----------------------
@@ -278,8 +241,6 @@ EX 0,1,81,0,1.414214,0.
 EN
 ```
 
----
-
 Corpus Statistics (Cebik collection)
 ------------------------------------
 
@@ -293,8 +254,6 @@ Corpus Statistics (Cebik collection)
 | Files with confirmed foot-unit coordinates | observed for HF models |
 | Files with confirmed meter-unit coordinates | observed for many 60m+ models |
 
----
-
 Known Unknowns
 --------------
 
@@ -304,7 +263,5 @@ Known Unknowns
 - Ground conductivity / permittivity storage location.
 - Transmission line (TL card) representation.
 - Differential (DL), networks (NT/TL/CP) representation.
-- EZNEC Pro/4 vs. EZNEC+ vs. EZNEC v5 format differences (the `0x40`
-  version byte may discriminate these).
-- Non-ASCII (Cyrillic / multibyte) titles — some files in the corpus have
-  non-Latin titles that cause confusion in the title field.
+- EZNEC Pro/4 vs. EZNEC+ vs. EZNEC v5 format differences (the `0x40` version byte may discriminate these).
+- Non-ASCII (Cyrillic / multibyte) titles — some files in the corpus have non-Latin titles that cause confusion in the title field.

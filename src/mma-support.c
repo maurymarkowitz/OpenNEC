@@ -223,9 +223,6 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
     return 0;
 }
 
-/**
- * @copydoc read_deck_maa
- */
 /* helper to read next non-header line from the stream */
 static int maa_read_data_line(FILE *fp, char *out)
 {
@@ -238,6 +235,9 @@ static int maa_read_data_line(FILE *fp, char *out)
     return 0;
 }
 
+/**
+ * @copydoc read_deck_maa
+ */
 int read_deck_maa(deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
