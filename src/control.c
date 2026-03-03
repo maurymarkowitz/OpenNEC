@@ -203,15 +203,21 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
         // A batch with no FR card and an already-completed prior solve behaves like
         // nec2c's igo==4 path: compute radiation/near-field patterns with existing
         // currents, without re-filling the matrix or re-printing power budget.
+        // This also covers a bare XQ after an RP+XQ pair (where RP already ran the
+        // full solve): XQ alone with no new FR is a no-op / already handled.
         bool extra_patterns_only = (!batch_has_fr &&
                                     ctx->frequency_loop_ran &&
-                                    (ctx->gnd.far_field_type != -1 || ctx->fpat.is_near_field != -1) &&
-                                    !has_xq && !ctx->wg_after_cmset);
+                                    (ctx->gnd.far_field_type != -1 || ctx->fpat.is_near_field != -1 ||
+                                     has_xq) &&
+                                    !ctx->wg_after_cmset);
 
         if (!is_termination && has_output_request) {
             if (extra_patterns_only) {
-                if (execute_extra_patterns(ctx, deck, batch_start, batch_end) != 0) {
-                    return -1;
+                // XQ alone with no new FR: nothing new to compute, skip
+                if (!has_xq) {
+                    if (execute_extra_patterns(ctx, deck, batch_start, batch_end) != 0) {
+                        return -1;
+                    }
                 }
             } else {
                 ctx->frequency_loop_ran = true;
