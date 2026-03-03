@@ -87,7 +87,39 @@ A typical `.maa` file is organised into the following logical sections. Two dist
    the comment at its original position relative to the geometry and load
    blocks. During import each comment is turned into a CM/CE card, and when
    exporting any comment cards present in the deck are emitted back as
-   `###Comment### …` lines. The remaining extra sections are still **ignored**.
+   `###Comment### …` lines.
+
+   The `***Segmentation***` section is imported as described below.
+
+   The `***G/H/M/R/AzEl/X***` section contains a single comma‑separated line with seven fields:
+
+   | Field | Meaning |
+   |---|---|
+   | 1 | Ground type: `0`=free‑space, `1`=perfect, `2`=real/MININEC, `‑1`=Sommerfeld‑Norton |
+   | 2 | Conductivity in mS/m (e.g. `5.0` = 5 mS/m = 0.005 S/m); `0.0` = unspecified |
+   | 3 | Radials count (informational; a full `GD` card requires radius and length not present in the file) |
+   | 4 | Reference impedance for SWR/reflection display (50 or 112 Ω); ignored by importer |
+   | 5–7 | Pattern display angles and height offset; ignored by importer |
+
+   The importer emits a `GN` card (placed before the `FR` card so the deck is in the correct NEC order):
+   - Type `0` → no `GN` card (free‑space simulation)
+   - Type `1` → `GN 1` (perfect ground)
+   - Type `2` → `GN 0` (MININEC real ground)
+   - Type `‑1` → `GN 2` (Sommerfeld‑Norton real ground)
+
+   Because the file stores only conductivity, the relative dielectric constant (`epsr`) is derived from standard NEC soil‑type correlations:
+
+   | σ (mS/m) | epsr used | Soil description |
+   |---|---|---|
+   | 0 (unspecified) | 13 | Average (NEC default) |
+   | ≤ 1  | 5  | Poor/rocky/dry sand |
+   | 1–8  | 13 | Average soil |
+   | 8–30 | 17 | Good/agricultural |
+   | > 30 | 25 | Very good/wet |
+
+   If the radials count (field 3) is non‑zero a `!` comment records the count, e.g.:
+   `! maa-ground-radials: 4 (GD card not emitted: radius/length unknown)`
+   Users who need a ground‑radial screen should add a `GD` card manually.
 
    The `***Segmentation***` section contains a single line with four
    comma‑separated values that control how MMANA‑GAL automatically divides
@@ -214,10 +246,11 @@ The `***…***` headers and `###Comment###` markers may appear anywhere between 
 Features not supported by OpenNEC
 ---------------------------------
 
-* The `***Segmentation***` section is imported as a `!` comment line for reference (e.g. `! maa-segmentation: max-segs=800 segs-per-wl=80 taper=2 min-segs=4`) but the values are not used to drive re‑segmentation.  All other extra sections (ground definitions, measurement settings, stacking information, etc.) are still ignored.
+* The `***Segmentation***` section is imported as a `!` comment line for reference (e.g. `! maa-segmentation: max-segs=800 segs-per-wl=80 taper=2 min-segs=4`) but the values are not used to drive re‑segmentation.
+* The `***G/H/M/R/AzEl/X***` ground section is imported and a `GN` card is emitted (see *Format overview* section 7).  The radials count from field 3 is noted in a `!` comment but a `GD` card is not emitted because the radial wire radius and length are not stored in the file.  All other extra sections (measurement settings, stacking information, etc.) are still ignored.
 * When importing files where any wire uses one of the MMANA auto‑segmentation markers (`0`, `‑1`, `‑2`, or `‑3`) as the segment count, the importer inserts a small helper card immediately after the `CE` card with the form:
 
-   `SY segs=10 'default segment count, change to realistic value'`
+   `SY segs=10 !default segment count, change to realistic value`
 
    and replaces the textual placeholder token in the `GW` card strings with the literal token `segs`.  All four marker values are treated the same way at import time — the specific tapering mode is not preserved.  This makes the auto‑segmentation intent explicit in the NEC deck so a user can edit the `SY` line (change `segs=10` to a sensible positive value) and then replace `segs` with that number before running a simulation.  Note: this change is textual (it updates `card->card_str`/`orig_str`) and does not automatically convert parsed numeric fields elsewhere in OpenNEC.
 * The full source designator syntax (`W`/`V` prefix, `C`/`B`/`E` attachment point, signed offset) is recognised by the importer.  For wires with a concrete segment count the attachment and offset are resolved to an absolute 1-based segment number (clamped to the wire bounds).  For wires that use any MMANA auto-segmentation marker (`0`, `‑1`, `‑2`, `‑3`) the segment count is not yet known, so `C` and `E` designators emit a tinyexpr expression (`(segs+1)/2`, `segs`, etc.) in the `EX` card's segment field, referencing the `segs` SY symbol; `B` (beginning) designators always resolve to a concrete integer since they have no segment-count dependency.  The `V` source type is treated identically to `W` (both map to `EX 0`).
@@ -230,24 +263,9 @@ Because of these omissions, running `read_deck_maa` followed by `write_deck_maa`
 Examples
 --------
 
-A minimal file produced by the current exporter looks like this (using a deck whose first `CM` card reads `Half-wave dipole at 14 MHz`):
-```
-Half-wave dipole at 14 MHz
-14.000000
-***Wires***
-1
-0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.001000, 5
-***Source***
-0, 0
-***Load***
-0, 0
-```
-If no `CM` card is present the title line is left blank.  The exporter produces Variant B (`***Wires***` header, source lines in `w<N>c, phase°, mag` form) with `***Source***` before `***Load***`, matching the structure of the most common real‑world files.  The example corresponds to a single wire from (0,0,0) to (1,0,0) with radius field 0.001 (interpret according to the radius‑unit note above) and five segments.
+### Importer
 
-The earlier sample (`Broadband antenna 80m 3.5 - 3.8MHz …`) shown above is an example of a richer file; the additional headers and fields would be ignored when imported by OpenNEC.
-
-The following shows `Broadband 80m.5.maa` converted to NEC‑2 format by `read_deck_maa`. The title becomes the `CM` card, each wire line becomes a `GW` card (segment count `−1` is the MMANA placeholder — see below), the `***Segmentation***` parameters are preserved as a `!` comment, and the
-`###Comment###` block likewise becomes a `!` line:
+The following shows `Broadband 80m.5.maa` converted to NEC‑2 format by `read_deck_maa`. The title becomes the `CM` card, each wire line becomes a `GW` card, the `***Segmentation***` parameters are preserved as a `!` comment, and the `###Comment###` block likewise becomes a `!` line:
 
 ```
 CM Broadband antenna 80m 3.5 - 3.8MHz (SWR<1,2)
@@ -270,3 +288,21 @@ EN
 ```
 
 The importer replaces MMANA's `-1` placeholder with the token `segs` in the textual GW lines and inserts the `SY` helper so the user can set a concrete segment count. The default value inserted is `segs=10`; change this value to a realistic per‑wire segment count and then replace `segs` with that integer before running a simulation. The textual `segs` token is not automatically propagated into numeric fields used by other parts of OpenNEC.
+
+### Exporter
+
+A minimal file produced by the current exporter looks like this (using a deck whose first `CM` card reads `Half-wave dipole at 14 MHz`):
+```
+Half-wave dipole at 14 MHz
+14.000000
+***Wires***
+1
+0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.001000, 5
+***Source***
+0, 0
+***Load***
+0, 0
+```
+If no `CM` card is present the title line is left blank.  The exporter produces Variant B (`***Wires***` header, source lines in `w<N>c, phase°, mag` form) with `***Source***` before `***Load***`, matching the structure of the most common real‑world files.  The example corresponds to a single wire from (0,0,0) to (1,0,0) with radius field 0.001 (interpret according to the radius‑unit note above) and five segments.
+
+The earlier sample (`Broadband antenna 80m 3.5 - 3.8MHz …`) shown above is an example of a richer file; the additional headers and fields would be ignored when imported by OpenNEC.

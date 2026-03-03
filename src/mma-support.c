@@ -347,7 +347,7 @@ int read_deck_maa(deck_t *deck, FILE *fp)
     if (any_minus1) {
         /* insert SY helper just after CE when present, otherwise at position 0 */
         int insert_at = (title_ce_index >= 0) ? title_ce_index + 1 : 0;
-        const char *sytext = "SY segs=10 'default segment count, change to realistic value'";
+        const char *sytext = "SY segs=10 !default segment count, change to realistic value";
         insert_card_from_text_at(deck, sytext, insert_at);
         for (int k = 0; k < deck->num_cards; k++) {
             card_t *c = &deck->cards[k];
@@ -391,17 +391,19 @@ int read_deck_maa(deck_t *deck, FILE *fp)
 
     /* GE termination */
     append_card_from_text(deck, "GE");
-    /* now that geometry is finished, add the frequency card */
-    if (freq > 0) {
-        char buf[128];
-        snprintf(buf, sizeof buf, "FR 0,0,%.6f,0,0,0,0,0", freq);
-        append_card_from_text(deck, buf);
-    }
+    /* FR and GN are deferred until after the section-parsing loop so that
+       the ***G/H/M/R/AzEl/X*** ground parameters can be read first and GN
+       can be placed before FR in the correct NEC order. */
 
     /* parse following sections based on headers; headers must be seen
        so we read raw lines rather than using the helper. */
-    int section = 0; // 1=load, 2=source
+    int section = 0; /* 1=load 2=source 3=seg 4=ground */
     int skip_count = 0; /* set after a section header to eat the count line */
+    /* ground parameters collected from ***G/H/M/R/AzEl/X*** */
+    int   g_type    = 0;   /* 0=free-space 1=perfect 2=real/MININEC -1=S-N  */
+    double g_sigma_ms = 0.0; /* conductivity in mS/m (0=unspecified/default) */
+    int   g_radials = 0;   /* radials count (informational; no GD without radius/len) */
+    int   g_found   = 0;   /* set to 1 when a ground line has been parsed */
     while (fgets(line, sizeof line, fp)) {
         if (strncmp(line, "***Load***", strlen("***Load***")) == 0) {
             section = 1;
@@ -415,6 +417,10 @@ int read_deck_maa(deck_t *deck, FILE *fp)
         }
         if (strncmp(line, "***Segmentation***", strlen("***Segmentation***")) == 0) {
             section = 3;
+            continue;
+        }
+        if (strncmp(line, "***G/H/M/R", strlen("***G/H/M/R")) == 0) {
+            section = 4;
             continue;
         }
         if (strncmp(line, "***", strlen("***")) == 0) {
@@ -563,7 +569,63 @@ int read_deck_maa(deck_t *deck, FILE *fp)
                 append_card_from_text(deck, buf);
             }
             section = 0; /* only one data line in this section */
+        } else if (section == 4) {
+            /* ***G/H/M/R/AzEl/X***: one data line with 7 comma-separated fields:
+               gtype, sigma_mS/m, radials, ref_Z, phi_pts, el_pts, unused
+               ground types: 0=free-space, 1=perfect, 2=real/MININEC, -1=S-N */
+            double f2 = 0.0;
+            int    f3 = 0;
+            if (sscanf(line, "%d%*[, ]%lf%*[, ]%d", &g_type, &f2, &f3) >= 1) {
+                g_sigma_ms = f2;
+                g_radials  = f3;
+                g_found    = 1;
+            }
+            section = 0; /* only one data line in this section */
         }
+    } /* end while (section-parsing loop) */
+
+    /* emit GN card if the file specified a ground model.
+       Placed before FR so the deck is in the correct NEC order. */
+    if (g_found && g_type != 0) {
+        char buf[256];
+        if (g_type == 1) {
+            /* perfect / ideal ground */
+            append_card_from_text(deck, "GN 1");
+        } else {
+            /* real ground: g_type 2 = MININEC (GN 0), -1 = Sommerfeld-Norton (GN 2)
+               Field 2 is conductivity in mS/m; the file does not carry epsr so
+               we derive it from standard NEC soil-type correlations. */
+            int nec_gtype = (g_type == -1) ? 2 : 0;
+            double sigma_s, epsr;
+            if (g_sigma_ms <= 0.0) {
+                epsr = 13.0; sigma_s = 0.005;          /* unspecified → average  */
+            } else if (g_sigma_ms <= 1.0) {
+                epsr =  5.0; sigma_s = g_sigma_ms / 1000.0; /* poor/rocky          */
+            } else if (g_sigma_ms <= 8.0) {
+                epsr = 13.0; sigma_s = g_sigma_ms / 1000.0; /* average             */
+            } else if (g_sigma_ms <= 30.0) {
+                epsr = 17.0; sigma_s = g_sigma_ms / 1000.0; /* good/agricultural   */
+            } else {
+                epsr = 25.0; sigma_s = g_sigma_ms / 1000.0; /* very good           */
+            }
+            snprintf(buf, sizeof buf,
+                     "GN %d, 0, 0, 0, %.4g, %.6g",
+                     nec_gtype, epsr, sigma_s);
+            append_card_from_text(deck, buf);
+            if (g_radials > 0) {
+                snprintf(buf, sizeof buf,
+                         "! maa-ground-radials: %d (GD card not emitted: radius/length unknown)",
+                         g_radials);
+                append_card_from_text(deck, buf);
+            }
+        }
+    }
+
+    /* frequency card — after GN so it appears in the correct NEC order */
+    if (freq > 0) {
+        char buf[128];
+        snprintf(buf, sizeof buf, "FR 0,0,%.6f,0,0,0,0,0", freq);
+        append_card_from_text(deck, buf);
     }
 
     /* append RP for full 3D far-field pattern (37 theta × 73 phi, 5° steps) */
