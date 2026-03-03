@@ -1034,9 +1034,42 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
 static int execute_extra_patterns(nec_context_t *ctx, const deck_t *deck, int batch_start, int batch_end)
 {
     (void)batch_start; /* currently unused; kept for future multi-RP iteration */
+    (void)batch_end;
 
     if (ctx == NULL || deck == NULL) {
         return -1;
+    }
+
+    /* After execute_frequency_loop() returns, the geometry arrays (x_center,
+     * y_center, z_center, half_len, radius) are restored to their original
+     * unscaled metre values (see the "Restore geometry" block at the end of
+     * execute_frequency_loop).  However, compute_radiation_pattern() and
+     * compute_near_field() — specifically far_e_field() — require the geometry
+     * to be in wavelength units.  Re-apply the same frequency scaling that the
+     * frequency loop uses, call the pattern computation, then undo the scaling
+     * so the next execute_frequency_loop call still sees unscaled geometry.    */
+    double fr = 0.0;
+    bool geom_scaled = false;
+    if (ctx->save.freq_mhz > 0.0 && ctx->frequency_loop_ran &&
+        (ctx->gnd.far_field_type != -1 || ctx->fpat.is_near_field != -1)) {
+        fr = ctx->save.freq_mhz / CVEL;
+        for (int i = 0; i < ctx->geometry.num_segs; i++) {
+            ctx->geometry.x_center[i] *= fr;
+            ctx->geometry.y_center[i] *= fr;
+            ctx->geometry.z_center[i] *= fr;
+            ctx->geometry.half_len[i] *= fr;
+            ctx->geometry.radius[i]   *= fr;
+        }
+        if (ctx->geometry.num_patches > 0) {
+            double fr2 = fr * fr;
+            for (int i = 0; i < ctx->geometry.num_patches; i++) {
+                ctx->geometry.patch_x_center[i] *= fr;
+                ctx->geometry.patch_y_center[i] *= fr;
+                ctx->geometry.patch_z_center[i] *= fr;
+                ctx->geometry.patch_area[i]     *= fr2;
+            }
+        }
+        geom_scaled = true;
     }
 
     /* Compute the pattern using existing (already solved) currents */
@@ -1048,6 +1081,26 @@ static int execute_extra_patterns(nec_context_t *ctx, const deck_t *deck, int ba
 
     if (ctx->fpat.is_near_field != -1) {
         compute_near_field(ctx);
+    }
+
+    /* Restore geometry to unscaled (metre) values for subsequent calls */
+    if (geom_scaled) {
+        for (int i = 0; i < ctx->geometry.num_segs; i++) {
+            ctx->geometry.x_center[i] /= fr;
+            ctx->geometry.y_center[i] /= fr;
+            ctx->geometry.z_center[i] /= fr;
+            ctx->geometry.half_len[i] /= fr;
+            ctx->geometry.radius[i]   /= fr;
+        }
+        if (ctx->geometry.num_patches > 0) {
+            double fr2 = fr * fr;
+            for (int i = 0; i < ctx->geometry.num_patches; i++) {
+                ctx->geometry.patch_x_center[i] /= fr;
+                ctx->geometry.patch_y_center[i] /= fr;
+                ctx->geometry.patch_z_center[i] /= fr;
+                ctx->geometry.patch_area[i]     /= fr2;
+            }
+        }
     }
 
     /* Write only the pattern section — no frequency header, no power budget */
