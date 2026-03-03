@@ -2141,11 +2141,9 @@ static void write_currents(FILE *file, const nec_context_t *ctx)
                 "   No:  No:       X         Y         Z      LENGTH"
                 "     REAL      IMAGINARY    MAGN        PHASE");
 
-  // Calculate frequency ratio to convert meters to wavelengths
-  // The geometry arrays have been recalculated in meters by write_segments
-  // We need to multiply by fr (= 1/wlam) to convert to wavelengths
-  double fr = ctx->save.freq_mhz / CVEL;
-
+  // During the frequency loop, x_center/y_center/z_center/half_len have
+  // already been scaled by fr = fmhz/CVEL, so they are in wavelength units.
+  // Print them directly — no further conversion needed.
   for (int i = 0; i < ctx->geometry.num_segs; i++)
   {
     complex double curi = ctx->crnt.surface_cur[i] * ctx->geometry.wavelength;
@@ -2155,10 +2153,10 @@ static void write_currents(FILE *file, const nec_context_t *ctx)
     fprintf(file, "\n"
                   " %5d %4d %9.4f %9.4f %9.4f %8.5f %11.4E %11.4E %11.4E %9.3f",
             i + 1, ctx->geometry.tag_nums[i],
-            ctx->geometry.x_center[i] * fr,
-            ctx->geometry.y_center[i] * fr,
-            ctx->geometry.z_center[i] * fr,
-            ctx->geometry.half_len[i] * fr,
+            ctx->geometry.x_center[i],
+            ctx->geometry.y_center[i],
+            ctx->geometry.z_center[i],
+            ctx->geometry.half_len[i],
             creal(curi), cimag(curi), cmag, ph);
   }
 }
