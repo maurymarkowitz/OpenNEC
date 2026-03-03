@@ -1808,9 +1808,30 @@ static void write_loading_data(FILE *file, const nec_context_t *ctx)
       fprintf(file, "\n%5d%72s%11.4E     WIRE  ",
               entry->tag, "", entry->conductivity);
     }
+    else if (strcmp(entry->type, "FIXED IMPEDANCE") == 0)
+    {
+      /* LD type 4 — fixed complex impedance: display R in REAL column and X in
+       * IMAGINARY column, leaving OHMS/HENRYS/FARADS blank.  nec2c output:
+       *   ITAG FROM THRU   (blank×3)   REAL   IMAGINARY   (blank MHOS)   TYPE
+       * Each numeric column is 11 chars wide (%11.4E or 11 blank spaces).   */
+      char col_real[12], col_imag[12];
+      if (fabs(entry->f1) > 1.0e-20)
+          snprintf(col_real, sizeof(col_real), "%11.4E", entry->f1);
+      else
+          snprintf(col_real, sizeof(col_real), "%11s", "");
+      if (fabs(entry->f2) > 1.0e-20)
+          snprintf(col_imag, sizeof(col_imag), "%11.4E", entry->f2);
+      else
+          snprintf(col_imag, sizeof(col_imag), "%11s", "");
+      fprintf(file, "\n%5d%5d%5d%11s%11s%11s%s%s%15s FIXED IMPEDANCE ",
+              entry->tag, entry->tagf, entry->tagt,
+              "", "", "",        /* OHMS, HENRYS, FARADS — blank */
+              col_real, col_imag,
+              "");               /* MHOS/METER — blank */
+    }
     else
     {
-      // General format for other loading types
+      // General format for other loading types (SERIES, PARALLEL, etc.)
       fprintf(file, "\n%6d%6d%6d%44.4E%12s",
               entry->tag, entry->tagf, entry->tagt,
               entry->conductivity, entry->type);

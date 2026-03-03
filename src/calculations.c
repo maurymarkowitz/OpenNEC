@@ -20,7 +20,7 @@ static void wire_e_integrand(nec_context_t *ctx, double zk, double *co, double *
 static int basis_func_component(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc);
 
 /* Helper function to add loading output entries */
-static void add_loading_output(nec_context_t *ctx, int tag, int tagf, int tagt, double conductivity, const char *type)
+static void add_loading_output(nec_context_t *ctx, int tag, int tagf, int tagt, double conductivity, double f1, double f2, const char *type)
 {
     if (ctx->loading_outputs.count >= ctx->loading_outputs.capacity) {
         ctx->loading_outputs.capacity = ctx->loading_outputs.capacity == 0 ? 16 : ctx->loading_outputs.capacity * 2;
@@ -32,6 +32,8 @@ static void add_loading_output(nec_context_t *ctx, int tag, int tagf, int tagt, 
     entry->tagf = tagf;
     entry->tagt = tagt;
     entry->conductivity = conductivity;
+    entry->f1 = f1;
+    entry->f2 = f2;
     strncpy(entry->type, type, sizeof(entry->type) - 1);
     entry->type[sizeof(entry->type) - 1] = '\0';
 }
@@ -476,27 +478,27 @@ int apply_impedance_loading(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldt
     switch( jump )
     {
       case 1:
-           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, "SERIES");
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, 0.0, 0.0, "SERIES");
         break;
         
       case 2:
-           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, "PARALLEL");
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, 0.0, 0.0, "PARALLEL");
         break;
         
       case 3:
-           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, "SERIES (PER METER)");
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, 0.0, 0.0, "SERIES (PER METER)");
         break;
         
       case 4:
-           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, "PARALLEL (PER METER)");
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, 0.0, 0.0, "PARALLEL (PER METER)");
         break;
         
       case 5:
-           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, "FIXED IMPEDANCE");
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, zlr[istepx], zli[istepx], "FIXED IMPEDANCE");
         break;
         
       case 6:
-           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx], "WIRE");
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx], 0.0, 0.0, "WIRE");
         
     } /* switch( jump ) */
   } /* while( true ) */

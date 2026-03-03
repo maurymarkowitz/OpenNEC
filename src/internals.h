@@ -600,7 +600,9 @@ typedef struct loading_output_t {
     int tag;           /* Tag number */
     int tagf;          /* Segment start */
     int tagt;          /* Segment end */
-    double conductivity; /* Conductivity value */
+    double conductivity; /* Conductivity value (WIRE type) */
+    double f1;         /* Real impedance / resistance (FIXED IMPEDANCE: zlr) */
+    double f2;         /* Imaginary impedance / reactance (FIXED IMPEDANCE: zli) */
     char type[20];     /* Loading type description */
 } loading_output_t;
 
