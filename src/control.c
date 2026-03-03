@@ -1026,16 +1026,16 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
     
     // Allocate current array
     mreq = (size_t)ctx->geometry.np3m * sizeof(complex double);
-    mem_alloc(ctx, (void **)&ctx->crnt.cur, mreq);
+    mem_alloc(ctx, (void **)&ctx->crnt.surface_cur, mreq);
     
     // Allocate current basis function coefficient arrays
     mreq = (size_t)ctx->geometry.npm * sizeof(double);
-    mem_alloc(ctx, (void **)&ctx->crnt.air, mreq);
-    mem_alloc(ctx, (void **)&ctx->crnt.aii, mreq);
-    mem_alloc(ctx, (void **)&ctx->crnt.bir, mreq);
-    mem_alloc(ctx, (void **)&ctx->crnt.bii, mreq);
-    mem_alloc(ctx, (void **)&ctx->crnt.cir, mreq);
-    mem_alloc(ctx, (void **)&ctx->crnt.cii, mreq);
+    mem_alloc(ctx, (void **)&ctx->crnt.a_real, mreq);
+    mem_alloc(ctx, (void **)&ctx->crnt.a_imag, mreq);
+    mem_alloc(ctx, (void **)&ctx->crnt.b_real, mreq);
+    mem_alloc(ctx, (void **)&ctx->crnt.b_imag, mreq);
+    mem_alloc(ctx, (void **)&ctx->crnt.c_real, mreq);
+    mem_alloc(ctx, (void **)&ctx->crnt.c_imag, mreq);
     
     // Save unscaled geometry for frequency scaling
     double *xtemp = NULL, *ytemp = NULL, *ztemp = NULL;
@@ -1209,17 +1209,17 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         // For voltage source excitation (most common case)
         if (ctx->fpat.ixtyp == 0 || ctx->fpat.ixtyp == 5) {
             // Fill right-hand side matrix (excitation)
-            etmns(ctx, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ctx->fpat.ixtyp, ctx->crnt.cur);
+            etmns(ctx, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ctx->fpat.ixtyp, ctx->crnt.surface_cur);
             
             // Solve with network
-            network(ctx, cm, ctx->save.ip, ctx->crnt.cur);
+            network(ctx, cm, ctx->save.ip, ctx->crnt.surface_cur);
             ctx->netcx.ntsol = 1;
             
             // Calculate power loss in structure
             ctx->fpat.ploss = 0.0;
             if (ctx->geometry.n > 0) {
                 for (int i = 0; i < ctx->geometry.n; i++) {
-                    complex double curi = ctx->crnt.cur[i] * ctx->geometry.wlam;
+                    complex double curi = ctx->crnt.surface_cur[i] * ctx->geometry.wlam;
                     double cmag = cabs(curi);
                     
                     if (ctx->zload.nload > 0 && fabs(creal(ctx->zload.zarray[i])) >= 1.e-20) {
@@ -1231,7 +1231,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
             
             // Handle coupling calculations if requested
             if (ctx->yparm.ncoup > 0) {
-                couple(ctx, ctx->crnt.cur, ctx->geometry.wlam);
+                couple(ctx, ctx->crnt.surface_cur, ctx->geometry.wlam);
             }
             
             // Near field calculation if requested

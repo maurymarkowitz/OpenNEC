@@ -51,15 +51,15 @@
 typedef struct
 {
   double
-    *air,	/* Ai/lambda, real part */
-    *aii,	/* Ai/lambda, imaginary part */
-    *bir,	/* Bi/lambda, real part */
-    *bii,	/* Bi/lambda, imaginary part */
-    *cir,	/* Ci/lambda, real part */
-    *cii;	/* Ci/lambda, imaginary part */
+    *a_real,	/* Ai/lambda, real part */      /* air — Fortran AIR */
+    *a_imag,	/* Ai/lambda, imaginary part */  /* aii — Fortran AII */
+    *b_real,	/* Bi/lambda, real part */       /* bir — Fortran BIR */
+    *b_imag,	/* Bi/lambda, imaginary part */  /* bii — Fortran BII */
+    *c_real,	/* Ci/lambda, real part */       /* cir — Fortran CIR */
+    *c_imag;	/* Ci/lambda, imaginary part */  /* cii — Fortran CII */
 
-  complex double *cur; /* Amplitude of basis function */
-} current_t;
+  complex double *surface_cur; /* Amplitude of basis function */ /* cur — Fortran CUR */
+} current_t; /* Formerly: Fortran /CRNT/ → nec2c: crnt_t */
 
 /** common  /geometry/ (geometry data)
  */

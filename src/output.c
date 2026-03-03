@@ -2077,7 +2077,7 @@ static void write_currents(FILE *file, const nec_context_t *ctx)
 
   for (int i = 0; i < ctx->geometry.n; i++)
   {
-    complex double curi = ctx->crnt.cur[i] * ctx->geometry.wlam;
+    complex double curi = ctx->crnt.surface_cur[i] * ctx->geometry.wlam;
     double cmag = cabs(curi);
     double ph = carg(curi) * TD; // Convert to degrees (TD = 57.29577951)
 

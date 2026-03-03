@@ -137,8 +137,8 @@ void ffld(nec_context_t *restrict ctx, double thet, double phi,
 
 		b= el*( boo- too);
 		c= el*( boo+ too);
-		rr= a* ctx->crnt.air[i]+ b* ctx->crnt.bii[i]+ c* ctx->crnt.cir[i];
-		ri= a* ctx->crnt.aii[i]- b* ctx->crnt.bir[i]+ c* ctx->crnt.cii[i];
+		rr= a* ctx->crnt.a_real[i]+ b* ctx->crnt.b_imag[i]+ c* ctx->crnt.c_real[i];
+		ri= a* ctx->crnt.a_imag[i]- b* ctx->crnt.b_real[i]+ c* ctx->crnt.c_imag[i];
 		arg= TP*( ctx->geometry.x[i]* rox+ ctx->geometry.y[i]* roy+ ctx->geometry.z[i]* roz);
 
 		if( (k != 1) || (ctx->gnd.ifar < 2) )
@@ -291,7 +291,7 @@ void ffld(nec_context_t *restrict ctx, double thet, double phi,
   {
 	rfl= -rfl;
 	rrz= roz* rfl;
-	fflds( ctx, rox, roy, rrz, &ctx->crnt.cur[ctx->geometry.n], &gx, &gy, &gz);
+	fflds( ctx, rox, roy, rrz, &ctx->crnt.surface_cur[ctx->geometry.n], &gx, &gy, &gz);
 
 	if( ip != 1 )
 	{

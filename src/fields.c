@@ -1281,9 +1281,9 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
       } /* if( ctx->dataj.iexk != 0) */
       
       efld(ctx,  xob, yob, zob, ax,1);
-      acx= cmplx( ctx->crnt.air[i], ctx->crnt.aii[i]);
-      bcx= cmplx( ctx->crnt.bir[i], ctx->crnt.bii[i]);
-      ccx= cmplx( ctx->crnt.cir[i], ctx->crnt.cii[i]);
+      acx= cmplx( ctx->crnt.a_real[i], ctx->crnt.a_imag[i]);
+      bcx= cmplx( ctx->crnt.b_real[i], ctx->crnt.b_imag[i]);
+      ccx= cmplx( ctx->crnt.c_real[i], ctx->crnt.c_imag[i]);
       *ex += ctx->dataj.exk* acx+ ctx->dataj.exs* bcx+ ctx->dataj.exc* ccx;
       *ey += ctx->dataj.eyk* acx+ ctx->dataj.eys* bcx+ ctx->dataj.eyc* ccx;
       *ez += ctx->dataj.ezk* acx+ ctx->dataj.ezs* bcx+ ctx->dataj.ezc* ccx;
@@ -1309,8 +1309,8 @@ void nefld(nec_context_t *restrict ctx, double xob, double yob, double zob,
     ctx->dataj.t2yj= ctx->geometry.t2y[i];
     ctx->dataj.t2zj= ctx->geometry.t2z[i];
     jc += 3;
-    acx= ctx->dataj.t1xj* ctx->crnt.cur[jc-2]+ ctx->dataj.t1yj* ctx->crnt.cur[jc-1]+ ctx->dataj.t1zj* ctx->crnt.cur[jc];
-    bcx= ctx->dataj.t2xj* ctx->crnt.cur[jc-2]+ ctx->dataj.t2yj* ctx->crnt.cur[jc-1]+ ctx->dataj.t2zj* ctx->crnt.cur[jc];
+    acx= ctx->dataj.t1xj* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.t1yj* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.t1zj* ctx->crnt.surface_cur[jc];
+    bcx= ctx->dataj.t2xj* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.t2yj* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.t2zj* ctx->crnt.surface_cur[jc];
     
     for( ipa = 0; ipa < ctx->gnd.ksymp; ipa++ )
     {
@@ -1648,9 +1648,9 @@ void nhfld(nec_context_t *restrict ctx,  double xob, double yob, double zob,
       ctx->dataj.sabj= ctx->geometry.sab[i];
       ctx->dataj.salpj= ctx->geometry.salp[i];
       hsfld(ctx,  xob, yob, zob, ax);
-      acx= cmplx( ctx->crnt.air[i], ctx->crnt.aii[i]);
-      bcx= cmplx( ctx->crnt.bir[i], ctx->crnt.bii[i]);
-      ccx= cmplx( ctx->crnt.cir[i], ctx->crnt.cii[i]);
+      acx= cmplx( ctx->crnt.a_real[i], ctx->crnt.a_imag[i]);
+      bcx= cmplx( ctx->crnt.b_real[i], ctx->crnt.b_imag[i]);
+      ccx= cmplx( ctx->crnt.c_real[i], ctx->crnt.c_imag[i]);
       *hx += ctx->dataj.exk* acx+ ctx->dataj.exs* bcx+ ctx->dataj.exc* ccx;
       *hy += ctx->dataj.eyk* acx+ ctx->dataj.eys* bcx+ ctx->dataj.eyc* ccx;
       *hz += ctx->dataj.ezk* acx+ ctx->dataj.ezs* bcx+ ctx->dataj.ezc* ccx;
@@ -1675,8 +1675,8 @@ void nhfld(nec_context_t *restrict ctx,  double xob, double yob, double zob,
     ctx->dataj.t2zj= ctx->geometry.t2z[i];
     hintg(ctx,  xob, yob, zob);
     jc += 3;
-    acx= ctx->dataj.t1xj* ctx->crnt.cur[jc-2]+ ctx->dataj.t1yj* ctx->crnt.cur[jc-1]+ ctx->dataj.t1zj* ctx->crnt.cur[jc];
-    bcx= ctx->dataj.t2xj* ctx->crnt.cur[jc-2]+ ctx->dataj.t2yj* ctx->crnt.cur[jc-1]+ ctx->dataj.t2zj* ctx->crnt.cur[jc];
+    acx= ctx->dataj.t1xj* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.t1yj* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.t1zj* ctx->crnt.surface_cur[jc];
+    bcx= ctx->dataj.t2xj* ctx->crnt.surface_cur[jc-2]+ ctx->dataj.t2yj* ctx->crnt.surface_cur[jc-1]+ ctx->dataj.t2zj* ctx->crnt.surface_cur[jc];
     *hx= *hx+ acx* ctx->dataj.exk+ bcx* ctx->dataj.exs;
     *hy= *hy+ acx* ctx->dataj.eyk+ bcx* ctx->dataj.eys;
     *hz= *hz+ acx* ctx->dataj.ezk+ bcx* ctx->dataj.ezs;

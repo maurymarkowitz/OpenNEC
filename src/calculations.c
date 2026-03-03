@@ -49,12 +49,12 @@ void cabc(nec_context_t *restrict ctx, complex double *restrict curx)
   {
     for( i = 0; i < ctx->geometry.n; i++ )
     {
-      ctx->crnt.air[i]=0.;
-      ctx->crnt.aii[i]=0.;
-      ctx->crnt.bir[i]=0.;
-      ctx->crnt.bii[i]=0.;
-      ctx->crnt.cir[i]=0.;
-      ctx->crnt.cii[i]=0.;
+      ctx->crnt.a_real[i]=0.;
+      ctx->crnt.a_imag[i]=0.;
+      ctx->crnt.b_real[i]=0.;
+      ctx->crnt.b_imag[i]=0.;
+      ctx->crnt.c_real[i]=0.;
+      ctx->crnt.c_imag[i]=0.;
     }
     
     for( i = 0; i < ctx->geometry.n; i++ )
@@ -67,12 +67,12 @@ void cabc(nec_context_t *restrict ctx, complex double *restrict curx)
       for( jx = 0; jx < ctx->segj.jsno; jx++ )
       {
         j= ctx->segj.jco[jx]-1;
-        ctx->crnt.air[j] += ctx->segj.ax[jx]* ar;
-        ctx->crnt.aii[j] += ctx->segj.ax[jx]* ai;
-        ctx->crnt.bir[j] += ctx->segj.bx[jx]* ar;
-        ctx->crnt.bii[j] += ctx->segj.bx[jx]* ai;
-        ctx->crnt.cir[j] += ctx->segj.cx[jx]* ar;
-        ctx->crnt.cii[j] += ctx->segj.cx[jx]* ai;
+        ctx->crnt.a_real[j] += ctx->segj.ax[jx]* ar;
+        ctx->crnt.a_imag[j] += ctx->segj.ax[jx]* ai;
+        ctx->crnt.b_real[j] += ctx->segj.bx[jx]* ar;
+        ctx->crnt.b_imag[j] += ctx->segj.bx[jx]* ai;
+        ctx->crnt.c_real[j] += ctx->segj.cx[jx]* ar;
+        ctx->crnt.c_imag[j] += ctx->segj.cx[jx]* ai;
       }
       
     } /* for( i = 0; i < n; i++ ) */
@@ -97,12 +97,12 @@ void cabc(nec_context_t *restrict ctx, complex double *restrict curx)
         for( jx = 0; jx < ctx->segj.jsno; jx++ )
         {
           j= ctx->segj.jco[jx]-1;
-          ctx->crnt.air[j]= ctx->crnt.air[j]+ ctx->segj.ax[jx]* ar;
-          ctx->crnt.aii[j]= ctx->crnt.aii[j]+ ctx->segj.ax[jx]* ai;
-          ctx->crnt.bir[j]= ctx->crnt.bir[j]+ ctx->segj.bx[jx]* ar;
-          ctx->crnt.bii[j]= ctx->crnt.bii[j]+ ctx->segj.bx[jx]* ai;
-          ctx->crnt.cir[j]= ctx->crnt.cir[j]+ ctx->segj.cx[jx]* ar;
-          ctx->crnt.cii[j]= ctx->crnt.cii[j]+ ctx->segj.cx[jx]* ai;
+          ctx->crnt.a_real[j]= ctx->crnt.a_real[j]+ ctx->segj.ax[jx]* ar;
+          ctx->crnt.a_imag[j]= ctx->crnt.a_imag[j]+ ctx->segj.ax[jx]* ai;
+          ctx->crnt.b_real[j]= ctx->crnt.b_real[j]+ ctx->segj.bx[jx]* ar;
+          ctx->crnt.b_imag[j]= ctx->crnt.b_imag[j]+ ctx->segj.bx[jx]* ai;
+          ctx->crnt.c_real[j]= ctx->crnt.c_real[j]+ ctx->segj.cx[jx]* ar;
+          ctx->crnt.c_imag[j]= ctx->crnt.c_imag[j]+ ctx->segj.cx[jx]* ai;
         }
         
       } /* for( is = 0; is < ctx->vsorc.nqds; is++ ) */
@@ -110,7 +110,7 @@ void cabc(nec_context_t *restrict ctx, complex double *restrict curx)
     } /* if( ctx->vsorc.nqds != 0) */
     
     for( i = 0; i < ctx->geometry.n; i++ )
-      curx[i]= cmplx( ctx->crnt.air[i]+ctx->crnt.cir[i], ctx->crnt.aii[i]+ctx->crnt.cii[i] );
+      curx[i]= cmplx( ctx->crnt.a_real[i]+ctx->crnt.c_real[i], ctx->crnt.a_imag[i]+ctx->crnt.c_imag[i] );
     
   } /* if( n != 0) */
   

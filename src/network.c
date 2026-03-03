@@ -605,9 +605,9 @@ void network(nec_context_t *restrict ctx, complex double *restrict cm, int *rest
     {
       isc1= ctx->vsorc.ivqd[i]-1;
       vlt= ctx->vsorc.vqd[i];
-      cux= cmplx( ctx->crnt.air[isc1], ctx->crnt.aii[isc1]);
-      ymit= cmplx( ctx->crnt.bir[isc1], ctx->crnt.bii[isc1]);
-      ctx->netcx.zped= cmplx( ctx->crnt.cir[isc1], ctx->crnt.cii[isc1]);
+      cux= cmplx( ctx->crnt.a_real[isc1], ctx->crnt.a_imag[isc1]);
+      ymit= cmplx( ctx->crnt.b_real[isc1], ctx->crnt.b_imag[isc1]);
+      ctx->netcx.zped= cmplx( ctx->crnt.c_real[isc1], ctx->crnt.c_imag[isc1]);
       pwr= ctx->geometry.si[isc1]* TP*.5;
       cux=( cux- ymit* sin( pwr)+ ctx->netcx.zped* cos( pwr))* ctx->geometry.wlam;
       ymit= cux/ vlt;
