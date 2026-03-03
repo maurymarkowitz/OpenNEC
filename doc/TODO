@@ -28,6 +28,11 @@ Items still to be implemented:
 
 * add support for LD type 7 from 4nec2
 
+* CVEL constant: currently set to 299.8 (matching the original NEC2 Fortran and nec2c) for
+  numerical compatibility with reference outputs. The exact SI value is 299.792458 m/μs.
+  Investigate whether to use the exact value and document the tradeoff: using 299.8 suppresses
+  ~0.1-0.2% differences vs nec2c but is technically less accurate.
+
 * files to examine:
 - 63-2.nec, 63-1.nec, 17-10-nec4.nec, radius too small
 - 3-1b-nec4.nec, ch-3/3-1b-nec4.nec gives ZGETRF WARNING: U(6,6) is exactly zero

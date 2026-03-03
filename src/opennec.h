@@ -78,7 +78,9 @@
 #define TP      (2.0 * M_PI)    /**< Two Pi ($2\pi$) */
 #define TA      (M_PI / 180.0)  /**< Degrees to Radians conversion factor */
 #define TD      (180.0 / M_PI)  /**< Radians to Degrees conversion factor */
-#define CVEL    299.792458      /**< Speed of light in $m/\mu s$ (exact) */
+#define CVEL    299.8           /**< Speed of light in m/μs, matching the original NEC2 Fortran/nec2c value.
+                                     Note: the exact SI value is 299.792458; using 299.8 here for
+                                     numerical compatibility with nec2c reference outputs. */
 /** @} */
 
 #endif
