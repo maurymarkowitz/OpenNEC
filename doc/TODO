@@ -35,9 +35,10 @@ Items still to be implemented:
 - DL5SAY/EX4.nec: SP/GX (surface patches + geometry mirror) gives 40% power difference. Surface patch + GX interaction not fully implemented.
 - 4nec2/HFcollinear/4 Dipole Trans-lines.nec: TL length ≈ 1 wavelength causes near-singular 1/sin(βL); result is hyper-sensitive to CVEL precision — not meaningfully fixable without the exact same floating-point path as nec2c.
 - 4nec2/VHFsimple/Generator.nec: numerical artifact (near-zero average power gain produces 100% relative difference on a ~10^11 number).
-- 4nec2 examples/Aperiodic/D2T.nec: has SY Len=#.4". Is this the way optimization works? Or simply a typo for AWG? Needs investigation.
 - nec2++/ga_pjw_1.nec: GW tag=0 with 640 segments, EX tag=0, perfect ground at 2.4 GHz — matrix is near-singular, impedance ~10^14 Ω; 24% relative difference on an already-astronomical value is a numerical artifact, not a code bug.
 
 * files to examine:
 - cebik Tutorial-2/ch-3/3-7.nec is empty. 3-2a-nec4.nec not found in test files.
+- 4nec2 examples/Aperiodic/D2T.nec: has SY Len=#.4", which appears to be a simple typo. There is a second copy of this model which has Len=3.4.
+
 
