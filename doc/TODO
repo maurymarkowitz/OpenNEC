@@ -37,22 +37,14 @@ Items still to be implemented:
 - DL5SAY/EX4.nec: SP/GX (surface patches + geometry mirror) gives 40% power difference. Surface patch + GX interaction not fully implemented.
 - 4nec2/HFcollinear/4 Dipole Trans-lines.nec: TL length ≈ 1 wavelength causes near-singular 1/sin(βL); result is hyper-sensitive to CVEL precision — not meaningfully fixable without the exact same floating-point path as nec2c.
 - 4nec2/VHFsimple/Generator.nec: numerical artifact (near-zero average power gain produces 100% relative difference on a ~10^11 number).
+- D2T.nec: has SY Len=#.4". Is this the way optimization works? Or simply a typo for AWG? Needs investigation.
+- hrs_441.nec: has TL cards referencing tag 451 which doesn't exist? Tag 451 should be created by the GX card, but onec reports "references invalid tag 451, segment 6". Possible GX tag-assignment bug.
+
+
+
 - nec2++/ga_pjw_1.nec: GW tag=0 with 640 segments, EX tag=0, perfect ground at 2.4 GHz — matrix is near-singular, impedance ~10^14 Ω; 24% relative difference on an already-astronomical value is a numerical artifact, not a code bug.
 
+
 * files to examine:
-- 63-2.nec, 63-1.nec, 17-10-nec4.nec, radius too small
-- 3-1b-nec4.nec, ch-3/3-1b-nec4.nec gives ZGETRF WARNING: U(6,6) is exactly zero
-- 3-7.nec and 3-2a-nec4.nec goes forever
-- moxon.nec has several issues, including re-defining C to be two very different things
-- n2pl_phased_dloop.nec - hangs? vehicle.nec too?
-- coffee1.nec, - formula problems
-- 2EL160H.nec, - has pf units
-- Nec-Ex4.nec, Tank.nec, Horn.nec - no FR
-- VE4MAfeed.nec - SP with type 3, but the next card is not an SC
-- check k4ero-4.nec for missing taper, likely due to formula issue
-- patch.c - why so many segments?
-- Example3.nec - has 50% in one of the fields
-- D2T.nec (renamed D2T.necx): uses 4nec2 optimizer variable syntax "#.4" in a SY card ("SY Len=#.4"). The '#' prefix marks a value as an optimizer variable, so '#12' means 12-AWG wire. '#.4' appears to be a typo or unusual variant — neither onec nor nec2c can parse it. Needs investigation.
-- Bowtie.nec (renamed Bowtie.necx): uses AWG wire-gauge notation (#12, #14 etc.) and 4nec2 single-quote inline comments (e.g. SY Rsrc=0.002' Source radius). nec2c fails on these. onec parses them but the model is 5327 segments (complexity T≈4×10^12) — way too large to run in practice or compare. Needs investigation.
-- why does hrs_441.nec (renamed hrs_441.necx) have TL cards referencing tag 451 which doesn't exist? Tag 451 should be created by the GX card, but onec reports "references invalid tag 451, segment 6". Possible GX tag-assignment bug.
-- Gr_func.nec, NGF_radial4.nec - WG card
+- cebik Tutorial-2/ch-3/3-7.nec is empty (0 bytes) — likely emptied by a git filter-branch; the Vol-1/nec/3-7.nec copy runs OK. 3-2a-nec4.nec not found in test files.
+- n2pl_phased_dloop.nec no longer hangs; exits 1 with "LD type 7 not supported" — covered by the LD type 7 TODO item above.
