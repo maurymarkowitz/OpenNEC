@@ -2497,4 +2497,189 @@ void calculate_patch(nec_context_t *ctx, int nx, int ny )
     ctx->geometry.patch_z_center[mi] = 10000.0;
 } /* end of calculate_patch */
 
-/* end of ctx->geometry.c */
+
+/******************************************************************************
+ * compute_segmentation()
+ *
+ * Compute the MMANA-GAL tapering segmentation plan for a single wire.
+ *
+ * Implements the algorithm described in the "Segmentation" and "How MMANA-GAL
+ * Segmentation Process Operates" sections of the MMANA-GAL basic help:
+ * https://hamsoft.ca/pages/mmana-gal/mmana-gal_basic_help/
+ *
+ * The MMANA SEG values:
+ *   > 0  manual exact count  (caller's value used as-is, like NEC)
+ *     0  automatic uniform   (λ/DM2 throughout)
+ *    -1  taper at both ends  (recommended; default MMANA setting)
+ *    -2  taper at start end only
+ *    -3  taper at end end only
+ *
+ * Taper sequence from each wire end inward:
+ *   [EC segments of length λ/DM1]  [λ/DM1·SC]  [λ/DM1·SC²]  ...
+ *   ... (stepping by factor SC until the step exceeds λ/DM2)
+ *   [remaining middle filled with λ/DM2 segments]
+ *
+ * The groups[] array in the optional plan is ordered from the start end to
+ * the end end of the wire, providing the exact sub-wire breakdown needed to
+ * emit a accurate sequence of NEC GW cards.
+ *
+ * @param wire_len   Physical length of the wire (metres).
+ * @param wavelength Wavelength at the operating frequency (metres).
+ * @param seg_mode   Segmentation mode (see seg_mode_t and above).
+ * @param dm1        Finest-segment divisor; end-segment length = λ/DM1.
+ * @param dm2        Coarsest-segment divisor; middle-segment length = λ/DM2.
+ * @param sc         Geometric growth factor between taper steps (> 1).
+ * @param ec         Count of finest segments at each tapered end (≥ 1).
+ * @param plan       If non-NULL, filled with per-sub-wire breakdown.
+ * @return Total segment count (≥ 1), or -1 for invalid input.
+ *
+ *****************************************************************************/
+int compute_segmentation(double wire_len, double wavelength,
+                         int seg_mode,
+                         int dm1, int dm2, double sc, int ec,
+                         seg_plan_t *plan)
+{
+    if (wire_len <= 0.0 || wavelength <= 0.0)
+        return -1;
+
+    /* ---- Manual: use the supplied count unchanged ---- */
+    if (seg_mode > 0) {
+        if (plan) {
+            plan->total_segs  = seg_mode;
+            plan->n_groups    = 1;
+            plan->groups[0].segs = seg_mode;
+            plan->groups[0].frac = 1.0;
+        }
+        return seg_mode;
+    }
+
+    /* ---- Sanitise taper parameters ---- */
+    if (dm1 <= 0) dm1 = 200;
+    if (dm2 <= 0) dm2 = 20;
+    /* dm1 must be ≥ dm2 so that λ/dm1 ≤ λ/dm2 (fine ≤ coarse) */
+    if (dm1 < dm2) { int tmp = dm1; dm1 = dm2; dm2 = tmp; }
+    if (sc  < 1.01) sc = 2.0;
+    if (sc  > 3.0)  sc = 3.0;
+    if (ec  < 1)    ec = 1;
+
+    double seg_fine   = wavelength / (double)dm1;   /* finest  (wire end) */
+    double seg_coarse = wavelength / (double)dm2;   /* coarsest (middle) */
+
+    /* Accuracy floor: segments < 0.001 λ are unreliable (MMANA-GAL guidance) */
+    double seg_floor = wavelength * 0.001;
+    if (seg_fine < seg_floor) seg_fine = seg_floor;
+    /* coarse cannot be finer than fine */
+    if (seg_coarse < seg_fine) seg_coarse = seg_fine;
+
+    /* ---- Uniform (seg_mode == 0): fill with coarse segments ---- */
+    if (seg_mode == 0) {
+        int n = (int)ceil(wire_len / seg_coarse);
+        if (n < 1) n = 1;
+        if (plan) {
+            plan->total_segs     = n;
+            plan->n_groups       = 1;
+            plan->groups[0].segs = n;
+            plan->groups[0].frac = 1.0;
+        }
+        return n;
+    }
+
+    /* ---- Tapered segmentation (-1 / -2 / -3) ---- */
+
+    /*
+     * Build the geometric growth sequence for one tapered end.
+     * step_lens[0] = seg_fine  (the EC-flat-segment length; EC segments)
+     * step_lens[1] = seg_fine * sc   (one segment)
+     * step_lens[2] = seg_fine * sc²  (one segment)
+     * ...  until the step length first equals or exceeds seg_coarse.
+     *
+     * step_segs[i] is the segment count for that step:
+     *   i == 0  →  ec  (flat block of finest segments)
+     *   i >  0  →  1
+     */
+    double step_lens[MAX_SEG_GROUPS / 2];
+    int    step_segs[MAX_SEG_GROUPS / 2];
+    int n_steps = 0;
+    int max_steps = MAX_SEG_GROUPS / 2 - 1;
+
+    step_lens[n_steps] = seg_fine;
+    step_segs[n_steps] = ec;
+    n_steps++;
+
+    double s = seg_fine * sc;
+    while (s < seg_coarse - 1e-12 && n_steps < max_steps) {
+        step_lens[n_steps] = s;
+        step_segs[n_steps] = 1;
+        n_steps++;
+        s *= sc;
+    }
+
+    /* Total wire length consumed by one tapered end */
+    double end_len = 0.0;
+    for (int i = 0; i < n_steps; i++)
+        end_len += step_lens[i] * step_segs[i];
+
+    /* Number of tapered ends (1 or 2) */
+    int n_ends = (seg_mode == -1) ? 2 : 1;
+
+    /* Middle: whatever remains after the taper(s) */
+    double taper_total = n_ends * end_len;
+    double middle_len  = wire_len - taper_total;
+    if (middle_len < 0.0) {
+        /* Wire too short for the full taper — fall back to uniform fine */
+        int n = (int)ceil(wire_len / seg_fine);
+        if (n < 1) n = 1;
+        if (plan) {
+            plan->total_segs     = n;
+            plan->n_groups       = 1;
+            plan->groups[0].segs = n;
+            plan->groups[0].frac = 1.0;
+        }
+        return n;
+    }
+
+    int middle_segs = (middle_len > 0.0) ? (int)ceil(middle_len / seg_coarse) : 0;
+
+    /* Count segments in one end taper */
+    int end_segs = 0;
+    for (int i = 0; i < n_steps; i++)
+        end_segs += step_segs[i];
+
+    int total = n_ends * end_segs + middle_segs;
+    if (total < 1) total = 1;
+
+    /* ---- Optionally fill the plan ---- */
+    if (plan) {
+        plan->total_segs = total;
+        plan->n_groups   = 0;
+
+        /* Start-end taper (present for modes -1 and -2) */
+        if (seg_mode == -1 || seg_mode == -2) {
+            for (int i = 0; i < n_steps && plan->n_groups < MAX_SEG_GROUPS; i++) {
+                plan->groups[plan->n_groups].segs = step_segs[i];
+                plan->groups[plan->n_groups].frac = (step_lens[i] * step_segs[i]) / wire_len;
+                plan->n_groups++;
+            }
+        }
+
+        /* Middle uniform block */
+        if (middle_segs > 0 && plan->n_groups < MAX_SEG_GROUPS) {
+            plan->groups[plan->n_groups].segs = middle_segs;
+            plan->groups[plan->n_groups].frac = middle_len / wire_len;
+            plan->n_groups++;
+        }
+
+        /* End taper (present for modes -1 and -3) — mirror of start-end, reversed */
+        if (seg_mode == -1 || seg_mode == -3) {
+            for (int i = n_steps - 1; i >= 0 && plan->n_groups < MAX_SEG_GROUPS; i--) {
+                plan->groups[plan->n_groups].segs = step_segs[i];
+                plan->groups[plan->n_groups].frac = (step_lens[i] * step_segs[i]) / wire_len;
+                plan->n_groups++;
+            }
+        }
+    }
+
+    return total;
+}
+
+/* end of geometry.c */

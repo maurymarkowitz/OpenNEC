@@ -17,11 +17,13 @@
 #include "mma-support.h"
 #include "deck.h"    // for insert_card
 #include "misc.h"    // for add_error
+#include "geometry.h" // for compute_segmentation
 
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 #include <ctype.h>
+#include <limits.h>
 
 /**
  * @brief Create a new card from a raw text line and append to deck.
@@ -76,42 +78,37 @@ static int append_card_from_text(deck_t *deck, const char *text)
     return 0;
 }
 
-/* insert a card at an arbitrary position (0..num_cards). Similar to
-   append_card_from_text but allows specifying the insertion index. */
-static int insert_card_from_text_at(deck_t *deck, const char *text, int pos)
-{
-    card_t card = {0};
-    size_t len = strlen(text);
-    card.edited = false;
-    card.ignore = false;
-    card.card_num = deck->num_cards + 1;
-    card.orig_str = calloc(len + 1, 1);
-    card.card_str = calloc(len + 1, 1);
-    if (!card.orig_str || !card.card_str) {
-        free(card.orig_str);
-        free(card.card_str);
-        return -1;
-    }
-    memcpy(card.orig_str, text, len);
-    memcpy(card.card_str, text, len);
-    /* mnemonic is first two non-space chars */
-    const char *p = text;
-    while (*p && isspace((unsigned char)*p)) p++;
-    card.card_code[0] = *p ? *p : '\0';
-    card.card_code[1] = *p && *(p+1) ? *(p+1) : '\0';
-    card.card_code[2] = '\0';
-
-    if (pos < 0) pos = 0;
-    if (pos > deck->num_cards) pos = deck->num_cards;
-    if (insert_card(deck, &card, pos) < 0) {
-        return -1;
-    }
-    return 0;
-}
-
 /**
  * @copydoc write_deck_maa
  */
+
+/**
+ * @brief Parse the nth numeric token from a card's string (1-based, past the code).
+ *
+ * Skips the two-character card code and then counts comma/space-delimited
+ * numeric tokens.  Returns the parsed value, or 0.0 if the field is absent
+ * or the card has no string.  Used by the exporter to extract float fields
+ * (re, im, R, X, …) without depending on the i[]/f[] arrays, which are only
+ * populated after formula evaluation (which may be skipped with -n).
+ */
+static double card_field_n(const card_t *c, int n)
+{
+    if (!c || !c->card_str) return 0.0;
+    const char *p = c->card_str;
+    /* skip card code (non-space chars at start) */
+    while (*p && !isspace((unsigned char)*p)) p++;
+    int field = 0;
+    while (*p) {
+        while (*p && (isspace((unsigned char)*p) || *p == ',')) p++;
+        if (!*p) break;
+        field++;
+        if (field == n) return strtod(p, NULL);
+        /* skip this token */
+        while (*p && *p != ',' && !isspace((unsigned char)*p)) p++;
+    }
+    return 0.0;
+}
+
 int write_deck_maa(const deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
@@ -131,14 +128,29 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
             break;
         }
     }
-    fprintf(fp, "%s\n", title);
+    fprintf(fp, "%s\n*\n", title);
 
-    /* frequency: look for FR card first */
+    /* frequency: look for FR card. Cards created by append_card_from_text do
+     * not have f[] fields populated, so parse the string directly.
+     * FR card format: "FR IFRQ,NFRQ,FMHZ,..." — FMHZ is the 3rd field. */
     double freq = 14.0; /* default */
     for (int i = 0; i < deck->num_cards; i++) {
         card_t *c = &deck->cards[i];
         if (strcmp(c->card_code, "FR") == 0) {
-            freq = c->f[1];
+            /* Try parsed fields first (cards loaded by read_deck) */
+            if (c->f[1] != 0.0) {
+                freq = c->f[1];
+            } else if (c->card_str) {
+                /* Fall back to parsing the string: skip "FR" then two int fields */
+                const char *p = c->card_str;
+                while (*p && !isdigit((unsigned char)*p) && *p != '-') p++; /* skip "FR" */
+                /* skip 2 integer fields separated by comma/space */
+                for (int skip = 0; skip < 2; skip++) {
+                    while (*p && (isdigit((unsigned char)*p) || *p == '-')) p++;
+                    while (*p && (*p == ',' || isspace((unsigned char)*p))) p++;
+                }
+                if (*p) freq = atof(p);
+            }
             break;
         }
     }
@@ -152,6 +164,61 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
         else if (strcmp(c->card_code, "LD") == 0) nl++;
         else if (strcmp(c->card_code, "EX") == 0) ns++;
     }
+    /* Scan for segmentation annotation cards before writing wires so that
+     * the wire table can restore the original SEG mode (e.g. -1) instead of
+     * the computed positive count, allowing MMANA to re-auto-segment.
+     *
+     * The importer stores:
+     *   ! maa-segmentation: dm1=N dm2=N sc=N ec=N [mode=N]  (global params)
+     *   GW ..., count, ... !segmentation:M              (per-wire mode suffix) */
+    int    exp_dm1 = 0, exp_dm2 = 0, exp_ec = 0;
+    double exp_sc  = 0.0;
+    int    exp_common_mode = INT_MIN; /* INT_MIN = not found */
+    int    have_seg_params = 0;
+    for (int i = 0; i < deck->num_cards; i++) {
+        card_t *c = &deck->cards[i];
+        if (c->card_code[0] != '!' || !c->card_str) continue;
+        const char *s = c->card_str;
+        while (*s == '!' || isspace((unsigned char)*s)) s++;
+        if (strncmp(s, "maa-segmentation:", 17) != 0) continue;
+        s += 17;
+        const char *p = s;
+        while (*p) {
+            while (*p && (isspace((unsigned char)*p) || *p == ',')) p++;
+            if (!*p) break;
+            char key[16] = {0}; int ki = 0;
+            while (*p && *p != '=' && ki < 15) key[ki++] = *p++;
+            if (*p == '=') p++;
+            char *end;
+            double val = strtod(p, &end);
+            if (end > p) {
+                if      (strcmp(key, "dm1")  == 0) exp_dm1 = (int)val;
+                else if (strcmp(key, "dm2")  == 0) exp_dm2 = (int)val;
+                else if (strcmp(key, "sc")   == 0) exp_sc  = val;
+                else if (strcmp(key, "ec")   == 0) exp_ec  = (int)val;
+                else if (strcmp(key, "mode") == 0) exp_common_mode = (int)val;
+                p = end;
+            } else { p++; }
+        }
+        if (exp_dm1 > 0 && exp_dm2 > 0) have_seg_params = 1;
+        break;
+    }
+    /* per-wire mode table (1-based tag index) */
+    int per_wire_mode[1024];
+    for (int i = 0; i < 1024; i++) per_wire_mode[i] = INT_MIN;
+    if (have_seg_params) {
+        for (int i = 0; i < deck->num_cards; i++) {
+            card_t *c = &deck->cards[i];
+            if (strcmp(c->card_code, "GW") != 0 || !c->card_str) continue;
+            const char *ann = strstr(c->card_str, "!segmentation:");
+            if (!ann) continue;
+            int mode_val = (int)strtol(ann + 14, NULL, 10);
+            int tag = 0;
+            sscanf(c->card_str + 2, " %d", &tag);
+            if (tag >= 1 && tag <= 1023) per_wire_mode[tag] = mode_val;
+        }
+    }
+
     /* Variant B: ***Wires*** header with wire count on its own line */
     fprintf(fp, "***Wires***\n");
     fprintf(fp, "%d\n", nw);
@@ -170,7 +237,16 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
         double y2 = c->f[5];
         double z2 = c->f[6];
         double rad = c->f[7];
+        /* Restore original SEG mode when we have segmentation params:
+         * prefer per-wire annotation, then common mode, then computed count */
         int segs = c->i[2];
+        if (have_seg_params) {
+            int tag = c->i[1];
+            if (tag >= 1 && tag <= 1023 && per_wire_mode[tag] != INT_MIN)
+                segs = per_wire_mode[tag];
+            else if (exp_common_mode != INT_MIN)
+                segs = exp_common_mode;
+        }
         fprintf(fp, "%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %d\n",
                 x1, y1, z1, x2, y2, z2, rad, segs);
     }
@@ -185,8 +261,9 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
         if (strcmp(c->card_code, "EX") != 0) continue;
         count++;
         int wire = c->i[2];
-        double re = c->f[1];
-        double im = c->f[2];
+        /* f[] may not be populated when -n skips formula eval; parse from string */
+        double re = card_field_n(c, 4);
+        double im = card_field_n(c, 5);
         double mag = hypot(re, im);
         double phase = atan2(im, re) * 180.0 / M_PI;
         fprintf(fp, "w%dc, %.2f, %.6f\n", wire, phase, mag);
@@ -201,17 +278,26 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
         count++;
         int wire = c->i[2];
         int seg  = c->i[3];
-        double R = c->f[1];
-        double X = c->f[2];
-        double L = c->f[3];
-        double C = c->f[4];
+        /* f[] may not be populated when -n skips formula eval; parse from string */
+        double R = card_field_n(c, 5);
+        double X = card_field_n(c, 6);
+        double L = card_field_n(c, 7);
+        double C = card_field_n(c, 8);
         fprintf(fp, "%d, %d, %.6g, %.6g, %.6g, %.6g\n",
                 wire, seg, R, X, L, C);
     }
 
+    /* ***Segmentation*** block — written when the deck carries the annotation */
+    if (have_seg_params) {
+        double sc_out = exp_sc > 0.0 ? exp_sc : 2.0;
+        int    ec_out = exp_ec > 0   ? exp_ec : 1;
+        fprintf(fp, "***Segmentation***\n");
+        fprintf(fp, "%d, %d, %.4g, %d\n", exp_dm1, exp_dm2, sc_out, ec_out);
+    }
+
     /* ###Comment### block — always last in the file.
        Emit CM cards (excluding the title) and '!' comment cards
-       (excluding importer metadata lines that start with "maa-"). */
+       (excluding segmentation: metadata). */
     for (int i = 0; i < deck->num_cards; i++) {
         if (i == title_card_idx) continue;
         card_t *c = &deck->cards[i];
@@ -222,10 +308,9 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
                 while (*txt && isspace((unsigned char)*txt)) txt++;
             }
         } else if (c->card_code[0] == '!' && c->card_str) {
-            /* '!' comment card from importer — skip internal metadata markers */
             const char *s = c->card_str;
             while (*s == '!' || isspace((unsigned char)*s)) s++;
-            if (strncmp(s, "maa-", 4) != 0)   /* exclude maa-segmentation etc. */
+            if (strncmp(s, "maa-segmentation:", 17) != 0)   /* exclude maa-segmentation: metadata */
                 txt = s;
         }
         if (txt && txt[0] != '\0')
@@ -258,9 +343,15 @@ int read_deck_maa(deck_t *deck, FILE *fp)
     char line[512];
     int n_wires = 0;
     double freq = 0.0;
-    int title_ce_index = -1;
     int any_minus1 = 0;
-    int wire_segs[1024] = {0}; /* raw seg count per wire (0-based); may be <=0 for auto-seg */
+    int    wire_segs[1024] = {0}; /* original SEG mode per wire; <=0 means auto-seg */
+    double wire_lens[1024] = {0}; /* physical wire length per wire (metres) */
+    /* MMANA segmentation params from ***Segmentation*** block (order: DM1 DM2 SC EC) */
+    int    seg_dm1 = 200, seg_dm2 = 20, seg_ec = 1;
+    double seg_sc  = 2.0;
+    /* uniformity of seg modes across auto-seg wires (computed after wire loop) */
+    int    common_seg_mode   = 0;  /* mode value if all auto-seg wires share one mode */
+    int    all_same_seg_mode = 1;  /* 0 if any two auto-seg wires differ in mode */
     /* ###Comment### blocks are always placed after EN — collect here and flush at the end */
     char *pending_comments[256];
     int   n_pending = 0;
@@ -284,7 +375,6 @@ int read_deck_maa(deck_t *deck, FILE *fp)
         snprintf(buf, sizeof buf, "CM %s", line);
         append_card_from_text(deck, buf);
         append_card_from_text(deck, "CE");
-        title_ce_index = deck->num_cards - 1;
     }
     /* else: Variant B no-title — the '*' line was consumed; frequency follows next */
 
@@ -355,59 +445,32 @@ int read_deck_maa(deck_t *deck, FILE *fp)
                      "GW %d, %d, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f",
                      i+1, segs, x1,y1,z1,x2,y2,z2,rad);
             append_card_from_text(deck, buf);
-            wire_segs[i < 1024 ? i : 1023] = segs;
+            int wi = i < 1024 ? i : 1023;
+            wire_segs[wi] = segs;
+            /* store wire length for segmentation computation later */
+            double dx = x2-x1, dy = y2-y1, dz = z2-z1;
+            wire_lens[wi] = sqrt(dx*dx + dy*dy + dz*dz);
             if (segs <= 0) any_minus1 = 1;
             i++;
         }
     }
-    /* if needed insert SY default and replace -1 tokens with the literal
-       'segs' in GW card strings so the user can edit the SY value later. */
-    if (any_minus1) {
-        /* insert SY helper just after CE when present, otherwise at position 0 */
-        int insert_at = (title_ce_index >= 0) ? title_ce_index + 1 : 0;
-        const char *sytext = "SY segs=10 !default segment count, change to realistic value";
-        insert_card_from_text_at(deck, sytext, insert_at);
-        for (int k = 0; k < deck->num_cards; k++) {
-            card_t *c = &deck->cards[k];
-            if (strcmp(c->card_code, "GW") != 0) continue;
-            if (!c->card_str) continue;
-            char *p1 = strchr(c->card_str, ',');
-            if (!p1) continue;
-            char *p2 = strchr(p1 + 1, ',');
-            if (!p2) continue;
-            /* extract token between p1 and p2 */
-            int toklen = (int)(p2 - (p1 + 1));
-            if (toklen <= 0 || toklen > 32) continue;
-            char token[40];
-            strncpy(token, p1 + 1, toklen);
-            token[toklen] = '\0';
-            /* trim */
-            char *ts = token;
-            while (*ts && isspace((unsigned char)*ts)) ts++;
-            char *te = token + strlen(token) - 1;
-            while (te > ts && isspace((unsigned char)*te)) *te-- = '\0';
-            if (atoi(ts) <= 0) {
-                /* build new string: prefix up to p1+1, then ' segs', then remainder from p2 */
-                size_t newlen = strlen(c->card_str) + 5;
-                char *ns = malloc(newlen);
-                if (!ns) continue;
-                size_t pre = (size_t)(p1 - c->card_str) + 1;
-                strncpy(ns, c->card_str, pre);
-                ns[pre] = '\0';
-                strcat(ns, " segs");
-                strcat(ns, p2);
-                free(c->card_str);
-                c->card_str = ns;
-                /* mirror to orig_str */
-                if (c->orig_str) {
-                    free(c->orig_str);
-                    c->orig_str = strdup(c->card_str);
+    /* Determine if all auto-seg wires share the same mode (for annotation) */
+    {
+        int first_auto = 1; /* 1 until we see the first auto-seg wire */
+        for (int i = 0; i < n_wires; i++) {
+            if (wire_segs[i] <= 0) {
+                if (first_auto) {
+                    common_seg_mode = wire_segs[i];
+                    first_auto = 0;
+                } else if (wire_segs[i] != common_seg_mode) {
+                    all_same_seg_mode = 0;
+                    break;
                 }
             }
         }
     }
-
     /* GE termination */
+    int ge_card_idx = deck->num_cards; /* index where GE will be placed */
     append_card_from_text(deck, "GE");
     /* FR and GN are deferred until after the section-parsing loop so that
        the ***G/H/M/R/AzEl/X*** ground parameters can be read first and GN
@@ -417,6 +480,9 @@ int read_deck_maa(deck_t *deck, FILE *fp)
        so we read raw lines rather than using the helper. */
     int section = 0; /* 1=load 2=source 3=seg 4=ground */
     int skip_count = 0; /* set after a section header to eat the count line */
+    /* The maa-segmentation annotation is deferred so it can be inserted
+       just before GE (in the geometry block) rather than after EX/LD. */
+    char seg_annotation[300] = {0};
     /* ground parameters collected from ***G/H/M/R/AzEl/X*** */
     int   g_type    = 0;   /* 0=free-space 1=perfect 2=real/MININEC -1=S-N  */
     double g_sigma_ms = 0.0; /* conductivity in mS/m (0=unspecified/default) */
@@ -572,17 +638,26 @@ int read_deck_maa(deck_t *deck, FILE *fp)
                 append_card_from_text(deck, buf);
             }
         } else if (section == 3) {
-            /* ***Segmentation***: one line, four values:
-               max-segs, segs-per-wavelength, taper-ratio, min-segs-per-wire */
-            int max_segs = 0, segs_per_wl = 0, min_segs = 0;
-            double taper = 0.0;
+            /* ***Segmentation***: one CSV line with order DM1, DM2, SC, EC.
+               Store for use in post-processing; a comment card is also emitted
+               so the values survive a round-trip through the deck. */
+            int dm1_tmp = 0, dm2_tmp = 0, ec_tmp = 0;
+            double sc_tmp = 0.0;
             if (sscanf(line, "%d%*[, ]%d%*[, ]%lf%*[, ]%d",
-                       &max_segs, &segs_per_wl, &taper, &min_segs) == 4) {
-                char buf[256];
-                snprintf(buf, sizeof buf,
-                         "! maa-segmentation: max-segs=%d segs-per-wl=%d taper=%.4g min-segs=%d",
-                         max_segs, segs_per_wl, taper, min_segs);
-                append_card_from_text(deck, buf);
+                       &dm1_tmp, &dm2_tmp, &sc_tmp, &ec_tmp) >= 3) {
+                if (dm1_tmp > 0) seg_dm1 = dm1_tmp;
+                if (dm2_tmp > 0) seg_dm2 = dm2_tmp;
+                if (sc_tmp  > 1.0) seg_sc = sc_tmp;
+                if (ec_tmp  > 0)   seg_ec = ec_tmp;
+                if (all_same_seg_mode && common_seg_mode <= 0)
+                    snprintf(seg_annotation, sizeof seg_annotation,
+                             "! maa-segmentation: dm1=%d dm2=%d sc=%.4g ec=%d mode=%d",
+                             seg_dm1, seg_dm2, seg_sc, seg_ec, common_seg_mode);
+                else
+                    snprintf(seg_annotation, sizeof seg_annotation,
+                             "! maa-segmentation: dm1=%d dm2=%d sc=%.4g ec=%d",
+                             seg_dm1, seg_dm2, seg_sc, seg_ec);
+                /* annotation is inserted before GE after the section loop */
             }
             section = 0; /* only one data line in this section */
         } else if (section == 4) {
@@ -599,6 +674,146 @@ int read_deck_maa(deck_t *deck, FILE *fp)
             section = 0; /* only one data line in this section */
         }
     } /* end while (section-parsing loop) */
+
+    /* Insert the maa-segmentation annotation just before GE so it appears in
+     * the geometry block, above the EX/LD cards that follow GE. */
+    if (seg_annotation[0]) {
+        append_card_from_text(deck, seg_annotation); /* appended last for now */
+        /* slide it left to ge_card_idx (before GE) */
+        card_t tmp = deck->cards[deck->num_cards - 1];
+        memmove(&deck->cards[ge_card_idx + 1],
+                &deck->cards[ge_card_idx],
+                (deck->num_cards - 1 - ge_card_idx) * sizeof(card_t));
+        deck->cards[ge_card_idx] = tmp;
+    }
+
+    /* GW post-processing: fix auto-seg counts and EX segment references.
+     *
+     * The ***Segmentation*** params (DM1/DM2/SC/EC) live at the *end* of the
+     * .maa file, after ***Source***, so they are only known here — after the
+     * section-parsing loop above.  Similarly, EX cards emitted during source
+     * parsing may carry "segs"-based expressions when the original wire used
+     * auto-segmentation; once we have the real counts we can replace them with
+     * concrete integers. */
+    if (any_minus1) {
+        double wl = (freq > 0.0) ? (299.8 / freq) : 1.0;
+
+        /* --- pass 1: fix GW segment counts --- */
+        for (int k = 0; k < deck->num_cards; k++) {
+            card_t *c = &deck->cards[k];
+            if (strcmp(c->card_code, "GW") != 0 || !c->card_str) continue;
+            char *p1 = strchr(c->card_str, ',');
+            if (!p1) continue;
+            char *p2 = strchr(p1 + 1, ',');
+            if (!p2) continue;
+            int toklen = (int)(p2 - (p1 + 1));
+            if (toklen <= 0 || toklen > 32) continue;
+            char token[40];
+            strncpy(token, p1 + 1, toklen);
+            token[toklen] = '\0';
+            char *ts = token;
+            while (*ts && isspace((unsigned char)*ts)) ts++;
+            char *te = ts + strlen(ts) - 1;
+            while (te > ts && isspace((unsigned char)*te)) *te-- = '\0';
+            int raw_segs = atoi(ts);
+            if (raw_segs > 0) continue;
+
+            int tag = 0;
+            sscanf(c->card_str + 2, " %d", &tag);
+            int widx = tag - 1;
+
+            int computed = 1;
+            if (widx >= 0 && widx < n_wires && wire_lens[widx] > 0.0)
+                computed = compute_segmentation(wire_lens[widx], wl, raw_segs,
+                                                seg_dm1, seg_dm2, seg_sc, seg_ec, NULL);
+            if (computed < 1) computed = 1;
+            if (widx >= 0 && widx < 1024)
+                wire_segs[widx] = computed; /* now positive; used by EX pass below */
+
+            char replacement[32];
+            snprintf(replacement, sizeof replacement, " %d", computed);
+            char ann[32] = "";
+            if (!all_same_seg_mode)
+                snprintf(ann, sizeof ann, " !segmentation:%d", raw_segs);
+
+            size_t pre = (size_t)((p1 + 1) - c->card_str);
+            size_t suf = strlen(p2);
+            size_t newlen = pre + strlen(replacement) + suf + strlen(ann) + 1;
+            char *ns = malloc(newlen);
+            if (!ns) continue;
+            memcpy(ns, c->card_str, pre);
+            ns[pre] = '\0';
+            strcat(ns, replacement);
+            strcat(ns, p2);
+            strcat(ns, ann);
+            free(c->card_str);
+            c->card_str = ns;
+            if (c->orig_str) { free(c->orig_str); c->orig_str = strdup(ns); }
+        }
+
+        /* --- pass 2: fix EX segment expressions that reference "segs" ---
+         * Patterns emitted by the source section when wsc <= 0:
+         *   "(segs+1)/2"        centre attachment
+         *   "(segs+1)/2+N"      centre + offset
+         *   "segs"              end attachment
+         *   "segs+N"/"segs-N"   end + offset
+         * Replace each with the concrete integer now that wire_segs is set. */
+        for (int k = 0; k < deck->num_cards; k++) {
+            card_t *c = &deck->cards[k];
+            if (strcmp(c->card_code, "EX") != 0 || !c->card_str) continue;
+            /* EX format: "EX 0, wire, seg, re, im, 0,0,0" */
+            char *p1 = strchr(c->card_str, ',');        /* after field-0 */
+            if (!p1) continue;
+            char *p2 = strchr(p1 + 1, ',');             /* after wire   */
+            if (!p2) continue;
+            char *p3 = strchr(p2 + 1, ',');             /* after seg    */
+            if (!p3) continue;
+            int seglen = (int)(p3 - (p2 + 1));
+            if (seglen <= 0 || seglen > 64) continue;
+            char segfield[68];
+            strncpy(segfield, p2 + 1, seglen);
+            segfield[seglen] = '\0';
+            if (!strstr(segfield, "segs")) continue;    /* numeric — skip */
+
+            int tag = 0;
+            sscanf(p1 + 1, " %d", &tag);
+            int wsc = (tag >= 1 && tag <= n_wires) ? wire_segs[tag - 1] : 1;
+            if (wsc < 1) wsc = 1;
+
+            /* evaluate expression */
+            int seg_val = 1;
+            char *sf = segfield;
+            while (*sf && isspace((unsigned char)*sf)) sf++;
+            if (strncmp(sf, "(segs+1)/2", 10) == 0) {
+                seg_val = (wsc + 1) / 2;
+                sf += 10;
+                if (*sf == '+' || *sf == '-')
+                    seg_val += (int)strtol(sf, NULL, 10);
+            } else if (strncmp(sf, "segs", 4) == 0) {
+                seg_val = wsc;
+                sf += 4;
+                if (*sf == '+' || *sf == '-')
+                    seg_val += (int)strtol(sf, NULL, 10);
+            }
+            if (seg_val < 1)   seg_val = 1;
+            if (seg_val > wsc) seg_val = wsc;
+
+            char replacement[32];
+            snprintf(replacement, sizeof replacement, " %d", seg_val);
+            size_t pre = (size_t)((p2 + 1) - c->card_str);
+            size_t suf = strlen(p3);
+            size_t newlen = pre + strlen(replacement) + suf + 1;
+            char *ns = malloc(newlen);
+            if (!ns) continue;
+            memcpy(ns, c->card_str, pre);
+            ns[pre] = '\0';
+            strcat(ns, replacement);
+            strcat(ns, p3);
+            free(c->card_str);
+            c->card_str = ns;
+            if (c->orig_str) { free(c->orig_str); c->orig_str = strdup(ns); }
+        }
+    }
 
     /* emit GN card if the file specified a ground model.
        Placed before FR so the deck is in the correct NEC order. */

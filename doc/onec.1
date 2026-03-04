@@ -1,0 +1,272 @@
+.\" Man page for onec (OpenNEC command-line tool)
+.\" Copyright (c) 2026 Maury Markowitz.  MIT licence.
+.\"
+.TH ONEC 1 "March 2026" "OpenNEC" "User Commands"
+.SH NAME
+onec \- antenna simulation tool using the NEC-2 method-of-moments engine
+.SH SYNOPSIS
+.B onec
+[\fIOPTIONS\fR]
+[\fIFILE\fR .\|.\|.\|]
+.SH DESCRIPTION
+.B onec
+is the command-line interface to OpenNEC, an implementation of the
+Numerical Electromagnetics Code (NEC-2) antenna modelling engine.
+It reads one or more antenna-design decks (plain-text files of
+geometry and control cards), runs the requested electromagnetic
+simulations, and writes the results.
+.PP
+A single deck describes the physical layout of an antenna (wire
+segments, surfaces, loads, and ground parameters) together with the
+simulation controls (frequency sweeps, excitations, and output
+requests).  The canonical file extension is
+.B .nec
+or
+.BR .deck .
+.PP
+Multiple input files or directories may be given on the command line.
+When more than one input is processed,
+.B onec
+writes each result to a sidecar file named
+.IB input .out
+next to the source file, and uses
+.I stdout
+to report progress.  With a single input and no
+.B \-o
+flag, results go to
+.IR stdout .
+.PP
+If no file is given at all, the deck is read from
+.IR stdin .
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print a usage summary and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-r ", " \-\-recursive
+Recurse into subdirectories when a directory is given as an argument.
+By default only files whose extensions are recognised as NEC decks
+.RI ( .nec ,
+.IR .deck )
+are processed.  Combine with a quoted glob to select a different
+extension (see
+.B EXAMPLES
+below).
+.TP
+.BR \-n ", " \-\-no\-run
+Parse and validate the deck but do not execute the simulation.
+Often combined with
+.B \-t
+to perform a quick syntax check.
+.TP
+.BR \-t ", " \-\-test\-deck
+Run built-in deck sanity checks and report any warnings or errors.
+Can be combined with
+.B \-n
+to check without simulating.
+.TP
+.BI \-i " file" "\fR,\fP \-\-input\-file=" file
+Read the deck from
+.IR file .
+This flag is not required; a bare positional argument has the same
+effect and takes precedence if both are given.
+.TP
+.BI \-o " file" "\fR,\fP \-\-output\-file=" file
+Write simulation results to
+.IR file .
+With a single input and no
+.B \-o
+flag the results go to
+.IR stdout .
+With multiple inputs or
+.BR \-r ,
+output is always written to per-file
+.I .out
+sidecar files regardless of this flag.
+Passing
+.B \-o
+with no argument (or with just
+.BR \- )
+forces output to
+.IR stdout .
+.TP
+.BI \-e " file" "\fR,\fP \-\-error\-file=" file
+Redirect error and diagnostic messages to
+.I file
+instead of
+.IR stderr .
+.TP
+.BI \-g\fR[\fIfile\fR] ", " \-\-greens\fR[=\fIfile\fR]
+Compute and write a Green's function file.  The filename defaults to
+the input path with the extension replaced by
+.BR .ngf .
+.TP
+.BI \-j " N" "\fR,\fP \-\-jobs=" N
+When processing multiple input files, run up to
+.I N
+simulations in parallel.  Defaults to
+.BR 1 .
+.TP
+.BI \-w " file" "\fR,\fP \-\-write\-file=" file
+Convert and write the deck to
+.I file
+in the format inferred from its extension.
+Pass a bare extension such as
+.B .maa
+to convert multiple input files in-place (each output is written next
+to its corresponding input file).
+Supported output formats: see
+.B FILE FORMATS
+below.
+.PP
+Single-letter flags that take no argument may be combined:
+.B \-nt
+is equivalent to
+.BR "\-n \-t" .
+.SH FILE FORMATS
+.B onec
+recognises the following file formats.
+.TS
+l l l l.
+\fBExtension(s)\fP	\fBFormat\fP	\fBRead\fP	\fBWrite\fP
+_
+\fI.nec\fP, \fI.deck\fP, \fI.4nec\fP	OpenNEC / NEC-2 deck	yes	yes
+\fI.nec2\fP	NEC-2 stripped numeric	yes	yes
+\fI.nec4\fP	NEC-4	yes	stub
+\fI.maa\fP, \fI.mma\fP	MMANA-GAL	yes	yes
+\fI.yo\fP, \fI.ant\fP, \fI.yag\fP	Yagi Optimizer	yes	yes
+\fI.ez\fP, \fI.ezn\fP	EZNEC	detected	\(em
+\fI.nwp\fP, \fI.nwz\fP	NEC-Win Plus/Zip	detected	\(em
+\fI.aci\fP	AntSolver	detected	\(em
+\fI.mmae\fP	MMANA-EZ	detected	\(em
+.TE
+.PP
+\(lqDetected\(rq means the extension is recognised and a helpful error
+is shown, but no converter exists yet.  When a directory is scanned
+with
+.BR \-r ,
+only NEC deck extensions are collected automatically; all other formats
+must be passed explicitly or with a glob pattern.
+.SH EXAMPLES
+Run a simulation and print results to stdout:
+.PP
+.RS
+.B onec example.nec
+.RE
+.PP
+Run a simulation and write results to the default sidecar file
+.IR example.out :
+.PP
+.RS
+.B onec \-o example.nec
+.RE
+.PP
+Run a simulation and write results to a named file:
+.PP
+.RS
+.B onec \-o result.out example.nec
+.RE
+.PP
+Parse and validate a deck without simulating:
+.PP
+.RS
+.B onec \-nt example.nec
+.RE
+.PP
+Process an entire directory tree, four files at a time:
+.PP
+.RS
+.B onec \-r \-j 4 /path/to/models/
+.RE
+.PP
+Process only MMANA-GAL files in a directory tree:
+.PP
+.RS
+.B "onec \-r '/path/to/models/*.maa'"
+.RE
+.PP
+Convert a MMANA-GAL file to NEC format and simulate it:
+.PP
+.RS
+.B onec example.mma
+.RE
+.PP
+Convert a folder of MMANA-GAL files to NEC decks without simulating:
+.PP
+.RS
+.B "onec \-r \-n \-w .nec '/path/to/models/*.mma'"
+.RE
+.PP
+Write a Green's function file alongside the output:
+.PP
+.RS
+.B onec \-g example.nec
+.RE
+.SH OUTPUT
+When a single input file is processed and
+.B \-o
+is not given, results are written to
+.IR stdout .
+When multiple files are processed (either by listing them, or with
+.BR \-r ),
+each file
+.I path/to/model.nec
+produces a corresponding
+.I path/to/model.out
+sidecar file, and
+.I stdout
+is used for per-file progress messages and the end-of-batch summary.
+.PP
+Errors and warnings always go to
+.I stderr
+unless redirected with
+.BR \-e .
+.SH EXIT STATUS
+.TP
+.B 0
+All requested operations completed without error.
+.TP
+.B 1
+One or more errors occurred (parse error, invalid deck, I/O failure).
+.SH FILES
+.TP
+.I *.nec, *.deck
+OpenNEC / NEC-2 antenna deck (primary input format).
+.TP
+.I *.out
+Default output file written when processing multiple inputs.
+.TP
+.I *.ngf
+Green's function file written by
+.BR \-g .
+.SH SEE ALSO
+The file
+.I doc/OpenNEC file format.md
+describes the deck language.
+.PP
+.I doc/Differences between OpenNEC and nec2c.md
+documents behavioural differences from the reference
+.BR nec2c (1)
+implementation.
+.PP
+.I doc/YO file format.md
+and other files in
+.I doc/
+cover the supported 3rd-party formats.
+.SH HISTORY
+OpenNEC is based on the NEC-2 Fortran code released by Lawrence
+Livermore National Laboratory in the early 1980s, and on the C port
+.BR nec2c
+by Neoklis Kyriazis (first released 2003, version 1.3 released 2014).
+OpenNEC was forked from nec2c 1.3 and has since been substantially
+extended.  Formula evaluation is provided by
+.B tinyexpr
+by Lewis Van Winkle (zlib licence).
+.SH AUTHORS
+Copyright \(co 2026 Maury Markowitz.
+Released under the MIT licence; see
+.I LICENSE
+in the source distribution.
