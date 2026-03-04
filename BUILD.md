@@ -133,11 +133,11 @@ make BACKEND=openblas
 
 ### Performance Notes
 
-Recent timing runs on macOS (Apple Silicon) using a batch of files on the command line show that OpenBLAS is noticably faster than Accelerate, with the original built-in backend being significantly slower on large models:
+Recent timing runs on macOS (Apple Silicon) using a batch of files on the command line show that OpenBLAS is noticably faster than Accelerate, with the original built-in backend being significantly slower than either:
 
-- Accelerate: average real ≈ 0.477s across 7 decks
-- OpenBLAS: average real ≈ 0.383s across 7 decks
-- Original (internal): average real ≈ 3.139s across 7 decks
+- Accelerate: average ≈ 0.477s across 7 decks
+- OpenBLAS: average ≈ 0.383s across 7 decks
+- Original: average ≈ 3.139s across 7 decks
 
 These times include the time needed to open and parse the deck and write the results, which is generally on the order of 50 to 100 ms. This means the improvement under OpenBLAS is fairly significant, especially when used as a library as opposed to the command line.
 
