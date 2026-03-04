@@ -1,5 +1,5 @@
 /*
- * mma-support.h
+ * maa-support.h
  *
  * Public interface for MMANA-GAL .maa import/export support.  Applications
  * can use these functions to read antenna geometry from a .maa file into an

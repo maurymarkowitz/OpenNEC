@@ -1,5 +1,5 @@
 /******************************************************************************
- * mma-support.c
+ * maa-support.c
  *
  * Functions to convert between OpenNEC deck structures and the
  * MMANA-GAL ".maa" file format.  The format is a simple, line-oriented
@@ -14,7 +14,7 @@
  *
  *****************************************************************************/
 
-#include "mma-support.h"
+#include "maa-support.h"
 #include "deck.h"    // for insert_card
 #include "misc.h"    // for add_error
 #include "geometry.h" // for compute_segmentation

@@ -20,7 +20,7 @@ int segment_number(nec_context_t *ctx, int tag, int m);
  *
  * These utilities implement the MMANA-GAL tapering segmentation method
  * (described in the "Segmentation" section of the MMANA-GAL help).  They
- * are called by the .maa importer (mma-support.c) and may also be called
+ * are called by the .maa importer (maa-support.c) and may also be called
  * directly by GUI applications that need to know how many NEC segments to
  * assign to a wire, or need to split a wire into equal-segment sub-wires
  * that together reproduce the taper profile.

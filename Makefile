@@ -144,7 +144,7 @@ else
     $(error ERROR: Unknown BACKEND=$(BACKEND). Valid options: auto, accelerate, openblas, mkl, atlas, blas, original)
 endif
 
-SOURCES = src/main.c src/input.c src/output.c src/deck.c src/deck_validations.c src/card_validation.c src/geometry.c src/calculations.c src/fields.c src/ground.c src/matrix.c src/network.c src/radiation.c src/somnec.c src/misc.c src/types.c src/tinyexpr.c src/control.c src/mma-support.c src/yo-support.c
+SOURCES = src/main.c src/input.c src/output.c src/deck.c src/deck_validations.c src/card_validation.c src/geometry.c src/calculations.c src/fields.c src/ground.c src/matrix.c src/network.c src/radiation.c src/somnec.c src/misc.c src/types.c src/tinyexpr.c src/control.c src/maa-support.c src/yo-support.c
 
 LIB_SOURCES = $(filter-out src/main.c, $(SOURCES))
 LIB_OBJECTS = $(LIB_SOURCES:.c=.o)
@@ -171,9 +171,9 @@ clean:
 roundtrip_test: test/roundtrip_test.c $(LIBRARY)
 	$(CC) $(CFLAGS) test/roundtrip_test.c $(LIBRARY) $(LDFLAGS) -o roundtrip_test -lm
 
-# Build the mma converter utility (links libonec.a and includes mma-support)
-maa_convert: test/maa_convert.c $(LIBRARY) src/mma-support.c
-	$(CC) $(CFLAGS) test/maa_convert.c src/mma-support.c $(LIBRARY) $(LDFLAGS) -o maa_convert -lm
+# Build the maa converter utility (links libonec.a and includes maa-support)
+maa_convert: test/maa_convert.c $(LIBRARY) src/maa-support.c
+	$(CC) $(CFLAGS) test/maa_convert.c src/maa-support.c $(LIBRARY) $(LDFLAGS) -o maa_convert -lm
 
 .PHONY: maa_convert
 

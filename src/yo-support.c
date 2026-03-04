@@ -56,7 +56,7 @@
 #define YO_DEFAULT_CONDUCTIVITY  2.52e7
 
 /* -------------------------------------------------------------------------
- * Shared card-creation helpers (same pattern as mma-support.c)
+ * Shared card-creation helpers (same pattern as maa-support.c)
  * ---------------------------------------------------------------------- */
 
 static int append_card_from_text(deck_t *deck, const char *text)

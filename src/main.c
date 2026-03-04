@@ -18,7 +18,7 @@
 #include "control.h"
 #include "output.h"
 #include "deck_validations.h"
-#include "mma-support.h"
+#include "maa-support.h"
 #include "yo-support.h"
 
 #ifndef _GETOPT_H
