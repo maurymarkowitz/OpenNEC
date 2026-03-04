@@ -23,7 +23,7 @@ A typical `.maa` file is organised into the following logical sections. Two dist
    0.0, -21.1, -3.662e-07,  0.0, 0.0, 0.0, 0.001, -1
    ````
 
-   **Radius units.**  The radius field is ambiguous: values appear to be in millimetres or in wavelengths unless there is a per‑file annotation that overrides this. The mechanism for indicating the unit is not yet fully understood; OpenNEC's importer currently treats the field value as metres (the NEC native unit) without conversion.  Users should verify or scale values manually if the source file uses mm.
+   **Radius units.**  The radius field is always in metres. Although the MMANA‑GAL GUI lets the user enter wire dimensions in millimetres or wavelengths, the software converts to metres before writing the file. OpenNEC imports and exports the value without conversion.
 
    **Segment count special values.**  A positive integer gives the exact NEC segment count for that wire.  The following negative and zero values are MMANA auto‑segmentation directives:
 
@@ -208,7 +208,7 @@ Minimal grammar
 
 <wire>   ::= <float> SEP <float> SEP <float> SEP   // x1 y1 z1
              <float> SEP <float> SEP <float> SEP   // x2 y2 z2
-             <float> SEP <seg-count>               // radius (mm or λ, see notes), segments
+             <float> SEP <seg-count>               // radius (metres), segments
 
 <seg-count> ::= <positive-int>  // explicit NEC segment count
               | "0"             // auto uniform segmentation
