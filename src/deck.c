@@ -918,7 +918,11 @@ static void update_symbol_list(deck_t *deck, errors_list_t *errors)
   for (int i = 0; i < deck->num_cards; i++)
   {
     card_t *card = &deck->cards[i];
-    if (strcmp(card->card_code, "SY") == 0 && card->formulas)
+    // Ignored (commented-out) SY cards must NOT contribute to the symbol table.
+    // If an ignored 'SY sg=6 appears before an active SY sg=1, both would be
+    // added and tinyexpr would pick up the first (ignored) binding, giving the
+    // wrong value. Skip ignored cards here to keep the table clean.
+    if (strcmp(card->card_code, "SY") == 0 && card->formulas && !card->ignore)
     {
       key_value_t *kv = card->formulas;
       while (kv)

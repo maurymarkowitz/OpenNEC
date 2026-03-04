@@ -30,21 +30,16 @@ Items still to be implemented:
 
 * CVEL constant: currently set to 299.8 (matching the original NEC2 Fortran and nec2c) for numerical compatibility with reference outputs. The exact SI value is 299.792458 m/μs. Investigate whether to use the exact value and document the tradeoff: using 299.8 suppresses ~0.1-0.2% differences vs nec2c but is technically less accurate.
 
-* known numerical differences vs nec2c:
+* test files with differences with nec2c:
 - 4nec2/VHFbeams/BIQDFEED.nec: 63% power difference. EX 0 tag=9 with all GW tag=0 — the source gets auto-assigned to segment 1143 correctly, but the matrix solve gives a different impedance (49.6-59.6j vs 44+0.6j). Root cause unknown; likely related to all-tag-0 wire auto-numbering affecting the GM-replicated mesh.
 - DL5SAY/CENFED2.nec (also EX2.nec): multi-batch deck with FR×3/EX5/XQ then LD/FR/EX5/XQ — second batch output block is duplicated and power is 4× wrong. Root cause: state interaction between LD type 5 and EX type 5 across batches.
 - DL5SAY/EX3.nec: uses EX type 1 (plane wave) with RP type 1 (ground wave/receiving pattern) — complex receiving-pattern feature, output sections missing.
 - DL5SAY/EX4.nec: SP/GX (surface patches + geometry mirror) gives 40% power difference. Surface patch + GX interaction not fully implemented.
 - 4nec2/HFcollinear/4 Dipole Trans-lines.nec: TL length ≈ 1 wavelength causes near-singular 1/sin(βL); result is hyper-sensitive to CVEL precision — not meaningfully fixable without the exact same floating-point path as nec2c.
 - 4nec2/VHFsimple/Generator.nec: numerical artifact (near-zero average power gain produces 100% relative difference on a ~10^11 number).
-- D2T.nec: has SY Len=#.4". Is this the way optimization works? Or simply a typo for AWG? Needs investigation.
-- hrs_441.nec: has TL cards referencing tag 451 which doesn't exist? Tag 451 should be created by the GX card, but onec reports "references invalid tag 451, segment 6". Possible GX tag-assignment bug.
-
-
-
+- 4nec2 examples/Aperiodic/D2T.nec: has SY Len=#.4". Is this the way optimization works? Or simply a typo for AWG? Needs investigation.
 - nec2++/ga_pjw_1.nec: GW tag=0 with 640 segments, EX tag=0, perfect ground at 2.4 GHz — matrix is near-singular, impedance ~10^14 Ω; 24% relative difference on an already-astronomical value is a numerical artifact, not a code bug.
 
-
 * files to examine:
-- cebik Tutorial-2/ch-3/3-7.nec is empty (0 bytes) — likely emptied by a git filter-branch; the Vol-1/nec/3-7.nec copy runs OK. 3-2a-nec4.nec not found in test files.
-- n2pl_phased_dloop.nec no longer hangs; exits 1 with "LD type 7 not supported" — covered by the LD type 7 TODO item above.
+- cebik Tutorial-2/ch-3/3-7.nec is empty. 3-2a-nec4.nec not found in test files.
+

@@ -93,9 +93,12 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
   for(int i = deck->geometry_start; i <= deck->geometry_end; i++) {
     card = &deck->cards[i];
     
-    // Check if this is a SY card - if so, evaluate its formulas and continue to next card
+    // Check if this is a SY card - if so, evaluate its formulas and continue to next card.
+    // Ignored (commented-out) SY cards are skipped: they must not update the symbol table,
+    // otherwise an ignored 'SY X=old that precedes an active SY X=new would shadow the
+    // correct value when tinyexpr resolves 'X' (it picks the first binding it finds).
     if(strcmp(card->card_code, "SY") == 0) {
-      if(card->formulas) {
+      if(!card->ignore && card->formulas) {
         key_value_t *kv = card->formulas;
         while (kv) {
           evaluate_formula(ctx, kv, deck, errors);
