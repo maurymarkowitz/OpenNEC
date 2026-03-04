@@ -4,8 +4,8 @@ OpenNEC
 **Copyright © 2026 Maury Markowitz**
 
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)
 ![NEC-2](https://img.shields.io/badge/NEC2-engine-orange?style=flat-square)
+![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)
 
 This software is released under the MIT license. See [LICENSE](LICENSE) for details.
 
@@ -94,7 +94,7 @@ This will create a new NEC file, `example.nec`. This also works along with `-r` 
 
 In this case the `-n` was added so it does not try to calculate any results, it simply reads the file and writes the deck.
 
-There are a number of limitations in these importers as the various formats support different features and options. See the "file format" documents in the doc folder for more details.
+There are a number of limitations in these importers as the various formats support different features and options. See the "file format" documents in the [doc folder](doc/)for more details.
 
 The currently recognized formats and extensions are:
 
@@ -129,6 +129,8 @@ Programs that wish to use OpenNEC as their calculation engine can directly acces
 OpenNEC also improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. See [OpenNEC, NEC-2 and nec2c](doc/OpenNEC,%20NEC-2%20and%20nec2c.md) for details.
 
 OpenNEC also adds many of the features found in the popular 4nec2 program on Windows. In particular, it supports the symbols (variables), formulas and calculations that make it easier to design complex antennas. These features are widely used and found in many of the real-world `.nec` decks found on the 'net.
+
+**NOTE:** One curiousity in the nec2c code is that the value for the speed of light, the constant `CVEL` is set to 299.8. This is not very accurate, and changing this to a more accurate value, 299.792458, results in 1 to 2% changes in most files. The original value has been retained in onec for compatibility reasons.
 
 Known limitations
 -----------------

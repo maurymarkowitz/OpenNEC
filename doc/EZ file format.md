@@ -23,7 +23,7 @@ xx xx 00 00 52 ...
 
 where `xx xx` is a little-endian 16-bit wire count and `0x52` = `'R'` appears to be a constant version/format marker. A small number of files in the corpus are actually FrontPage/SharePoint web-metadata sidecars (starting with `vti_encoding:SR|`) — these should be ignored.
 
-File sizes range from ~680 bytes (1 wire, no loads) to several hundred kilobytes (models with hundreds of wires).
+File sizes range from ~680 bytes for a file with 1 wire and no loads, to several hundred kilobytes for models with hundreds of wires.
 
 Top-Level Structure
 -------------------
@@ -48,13 +48,13 @@ Header Block 1 (0x00–0x2F)
 
 | Offset | Size | Type       | Description |
 |--------|------|------------|-------------|
-| 0x00   | 2    | int16 LE   | ✓ Number of wires (`N`) |
-| 0x02   | 2    | int16 LE   | (?) Usually 0; sometimes 1 |
+| 0x00   | 2    | int16      | ✓ Number of wires (`N`) |
+| 0x02   | 2    | int16      | (?) Usually 0; sometimes 1 |
 | 0x04   | 1    | char ASCII | ✓ Format marker — always `'R'` (0x52) in examined corpus |
-| 0x05   | 4    | float32 LE | ✓ Design frequency in **MHz** |
+| 0x05   | 4    | float32    | ✓ Design frequency in **MHz** |
 | 0x09   | 1    | char ASCII | (?) Unit / coordinate-system flag.  `'A'` is most common; `'E'` observed in some models.  See Unit System section. |
 | 0x0A   | 2    | —          | (?) Reserved; always `0x00 0x00` |
-| 0x0C   | 4    | float32 LE | (?) Ground dielectric constant or display scale; often 0.0 |
+| 0x0C   | 4    | float32    | (?) Ground dielectric constant or display scale; often 0.0 |
 | 0x10   | 2    | —          | Sentinel bytes — nearly always `0x80 0x3F` |
 | 0x12   | 30   | char[30]   | ✓ Model title, ASCII, space-padded (ends at 0x2F) |
 
@@ -69,7 +69,7 @@ Header Block 1 (0x00–0x2F)
 Decoding:
 - `01 00` → 1 wire
 - `52` → format marker `'R'`
-- `00 00 60 40` → float32 LE = **3.5 MHz** ✓
+- `00 00 60 40` → float32 = **3.5 MHz** ✓
 - `41` → unit flag `'A'`
 - `80 3f` → sentinel
 - bytes 0x12–0x2F → `"3.5 doublet 8 wl              "` ✓
@@ -79,18 +79,18 @@ Header Block 2 (0x30–0xB9)
 
 | Offset | Size | Type       | Description |
 |--------|------|------------|-------------|
-| 0x30   | 2    | int16 LE   | ✓ Wire count (repeated) |
-| 0x32   | 2    | int16 LE   | (?) Source count |
+| 0x30   | 2    | int16      | ✓ Wire count (repeated) |
+| 0x32   | 2    | int16      | (?) Source count |
 | 0x34   | 2    | —          | Reserved |
 | 0x36   | 1    | char ASCII | ✓ NEC ground type: `'R'`=real/Sommerfeld, `'F'`=free space (GN −1), `'P'`=perfect |
 | 0x37   | 1    | —          | Reserved |
 | 0x38   | 8    | —          | Reserved flags; often contains `00 ff ff 18` |
 | 0x40   | 1    | byte       | (?) EZNEC version major digit; value `0x05` observed for v5 |
-| 0x41   | 1    | char ASCII | (?) Units code in display: `'I'`=inches, `'F'`=feet, `'M'`=meters, `'W'`=unknown |
+| 0x41   | 1    | char ASCII | (?) Units code in display: `'I'`=inches, `'F'`=feet, `'M'`=meters, `'W'`=wavelength |
 | 0x42   | 2    | char[2]    | (?) Constant `"FT"` in examined files |
-| 0x44   | 4    | float32 LE | (?) Constant 1303.8 — possibly max frequency or display limit |
-| 0x48   | 4    | float32 LE | (?) 0.0 |
-| 0x4C   | 4    | float32 LE | (?) Constant 360.0 — possibly display distance limit |
+| 0x44   | 4    | float32    | (?) Constant 1303.8 — possibly max frequency or display limit |
+| 0x48   | 4    | float32    | (?) 0.0 |
+| 0x4C   | 4    | float32    | (?) Constant 360.0 — possibly display distance limit |
 | 0x50   | 2    | char       | (?) `'Z'` byte + padding |
 | 0x51   | 104  | —          | Antenna view / display settings (zoom, rotation, etc.) |
 
@@ -110,35 +110,31 @@ wire[k] at 0x00BA + k × 170
 
 | Record offset | Size | Type       | Description |
 |---------------|------|------------|-------------|
-| +0x00         | 4    | float32 LE | ✓ X coordinate of endpoint 1 |
-| +0x04         | 4    | float32 LE | ✓ Y coordinate of endpoint 1 |
-| +0x08         | 4    | float32 LE | ✓ Z coordinate of endpoint 1 |
-| +0x0C         | 4    | float32 LE | ✓ X coordinate of endpoint 2 |
-| +0x10         | 4    | float32 LE | ✓ Y coordinate of endpoint 2 |
-| +0x14         | 4    | float32 LE | ✓ Z coordinate of endpoint 2 |
-| +0x18         | 4    | float32 LE | ✓ Wire **diameter** (= 2 × NEC GW radius) |
+| +0x00         | 4    | float32    | ✓ X coordinate of endpoint 1 |
+| +0x04         | 4    | float32    | ✓ Y coordinate of endpoint 1 |
+| +0x08         | 4    | float32    | ✓ Z coordinate of endpoint 1 |
+| +0x0C         | 4    | float32    | ✓ X coordinate of endpoint 2 |
+| +0x10         | 4    | float32    | ✓ Y coordinate of endpoint 2 |
+| +0x14         | 4    | float32    | ✓ Z coordinate of endpoint 2 |
+| +0x18         | 4    | float32    | ✓ Wire **diameter** (= 2 × NEC GW radius) |
 | +0x1C         | 2    | —          | ✓ Record separator: always `0xFF 0xFF` |
-| +0x1E         | 2    | int16 LE   | ✓ Segment count for this wire |
-| +0x20         | 2    | int16 LE   | (?) Wire tag / sequential number |
+| +0x1E         | 2    | int16      | ✓ Segment count for this wire |
+| +0x20         | 2    | int16      | (?) Wire tag / sequential number |
 | +0x22         | 4    | —          | (?) Reserved |
-| +0x26         | 4    | float32 LE | (?) Source voltage (1.0 for default 1-V excitation) |
-| +0x2A         | 4    | float32 LE | (?) Source imaginary component or phase |
+| +0x26         | 4    | float32    | (?) Source voltage (1.0 for default 1-V excitation) |
+| +0x2A         | 4    | float32    | (?) Source imaginary component or phase |
 | +0x2E         | 1    | byte       | (?) `0x56` = `'V'` observed — possibly "voltage source" flag |
 | +0x2F–+0xA9   | 107  | —          | Remaining source/load per-wire data; structure not fully decoded |
 
 ### Notes on Wire Geometry
 
-- **Units** — Coordinates are stored in the same unit the user chose in EZNEC
-  (feet or meters).  The two most common cases observed in the corpus are:
+- **Units** — Coordinates are stored in the same unit the user chose in EZNEC (feet or meters).  The two most common cases observed in the corpus are:
   - **Feet** — typical for US-authored HF models (values like 342.62, 85.655)
-  - **Meters** — typical for metric authors and VHF/UHF models (values like
-    −13.356, 1.895)
-  - The unit byte at header offset 0x09 and/or 0x41 likely encodes the system,
-    but the exact mapping has not been fully confirmed.
+  - **Meters** — typical for metric authors and VHF/UHF models (values like −13.356, 1.895)
+  - The unit byte at header offset 0x09 and/or 0x41 likely encodes the system, but the exact mapping has not been fully confirmed.
 - **Diameter vs radius** — EZNEC stores wire *diameter*; NEC uses *radius*.
   When converting to GW cards divide by 2: `GW_radius = EZ_diameter / 2`.
-- **Tag numbers** — EZNEC numbers wires 1…N.  The tag written by EZNEC to a
-  NEC file equals the wire's sequential position, matching the record order.
+- **Tag numbers** — EZNEC numbers wires 1 to N.  The tag written by EZNEC to a NEC file equals the wire's sequential position, matching the record order.
 
 After the Wire Array
 --------------------
@@ -164,7 +160,7 @@ At varying offsets (not yet formula-derived) there is a region containing:
 
 ### Load (LD) Records
 
-Lumped loads are embedded within the per-wire record data starting around `+0x40` relative to each wire record.  Structure not yet fully decoded; observed patterns include load type, segment position, and R/L/C values.
+Lumped loads are embedded within the per-wire record data starting around `+0x40` relative to each wire record. Structure not yet fully decoded; observed patterns include load type, segment position, and R/L/C values.
 
 ### Ground (GN) Parameters
 
