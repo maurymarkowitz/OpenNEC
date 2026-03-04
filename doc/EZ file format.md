@@ -50,9 +50,9 @@ Header Block 1 (0x00–0x2F)
 |--------|------|------------|-------------|
 | 0x00   | 2    | int16      | ✓ Number of wires (`N`) |
 | 0x02   | 2    | int16      | (?) Usually 0; sometimes 1 |
-| 0x04   | 1    | char ASCII | ✓ Format marker — always `'R'` (0x52) in examined corpus |
+| 0x04   | 1    | char       | ✓ Format marker — always `'R'` (0x52) in examined corpus |
 | 0x05   | 4    | float32    | ✓ Design frequency in **MHz** |
-| 0x09   | 1    | char ASCII | (?) Unit / coordinate-system flag.  `'A'` is most common; `'E'` observed in some models.  See Unit System section. |
+| 0x09   | 1    | char       | (?) Unit / coordinate-system flag.  `'A'` is most common; `'E'` observed in some models.  See Unit System section. |
 | 0x0A   | 2    | —          | (?) Reserved; always `0x00 0x00` |
 | 0x0C   | 4    | float32    | (?) Ground dielectric constant or display scale; often 0.0 |
 | 0x10   | 2    | —          | Sentinel bytes — nearly always `0x80 0x3F` |
@@ -82,11 +82,11 @@ Header Block 2 (0x30–0xB9)
 | 0x30   | 2    | int16      | ✓ Wire count (repeated) |
 | 0x32   | 2    | int16      | (?) Source count |
 | 0x34   | 2    | —          | Reserved |
-| 0x36   | 1    | char ASCII | ✓ NEC ground type: `'R'`=real/Sommerfeld, `'F'`=free space (GN −1), `'P'`=perfect |
+| 0x36   | 1    | char       | ✓ NEC ground type: `'R'`=real/Sommerfeld, `'F'`=free space (GN −1), `'P'`=perfect |
 | 0x37   | 1    | —          | Reserved |
 | 0x38   | 8    | —          | Reserved flags; often contains `00 ff ff 18` |
 | 0x40   | 1    | byte       | (?) EZNEC version major digit; value `0x05` observed for v5 |
-| 0x41   | 1    | char ASCII | (?) Units code in display: `'I'`=inches, `'F'`=feet, `'M'`=meters, `'W'`=wavelength |
+| 0x41   | 1    | char       | (?) Units code in display: `'I'`=inches, `'F'`=feet, `'M'`=meters, `'W'`=wavelength |
 | 0x42   | 2    | char[2]    | (?) Constant `"FT"` in examined files |
 | 0x44   | 4    | float32    | (?) Constant 1303.8 — possibly max frequency or display limit |
 | 0x48   | 4    | float32    | (?) 0.0 |
@@ -151,12 +151,12 @@ At varying offsets (not yet formula-derived) there is a region containing:
 
 | Approx offset from file start | Type       | Description |
 |-------------------------------|------------|-------------|
-| (after wires + padding)       | int16 LE   | Source count |
+| (after wires + padding)       | int16      | Source count |
 | per source:                   |            |             |
-| +0x00                         | int16 LE   | Wire index (1-based) |
-| +0x02                         | int16 LE   | Segment number within wire |
-| +0x04                         | float32 LE | Voltage magnitude (typically 1.0) |
-| +0x08                         | float32 LE | Phase (degrees?) or imaginary part |
+| +0x00                         | int16      | Wire index (1-based) |
+| +0x02                         | int16      | Segment number within wire |
+| +0x04                         | float32    | Voltage magnitude (typically 1.0) |
+| +0x08                         | float32    | Phase (degrees?) or imaginary part |
 
 ### Load (LD) Records
 
@@ -173,7 +173,7 @@ Angular sweep parameters are stored at the tail of the file.  Two int16 values (
 Unit System
 -----------
 
-The coordinate unit (feet vs. meters) is per-file.  Determination method:
+The coordinate unit (feet vs. meters) is per-file. Determination method:
 
 1. Check the title for explicit unit keywords ("ft", "m", "meters", etc.).
 2. Cross-check computed wire length against a known formula:
