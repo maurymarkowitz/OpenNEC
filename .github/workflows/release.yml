@@ -36,13 +36,19 @@ jobs:
           gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" dist/onec-linux-x86_64.zip --clobber
 
   build-linux-aarch64:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
-      - name: Build in an arm64 Docker container
+      - name: Install build deps
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config zip
+      - name: Build (aarch64)
+        run: |
+          make clean
+          make BACKEND=original
+      - name: Package
         run: |
           mkdir -p dist
-          docker run --rm --platform linux/arm64 -v "$PWD":/work -w /work ubuntu:22.04 bash -lc "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential pkg-config zip && make clean && make BACKEND=original && mkdir -p dist && zip -j dist/onec-linux-aarch64.zip onec README.MD test/example5.deck"
+          zip -j dist/onec-linux-aarch64.zip onec README.MD test/example5.deck
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -50,13 +56,16 @@ jobs:
           gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" dist/onec-linux-aarch64.zip --clobber
 
   build-macos-x86:
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build (macOS)
+      - name: Build (macOS x86_64)
+        env:
+          CFLAGS: '-arch x86_64 -mmacosx-version-min=10.15'
+          LDFLAGS: '-arch x86_64 -mmacosx-version-min=10.15'
         run: |
           make clean
-          make
+          make CC=clang CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" BACKEND=original
       - name: Package
         run: |
           mkdir -p dist
@@ -107,6 +116,7 @@ jobs:
             mingw-w64-x86_64-openblas
             pkgconf
             make
+            zip
       - name: Build (MINGW64)
         shell: bash -l {0}
         run: |
