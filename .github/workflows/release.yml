@@ -116,7 +116,6 @@ jobs:
             mingw-w64-x86_64-openblas
             pkgconf
             make
-            zip
       - name: Build (MINGW64)
         shell: bash -l {0}
         run: |
@@ -124,10 +123,10 @@ jobs:
           make clean
           make CC=x86_64-w64-mingw32-gcc BACKEND=original
       - name: Package
-        shell: bash -l {0}
+        shell: pwsh
         run: |
-          mkdir -p dist
-          zip -j dist/onec-windows-x86_64.zip onec.exe README.MD test/example5.deck
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path onec.exe, README.MD, test/example5.deck -DestinationPath dist/onec-windows-x86_64.zip -Force
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
