@@ -43,7 +43,7 @@ jobs:
         run: |
           gh release upload "${{ github.event.release.tag_name }}" dist/onec-linux-aarch64.zip --clobber
 
-  build-macos:
+  build-macos-x86:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,12 +54,12 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          zip -j dist/onec-macos.zip onec README.MD test/example5.deck
+          zip -j dist/onec-macos-x86.zip onec README.MD test/example5.deck
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.event.release.tag_name }}" dist/onec-macos.zip --clobber
+          gh release upload "${{ github.event.release.tag_name }}" dist/onec-macos-x86.zip --clobber
 
   build-macos-arm64:
     runs-on: macos-latest
