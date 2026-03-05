@@ -63,6 +63,34 @@ jobs:
           asset_name: onec-macos.zip
           asset_content_type: application/zip
 
+  build-macos-arm64:
+    runs-on: macos-latest
+    name: Build macOS (arm64)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show runner arch
+        run: |
+          uname -m || true
+          sysctl -n hw.machine || true
+      - name: Build (macOS arm64)
+        env:
+          CFLAGS: '-arch arm64 -mmacosx-version-min=11.0'
+          LDFLAGS: '-arch arm64 -mmacosx-version-min=11.0'
+        run: |
+          make clean
+          make CC=clang CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" BACKEND=original
+      - name: Package
+        run: |
+          mkdir -p dist
+          zip -j dist/onec-macos-arm64.zip onec README.MD test/example5.deck
+      - name: Upload to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: dist/onec-macos-arm64.zip
+          asset_name: onec-macos-arm64.zip
+          asset_content_type: application/zip
+
   build-windows-mingw:
     runs-on: windows-latest
     steps:
