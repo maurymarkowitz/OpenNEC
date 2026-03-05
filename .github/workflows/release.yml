@@ -5,6 +5,10 @@ on:
     types: [published]
   workflow_dispatch: {}
 
+# Allow the workflow to upload release assets
+permissions:
+  contents: write
+
 jobs:
   build-linux-x86_64:
     runs-on: ubuntu-latest
