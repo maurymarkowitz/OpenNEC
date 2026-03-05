@@ -114,9 +114,9 @@ The currently recognized formats and extensions are:
 
 Build & Setup
 -------------
-OpenNEC is a makefile project that does not require `make config` or other steps. A simple `make` should produce a working executable on practically any unix-like system.
+OpenNEC is a makefile project that does not require `make config` or other steps. A simple `make` should produce a working executable on practically any unix-like system. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](doc/BUILD.md).
 
-For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](BUILD.md).
+Windows compatibility is provided using MinGW. See [BUILD-WINDOWS](doc/BUILD-WINDOWS.md) for details. The same makefile is used for both Unix and Windows.
 
 OpenNEC concept
 ---------------
