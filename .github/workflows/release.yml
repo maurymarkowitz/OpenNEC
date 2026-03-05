@@ -1,0 +1,97 @@
+name: Release builds
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+jobs:
+  build-linux-x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build deps
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config zip
+      - name: Build (x86_64)
+        run: |
+          make clean
+          make BACKEND=original
+      - name: Package
+        run: |
+          mkdir -p dist
+          zip -j dist/onec-linux-x86_64.zip onec README.MD test/example5.deck
+      - name: Upload to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: dist/onec-linux-x86_64.zip
+          asset_name: onec-linux-x86_64.zip
+          asset_content_type: application/zip
+
+  build-linux-aarch64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build in an arm64 Docker container
+        run: |
+          docker run --rm --platform linux/arm64 -v "$PWD":/work -w /work ubuntu:22.04 bash -lc "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential pkg-config zip && make clean && make BACKEND=original && zip -j dist/onec-linux-aarch64.zip onec README.MD test/example5.deck"
+      - name: Upload to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: dist/onec-linux-aarch64.zip
+          asset_name: onec-linux-aarch64.zip
+          asset_content_type: application/zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (macOS)
+        run: |
+          make clean
+          make
+      - name: Package
+        run: |
+          mkdir -p dist
+          zip -j dist/onec-macos.zip onec README.MD test/example5.deck
+      - name: Upload to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: dist/onec-macos.zip
+          asset_name: onec-macos.zip
+          asset_content_type: application/zip
+
+  build-windows-mingw:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup MSYS2/MINGW64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: |
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-openblas
+            pkgconf
+            make
+      - name: Build (MINGW64)
+        shell: bash -l {0}
+        run: |
+          export PATH="/c/msys64/mingw64/bin:$PATH"
+          make clean
+          make CC=x86_64-w64-mingw32-gcc BACKEND=original
+      - name: Package
+        shell: bash -l {0}
+        run: |
+          mkdir -p dist
+          zip -j dist/onec-windows-x86_64.zip onec.exe README.MD test/example5.deck
+      - name: Upload to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: dist/onec-windows-x86_64.zip
+          asset_name: onec-windows-x86_64.zip
+          asset_content_type: application/zip
