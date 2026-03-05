@@ -164,9 +164,23 @@ MINGW_CC := $(findstring mingw,$(CC))
 ifeq ($(MINGW_CC),mingw)
     SOURCES := $(filter-out src/compat_time.c,$(SOURCES))
     $(info Detected MinGW toolchain; excluding src/compat_time.c)
-    # Use the cross-toolchain's archiver so COFF objects are archived correctly
-    AR := $(patsubst %gcc,%ar,$(CC))
-    RANLIB := $(patsubst %gcc,%ranlib,$(CC))
+    # Prefer the cross-toolchain's archiver, but fall back to plain `ar`/`ranlib`
+    # if the prefixed tools are not present in the runner's PATH.
+    ifneq ($(shell command -v $(patsubst %gcc,%ar,$(CC)) 2>/dev/null),)
+        AR := $(patsubst %gcc,%ar,$(CC))
+    else ifneq ($(shell command -v ar 2>/dev/null),)
+        AR := ar
+    else
+        AR := $(patsubst %gcc,%ar,$(CC))
+    endif
+
+    ifneq ($(shell command -v $(patsubst %gcc,%ranlib,$(CC)) 2>/dev/null),)
+        RANLIB := $(patsubst %gcc,%ranlib,$(CC))
+    else ifneq ($(shell command -v ranlib 2>/dev/null),)
+        RANLIB := ranlib
+    else
+        RANLIB := $(patsubst %gcc,%ranlib,$(CC))
+    endif
 endif
 
 LIB_SOURCES = $(filter-out src/main.c, $(SOURCES))
