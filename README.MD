@@ -29,7 +29,7 @@ To run it, use a command similar to this example, replacing the "<FILE/PATH>" wi
 
 Command-line options include:
 
-`-h`, `--help`: print usage notes  
+`-h`, `--help`: print usage notes (this list)  
 `-v`, `--version`: print version info  
 `-r`, `--recursive`: process directories recursively, parse every NEC file found  
 `-n`, `--no-run`: parse the deck but skip calculation/simulation  
@@ -41,6 +41,14 @@ Command-line options include:
 `-w`, `--write-file` <file>: writes the deck out to the named file type (see below) 
 
 Short options with no parameters can be ganged, for instance, `-nt`.
+
+### On the PC
+
+There are two changes in the command-line interface on windows, to better support existing NEC-2 workflows.
+
+The first is that running the `onec.exe` with no command line switches or positional arguments will instead expect to be fed input from `CONIN$` (the windows `stdin`). The input should contain two lines of text, the first having the input filename, and the second the output filename. These 
+
+`/?`: same as `-h`, included for c
 
 Examples
 --------
@@ -76,15 +84,13 @@ onec has built-in readers for various 3rd party file formats. For instance:
 
 ```./onec example.mma```
 
-This will read the file `example.mma`, convert it to NEC format, and then run the simulations as if it were a NEC deck from the start. Currently, in version 1.0, it supports Yagi Optimizer `.yo` and MMANA-GA `.maa` files. More will be added over time.
-
-When used with a path, or with the `-r` option, normally only NEC files will be processed. You can force it to read other files using a globbing expression:
+This will read the file `example.mma`, convert it to NEC format, and then run the simulations as if it were a NEC deck from the start. When started with a path, or with the `-r` option, normally only NEC files will be processed. You can force it to read other files using a globbing expression:
 
 ```./onec -r /example_files/*.mma```
 
-In this case it will ignore anything that is not an `.mma` file.
+In this example it will ignore anything that is not an `.mma` file.
 
-onec can also write files in different formats using the `-w` option. This is normally used with a "bare" extension like `.nec`. For instance, one can convert a particular `.mma` file to NEC format using:
+onec can also write files in different formats using the `-w` option. This is normally used with a "bare" extension like `.nec`, but you can also provide a complete filename if you wish to rename the converted deck. In most cases, one would convert a particular `.mma` file to NEC format using:
 
 ```./onec -w .nec example.mma```
 
@@ -94,9 +100,7 @@ This will create a new NEC file, `example.nec`. This also works along with `-r` 
 
 In this case the `-n` was added so it does not try to calculate any results, it simply reads the file and writes the deck.
 
-There are a number of limitations in these importers as the various formats support different features and options. See the "file format" documents in the [doc folder](doc/)for more details.
-
-The currently recognized formats and extensions are:
+There are a number of limitations in these importers as the various formats support different features and options. See the "file format" documents in the [doc folder](doc/)for more details. The currently recognized formats and extensions are:
 
 | Extension(s) | Format | Read | Write |
 |---|---|---|---|
@@ -110,7 +114,7 @@ The currently recognized formats and extensions are:
 | `.aci` | AntSolver | recognised | — |
 | `.mmae` | MMANA-EZ | recognised | — |
 
-"Recognised" means the extension is detected and a helpful error is shown if such a file is found, but no import/exporter exists yet.
+"Recognised" means the extension is detected and a helpful error is shown, but no import/exporter exists yet.
 
 Build & Setup
 -------------
@@ -124,7 +128,7 @@ OpenNEC's code ultimately traces its history to the NEC-2 Fortran code released 
 
 The primary difference between OpenNEC and nec2c is its form; nec2c is a command-line program, while most of the OpenNEC code is in the form of a static library. This allows OpenNEC to be embedded in any program written in a language that provides access to C libraries, like Rust, Java, or Swift. The optional `main.c` wraps the library to provide a command line tool similar to the original nec2c, but adds a number of new command line switches to provide finer control over execution and many new options.
 
-Programs that wish to use OpenNEC as their calculation engine can directly access the various structures like the segment list and radiation patterns. They can also change the deck by modifying cards and re-running the calculations, or by directly changing the simulation parameters and re-running just those calculations. Using the segment list is particularly useful during the antenna layout and design stage; programs can use the code to turn their geometry cards into a segments structure which can then be sent to a 3D library.
+Programs that wish to use OpenNEC as their calculation engine can directly access the various structures like the segment list and radiation patterns. They can also change the deck by modifying cards and re-running the calculations, or by directly changing the simulation parametersis and re-running just those calculations. Using the segment list is particularly useful during the antenna layout and design stage; programs can use the code to turn their geometry cards into a segments structure which can then be sent to a 3D library.
 
 OpenNEC also improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. See [OpenNEC, NEC-2 and nec2c](doc/OpenNEC,%20NEC-2%20and%20nec2c.md) for details.
 
