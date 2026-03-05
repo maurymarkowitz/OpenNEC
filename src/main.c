@@ -25,7 +25,9 @@
 #include <getopt.h>
 #endif
 
+#if defined(ENABLE_THREADS)
 #include <pthread.h>
+#endif
 #include <signal.h>
 #include <errno.h>
 #include <sys/stat.h>
@@ -644,9 +646,12 @@ typedef struct
   task_t *tasks;
   int task_count;
   int next_index;
+#if defined(ENABLE_THREADS)
   pthread_mutex_t lock;
+#endif
 } work_queue_t;
 
+#if defined(ENABLE_THREADS)
 static void *worker_thread(void *arg)
 {
   work_queue_t *q = (work_queue_t *)arg;
@@ -693,6 +698,7 @@ static void *worker_thread(void *arg)
   }
   return NULL;
 }
+#endif
 
 static void add_to_string_list(char ***list, int *count, int *cap, const char *str)
 {
@@ -1066,26 +1072,40 @@ int main(int argc, char **argv)
           generate_output_filename(tasks[k].input, tasks[k].output, sizeof(tasks[k].output));
         }
       }
-      // Start worker pool
-      int nthreads = jobs;
-      if (nthreads > count)
-        nthreads = count;
-      pthread_t *threads = (pthread_t *)calloc((size_t)nthreads, sizeof(pthread_t));
-      work_queue_t queue;
-      queue.tasks = tasks;
-      queue.task_count = count;
-      queue.next_index = 0;
-      pthread_mutex_init(&queue.lock, NULL);
-      for (int t = 0; t < nthreads; t++)
-      {
-        pthread_create(&threads[t], NULL, worker_thread, &queue);
-      }
-      for (int t = 0; t < nthreads; t++)
-      {
-        pthread_join(threads[t], NULL);
-      }
-      pthread_mutex_destroy(&queue.lock);
-      free(threads);
+
+  #if defined(ENABLE_THREADS)
+        // Start worker pool
+        int nthreads = jobs;
+        if (nthreads > count)
+          nthreads = count;
+        pthread_t *threads = (pthread_t *)calloc((size_t)nthreads, sizeof(pthread_t));
+        work_queue_t queue;
+        queue.tasks = tasks;
+        queue.task_count = count;
+        queue.next_index = 0;
+        pthread_mutex_init(&queue.lock, NULL);
+        for (int t = 0; t < nthreads; t++)
+        {
+          pthread_create(&threads[t], NULL, worker_thread, &queue);
+        }
+        for (int t = 0; t < nthreads; t++)
+        {
+          pthread_join(threads[t], NULL);
+        }
+        pthread_mutex_destroy(&queue.lock);
+        free(threads);
+  #else
+        // Threading disabled at compile-time; fall back to serial processing
+        fprintf(error_fp, "Threading disabled at compile time; running serially.\n");
+        for (int k = 0; k < count; k++) {
+          task_t *t = &tasks[k];
+          fprintf(error_fp, "Processing %d of %d: %s...\n", k + 1, count, t->input);
+          fflush(error_fp);
+          t->status = process_single_file(t->input, t->output, error_fp);
+          t->log_buf = NULL;
+          t->log_size = 0;
+        }
+  #endif
 
       // Emit logs and summarize
       for (int k = 0; k < count; k++)
@@ -1124,30 +1144,30 @@ int main(int argc, char **argv)
 } /* main */
 
 /*-----------------------------------------------------------------------*/
-#if __WIN32__
+#if defined(_WIN32)
 static void sig_handler(int signal)
 {
-  fprintf(error_fp, "\n");
+  fprintf(stderr, "\n");
   switch (signal)
   {
   case SIGINT:
-    fprintf(error_fp, "%s\n", "onec: exiting via user interrupt");
+    fprintf(stderr, "%s\n", "onec: exiting via user interrupt");
     exit(signal);
 
   case SIGSEGV:
-    fprintf(error_fp, "%s\n", "onec: segmentation fault");
+    fprintf(stderr, "%s\n", "onec: segmentation fault");
     exit(signal);
 
   case SIGFPE:
-    fprintf(error_fp, "%s\n", "onec: floating point exception");
+    fprintf(stderr, "%s\n", "onec: floating point exception");
     exit(signal);
 
   case SIGABRT:
-    fprintf(error_fp, "%s\n", "onec: abort signal received");
+    fprintf(stderr, "%s\n", "onec: abort signal received");
     exit(signal);
 
   case SIGTERM:
-    fprintf(error_fp, "%s\n", "onec: termination request received");
+    fprintf(stderr, "%s\n", "onec: termination request received");
     exit(signal);
   }
 

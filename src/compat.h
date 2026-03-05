@@ -10,7 +10,7 @@
 
 #if defined(_WIN32)
 
-#include <windows.h>
+#include <stdint.h>
 #include <time.h>
 #include <string.h>
 
@@ -70,5 +70,20 @@ int clock_gettime(int clk_id, struct timespec *tp);
 #endif
 
 #endif /* _WIN32 */
+
+/* Provide strcasestr on platforms that don't have it (Windows CRT lacks it) */
+#if defined(_WIN32)
+static char *strcasestr(const char *haystack, const char *needle)
+{
+    if (!haystack || !needle) return NULL;
+    size_t nlen = strlen(needle);
+    if (nlen == 0) return (char *)haystack;
+    for (const char *p = haystack; *p; p++) {
+        if (strncasecmp(p, needle, (int)nlen) == 0)
+            return (char *)p;
+    }
+    return NULL;
+}
+#endif
 
 #endif /* OPENNEC_COMPAT_H */

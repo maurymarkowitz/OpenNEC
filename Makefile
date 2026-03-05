@@ -1,6 +1,18 @@
-CC = gcc
+## Allow user override; auto-detect preferred compiler if CC not set.
+ifndef CC
+    ifneq ($(shell command -v clang 2>/dev/null),)
+        CC := clang
+    else ifneq ($(shell command -v gcc 2>/dev/null),)
+        CC := gcc
+    else
+        CC := cc
+    endif
+endif
+$(info Using C compiler: $(CC))
 CFLAGS = -I. -Isrc -g -O2 -Wall -Wno-unused-parameter
 LDFLAGS =
+AR ?= ar
+RANLIB ?= ranlib
 
 # Debug build with AddressSanitizer
 # Usage: make DEBUG=1
@@ -146,6 +158,17 @@ endif
 
 SOURCES = src/main.c src/input.c src/output.c src/deck.c src/deck_validations.c src/card_validation.c src/geometry.c src/calculations.c src/fields.c src/ground.c src/matrix.c src/network.c src/radiation.c src/somnec.c src/misc.c src/types.c src/tinyexpr.c src/control.c src/maa-support.c src/yo-support.c src/compat_time.c
 
+# If building with a MinGW cross-compiler, avoid compiling the compat_time.c
+# implementation because MinGW's CRT/pthreads already provides clock_gettime
+MINGW_CC := $(findstring mingw,$(CC))
+ifeq ($(MINGW_CC),mingw)
+    SOURCES := $(filter-out src/compat_time.c,$(SOURCES))
+    $(info Detected MinGW toolchain; excluding src/compat_time.c)
+    # Use the cross-toolchain's archiver so COFF objects are archived correctly
+    AR := $(patsubst %gcc,%ar,$(CC))
+    RANLIB := $(patsubst %gcc,%ranlib,$(CC))
+endif
+
 LIB_SOURCES = $(filter-out src/main.c, $(SOURCES))
 LIB_OBJECTS = $(LIB_SOURCES:.c=.o)
 LIBRARY = libonec.a
@@ -155,7 +178,8 @@ EXECUTABLE = onec
 all: $(EXECUTABLE)
 
 $(LIBRARY): $(LIB_OBJECTS)
-	ar rcs $@ $^
+	$(AR) rcs $@ $^
+	$(RANLIB) $@
 
 $(EXECUTABLE): src/main.o $(LIBRARY)
 	$(CC) $(LDFLAGS) src/main.o $(LIBRARY) -o $@ -lm

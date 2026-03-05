@@ -2,9 +2,10 @@
  * Uses QueryPerformanceCounter for high-resolution monotonic time.
  */
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW64_VERSION_MAJOR)
 
 #include "compat.h"
+#include <windows.h>
 #include <stdint.h>
 
 int clock_gettime(int clk_id, struct timespec *tp) {

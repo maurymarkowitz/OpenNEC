@@ -64,3 +64,6 @@ test/maa_convert.c
 test/maa_sy_test.c
 
 plans/
+
+# macOS debug symbol bundles
+.dSYM/
