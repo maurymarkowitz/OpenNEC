@@ -25,12 +25,10 @@ jobs:
           mkdir -p dist
           zip -j dist/onec-linux-x86_64.zip onec README.MD test/example5.deck
       - name: Upload to release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: dist/onec-linux-x86_64.zip
-          asset_name: onec-linux-x86_64.zip
-          asset_content_type: application/zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" dist/onec-linux-x86_64.zip --clobber
 
   build-linux-aarch64:
     runs-on: ubuntu-latest
@@ -40,12 +38,10 @@ jobs:
         run: |
           docker run --rm --platform linux/arm64 -v "$PWD":/work -w /work ubuntu:22.04 bash -lc "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential pkg-config zip && make clean && make BACKEND=original && zip -j dist/onec-linux-aarch64.zip onec README.MD test/example5.deck"
       - name: Upload to release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: dist/onec-linux-aarch64.zip
-          asset_name: onec-linux-aarch64.zip
-          asset_content_type: application/zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" dist/onec-linux-aarch64.zip --clobber
 
   build-macos:
     runs-on: macos-latest
@@ -60,12 +56,10 @@ jobs:
           mkdir -p dist
           zip -j dist/onec-macos.zip onec README.MD test/example5.deck
       - name: Upload to release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: dist/onec-macos.zip
-          asset_name: onec-macos.zip
-          asset_content_type: application/zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" dist/onec-macos.zip --clobber
 
   build-macos-arm64:
     runs-on: macos-latest
@@ -88,12 +82,10 @@ jobs:
           mkdir -p dist
           zip -j dist/onec-macos-arm64.zip onec README.MD test/example5.deck
       - name: Upload to release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: dist/onec-macos-arm64.zip
-          asset_name: onec-macos-arm64.zip
-          asset_content_type: application/zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" dist/onec-macos-arm64.zip --clobber
 
   build-windows-mingw:
     runs-on: windows-latest
@@ -121,9 +113,8 @@ jobs:
           mkdir -p dist
           zip -j dist/onec-windows-x86_64.zip onec.exe README.MD test/example5.deck
       - name: Upload to release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: dist/onec-windows-x86_64.zip
-          asset_name: onec-windows-x86_64.zip
-          asset_content_type: application/zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash -l {0}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" dist/onec-windows-x86_64.zip --clobber
