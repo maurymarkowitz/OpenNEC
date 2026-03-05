@@ -136,13 +136,22 @@ static struct option program_options[] =
 void parse_options(int argc, char *argv[])
 {
   int option_index = 0;
+
+#if defined(_WIN32)
+  /* Support the traditional Windows help switch `/?'` as a special case. */
+  for (int i = 1; i < argc; ++i) {
+    if (strcmp(argv[i], "/?") == 0) {
+      print_usage(argv);
+    }
+  }
+#endif
   /* int printed_help = false; */
 
   while (1)
   {
     // eat an option and exit if we're done
     /* portable short options: 'g' has an optional argument */
-    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:?", program_options, &option_index); // should match the items above
+    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:", program_options, &option_index); // should match the items above
     if (c == -1)
       break;
 
@@ -157,10 +166,7 @@ void parse_options(int argc, char *argv[])
       print_usage(argv);
       /* printed_help = true; */
       break;
-    case '?':
-      /* Allow -? as an alias for help (common on some platforms) */
-      print_usage(argv);
-      break;
+    /* Note: `/?` (Windows) is handled above; do not treat `?` as a unix short option. */
 
     case 'v':
       print_version();
