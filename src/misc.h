@@ -9,6 +9,7 @@
 #define MISC_H
 
 #include "types.h"
+#include "compat.h"
 
 /* Memory management */
 int mem_alloc(const nec_context_t *ctx, void **ptr, size_t req);

@@ -4,7 +4,7 @@ EZNEC `.EZ` File Format
 Overview
 --------
 
-The `.EZ` file format is the proprietary binary format used by EZNEC and EZNEC Pro antenna-modelling software (by W7EL).  It stores antenna geometry, excitation, loading, ground parameters and display settings in a compact little-endian binary representation.
+The `.EZ` file format is the proprietary binary format used by EZNEC and EZNEC Pro antenna-modelling software (by W7EL). It stores antenna geometry, excitation, loading, ground parameters and display settings in a compact little-endian binary representation.
 
 The format was reverse-engineered by inspecting 5,478 `.EZ` / `.ez` files from L.B. Cebik's published model collection, cross-referencing them with matching `.NEC` text files that EZNEC exports.
 
@@ -152,11 +152,11 @@ At varying offsets (not yet formula-derived) there is a region containing:
 | Approx offset from file start | Type       | Description |
 |-------------------------------|------------|-------------|
 | (after wires + padding)       | int16      | Source count |
-| per source:                   |            |             |
 | +0x00                         | int16      | Wire index (1-based) |
 | +0x02                         | int16      | Segment number within wire |
 | +0x04                         | float32    | Voltage magnitude (typically 1.0) |
 | +0x08                         | float32    | Phase (degrees?) or imaginary part |
+| (repeat 12 bytes per source)  |            |             |
 
 ### Load (LD) Records
 

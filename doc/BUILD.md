@@ -1,3 +1,4 @@
+````markdown
 OpenNEC Build Notes
 ===================
 
@@ -213,3 +214,5 @@ make BACKEND=mkl
 
 Notes:
 - MKL linking flags and library names differ on native Windows with MSVC; this Makefile targets GCC/Unix-like environments. For native Visual Studio builds, a separate project configuration is required.
+
+````
