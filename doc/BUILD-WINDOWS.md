@@ -87,6 +87,12 @@ Or from a Unix-like shell in the toolchain environment:
 ./onec.exe test/example5.deck
 ```
 
+Help and shell notes
+--------------------
+- Preferred: use `-h` or `--help` to show usage on any platform.
+- On Windows `cmd.exe`, `onec /?` will also display help (traditional Windows form).
+- On Unix-like shells `?` and `*` are shell globs — quote them if you intend to pass a literal `?` (e.g. `onec '?')`.
+
 Troubleshooting
 ---------------
 - If you see missing symbols for threading or pthreads, ensure your MinGW
