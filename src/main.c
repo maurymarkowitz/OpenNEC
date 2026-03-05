@@ -142,7 +142,7 @@ void parse_options(int argc, char *argv[])
   {
     // eat an option and exit if we're done
     /* portable short options: 'g' has an optional argument */
-    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:", program_options, &option_index); // should match the items above
+    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:?", program_options, &option_index); // should match the items above
     if (c == -1)
       break;
 
@@ -156,6 +156,10 @@ void parse_options(int argc, char *argv[])
     case 'h':
       print_usage(argv);
       /* printed_help = true; */
+      break;
+    case '?':
+      /* Allow -? as an alias for help (common on some platforms) */
+      print_usage(argv);
       break;
 
     case 'v':
@@ -210,6 +214,11 @@ void parse_options(int argc, char *argv[])
   // flag, if so it overrides -i if it was supplied
   if (optind < argc)
     input_file = argv[optind];
+
+  /* Treat a bare question-mark as a request for usage (e.g. `onec ?`) */
+  if (input_file && strcmp(input_file, "?") == 0) {
+    print_usage(argv);
+  }
 
   // if no input file, we'll use stdin
 }
