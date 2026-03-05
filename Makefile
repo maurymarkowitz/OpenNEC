@@ -144,7 +144,7 @@ else
     $(error ERROR: Unknown BACKEND=$(BACKEND). Valid options: auto, accelerate, openblas, mkl, atlas, blas, original)
 endif
 
-SOURCES = src/main.c src/input.c src/output.c src/deck.c src/deck_validations.c src/card_validation.c src/geometry.c src/calculations.c src/fields.c src/ground.c src/matrix.c src/network.c src/radiation.c src/somnec.c src/misc.c src/types.c src/tinyexpr.c src/control.c src/maa-support.c src/yo-support.c
+SOURCES = src/main.c src/input.c src/output.c src/deck.c src/deck_validations.c src/card_validation.c src/geometry.c src/calculations.c src/fields.c src/ground.c src/matrix.c src/network.c src/radiation.c src/somnec.c src/misc.c src/types.c src/tinyexpr.c src/control.c src/maa-support.c src/yo-support.c src/compat_time.c
 
 LIB_SOURCES = $(filter-out src/main.c, $(SOURCES))
 LIB_OBJECTS = $(LIB_SOURCES:.c=.o)

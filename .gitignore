@@ -62,3 +62,5 @@ maa_sy_test
 test/maa_convert
 test/maa_convert.c
 test/maa_sy_test.c
+
+plans/
