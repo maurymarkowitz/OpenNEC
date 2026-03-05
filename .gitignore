@@ -67,3 +67,6 @@ plans/
 
 # macOS debug symbol bundles
 .dSYM/
+
+# Windows executables
+*.exe
