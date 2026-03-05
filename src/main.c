@@ -229,6 +229,31 @@ void parse_options(int argc, char *argv[])
   // if no input file, we'll use stdin
 }
 
+#if defined(_WIN32)
+  /* If invoked with no command-line args on Windows, mirror 4nec2 behaviour:
+   * read two lines from stdin: first is input filename, second is output filename.
+   * This allows callers to launch the program and pass filenames via stdin.
+   */
+  if (argc == 1) {
+    char inbuf[4096];
+    char outbuf[4096];
+    if (fgets(inbuf, sizeof inbuf, stdin) != NULL) {
+      size_t l = strlen(inbuf);
+      while (l > 0 && (inbuf[l-1] == '\n' || inbuf[l-1] == '\r')) { inbuf[--l] = '\0'; }
+      if (l > 0) {
+        input_file = strdup(inbuf);
+      }
+      if (fgets(outbuf, sizeof outbuf, stdin) != NULL) {
+        size_t m = strlen(outbuf);
+        while (m > 0 && (outbuf[m-1] == '\n' || outbuf[m-1] == '\r')) { outbuf[--m] = '\0'; }
+        if (m > 0) {
+          output_file = strdup(outbuf);
+        }
+      }
+    }
+  }
+#endif
+
 /* ---------- file-type detection ----------------------------------- */
 typedef enum {
   FILETYPE_NEC,          /* .nec  .deck  — native NEC/OpenNEC deck    */
