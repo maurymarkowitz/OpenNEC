@@ -586,10 +586,10 @@ int read_deck_yo(deck_t *deck, FILE *fp)
         append_card_from_text(deck, buf);
     }
 
-    /* FR */
+    /* FR — NEC format: I1=IFRQ(0), I2=NFRQ(1), I3=IZPE(0), I4=NOPH(0), F1=FMHZ, F2=step(0) */
     if (freq_mhz > 0.0) {
         char buf[80];
-        snprintf(buf, sizeof buf, "FR 0, 0, %.6f, 0, 0, 0", freq_mhz);
+        snprintf(buf, sizeof buf, "FR 0, 1, 0, 0, %.6f, 0", freq_mhz);
         append_card_from_text(deck, buf);
     }
 

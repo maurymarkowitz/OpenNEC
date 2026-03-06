@@ -9,9 +9,9 @@ antenna modeling system written starting in 2002 by Kok Chen, W7AY. It provides
 a GUI interface to the nec2c engine, and allows the antenna description to be entered 
 in three formats:
 
-* "spreadsheet" mode, which saves an XML document with a `.nec` extension (*sigh*)
-* "deck" mode, which saves a traditional tab-delimited NEC-2 file with a `.deck` extension
-* "NC" mode, short for "NEC C", which saves a simple C-like program with a `.nc` extension
+* "spreadsheet" mode, which saves an XML document with a `.nec` extension (*ouch*)
+* "deck" mode, which saves a traditional NEC-2 file with a `.deck` extension
+* "NC" mode, short for "NEC C", which saves a *program* with a `.nc` extension
 
 This document describes the NC format and how it can be used in a traditional 
 NEC engine like OpenNEC. In contrast to some other formats, like `.EZ`, NC maps 
@@ -321,7 +321,7 @@ Mapping NC to NEC-2 Cards
 | `useExtendedKernel` | `EK` |
 | global `int` / `real` variables | `SY` |
 
-### Variables → SY cards
+### Variables to SY cards
 
 Global `int` and `real` scalar variables whose values are known at compile time map to
 NEC-2 `SY` (symbol) cards. For example:

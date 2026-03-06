@@ -132,20 +132,21 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
 
     /* frequency: look for FR card. Cards created by append_card_from_text do
      * not have f[] fields populated, so parse the string directly.
-     * FR card format: "FR IFRQ,NFRQ,FMHZ,..." — FMHZ is the 3rd field. */
+     * NEC FR format: I1=IFRQ, I2=NFRQ, I3=IZPE, I4=NOPH, F1=FMHZ, F2=DELFRQ.
+     * FMHZ is the 1st float field — the 5th token after the card code. */
     double freq = 14.0; /* default */
     for (int i = 0; i < deck->num_cards; i++) {
         card_t *c = &deck->cards[i];
         if (strcmp(c->card_code, "FR") == 0) {
-            /* Try parsed fields first (cards loaded by read_deck) */
+            /* Try parsed fields first (cards loaded by read_deck + parse_deck) */
             if (c->f[1] != 0.0) {
                 freq = c->f[1];
             } else if (c->card_str) {
-                /* Fall back to parsing the string: skip "FR" then two int fields */
+                /* Fall back to parsing the string: skip "FR" then four int fields */
                 const char *p = c->card_str;
                 while (*p && !isdigit((unsigned char)*p) && *p != '-') p++; /* skip "FR" */
-                /* skip 2 integer fields separated by comma/space */
-                for (int skip = 0; skip < 2; skip++) {
+                /* skip 4 integer fields (I1..I4) separated by comma/space */
+                for (int skip = 0; skip < 4; skip++) {
                     while (*p && (isdigit((unsigned char)*p) || *p == '-')) p++;
                     while (*p && (*p == ',' || isspace((unsigned char)*p))) p++;
                 }
@@ -852,10 +853,11 @@ int read_deck_maa(deck_t *deck, FILE *fp)
         }
     }
 
-    /* frequency card — after GN so it appears in the correct NEC order */
+    /* frequency card — after GN so it appears in the correct NEC order.
+     * NEC FR: I1=IFRQ(0), I2=NFRQ(1), I3=IZPE(0), I4=NOPH(0), F1=FMHZ, F2=step(0) */
     if (freq > 0) {
         char buf[128];
-        snprintf(buf, sizeof buf, "FR 0,0,%.6f,0,0,0,0,0", freq);
+        snprintf(buf, sizeof buf, "FR 0, 1, 0, 0, %.6f, 0", freq);
         append_card_from_text(deck, buf);
     }
 
