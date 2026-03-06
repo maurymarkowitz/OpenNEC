@@ -39,6 +39,6 @@ Items still to be implemented:
 
 * files to examine:
 - cebik Tutorial-2/ch-3/3-7.nec is empty. 3-2a-nec4.nec not found in test files.
-- 4nec2 examples/Aperiodic/D2T.nec: has SY Len=#.4", which appears to be a simple typo. There is a second copy of this model which has Len=3.4.
+- 4nec2 examples/Aperiodic/D2T.nec: has SY Len=#.4", which appears to be a typo. There is a second copy of this model which has Len=3.4.
 
 

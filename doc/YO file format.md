@@ -1,5 +1,5 @@
-Yagi Optimizer file format
-==========================
+Yagi Optimizer ".yo" file format
+================================
 
 Introduction
 ------------

@@ -1,0 +1,36 @@
+name: Update Homebrew Tap
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Get release tarball
+        run: |
+          curl -L -o source.tar.gz ${{ github.event.release.tarball_url }}
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          echo "sha=$(sha256sum source.tar.gz | cut -d ' ' -f1)" >> $GITHUB_OUTPUT
+
+      - name: Update tap
+        run: |
+          git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/maurymarkowitz/homebrew-tap.git
+          cd homebrew-tap
+          
+          sed -i "s|url \".*\"|url \"${{ github.event.release.tarball_url }}\"|" Formula/onec.rb
+          sed -i "s|sha256 \".*\"|sha256 \"${{ steps.sha.outputs.sha }}\"|" Formula/onec.rb
+          
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          
+          git commit -am "Update onec to ${{ github.event.release.tag_name }}"
+          git push

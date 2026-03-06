@@ -1,10 +1,11 @@
-git clone <repo-url>
-BUILDING ON WINDOWS (MinGW-w64 standalone)
-===========================================
 
-This guide shows how to build OpenNEC on Windows using a standalone MinGW-w64
-toolchain (64-bit). It avoids MSYS2 entirely and targets systems that provide
-the MinGW-w64 compiler, linker and archiver directly.
+BUILDING ON WINDOWS
+===================
+
+This guide shows how to build OpenNEC on Windows using a standalone MinGW-w64 toolchain (64-bit).
+
+Getting started
+---------------
 
 1. Install a MinGW-w64 toolchain
 
@@ -26,6 +27,9 @@ the MinGW-w64 compiler, linker and archiver directly.
   `mingw32-make`, use that name instead.
 
 3. Clone and prepare the repo
+
+Building
+--------
 
 On Windows you can use PowerShell or the legacy Command Prompt. If you prefer
 `bash` you can install Git for Windows (which provides Git Bash). Examples:
@@ -102,9 +106,3 @@ Troubleshooting
   compiling the project's shim for MinGW; ensure you are using the prefixed
   cross-toolchain (e.g. `x86_64-w64-mingw32-gcc`) so the Makefile detection
   works correctly.
-
-CI and automation
------------------
-Consider adding a GitHub Actions workflow that runs a MinGW-w64/MSYS2
-job (or a self-hosted Windows runner with the MinGW toolchain) to verify
-Windows builds on each push.

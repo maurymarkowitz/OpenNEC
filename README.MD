@@ -18,12 +18,39 @@ The antenna's physical design is stored on a series of "cards", and a collection
 
 OpenNEC will read the design in the deck and can run a number of calculations to determine the antenna's performance. It can also provide warnings about common design problems, and import and export the deck to and from other common antenna file formats.
 
+Installing OpenNEC
+------------------
+
+The latest source code and binaries can be found at:
+
+https://github.com/maurymarkowitz/OpenNEC/releases
+
+Binaries are built for macOS, Linux and Windows. They can be installed by downloading the appropriate .zip file and unzipping into any convenient location.
+
+On macOS and Linux, you can use homebrew:
+
+```
+brew tap maurymarkowitz/tap https://github.com/maurymarkowitz/homebrew-tap
+brew install maurymarkowitz/tap/onec
+```
+
+On Windows, you can use scoop:
+
+```
+scoop bucket add maurymarkowitz https://github.com/maurymarkowitz/scoop-bucket
+scoop install onec
+```
+
+You can build the project from source, it is a makefile project that does not require `autoconfig` or other steps. A simple `make` should produce a working executable on practically any unix-like system. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](doc/BUILD.md).
+
+Windows compatibility is provided using MinGW. See [BUILD-WINDOWS](doc/BUILD-WINDOWS.md) for details. The same makefile is used for both Unix and Windows, and the `make` utility supplied with MinGW works perfectly.
+
 Running OpenNEC
 ---------------
 
 OpenNEC includes a command-line interace, `onec`, that can be used to parse decks from the shell, and will write the calculated results to `stdout` or to a specific file using the `-o` flag.
 
-To run it, use a command similar to this example, replacing the "<FILE/PATH>" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
+It is normally invoked from the shell, `Terminal` on macOS or `CMD` on Windows. To run it, use a command similar to this example, replacing the "<FILE/PATH>" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
 
 ```./onec [options] <FILE/PATH>...```
 
@@ -116,19 +143,13 @@ There are a number of limitations in these importers as the various formats supp
 
 "Recognised" means the extension is detected and a helpful error is shown, but no import/exporter exists yet.
 
-Build & Setup
--------------
-OpenNEC is a makefile project that does not require `make config` or other steps. A simple `make` should produce a working executable on practically any unix-like system. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](doc/BUILD.md).
-
-Windows compatibility is provided using MinGW. See [BUILD-WINDOWS](doc/BUILD-WINDOWS.md) for details. The same makefile is used for both Unix and Windows.
-
 OpenNEC concept
 ---------------
-OpenNEC's code ultimately traces its history to the NEC-2 Fortran code released by Lawrence Livermore in the early 1980s. A port to C was made by Neoklis Kyriazis in the nec2c program which was first released on 20 August 2003. OpenNEC was forked from the 1.3 version of nec2c, released in 2014. Although initially conceived a simple update, it has since been completely re-written, but an effort was made to keep the overall layout of the project as a whole and the general layout should be familiar.
+OpenNEC's code ultimately traces its history to the NEC-2 Fortran code released by Lawrence Livermore in the early 1980s. A port to C was made by Neoklis Kyriazis in the nec2c program which was first released on 20 August 2003. OpenNEC was forked from the 1.3 version of nec2c, released in 2014. Although initially conceived a simple update, OpenNEC was eventually completely re-written, but an effort was made to keep the overall layout of the project.
 
 The primary difference between OpenNEC and nec2c is its form; nec2c is a command-line program, while most of the OpenNEC code is in the form of a static library. This allows OpenNEC to be embedded in any program written in a language that provides access to C libraries, like Rust, Java, or Swift. The optional `main.c` wraps the library to provide a command line tool similar to the original nec2c, but adds a number of new command line switches to provide finer control over execution and many new options.
 
-Programs that wish to use OpenNEC as their calculation engine can directly access the various structures like the segment list and radiation patterns. They can also change the deck by modifying cards and re-running the calculations, or by directly changing the simulation parametersis and re-running just those calculations. Using the segment list is particularly useful during the antenna layout and design stage; programs can use the code to turn their geometry cards into a segments structure which can then be sent to a 3D library.
+Programs that wish to use OpenNEC as their calculation engine can directly access the various structures like the segment list and radiation patterns. They can also change the deck by adding or modifying cards, or by changing the simulation parameters and re-running the calculations. Using the segment list is particularly useful during the antenna layout and design stage; programs can use the code to turn their geometry cards into a segments structure which can then be sent to a 3D library.
 
 OpenNEC also improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. See [OpenNEC, NEC-2 and nec2c](doc/OpenNEC,%20NEC-2%20and%20nec2c.md) for details.
 
