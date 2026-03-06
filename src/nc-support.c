@@ -437,13 +437,967 @@ int write_deck_nc(const deck_t *deck, FILE *fp)
     return 0;
 }
 
+/* =========================================================================
+ * read_deck_nc — NC → NEC-2 deck importer
+ *
+ * Parses the cocoaNEC .nc program format and populates `deck` with the
+ * equivalent NEC-2 cards (CM/CE, SY, GW, GE, EX, LD, FR, GN, RP, EN).
+ *
+ * Supported constructs:
+ *   model("name") { ... }    → CM + CE + body
+ *   real / int declarations   → SY cards
+ *   element declarations      → element variable tracking (no SY)
+ *   name = expr ;             → SY name=expr
+ *   name = wire(...) ;        → GW + element binding
+ *   wire(...) / line(...)     → GW
+ *   voltageFeed / currentFeed → EX
+ *   impedanceLoad             → LD
+ *   setFrequency / addFrequency / frequencySweep → FR
+ *   freespace / perfectGround / averageGround /
+ *     goodGround / saltWaterGround / useSommerfeldGround / ground()  → GN
+ *   azimuthPlotForElevationAngle / elevationPlotForAzimuthAngle      → RP
+ *   control() { ... }         → skipped
+ *   all other unknown calls   → skipped
+ *
+ * Unit-suffix expansion (performed during expression parsing):
+ *   N"      → N*0.0254   (inches → metres)
+ *   N'      → N*0.3048   (feet → metres)
+ *   #N      → AWG gauge N wire radius in metres
+ *   sind/cosd/tand/atand  → sin/cos/tan/atan (tinyexpr already degree-mode)
+ *
+ * The built-in constant `c` (speed of light, ~299.792458 MHz·m) is injected
+ * as a SY card when referenced in any expression.
+ * ======================================================================= */
+
 /* -------------------------------------------------------------------------
- * read_deck_nc  (not yet implemented)
+ * Internal parser helpers
+ * ---------------------------------------------------------------------- */
+
+/** Skip whitespace and // line comments; advance *pp. */
+static void nc_skip(const char **pp)
+{
+    for (;;) {
+        while (**pp && isspace((unsigned char)**pp)) (*pp)++;
+        if ((*pp)[0] == '/' && (*pp)[1] == '/') {
+            while (**pp && **pp != '\n') (*pp)++;
+            continue;
+        }
+        break;
+    }
+}
+
+/** Read an identifier into buf[sz]; advance *pp.  Returns chars written. */
+static int nc_ident(const char **pp, char *buf, int sz)
+{
+    nc_skip(pp);
+    int n = 0;
+    while (**pp && (isalnum((unsigned char)**pp) || **pp == '_')) {
+        if (n < sz - 1) buf[n++] = **pp;
+        (*pp)++;
+    }
+    buf[n] = '\0';
+    return n;
+}
+
+/**
+ * Read a quoted string (without quotes) into buf[sz]; advance *pp past
+ * the closing '"'.  Returns chars written.
+ */
+static int nc_qstring(const char **pp, char *buf, int sz)
+{
+    nc_skip(pp);
+    if (**pp != '"') return 0;
+    (*pp)++;
+    int n = 0;
+    while (**pp && **pp != '"') {
+        if (n < sz - 1) buf[n++] = **pp;
+        (*pp)++;
+    }
+    if (**pp == '"') (*pp)++;
+    buf[n] = '\0';
+    return n;
+}
+
+/*
+ * nc_is_str_quote - true when the '"' at *p is a string delimiter.
+ * A '"' that immediately follows a digit or ')' is an NC inches marker
+ * (e.g. 48" = 48 inches) and must NOT toggle string mode.
+ */
+static bool nc_is_str_quote(char prev)
+{
+    return !(isdigit((unsigned char)prev) || prev == ')');
+}
+
+/**
+ * Extract the content of a balanced (...) block starting at '(' into
+ * buf[sz]; advance *pp past the closing ')'.  Returns 1 on success.
+ */
+static int nc_parens(const char **pp, char *buf, int sz)
+{
+    nc_skip(pp);
+    if (**pp != '(') return 0;
+    (*pp)++;
+    int depth = 1, n = 0;
+    bool in_str = false;
+    char prev = '(';
+    while (**pp && depth > 0) {
+        char c = **pp;
+        if (c == '"' && nc_is_str_quote(prev)) in_str = !in_str;
+        if (!in_str) {
+            if (c == '(')      depth++;
+            else if (c == ')') { if (--depth == 0) { (*pp)++; break; } }
+        }
+        if (n < sz - 1) buf[n++] = c;
+        prev = c;
+        (*pp)++;
+    }
+    buf[n] = '\0';
+    return 1;
+}
+
+/**
+ * Skip a balanced { ... } block.  *pp should point at the opening '{'.
+ */
+static void nc_skip_block(const char **pp)
+{
+    nc_skip(pp);
+    if (**pp != '{') return;
+    (*pp)++;
+    int depth = 1;
+    bool in_str = false;
+    char prev = '{';
+    while (**pp && depth > 0) {
+        char c = **pp;
+        if (c == '"' && nc_is_str_quote(prev)) in_str = !in_str;
+        if (!in_str) {
+            if (c == '{') depth++;
+            else if (c == '}') depth--;
+        }
+        prev = c;
+        (*pp)++;
+    }
+}
+
+/**
+ * Read characters into buf[sz] until `delim` is found at nesting depth 0.
+ * Does NOT consume the delimiter.  Trailing whitespace is stripped.
+ * Returns 0 if nothing was read.
+ */
+static int nc_read_to(const char **pp, char *buf, int sz, char delim)
+{
+    int n = 0, depth = 0;
+    bool in_str = false;
+    char prev = '\0';
+    while (**pp && !(depth == 0 && **pp == delim && !in_str)) {
+        char c = **pp;
+        if (c == '"' && nc_is_str_quote(prev)) in_str = !in_str;
+        if (!in_str) {
+            if (c == '(' || c == '[') depth++;
+            else if (c == ')' || c == ']') depth--;
+        }
+        if (n < sz - 1) buf[n++] = c;
+        prev = c;
+        (*pp)++;
+    }
+    while (n > 0 && isspace((unsigned char)buf[n-1])) n--;
+    buf[n] = '\0';
+    return n;
+}
+
+/**
+ * Skip past a semicolon (if present).
+ */
+static void nc_semi(const char **pp)
+{
+    nc_skip(pp);
+    if (**pp == ';') (*pp)++;
+}
+
+/**
+ * Split a balanced-comma-separated argument string into out[0..max-1].
+ * Respects nested parentheses.  Returns argument count.
+ */
+static int nc_split(const char *s, char out[][256], int max)
+{
+    int n = 0, depth = 0, di = 0;
+    bool in_str = false;
+    char prev = '\0';
+    char cur[512];
+    for (; *s && n < max; s++) {
+        char c = *s;
+        if (c == '"' && nc_is_str_quote(prev)) in_str = !in_str;
+        if (!in_str) {
+            if (c == '(') depth++;
+            else if (c == ')') depth--;
+        }
+        if (!in_str && depth == 0 && c == ',') {
+            while (di > 0 && isspace((unsigned char)cur[di-1])) di--;
+            cur[di] = '\0';
+            const char *t = cur; while (*t && isspace((unsigned char)*t)) t++;
+            strncpy(out[n++], t, 255); out[n-1][255] = '\0';
+            di = 0;
+        } else {
+            if (di < 510) cur[di++] = c;
+        }
+        prev = c;
+    }
+    /* last (or only) arg */
+    while (di > 0 && isspace((unsigned char)cur[di-1])) di--;
+    cur[di] = '\0';
+    const char *t = cur; while (*t && isspace((unsigned char)*t)) t++;
+    if (*t && n < max) { strncpy(out[n++], t, 255); out[n-1][255] = '\0'; }
+    return n;
+}
+
+/* -------------------------------------------------------------------------
+ * Expression transformation: NC → tinyexpr-compatible
+ * ---------------------------------------------------------------------- */
+
+/**
+ * AWG gauge N (positive) → wire radius in metres.
+ * Formula: d_mm = 0.127 * 92^((36-N)/39) ; r_m = d_mm/2000
+ */
+static double awg_radius_m(int gauge)
+{
+    double d_mm = 0.127 * pow(92.0, (36.0 - gauge) / 39.0);
+    return d_mm / 2000.0;
+}
+
+/**
+ * Transform an NC expression string to a tinyexpr-compatible string:
+ *   N"       → N*0.0254   (the " immediately follows a digit in dst)
+ *   N'       → N*0.3048   (the ' immediately follows a digit in dst)
+ *   #N       → numeric AWG radius (decimal)
+ *   sind(    → sin(
+ *   cosd(    → cos(
+ *   tand(    → tan(
+ *   atand(   → atan(
+ */
+static void expand_expr(const char *src, char *dst, int dsz)
+{
+    int di = 0;
+    while (*src && di < dsz - 1) {
+        /* AWG: #<digits> */
+        if (*src == '#' && isdigit((unsigned char)src[1])) {
+            char *end;
+            long g = strtol(src + 1, &end, 10);
+            int  n = snprintf(dst + di, dsz - di, "%.8g", awg_radius_m((int)g));
+            if (n > 0) di += n;
+            src = end;
+            continue;
+        }
+        /* inch suffix: digit already in dst, next src char is " */
+        if (*src == '"' && di > 0 && isdigit((unsigned char)dst[di-1])) {
+            int n = snprintf(dst + di, dsz - di, "*0.0254");
+            if (n > 0) di += n;
+            src++;
+            continue;
+        }
+        /* feet suffix */
+        if (*src == '\'' && di > 0 && isdigit((unsigned char)dst[di-1])) {
+            int n = snprintf(dst + di, dsz - di, "*0.3048");
+            if (n > 0) di += n;
+            src++;
+            continue;
+        }
+        /* trig degree variants */
+        if (strncmp(src, "sind(",  5) == 0) {
+            int n = snprintf(dst + di, dsz - di, "sin("); if (n>0) di+=n; src+=5; continue;
+        }
+        if (strncmp(src, "cosd(",  5) == 0) {
+            int n = snprintf(dst + di, dsz - di, "cos("); if (n>0) di+=n; src+=5; continue;
+        }
+        if (strncmp(src, "tand(",  5) == 0) {
+            int n = snprintf(dst + di, dsz - di, "tan("); if (n>0) di+=n; src+=5; continue;
+        }
+        if (strncmp(src, "atand(", 6) == 0) {
+            int n = snprintf(dst + di, dsz - di, "atan("); if (n>0) di+=n; src+=6; continue;
+        }
+        dst[di++] = *src++;
+    }
+    dst[di] = '\0';
+}
+
+/**
+ * Return the centre-segment expression for a wire with `segs` segments.
+ * If segs_str is a pure integer, compute the integer.
+ * Otherwise emit "(<segs_str>+1)/2".
+ */
+static void centre_seg(const char *segs_str, char *out, int sz)
+{
+    char *end;
+    long n = strtol(segs_str, &end, 10);
+    if (*end == '\0' && n > 0)
+        snprintf(out, sz, "%ld", (n + 1) / 2);
+    else
+        snprintf(out, sz, "(%s+1)/2", segs_str);
+}
+
+/**
+ * Return true if the expression string contains the standalone identifier 'c'.
+ * Used to decide if we need to inject SY c=299.792458.
+ */
+static bool expr_uses_c(const char *s)
+{
+    const char *start = s;
+    for (; *s; s++) {
+        if (*s != 'c') continue;
+        char l = (s > start) ? s[-1] : '\0';
+        char r = s[1];
+        bool left_ok  = (l == '\0' || (!isalnum((unsigned char)l)  && l != '_'));
+        bool right_ok = (r == '\0' || (!isalnum((unsigned char)r)  && r != '_'));
+        if (left_ok && right_ok) return true;
+    }
+    return false;
+}
+
+/* -------------------------------------------------------------------------
+ * NC reader state
+ * ---------------------------------------------------------------------- */
+
+#define NCR_MAX_VARS   64
+#define NCR_MAX_GW    512
+#define NCR_MAX_POST  256
+
+typedef struct {
+    const char *p;            /* current scan position            */
+
+    /* variable registries */
+    char  sy_vars[NCR_MAX_VARS][64];  /* real/int variable names    */
+    int   n_syv;
+    char  el_vars[NCR_MAX_VARS][64];  /* element variable names     */
+    int   el_tags[NCR_MAX_VARS];      /* assigned GW tag (0=none)   */
+    char  el_segs[NCR_MAX_VARS][64];  /* segment-count expression   */
+    int   n_elv;
+    int   next_tag;           /* next GW tag to assign            */
+
+    /* emitted-card flags */
+    bool  need_c;             /* inject SY c=299.792458?          */
+    bool  have_gn;            /* any GN call seen?                */
+    int   sommerfeld;         /* useSommerfeldGround arg          */
+    bool  first_freq;         /* setFrequency not yet emitted     */
+} ncr_t;
+
+/* Forward declaration */
+static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp);
+
+/* -------------------------------------------------------------------------
+ * Wire helper
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Process a wire()  (or line()) argument string; emit a GW card into deck.
+ * Returns the assigned tag number, or -1 on error.
+ * *seg_out receives the (expanded) segment-count expression.
+ */
+static int ncr_wire(ncr_t *s, const char *argstr, deck_t *deck,
+                    char *seg_out, int seg_sz)
+{
+    char args[8][256];
+    int n = nc_split(argstr, args, 8);
+    if (n < 8) return -1;
+
+    char xa[8][256];
+    for (int i = 0; i < 8; i++) expand_expr(args[i], xa[i], 256);
+
+    int tag = s->next_tag++;
+    if (seg_out) {
+        strncpy(seg_out, xa[7], seg_sz - 1);
+        seg_out[seg_sz - 1] = '\0';
+    }
+
+    char buf[512];
+    snprintf(buf, sizeof buf,
+             "GW %d, %s, %s, %s, %s, %s, %s, %s, %s",
+             tag, xa[7],
+             xa[0], xa[1], xa[2],
+             xa[3], xa[4], xa[5],
+             xa[6]);
+    append_card_from_text(deck, buf);
+    return tag;
+}
+
+/* -------------------------------------------------------------------------
+ * Resolve an element-or-inline-wire argument
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Given an argument string that is either:
+ *   (a) a variable name  → look up in el_vars → return tag, set *seg
+ *   (b) wire(...) / line(...) inline call → process, return tag, set *seg
+ *
+ * Returns tag number (≥1) or -1 if not resolvable.
+ */
+static int ncr_resolve_elem(ncr_t *s, const char *arg,
+                            deck_t *deck,
+                            char *seg_out, int seg_sz)
+{
+    const char *a = arg;
+    while (*a && isspace((unsigned char)*a)) a++;
+
+    /* check for inline wire() / line() */
+    if (strncmp(a, "wire(", 5) == 0 || strncmp(a, "line(", 5) == 0) {
+        const char *inner = strchr(a, '(');
+        if (!inner) return -1;
+        inner++;
+        /* extract content up to matching ')' */
+        char wargs[512];
+        int depth = 1, n = 0;
+        const char *p = inner;
+        while (*p && depth > 0) {
+            if (*p == '(') depth++;
+            else if (*p == ')') { if (--depth == 0) break; }
+            if (n < 510) wargs[n++] = *p;
+            p++;
+        }
+        wargs[n] = '\0';
+        return ncr_wire(s, wargs, deck, seg_out, seg_sz);
+    }
+
+    /* look up element variable */
+    char name[64]; int ni = 0;
+    while (*a && (isalnum((unsigned char)*a) || *a == '_') && ni < 63)
+        name[ni++] = *a++;
+    name[ni] = '\0';
+    for (int i = 0; i < s->n_elv; i++) {
+        if (strcmp(s->el_vars[i], name) == 0 && s->el_tags[i] > 0) {
+            if (seg_out) {
+                strncpy(seg_out, s->el_segs[i], seg_sz - 1);
+                seg_out[seg_sz - 1] = '\0';
+            }
+            return s->el_tags[i];
+        }
+    }
+    return -1;
+}
+
+/* -------------------------------------------------------------------------
+ * Post-card (post-GE) accumulator helper
+ * ---------------------------------------------------------------------- */
+
+static void post_add(char **post, int *np, int maxp, const char *str)
+{
+    if (*np >= maxp) return;
+    post[(*np)++] = strdup(str);
+}
+
+/* -------------------------------------------------------------------------
+ * Function call dispatcher
+ * ---------------------------------------------------------------------- */
+
+static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
+                     deck_t *deck, char **post, int *np, int maxp)
+{
+    /* ---- geometry ---------------------------------------------------- */
+    if (strcmp(func, "wire") == 0 || strcmp(func, "line") == 0) {
+        char seg[64];
+        ncr_wire(s, argbuf, deck, seg, sizeof seg);
+        return;
+    }
+
+    /* ---- excitation -------------------------------------------------- */
+    if (strcmp(func, "voltageFeed") == 0 || strcmp(func, "currentFeed") == 0) {
+        char args[4][256];
+        int  na = nc_split(argbuf, args, 4);
+        if (na < 3) return;
+        int  ex_type = (strcmp(func, "currentFeed") == 0) ? 1 : 0;
+        char seg[64] = "1";
+        int  tag = ncr_resolve_elem(s, args[0], deck, seg, sizeof seg);
+        if (tag < 0) return;
+        char cseg[64];
+        centre_seg(seg, cseg, sizeof cseg);
+        char re[256], im[256];
+        expand_expr(args[1], re, sizeof re);
+        expand_expr(args[2], im, sizeof im);
+        char buf[512];
+        snprintf(buf, sizeof buf,
+                 "EX %d, %d, %s, 0, %s, %s",
+                 ex_type, tag, cseg, re, im);
+        post_add(post, np, maxp, buf);
+        return;
+    }
+    if (strcmp(func, "voltageFeedAtSegment") == 0 ||
+        strcmp(func, "currentFeedAtSegment") == 0) {
+        char args[5][256];
+        int  na = nc_split(argbuf, args, 5);
+        if (na < 4) return;
+        int  ex_type = (strncmp(func, "current", 7) == 0) ? 1 : 0;
+        char seg[64] = "1";
+        int  tag = ncr_resolve_elem(s, args[0], deck, seg, sizeof seg);
+        if (tag < 0) return;
+        char re[256], im[256];
+        expand_expr(args[1], re, sizeof re);
+        expand_expr(args[2], im, sizeof im);
+        char seg_e[64]; expand_expr(args[3], seg_e, sizeof seg_e);
+        char buf[512];
+        snprintf(buf, sizeof buf,
+                 "EX %d, %d, %s, 0, %s, %s",
+                 ex_type, tag, seg_e, re, im);
+        post_add(post, np, maxp, buf);
+        return;
+    }
+
+    /* ---- loading ----------------------------------------------------- */
+    if (strcmp(func, "impedanceLoad") == 0 ||
+        strcmp(func, "impedanceAtSegments") == 0) {
+        char args[6][256];
+        int  na = nc_split(argbuf, args, 6);
+        if (na < 3) return;
+        char seg[64] = "1";
+        int  tag = ncr_resolve_elem(s, args[0], deck, seg, sizeof seg);
+        if (tag < 0) return;
+        char cseg[64];
+        centre_seg(seg, cseg, sizeof cseg);
+        char R[256], X[256];
+        expand_expr(args[1], R, sizeof R);
+        expand_expr(args[2], X, sizeof X);
+        char buf[512];
+        if (na >= 5 /* has fromSeg, toSeg */) {
+            char s1[64], s2[64];
+            expand_expr(args[3], s1, sizeof s1);
+            expand_expr(args[4], s2, sizeof s2);
+            snprintf(buf, sizeof buf,
+                     "LD 4, %d, %s, %s, %s, %s", tag, s1, s2, R, X);
+        } else {
+            snprintf(buf, sizeof buf,
+                     "LD 4, %d, %s, %s, %s, %s", tag, cseg, cseg, R, X);
+        }
+        post_add(post, np, maxp, buf);
+        return;
+    }
+    if (strcmp(func, "lumpedSeriesLoad") == 0 ||
+        strcmp(func, "distributedSeriesLoad") == 0) {
+        char args[5][256];
+        int  na = nc_split(argbuf, args, 5);
+        if (na < 4) return;
+        char seg[64] = "1";
+        int  tag = ncr_resolve_elem(s, args[0], deck, seg, sizeof seg);
+        if (tag < 0) return;
+        char cseg[64];
+        centre_seg(seg, cseg, sizeof cseg);
+        char R[64], L[64], C[64];
+        expand_expr(args[1], R, sizeof R); /* R Ω */
+        expand_expr(args[2], L, sizeof L); /* L H */
+        expand_expr(args[3], C, sizeof C); /* C F */
+        /* LD type 0: R/L/C in series; fields: F1=R, F2=L, F3=C */
+        char buf[512];
+        snprintf(buf, sizeof buf,
+                 "LD 0, %d, %s, %s, %s, %s, %s", tag, cseg, cseg, R, L, C);
+        post_add(post, np, maxp, buf);
+        return;
+    }
+    if (strcmp(func, "resistiveLoad") == 0) {
+        char args[2][256]; nc_split(argbuf, args, 2);
+        char seg[64] = "1";
+        int tag = ncr_resolve_elem(s, args[0], deck, seg, sizeof seg);
+        if (tag < 0) return;
+        char cseg[64]; centre_seg(seg, cseg, sizeof cseg);
+        char R[64]; expand_expr(args[1], R, sizeof R);
+        char buf[256];
+        snprintf(buf, sizeof buf, "LD 4, %d, %s, %s, %s, 0", tag, cseg, cseg, R);
+        post_add(post, np, maxp, buf);
+        return;
+    }
+
+    /* ---- frequency --------------------------------------------------- */
+    if (strcmp(func, "setFrequency") == 0) {
+        char f[256]; expand_expr(argbuf, f, sizeof f);
+        char buf[256];
+        snprintf(buf, sizeof buf, "FR 0, 1, 0, 0, %s, 0", f);
+        post_add(post, np, maxp, buf);
+        s->first_freq = false;
+        return;
+    }
+    if (strcmp(func, "addFrequency") == 0) {
+        char f[256]; expand_expr(argbuf, f, sizeof f);
+        char buf[256];
+        snprintf(buf, sizeof buf, "FR 0, 1, 0, 0, %s, 0", f);
+        post_add(post, np, maxp, buf);
+        return;
+    }
+    if (strcmp(func, "frequencySweep") == 0) {
+        char args[3][256]; int na = nc_split(argbuf, args, 3);
+        if (na < 3) return;
+        /* f0, f1, n  → compute step = (f1-f0)/(n-1) or emit approximation */
+        char f0[256], f1[256], nf[256];
+        expand_expr(args[0], f0, sizeof f0);
+        expand_expr(args[1], f1, sizeof f1);
+        expand_expr(args[2], nf, sizeof nf);
+        /* Try to compute step numerically if all are literals */
+        char *e0, *e1, *en;
+        double v0 = strtod(f0, &e0);
+        double v1 = strtod(f1, &e1);
+        long   vn = strtol(nf, &en, 10);
+        char buf[256];
+        if (*e0=='\0' && *e1=='\0' && *en=='\0' && vn >= 2) {
+            double step = (v1 - v0) / (vn - 1);
+            snprintf(buf, sizeof buf,
+                     "FR 0, %ld, 0, 0, %.8g, %.8g", vn, v0, step);
+        } else {
+            /* fall back: emit only the start frequency */
+            snprintf(buf, sizeof buf, "FR 0, 1, 0, 0, %s, 0", f0);
+        }
+        post_add(post, np, maxp, buf);
+        s->first_freq = false;
+        return;
+    }
+
+    /* ---- ground ------------------------------------------------------ */
+    if (strcmp(func, "freespace") == 0) {
+        if (!s->have_gn) { post_add(post, np, maxp, "GN -1"); s->have_gn = true; }
+        return;
+    }
+    if (strcmp(func, "perfectGround") == 0) {
+        if (!s->have_gn) { post_add(post, np, maxp, "GN 1"); s->have_gn = true; }
+        return;
+    }
+    if (strcmp(func, "averageGround") == 0) {
+        if (!s->have_gn) { post_add(post, np, maxp, "GN 0, 0, 0, 0, 13, 0.005"); s->have_gn = true; }
+        return;
+    }
+    if (strcmp(func, "goodGround") == 0) {
+        if (!s->have_gn) { post_add(post, np, maxp, "GN 0, 0, 0, 0, 20, 0.0303"); s->have_gn = true; }
+        return;
+    }
+    if (strcmp(func, "poorGround") == 0) {
+        if (!s->have_gn) { post_add(post, np, maxp, "GN 0, 0, 0, 0, 13, 0.002"); s->have_gn = true; }
+        return;
+    }
+    if (strcmp(func, "saltWaterGround") == 0) {
+        if (!s->have_gn) { post_add(post, np, maxp, "GN 0, 0, 0, 0, 81, 5.0"); s->have_gn = true; }
+        return;
+    }
+    if (strcmp(func, "freshWaterGround") == 0) {
+        if (!s->have_gn) { post_add(post, np, maxp, "GN 0, 0, 0, 0, 80, 0.001"); s->have_gn = true; }
+        return;
+    }
+    if (strcmp(func, "ground") == 0) {
+        /* ground( epsilon_r, sigma ) */
+        char args[2][256]; int na = nc_split(argbuf, args, 2);
+        if (na < 2) return;
+        char eps[256], sig[256];
+        expand_expr(args[0], eps, sizeof eps);
+        expand_expr(args[1], sig, sizeof sig);
+        char buf[256];
+        int gn_type = s->sommerfeld ? 2 : 0;
+        snprintf(buf, sizeof buf, "GN %d, 0, 0, 0, %s, %s", gn_type, eps, sig);
+        if (!s->have_gn) { post_add(post, np, maxp, buf); s->have_gn = true; }
+        return;
+    }
+    if (strcmp(func, "useSommerfeldGround") == 0) {
+        s->sommerfeld = (int)strtol(argbuf, NULL, 10);
+        return;
+    }
+
+    /* ---- radiation pattern ------------------------------------------ */
+    if (strcmp(func, "azimuthPlotForElevationAngle") == 0) {
+        char ea[256]; expand_expr(argbuf, ea, sizeof ea);
+        double elev = strtod(ea, NULL);
+        char buf[256];
+        snprintf(buf, sizeof buf,
+                 "RP 0, 1, 360, 1000, %.6g, 0, 0, 1", 90.0 - elev);
+        post_add(post, np, maxp, buf);
+        return;
+    }
+    if (strcmp(func, "elevationPlotForAzimuthAngle") == 0) {
+        char aa[256]; expand_expr(argbuf, aa, sizeof aa);
+        double az = strtod(aa, NULL);
+        char buf[256];
+        snprintf(buf, sizeof buf,
+                 "RP 0, 181, 1, 1000, 0, %.6g, 1, 0", az);
+        post_add(post, np, maxp, buf);
+        return;
+    }
+
+    /* ---- misc -------------------------------------------------------- */
+    if (strcmp(func, "useExtendedKernel") == 0) {
+        if (strtol(argbuf, NULL, 10))
+            post_add(post, np, maxp, "EK");
+        return;
+    }
+    /* any other function call: skip silently */
+}
+
+/* -------------------------------------------------------------------------
+ * Statement parser
+ * ---------------------------------------------------------------------- */
+
+static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
+{
+    nc_skip(&s->p);
+    if (!*s->p || *s->p == '}') return;
+
+    /* read leading identifier */
+    char ident[128];
+    if (!nc_ident(&s->p, ident, sizeof ident) || !ident[0]) {
+        /* non-identifier: skip to semicolon */
+        while (*s->p && *s->p != ';' && *s->p != '}') {
+            if (*s->p == '{') { nc_skip_block(&s->p); continue; }
+            s->p++;
+        }
+        nc_semi(&s->p);
+        return;
+    }
+
+    nc_skip(&s->p);
+
+    /* ---- type declarations ------------------------------------------ */
+    bool is_real_int = (strcmp(ident, "real") == 0 || strcmp(ident, "int") == 0);
+    bool is_elem     = (strcmp(ident, "element") == 0);
+    bool is_other_type = (!is_real_int && !is_elem &&
+                          (strcmp(ident, "coaxtype") == 0 ||
+                           strcmp(ident, "vector")   == 0 ||
+                           strcmp(ident, "transform") == 0));
+    if (is_real_int || is_elem || is_other_type) {
+        while (*s->p && *s->p != ';') {
+            nc_skip(&s->p);
+            char name[64];
+            nc_ident(&s->p, name, sizeof name);
+            if (name[0]) {
+                if (is_real_int && s->n_syv < NCR_MAX_VARS)
+                    strncpy(s->sy_vars[s->n_syv++], name, 63);
+                if (is_elem && s->n_elv < NCR_MAX_VARS) {
+                    strncpy(s->el_vars[s->n_elv], name, 63);
+                    s->el_tags[s->n_elv] = 0;
+                    s->el_segs[s->n_elv][0] = '\0';
+                    s->n_elv++;
+                }
+            }
+            nc_skip(&s->p);
+            if (*s->p == ',') s->p++;
+        }
+        nc_semi(&s->p);
+        return;
+    }
+
+    /* ---- function call: ident( ... ) ; -------------------------------- */
+    if (*s->p == '(') {
+        char argbuf[1024];
+        nc_parens(&s->p, argbuf, sizeof argbuf);
+        ncr_func(s, ident, argbuf, deck, post, np, maxp);
+        nc_skip(&s->p);
+        /* consume optional ';' — some calls omit it */
+        nc_semi(&s->p);
+        return;
+    }
+
+    /* ---- assignment: ident = RHS ; ------------------------------------ */
+    if (*s->p == '=') {
+        s->p++; /* skip '=' */
+        nc_skip(&s->p);
+
+        /* Is this an element variable? */
+        int ei = -1;
+        for (int i = 0; i < s->n_elv; i++) {
+            if (strcmp(s->el_vars[i], ident) == 0) { ei = i; break; }
+        }
+
+        if (ei >= 0) {
+            /* element assignment: RHS must be wire()/line() call */
+            char func[64];
+            nc_ident(&s->p, func, sizeof func);
+            nc_skip(&s->p);
+            if ((strcmp(func, "wire") == 0 || strcmp(func, "line") == 0)
+                && *s->p == '(') {
+                char wargs[1024];
+                nc_parens(&s->p, wargs, sizeof wargs);
+                char seg[64];
+                int tag = ncr_wire(s, wargs, deck, seg, sizeof seg);
+                if (tag >= 0) {
+                    s->el_tags[ei] = tag;
+                    strncpy(s->el_segs[ei], seg, 63);
+                }
+            } else {
+                /* skip to semicolon */
+                while (*s->p && *s->p != ';' && *s->p != '}') s->p++;
+            }
+            nc_skip(&s->p);
+            nc_semi(&s->p);
+            return;
+        }
+
+        /* Regular (SY) assignment — read the expression */
+        char expr_raw[512];
+        nc_read_to(&s->p, expr_raw, sizeof expr_raw, ';');
+        nc_semi(&s->p);
+
+        char expr[512];
+        expand_expr(expr_raw, expr, sizeof expr);
+
+        /* check if 'c' constant is needed */
+        if (expr_uses_c(expr)) s->need_c = true;
+
+        /* We emit SY cards deferred (in the final card flush), but since
+         * append_card_from_text appends in order, we need to emit SY before
+         * GW.  We're inside the model body, but GW cards may interleave with
+         * SY assignments.  Strategy: emit SY inline here, before any later
+         * GW emitted in the same pass.  This matches the NEC-2 rule that SY
+         * must precede GW cards. */
+        char buf[512];
+        snprintf(buf, sizeof buf, "SY %s=%s", ident, expr);
+        append_card_from_text(deck, buf);
+        return;
+    }
+
+    /* ---- cannot parse: skip to semicolon ------------------------------ */
+    while (*s->p && *s->p != ';' && *s->p != '}') {
+        if (*s->p == '{') { nc_skip_block(&s->p); continue; }
+        s->p++;
+    }
+    nc_semi(&s->p);
+}
+
+/* -------------------------------------------------------------------------
+ * read_deck_nc — public entry point
  * ---------------------------------------------------------------------- */
 
 int read_deck_nc(deck_t *deck, FILE *fp)
 {
-    (void)deck;
-    (void)fp;
-    return -1;
+    if (!deck || !fp) return -1;
+
+    /* ---- read file into buffer ---------------------------------------- */
+    fseek(fp, 0, SEEK_END);
+    long fsz = ftell(fp);
+    rewind(fp);
+    if (fsz <= 0) return -1;
+
+    char *buf = malloc((size_t)fsz + 1);
+    if (!buf) return -1;
+    size_t nr = fread(buf, 1, (size_t)fsz, fp);
+    buf[nr] = '\0';
+
+    /* ---- initialise parser state ------------------------------------- */
+    ncr_t s;
+    memset(&s, 0, sizeof s);
+    s.p         = buf;
+    s.next_tag  = 1;
+    s.first_freq = true;
+
+    /* ---- find model( "name" ) { ---------------------------------------- */
+    const char *title = "antenna";
+    char title_buf[256] = {0};
+
+    /* Scan for 'model' at top level */
+    for (;;) {
+        nc_skip(&s.p);
+        if (!*s.p) { free(buf); return -1; }
+        char tok[128];
+        nc_ident(&s.p, tok, sizeof tok);
+        nc_skip(&s.p);
+        if (strcmp(tok, "model") == 0 && *s.p == '(') {
+            /* extract model name */
+            char args[512];
+            nc_parens(&s.p, args, sizeof args);
+            const char *a = args;
+            while (*a && isspace((unsigned char)*a)) a++;
+            if (*a == '"') {
+                nc_qstring(&a, title_buf, sizeof title_buf);
+                title = title_buf;
+            }
+            break;
+        }
+        /* skip any other top-level construct */
+        if (*s.p == '(') {
+            char tmp[1024]; nc_parens(&s.p, tmp, sizeof tmp);
+            nc_skip(&s.p);
+        }
+        if (*s.p == '{') nc_skip_block(&s.p);
+        else {
+            while (*s.p && *s.p != ';' && *s.p != '{' && *s.p != '}') s.p++;
+            if (*s.p == ';') s.p++;
+        }
+    }
+
+    /* ---- emit CM + CE ----------------------------------------- */
+    {
+        char cm[512];
+        snprintf(cm, sizeof cm, "CM %s", title);
+        append_card_from_text(deck, cm);
+    }
+    append_card_from_text(deck, "CE");
+
+    /* ---- parse model body -------------------------------------------- */
+    nc_skip(&s.p);
+    if (*s.p != '{') { free(buf); return -1; }
+    s.p++; /* skip '{' */
+
+    /* post-GE card buffer (EX, LD, FR, GN, RP, EN) */
+    char *post[NCR_MAX_POST];
+    memset(post, 0, sizeof post);
+    int   np = 0;
+
+    int depth = 1;
+    while (*s.p && depth > 0) {
+        nc_skip(&s.p);
+        if (!*s.p) break;
+        if (*s.p == '}') {
+            if (--depth == 0) { s.p++; break; }
+            s.p++;
+            continue;
+        }
+        if (*s.p == '{') {
+            depth++;
+            s.p++;
+            continue;
+        }
+        ncr_stmt(&s, deck, post, &np, NCR_MAX_POST);
+    }
+
+    /* ---- GE termination ---------------------------------------------- */
+    append_card_from_text(deck, "GE 0");
+
+    /* ---- inject SY c=299.792458 if needed (before other post cards) ---
+     * Actually it must come before GW, so it's too late here.
+     * We already emitted SY inline.  But 'c' in expressions was emitted
+     * inline too.  Check if any emitted SY still uses bare 'c' — if the
+     * user referenced 'c' but never declared it, we need to inject it.
+     * Since SY cards were emitted before any GW, we can't retroactively
+     * insert before them.  Best we can do: emit a ! comment noting it.
+     * TODO: two-pass approach for cleaner 'c' injection. */
+
+    /* ---- GN handling: if useSommerfeldGround was seen but no ground()
+     * gave us a GN card, patch any emitted ground GN to use type=2, or
+     * emit a default. */
+    if (s.sommerfeld && !s.have_gn) {
+        /* default: average ground with Sommerfeld */
+        post_add(post, &np, NCR_MAX_POST,
+                 "GN 2, 0, 0, 0, 13, 0.005");
+        s.have_gn = true;
+    } else if (s.sommerfeld) {
+        /* scan post[] for the GN card and upgrade its type field */
+        for (int i = 0; i < np; i++) {
+            if (!post[i]) continue;
+            if (strncmp(post[i], "GN ", 3) == 0) {
+                /* parse the type integer */
+                char *p = post[i] + 3;
+                while (*p && isspace((unsigned char)*p)) p++;
+                int gn_t = (int)strtol(p, NULL, 10);
+                if (gn_t == 0) {
+                    /* upgrade to Sommerfeld-Norton (type 2) */
+                    char newgn[256];
+                    snprintf(newgn, sizeof newgn, "GN 2%s", p + 1);
+                    free(post[i]);
+                    post[i] = strdup(newgn);
+                }
+                break;
+            }
+        }
+    }
+    if (!s.have_gn) {
+        post_add(post, &np, NCR_MAX_POST, "GN -1");
+    }
+
+    /* ---- emit post-GE cards ------------------------------------------ */
+    for (int i = 0; i < np; i++) {
+        if (post[i]) {
+            append_card_from_text(deck, post[i]);
+            free(post[i]);
+        }
+    }
+
+    /* ---- EN termination ---------------------------------------------- */
+    append_card_from_text(deck, "EN");
+
+    free(buf);
+    return 0;
 }

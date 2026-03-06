@@ -59,44 +59,6 @@
  * Shared card-creation helpers (same pattern as maa-support.c)
  * ---------------------------------------------------------------------- */
 
-static int append_card_from_text(deck_t *deck, const char *text)
-{
-    card_t card = {0};
-    size_t len = strlen(text);
-    card.edited = false;
-    card.ignore = false;
-    card.card_num = deck->num_cards + 1;
-    card.orig_str = calloc(len + 1, 1);
-    card.card_str = calloc(len + 1, 1);
-    if (!card.orig_str || !card.card_str) {
-        free(card.orig_str);
-        free(card.card_str);
-        return -1;
-    }
-    memcpy(card.orig_str, text, len);
-    memcpy(card.card_str, text, len);
-    const char *p = text;
-    while (*p && isspace((unsigned char)*p)) p++;
-    card.card_code[0] = *p ? *p       : '\0';
-    card.card_code[1] = (*p && *(p+1)) ? *(p+1) : '\0';
-    card.card_code[2] = '\0';
-    /* populate comment field for CM/CE/'!' */
-    {
-        int code_end = 0;
-        if (strcmp(card.card_code, "CM") == 0 || strcmp(card.card_code, "CE") == 0)
-            code_end = 2;
-        else if (card.card_code[0] == '!' || card.card_code[0] == '#')
-            code_end = 1;
-        if (code_end > 0) {
-            const char *rest = p + code_end;
-            card.comment = strdup(rest);
-        }
-    }
-    if (insert_card(deck, &card, deck->num_cards) < 0)
-        return -1;
-    return 0;
-}
-
 /* -------------------------------------------------------------------------
  * String utilities
  * ---------------------------------------------------------------------- */

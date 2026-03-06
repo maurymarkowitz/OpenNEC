@@ -12,6 +12,19 @@
 
 /* Card insertion, removal, and reordering */
 int insert_card(deck_t *deck, card_t *card, int location);
+
+/**
+ * append_card_from_text - allocate and append a card from a plain text line.
+ *
+ * Creates a card_t from the given NEC card string (e.g. "GW 1, 21, ..."),
+ * populates card_code and comment fields, and appends it to the deck using
+ * insert_card().  Used by all the format importers (maa, yo, nc).
+ *
+ * @param deck  Target deck (non-NULL).
+ * @param text  Null-terminated card string.
+ * @return 0 on success, -1 on allocation / insertion failure.
+ */
+int append_card_from_text(deck_t *deck, const char *text);
 int move_card(deck_t *deck, int src, int dst);
 int remove_card(deck_t *deck, int location);
 

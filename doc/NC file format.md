@@ -13,10 +13,12 @@ in three formats:
 * "deck" mode, which saves a traditional NEC-2 file with a `.deck` extension
 * "NC" mode, short for "NEC C", which saves a *program* with a `.nc` extension
 
-This document describes the NC format and how it can be used in a traditional 
-NEC engine like OpenNEC. In contrast to some other formats, like `.EZ`, NC maps 
-1 to 1 onto NEC constructs, and conversion is alwasy possible with no loss of
-information.
+This document describes the NC format and how it can be used in a traditional
+NEC engine like OpenNEC. OpenNEC includes both an importer and an exporter for
+the cocoaNEC `.nc` scripting language; the implementation covers a practical
+subset sufficient to round-trip the example `.nc` files included with this
+repository. In contrast to some other formats, like `.EZ`, NC maps 1 to 1 onto
+NEC constructs, and conversion is always possible with no loss of information.
 
 Format overview
 ---------------
@@ -68,10 +70,9 @@ more comma-separated identifiers, ending with `;`.
 | `vector`    | 3-D coordinate | Used with `wirev()` etc. |
 | `transform` | affine transform | Used with `wirev()` etc. |
 
-**Scope:** Variables declared outside all functions are global and visible everywhere.
-Variables declared inside a function body are local to that function.
+**Scope:** Variables declared outside all functions are global and visible everywhere. Variables declared inside a function body are local to that function.
 
-Variables declared at global scope map directly to NEC-2 `SY` (symbol) cards when
+Variables declared at global scope map directly to `SY` (symbol) cards when
 their values are numeric scalars (`int` or `real`). `element` variables hold
 internally-assigned wire tag numbers and do not appear in `SY` cards.
 
@@ -140,8 +141,6 @@ These emit NEC-2 cards directly and bypass the element reference system:
 Wires created by card functions cannot be referenced by NC excitation/loading
 functions (e.g. `voltageFeed`); use the native `wire()` / `line()` family instead, or
 splice a short native wire between them.
-
----
 
 Excitations (Feeds)
 -------------------

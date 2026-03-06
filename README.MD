@@ -143,6 +143,25 @@ There are a number of limitations in these importers as the various formats supp
 
 "Recognised" means the extension is detected and a helpful error is shown, but no import/exporter exists yet.
 
+Note on cocoaNEC `.nc` support
+--------------------------------
+
+OpenNEC now includes both an importer and an exporter for the cocoaNEC `.nc`
+script language. The implementation covers a practical subset sufficient to
+round-trip the example `.nc` files in this repository:
+
+- The importer expands unit suffixes (inches `"`, feet `'`, AWG `#N`) into
+	SI units when parsing.
+- The exporter writes numeric coordinates and radii in metres (no unit
+	suffixes are emitted).
+- The importer supports symbol declarations and multi-assignment `SY` lines,
+	inline `wire()` calls, feeds (`voltageFeed`/`currentFeed`), loads, FR
+	frequency specifications and common ground helpers; `control()` blocks are
+	ignored.
+
+This feature is appropriate for the included examples and common cocoaNEC
+idioms but does not attempt to implement the entire cocoaNEC language.
+
 OpenNEC concept
 ---------------
 OpenNEC's code ultimately traces its history to the NEC-2 Fortran code released by Lawrence Livermore in the early 1980s. A port to C was made by Neoklis Kyriazis in the nec2c program which was first released on 20 August 2003. OpenNEC was forked from the 1.3 version of nec2c, released in 2014. Although initially conceived a simple update, OpenNEC was eventually completely re-written, but an effort was made to keep the overall layout of the project.
