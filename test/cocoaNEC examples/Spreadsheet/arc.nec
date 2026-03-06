@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Controls</key>
+	<dict>
+		<key>comment</key>
+		<array/>
+		<key>conductivity</key>
+		<string>0.0303</string>
+		<key>controlCards</key>
+		<array/>
+		<key>dielectric</key>
+		<string>20.0</string>
+		<key>f1</key>
+		<string>7.080</string>
+		<key>f2</key>
+		<string>14.080</string>
+		<key>f3</key>
+		<string>21.080</string>
+		<key>f4</key>
+		<string>28.080</string>
+		<key>fixed</key>
+		<true/>
+		<key>frequency</key>
+		<string>14.08</string>
+		<key>ground type</key>
+		<string>Good Ground</string>
+		<key>high</key>
+		<string>14.300</string>
+		<key>linear</key>
+		<false/>
+		<key>low</key>
+		<string>14.000</string>
+		<key>multiple</key>
+		<false/>
+		<key>step</key>
+		<string>4</string>
+	</dict>
+	<key>Output</key>
+	<dict>
+		<key>azimuth angles</key>
+		<array>
+			<string>0</string>
+			<string>45</string>
+			<string>90</string>
+		</array>
+		<key>azimuth distance</key>
+		<string>5000</string>
+		<key>azimuth plot 1</key>
+		<false/>
+		<key>azimuth plot 2</key>
+		<true/>
+		<key>azimuth plot 3</key>
+		<false/>
+		<key>elevation angles</key>
+		<array>
+			<string>10</string>
+			<string>20</string>
+			<string>30</string>
+		</array>
+		<key>elevation distance</key>
+		<string>5000</string>
+		<key>elevation plot 1</key>
+		<true/>
+		<key>elevation plot 2</key>
+		<false/>
+		<key>elevation plot 3</key>
+		<false/>
+		<key>extended kernel</key>
+		<false/>
+		<key>quad precision</key>
+		<false/>
+	</dict>
+	<key>Radials</key>
+	<dict>
+		<key>has radials</key>
+		<integer>0</integer>
+		<key>length</key>
+		<string></string>
+		<key>radials</key>
+		<string></string>
+		<key>radius</key>
+		<string></string>
+		<key>x</key>
+		<string></string>
+		<key>y</key>
+		<string></string>
+		<key>z</key>
+		<string></string>
+	</dict>
+	<key>Transforms</key>
+	<array>
+		<dict>
+			<key>name</key>
+			<string>T</string>
+			<key>transform</key>
+			<array>
+				<string>0</string>
+				<string>0</string>
+				<string>0</string>
+				<string>0</string>
+				<string>0</string>
+				<string>10</string>
+			</array>
+		</dict>
+	</array>
+	<key>Variables</key>
+	<array>
+		<dict>
+			<key>comment</key>
+			<string></string>
+			<key>name</key>
+			<string>h</string>
+			<key>value</key>
+			<string>12</string>
+		</dict>
+		<dict>
+			<key>comment</key>
+			<string></string>
+			<key>name</key>
+			<string>v</string>
+			<key>value</key>
+			<string>5.15</string>
+		</dict>
+	</array>
+	<key>Wires</key>
+	<array>
+		<dict>
+			<key>comment</key>
+			<string></string>
+			<key>excitation</key>
+			<dict>
+				<key>location</key>
+				<integer>0</integer>
+				<key>segment</key>
+				<string></string>
+				<key>type</key>
+				<integer>1</integer>
+				<key>voltage</key>
+				<array>
+					<string>1.0</string>
+					<string>0.0</string>
+				</array>
+			</dict>
+			<key>floats</key>
+			<array>
+				<string>1.815</string>
+				<string>0</string>
+				<string>330</string>
+				<string>#14</string>
+			</array>
+			<key>ignore</key>
+			<string></string>
+			<key>ints</key>
+			<array>
+				<string>35</string>
+			</array>
+			<key>loading</key>
+			<dict>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>name</key>
+			<string></string>
+			<key>transform</key>
+			<string>T</string>
+			<key>type</key>
+			<string>-arc-</string>
+		</dict>
+	</array>
+</dict>
+</plist>
