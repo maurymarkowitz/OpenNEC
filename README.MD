@@ -134,9 +134,9 @@ There are a number of limitations in these importers as the various formats supp
 
 | Extension(s) | Format | Read | Write |
 |---|---|---|---|
-| `.nec` `.deck` `.4nec` | OpenNEC / NEC-2 deck | ✓ | ✓ |
-| `.nec2` | NEC-2 (stripped, numeric) | ✓ | ✓ |
-| `.nec4` | NEC-4 | ✓ | stub |
+| `.nec` `.deck` `.4nec` | OpenNEC / 4nec2 deck | ✓ | ✓ |
+| `.nec2` | NEC-2 | ✓ | ✓ |
+| `.nec4` | NEC-4 | ✓ | ✓ |
 | `.maa` `.mma` | MMANA-GAL | ✓ | ✓ |
 | `.nc` | cocoaNEC | ✓ | ✓ |
 | `.yo` `.ant` `.yag` | Yagi Optimizer | ✓ | ✓ |
@@ -146,7 +146,6 @@ There are a number of limitations in these importers as the various formats supp
 | `.mmae` | MMANA-EZ | recognised | — |
 
 "Recognised" means the extension is detected and a helpful error is shown, but no import/exporter exists yet.
-
 
 OpenNEC concept
 ---------------
