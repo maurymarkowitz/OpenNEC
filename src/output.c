@@ -43,18 +43,6 @@ static void write_footer(FILE *file, const nec_context_t *ctx, const deck_t *dec
 static void write_near_field_data(FILE *file, const nec_context_t *ctx);
 static void write_near_field_plot(const nec_context_t *ctx);
 
-/******************************************************************************
- * write_deck_nec4
- *
- * Writes a deck in NEC-4 format. (TODO: NEC-4 has additional card types
- * and field definitions; full implementation pending.)
- *
- */
-void write_deck_nec4(const nec_context_t *ctx, const deck_t *deck, FILE *file)
-{
-  (void)ctx; (void)deck; (void)file;
-  fprintf(stderr, "onec: NEC-4 output format is not yet implemented\n");
-}
 
 /******************************************************************************
  * is_inline_formula
@@ -1628,11 +1616,10 @@ static void write_input_cards(FILE *file, const deck_t *deck, int batch_start, i
       fprintf(file, "\n");
     }
 
-    // print CM and CE comments inline as they are encountered (NEC-4 behavior)
-    // TODO: test to see if this is correct placement for NEC-4, or if it has to be
-    //       output after the *output* for the control cards, or as it is here, during
-    //       the input card echoing.
-    // TODO: make this configurable behavior?
+    // print CM and CE comments inline as they are encountered – this mirrors
+    // the behavior used by the nec4-support writer.
+    // TODO: test whether NEC-4 actually expects them after the control-card
+    //       output instead of interleaved, and possibly make it configurable.
     else if (strncmp(card->card_code, "CM", 2) == 0 || strncmp(card->card_code, "CE", 2) == 0)
     {
       if (card->comment)

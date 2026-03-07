@@ -212,14 +212,14 @@ roundtrip_test: test/roundtrip_test.c $(LIBRARY)
 	$(CC) $(CFLAGS) test/roundtrip_test.c $(LIBRARY) $(LDFLAGS) -o roundtrip_test -lm
 
 # Build the maa converter utility (links libonec.a and includes maa-support)
-maa_convert: test/maa_convert.c $(LIBRARY) src/maa-support.c
-	$(CC) $(CFLAGS) test/maa_convert.c src/maa-support.c $(LIBRARY) $(LDFLAGS) -o maa_convert -lm
+maa_convert: test/maa_convert.c $(LIBRARY) src/import-export/maa-support.c
+	$(CC) $(CFLAGS) test/maa_convert.c src/import-export/maa-support.c $(LIBRARY) $(LDFLAGS) -o maa_convert -lm
 
 .PHONY: maa_convert
 
 # Build the yo converter utility (links libonec.a and includes yo-support)
-yo_convert: test/yo_convert.c $(LIBRARY) src/yo-support.c
-	$(CC) $(CFLAGS) test/yo_convert.c src/yo-support.c $(LIBRARY) $(LDFLAGS) -o yo_convert -lm
+yo_convert: test/yo_convert.c $(LIBRARY) src/import-export/yo-support.c
+	$(CC) $(CFLAGS) test/yo_convert.c src/import-export/yo-support.c $(LIBRARY) $(LDFLAGS) -o yo_convert -lm
 
 .PHONY: yo_convert
 

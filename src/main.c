@@ -18,6 +18,7 @@
 #include "control.h"
 #include "output.h"
 #include "import-export/nec2-support.h"
+#include "import-export/nec4-support.h"
 #include "deck_validations.h"
 #include "import-export/maa-support.h"
 #include "import-export/yo-support.h"

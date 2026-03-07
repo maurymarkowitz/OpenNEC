@@ -13,10 +13,6 @@
 #include <string.h>    /* for strcmp, snprintf */
 #include <stdio.h>
 
-/* forward declaration of the internal NEC-4 writer defined in output.c */
-extern void write_deck_nec4_ctx(const nec_context_t *ctx,
-                                const deck_t *deck,
-                                FILE *file);
 
 int read_deck_nec4(deck_t *deck, FILE *fp)
 {
