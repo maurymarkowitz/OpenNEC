@@ -88,7 +88,8 @@ int write_deck_nec4(const deck_t *deck, FILE *file)
         /* handle standalone comment cards; convert all markers to '!'
          * except CM/CE which are left intact. */
         if (is_comment(card)) {
-            if (card->card_code && card->card_code[0] == 'C') {
+            /* card_code is always non-null (fixed-size array); only test first char */
+    if (card->card_code[0] == 'C') {
                 fprintf(file, "%s", card->card_code);
                 fputs(card->comment, file);
                 fputc('\n', file);

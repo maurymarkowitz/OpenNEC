@@ -811,6 +811,8 @@ static int nc_split(const char *s, char out[][256], int max)
  * AWG gauge N (positive) → wire radius in metres.
  * Formula: d_mm = 0.127 * 92^((36-N)/39) ; r_m = d_mm/2000
  */
+/* static helper currently unused; keep for potential future use. */
+static double awg_radius_m(int gauge) __attribute__((unused));
 static double awg_radius_m(int gauge)
 {
     double d_mm = 0.127 * pow(92.0, (36.0 - gauge) / 39.0);
