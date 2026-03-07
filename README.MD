@@ -41,9 +41,12 @@ scoop bucket add maurymarkowitz https://github.com/maurymarkowitz/scoop-bucket
 scoop install onec
 ```
 
-You can build the project from source, it is a makefile project that does not require `autoconfig` or other steps. A simple `make` should produce a working executable on practically any unix-like system. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](doc/BUILD.md).
+Building OpenNEC
+----------------
 
-Windows compatibility is provided using MinGW. See [BUILD-WINDOWS](doc/BUILD-WINDOWS.md) for details. The same makefile is used for both Unix and Windows, and the `make` utility supplied with MinGW works perfectly.
+You can also easily build the project from source. It is a makefile project that does not require `autoconfig` or other steps. A simple `make` in the root directory should produce a working executable on practically any unix-like system. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](doc/BUILD.md).
+
+Windows compatibility is provided using MinGW. The same makefile is used for both Unix and Windows, and the `make` utility supplied with MinGW works perfectly. See [BUILD-WINDOWS](doc/BUILD-WINDOWS.md) for details.
 
 Running OpenNEC
 ---------------
@@ -135,6 +138,7 @@ There are a number of limitations in these importers as the various formats supp
 | `.nec2` | NEC-2 (stripped, numeric) | ✓ | ✓ |
 | `.nec4` | NEC-4 | ✓ | stub |
 | `.maa` `.mma` | MMANA-GAL | ✓ | ✓ |
+| `.nc` | cocoaNEC | ✓ | ✓ |
 | `.yo` `.ant` `.yag` | Yagi Optimizer | ✓ | ✓ |
 | `.ez` `.ezn` | EZNEC | recognised | — |
 | `.nwp` `.nwz` | NEC-Win Plus / Zip | recognised | — |
@@ -143,24 +147,6 @@ There are a number of limitations in these importers as the various formats supp
 
 "Recognised" means the extension is detected and a helpful error is shown, but no import/exporter exists yet.
 
-Note on cocoaNEC `.nc` support
---------------------------------
-
-OpenNEC now includes both an importer and an exporter for the cocoaNEC `.nc`
-script language. The implementation covers a practical subset sufficient to
-round-trip the example `.nc` files in this repository:
-
-- The importer expands unit suffixes (inches `"`, feet `'`, AWG `#N`) into
-	SI units when parsing.
-- The exporter writes numeric coordinates and radii in metres (no unit
-	suffixes are emitted).
-- The importer supports symbol declarations and multi-assignment `SY` lines,
-	inline `wire()` calls, feeds (`voltageFeed`/`currentFeed`), loads, FR
-	frequency specifications and common ground helpers; `control()` blocks are
-	ignored.
-
-This feature is appropriate for the included examples and common cocoaNEC
-idioms but does not attempt to implement the entire cocoaNEC language.
 
 OpenNEC concept
 ---------------

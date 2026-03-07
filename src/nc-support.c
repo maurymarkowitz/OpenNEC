@@ -58,6 +58,90 @@ static void nc_fmt(char *buf, size_t sz, double v)
 }
 
 /*
+ * nc_fmt_unit - format a double for geometry output using unit constants.
+ * Prefer expressing lengths as a multiple of common measurement constants
+ * (m, cm, mm, ft, in, mil) rather than a raw numeric multiplier. Prefer
+ * exact integer multiples when possible, otherwise pick the unit that
+ * yields the shortest decimal multiplier (e.g. 1.5*ft).
+ * Used as a fallback when a card field has no associated formula expression.
+ */
+static void nc_fmt_unit(char *buf, size_t sz, double v)
+{
+    const double tol_int = 1e-9;
+
+    if (v == 0.0) {
+        snprintf(buf, sz, "0.0");
+        return;
+    }
+
+    struct unit { const char *name; double val; } units[] = {
+        {"m", 1.0},
+        {"cm", 0.01},
+        {"mm", 0.001},
+        {"ft", 0.3048},
+        {"in", 0.0254},
+        {"mil", 0.0000254}
+    };
+    const int nunits = sizeof(units) / sizeof(units[0]);
+
+    double abs_v = fabs(v);
+    for (int i = 0; i < nunits; ++i) {
+        double n = abs_v / units[i].val;
+        double rn = round(n);
+        if (fabs(n - rn) < tol_int) {
+            if (rn == 0.0) {
+                snprintf(buf, sz, "0.0");
+            } else if (v < 0) {
+                if (strcmp(units[i].name, "ft") == 0)
+                    snprintf(buf, sz, "-%d'", (int)rn);
+                else if (strcmp(units[i].name, "in") == 0)
+                    snprintf(buf, sz, "-%d\"", (int)rn);
+                else
+                    snprintf(buf, sz, "-%d%s", (int)rn, units[i].name);
+            } else {
+                if (strcmp(units[i].name, "ft") == 0)
+                    snprintf(buf, sz, "%d'", (int)rn);
+                else if (strcmp(units[i].name, "in") == 0)
+                    snprintf(buf, sz, "%d\"", (int)rn);
+                else
+                    snprintf(buf, sz, "%d%s", (int)rn, units[i].name);
+            }
+            return;
+        }
+    }
+
+    int best = 0;
+    char bests[64];
+    size_t bestlen = SIZE_MAX;
+    for (int i = 0; i < nunits; ++i) {
+        double n = abs_v / units[i].val;
+        char tmp[64];
+        snprintf(tmp, sizeof tmp, "%.6g", n);
+        size_t len = strlen(tmp);
+        if (len < bestlen) {
+            bestlen = len;
+            best = i;
+            strncpy(bests, tmp, sizeof bests - 1);
+            bests[sizeof bests - 1] = '\0';
+        }
+    }
+    if (v < 0)
+        if (strcmp(units[best].name, "ft") == 0)
+            snprintf(buf, sz, "-%s'", bests);
+        else if (strcmp(units[best].name, "in") == 0)
+            snprintf(buf, sz, "-%s\"", bests);
+        else
+            snprintf(buf, sz, "-%s%s", bests, units[best].name);
+    else
+        if (strcmp(units[best].name, "ft") == 0)
+            snprintf(buf, sz, "%s'", bests);
+        else if (strcmp(units[best].name, "in") == 0)
+            snprintf(buf, sz, "%s\"", bests);
+        else
+            snprintf(buf, sz, "%s%s", bests, units[best].name);
+}
+
+/*
  * parse_sy_card_all - extract all name=expression assignments from a SY card.
  * A single SY card may carry multiple assignments separated by commas:
  *   SY Z=len*cos(ang/2), X=len*sin(ang/2)
@@ -149,7 +233,7 @@ int write_deck_nc(const deck_t *deck, FILE *fp)
      * ------------------------------------------------------------------ */
 
     /* Title: first non-empty CM card comment */
-    const char *title = "antenna";
+    const char *title = "(no title)";
     for (int i = 0; i < deck->num_cards; i++) {
         const card_t *c = &deck->cards[i];
         if (strcmp(c->card_code, "CM") != 0) continue;
@@ -244,28 +328,40 @@ int write_deck_nc(const deck_t *deck, FILE *fp)
     /* ---- SY symbol assignments --------------------------------------- */
 
     if (n_sy > 0) {
-        for (int i = 0; i < n_sy; i++)
+        for (int i = 0; i < n_sy; i++) {
+            /* Always emit the original formula expression as-is.
+             * The NC reader handles ', ", and unit constants natively. */
             fprintf(fp, "\t%s = %s ;\n", sy_names[i], sy_vals[i]);
+        }
         fprintf(fp, "\n");
     }
 
     /* ---- GW wire calls ----------------------------------------------- */
 
-    char sx1[32], sy1[32], sz1[32], sx2[32], sy2[32], sz2[32], sr[32];
+    char sx1[64], sy1[64], sz1[64], sx2[64], sy2[64], sz2[64], sr[64];
     for (int i = 0; i < deck->num_cards; i++) {
         const card_t *c = &deck->cards[i];
         if (strcmp(c->card_code, "GW") != 0) continue;
         if (card_is_commented_out(c)) continue;
 
+        /* For each float field, prefer inline formula; fall back to numeric. */
+#define GWF(buf, sz, fld) do { \
+            char _key[] = {'F', '0'+(fld), '\0'}; \
+            const char *_f = c->flt_form_inline[(fld)] ? lookup_formula(c, _key) : NULL; \
+            if (_f) strncpy((buf), _f, (sz)-1), (buf)[(sz)-1] = '\0'; \
+            else nc_fmt_unit((buf), (sz), c->f[(fld)]); \
+        } while (0)
+
         int tag  = c->i[1];     /* I1: tag   */
         int segs = c->i[2];     /* I2: segs  */
-        nc_fmt(sx1, sizeof sx1, c->f[1]);   /* F1: x1    */
-        nc_fmt(sy1, sizeof sy1, c->f[2]);   /* F2: y1    */
-        nc_fmt(sz1, sizeof sz1, c->f[3]);   /* F3: z1    */
-        nc_fmt(sx2, sizeof sx2, c->f[4]);   /* F4: x2    */
-        nc_fmt(sy2, sizeof sy2, c->f[5]);   /* F5: y2    */
-        nc_fmt(sz2, sizeof sz2, c->f[6]);   /* F6: z2    */
-        nc_fmt(sr,  sizeof sr,  c->f[7]);   /* F7: radius */
+        GWF(sx1, sizeof sx1, 1);   /* F1: x1    */
+        GWF(sy1, sizeof sy1, 2);   /* F2: y1    */
+        GWF(sz1, sizeof sz1, 3);   /* F3: z1    */
+        GWF(sx2, sizeof sx2, 4);   /* F4: x2    */
+        GWF(sy2, sizeof sy2, 5);   /* F5: y2    */
+        GWF(sz2, sizeof sz2, 6);   /* F6: z2    */
+        GWF(sr,  sizeof sr,  7);   /* F7: radius */
+#undef GWF
 
         if (tag > 0 && tag < NC_MAX_TAGS && elem_name[tag]) {
             fprintf(fp, "\t%s = wire( %s, %s, %s, %s, %s, %s, %s, %d ) ;\n",
@@ -486,6 +582,30 @@ static void nc_skip(const char **pp)
     }
 }
 
+/**
+ * Like nc_skip but accumulates // comment lines into cbuf (newline-delimited).
+ * Used when scanning before model() to collect header comments.
+ */
+static void nc_skip_collect(const char **pp, char *cbuf, int csz, int *cn)
+{
+    for (;;) {
+        while (**pp && isspace((unsigned char)**pp)) (*pp)++;
+        if ((*pp)[0] == '/' && (*pp)[1] == '/') {
+            (*pp) += 2;
+            while (**pp == ' ' || **pp == '\t') (*pp)++; /* trim leading space */
+            while (**pp && **pp != '\n') {
+                if (*cn < csz - 1) cbuf[(*cn)++] = **pp;
+                (*pp)++;
+            }
+            cbuf[*cn] = '\0';
+            if (*cn < csz - 1) cbuf[(*cn)++] = '\n'; /* line separator */
+            cbuf[*cn] = '\0';
+            continue;
+        }
+        break;
+    }
+}
+
 /** Read an identifier into buf[sz]; advance *pp.  Returns chars written. */
 static int nc_ident(const char **pp, char *buf, int sz)
 {
@@ -553,6 +673,40 @@ static int nc_parens(const char **pp, char *buf, int sz)
     }
     buf[n] = '\0';
     return 1;
+}
+
+/**
+ * If the rest of the current line (before any newline) contains a // comment,
+ * capture the trimmed text into buf[sz] and return 1.  Does NOT consume any
+ * characters — the caller's position is unchanged.  Returns 0 if no comment.
+ */
+static int nc_eol_comment(const char *p, char *buf, int sz)
+{
+    while (*p == ' ' || *p == '\t') p++;
+    if (p[0] != '/' || p[1] != '/') return 0;
+    p += 2;
+    while (*p == ' ' || *p == '\t') p++;   /* trim leading space */
+    int n = 0;
+    while (*p && *p != '\n' && n < sz - 1) buf[n++] = *p++;
+    while (n > 0 && (buf[n-1] == ' ' || buf[n-1] == '\t')) n--;  /* trim tail */
+    buf[n] = '\0';
+    return n > 0 ? 1 : 0;
+}
+
+/**
+ * Retroactively append " ! comment" to the last card's card_str.
+ */
+static void nc_card_append_comment(deck_t *deck, const char *cmt)
+{
+    if (!deck || deck->num_cards == 0 || !cmt || !cmt[0]) return;
+    card_t *card = &deck->cards[deck->num_cards - 1];
+    if (!card->card_str) return;
+    size_t old_len = strlen(card->card_str);
+    size_t add_len = 4 + strlen(cmt);   /* " ! " + cmt + NUL */
+    char *ns = realloc(card->card_str, old_len + add_len);
+    if (!ns) return;
+    card->card_str = ns;
+    snprintf(card->card_str + old_len, add_len, " ! %s", cmt);
 }
 
 /**
@@ -677,28 +831,44 @@ static void expand_expr(const char *src, char *dst, int dsz)
 {
     int di = 0;
     while (*src && di < dsz - 1) {
-        /* AWG: #<digits> */
+        /* AWG: #<digits> -> emit awgN symbol (keep as symbol, not numeric) */
         if (*src == '#' && isdigit((unsigned char)src[1])) {
             char *end;
             long g = strtol(src + 1, &end, 10);
-            int  n = snprintf(dst + di, dsz - di, "%.8g", awg_radius_m((int)g));
+            int  n = snprintf(dst + di, dsz - di, "awg%ld", g);
             if (n > 0) di += n;
             src = end;
             continue;
         }
-        /* inch suffix: digit already in dst, next src char is " */
+        /* inch suffix: digit already in dst, next src char is '"' -> emit in */
         if (*src == '"' && di > 0 && isdigit((unsigned char)dst[di-1])) {
-            int n = snprintf(dst + di, dsz - di, "*0.0254");
+            int n = snprintf(dst + di, dsz - di, "in");
             if (n > 0) di += n;
             src++;
             continue;
         }
-        /* feet suffix */
+        /* feet suffix -> ft */
         if (*src == '\'' && di > 0 && isdigit((unsigned char)dst[di-1])) {
-            int n = snprintf(dst + di, dsz - di, "*0.3048");
+            int n = snprintf(dst + di, dsz - di, "ft");
             if (n > 0) di += n;
             src++;
             continue;
+        }
+        /* SI micro/nano/pico suffixes: digit followed by bare u/n/p (not part
+         * of a longer identifier such as uH, nF, pF which the evaluator already
+         * knows).  Emit a numeric multiplier so no extra unit constant is needed. */
+        if (di > 0 && isdigit((unsigned char)dst[di-1])
+                && !isalnum((unsigned char)src[1]) && src[1] != '_') {
+            const char *mul = NULL;
+            if      (*src == 'u') mul = "*1e-6";
+            else if (*src == 'n') mul = "*1e-9";
+            else if (*src == 'p') mul = "*1e-12";
+            if (mul) {
+                int n = snprintf(dst + di, dsz - di, "%s", mul);
+                if (n > 0) di += n;
+                src++;
+                continue;
+            }
         }
         /* trig degree variants */
         if (strncmp(src, "sind(",  5) == 0) {
@@ -713,6 +883,10 @@ static void expand_expr(const char *src, char *dst, int dsz)
         if (strncmp(src, "atand(", 6) == 0) {
             int n = snprintf(dst + di, dsz - di, "atan("); if (n>0) di+=n; src+=6; continue;
         }
+        /* Strip spaces: the card field parser splits on whitespace, so
+         * expressions like "h - s" would be tokenized as three separate
+         * fields.  Spaces carry no semantic meaning in NC expressions. */
+        if (*src == ' ') { src++; continue; }
         dst[di++] = *src++;
     }
     dst[di] = '\0';
@@ -774,6 +948,7 @@ typedef struct {
     /* emitted-card flags */
     bool  need_c;             /* inject SY c=299.792458?          */
     bool  have_gn;            /* any GN call seen?                */
+    bool  have_fr;            /* any FR card emitted?             */
     int   sommerfeld;         /* useSommerfeldGround arg          */
     bool  first_freq;         /* setFrequency not yet emitted     */
 } ncr_t;
@@ -1006,6 +1181,7 @@ static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
         snprintf(buf, sizeof buf, "FR 0, 1, 0, 0, %s, 0", f);
         post_add(post, np, maxp, buf);
         s->first_freq = false;
+        s->have_fr = true;
         return;
     }
     if (strcmp(func, "addFrequency") == 0) {
@@ -1013,6 +1189,7 @@ static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
         char buf[256];
         snprintf(buf, sizeof buf, "FR 0, 1, 0, 0, %s, 0", f);
         post_add(post, np, maxp, buf);
+        s->have_fr = true;
         return;
     }
     if (strcmp(func, "frequencySweep") == 0) {
@@ -1039,6 +1216,7 @@ static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
         }
         post_add(post, np, maxp, buf);
         s->first_freq = false;
+        s->have_fr = true;
         return;
     }
 
@@ -1174,10 +1352,15 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
     if (*s->p == '(') {
         char argbuf[1024];
         nc_parens(&s->p, argbuf, sizeof argbuf);
+        int cards_before = deck->num_cards;
         ncr_func(s, ident, argbuf, deck, post, np, maxp);
         nc_skip(&s->p);
         /* consume optional ';' — some calls omit it */
         nc_semi(&s->p);
+        /* attach any end-of-line // comment to the last card emitted */
+        char eol[256] = {0};
+        if (nc_eol_comment(s->p, eol, sizeof eol) && deck->num_cards > cards_before)
+            nc_card_append_comment(deck, eol);
         return;
     }
 
@@ -1213,6 +1396,12 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
             }
             nc_skip(&s->p);
             nc_semi(&s->p);
+            /* attach any end-of-line // comment to the GW card */
+            {
+                char eol[256] = {0};
+                if (nc_eol_comment(s->p, eol, sizeof eol))
+                    nc_card_append_comment(deck, eol);
+            }
             return;
         }
 
@@ -1220,6 +1409,10 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
         char expr_raw[512];
         nc_read_to(&s->p, expr_raw, sizeof expr_raw, ';');
         nc_semi(&s->p);
+
+        /* capture any end-of-line // comment before nc_skip moves past newline */
+        char eol[256] = {0};
+        nc_eol_comment(s->p, eol, sizeof eol);
 
         char expr[512];
         expand_expr(expr_raw, expr, sizeof expr);
@@ -1234,7 +1427,10 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
          * GW emitted in the same pass.  This matches the NEC-2 rule that SY
          * must precede GW cards. */
         char buf[512];
-        snprintf(buf, sizeof buf, "SY %s=%s", ident, expr);
+        if (eol[0])
+            snprintf(buf, sizeof buf, "SY %s=%s ! %s", ident, expr, eol);
+        else
+            snprintf(buf, sizeof buf, "SY %s=%s", ident, expr);
         append_card_from_text(deck, buf);
         return;
     }
@@ -1277,9 +1473,13 @@ int read_deck_nc(deck_t *deck, FILE *fp)
     const char *title = "antenna";
     char title_buf[256] = {0};
 
+    /* Accumulate // comment lines seen before model() */
+    char pre_comments[4096] = {0};
+    int  pre_n = 0;
+
     /* Scan for 'model' at top level */
     for (;;) {
-        nc_skip(&s.p);
+        nc_skip_collect(&s.p, pre_comments, sizeof pre_comments, &pre_n);
         if (!*s.p) { free(buf); return -1; }
         char tok[128];
         nc_ident(&s.p, tok, sizeof tok);
@@ -1314,6 +1514,21 @@ int read_deck_nc(deck_t *deck, FILE *fp)
         snprintf(cm, sizeof cm, "CM %s", title);
         append_card_from_text(deck, cm);
     }
+    /* ---- emit pre-model comments as CM cards (before CE) ------------- */
+    if (pre_n > 0) {
+        bool has_title = (title_buf[0] != '\0');
+        if (has_title) append_card_from_text(deck, "CM");
+        const char *line = pre_comments;
+        while (*line) {
+            const char *nl = strchr(line, '\n');
+            int len = nl ? (int)(nl - line) : (int)strlen(line);
+            char cm[512];
+            snprintf(cm, sizeof cm, "CM %.*s", len, line);
+            append_card_from_text(deck, cm);
+            if (!nl) break;
+            line = nl + 1;
+        }
+    }
     append_card_from_text(deck, "CE");
 
     /* ---- parse model body -------------------------------------------- */
@@ -1328,6 +1543,23 @@ int read_deck_nc(deck_t *deck, FILE *fp)
 
     int depth = 1;
     while (*s.p && depth > 0) {
+        /* Collect top-level // comment lines and emit as NEC '!' cards.
+         * These appear interleaved with geometry (GW) cards in the output,
+         * preserving the author's inline documentation. */
+        for (;;) {
+            while (*s.p && isspace((unsigned char)*s.p)) s.p++;
+            if (s.p[0] != '/' || s.p[1] != '/') break;
+            s.p += 2; /* skip // */
+            while (*s.p == ' ' || *s.p == '\t') s.p++; /* trim leading space */
+            char cmt[512]; int ci = 0;
+            while (*s.p && *s.p != '\n' && ci < (int)sizeof(cmt) - 1)
+                cmt[ci++] = *s.p++;
+            while (ci > 0 && isspace((unsigned char)cmt[ci-1])) ci--;
+            cmt[ci] = '\0';
+            char ccard[540];
+            snprintf(ccard, sizeof ccard, "! %s", cmt);
+            append_card_from_text(deck, ccard);
+        }
         nc_skip(&s.p);
         if (!*s.p) break;
         if (*s.p == '}') {
@@ -1388,12 +1620,39 @@ int read_deck_nc(deck_t *deck, FILE *fp)
     }
 
     /* ---- emit post-GE cards ------------------------------------------ */
+    /* Two-pass strategy:
+     *   Pass 1 – emit every non-FR card (EX, LD, GN, NT, TL, …) in order.
+     *   Pass 2 – emit each FR card immediately followed by an RP card.
+     * This ensures EX/GN/LD are set before the first frequency run, and
+     * that each distinct frequency produces its own radiation-pattern output.
+     * (NEC-2 only generates output when RP is encountered; a bare sequence of
+     * FR…FR…RP only produces output for the last frequency.) */
+
+    /* Pass 1: non-FR cards */
     for (int i = 0; i < np; i++) {
-        if (post[i]) {
+        if (post[i] && !(post[i][0]=='F' && post[i][1]=='R' &&
+                          (post[i][2]==' ' || post[i][2]=='\0'))) {
             append_card_from_text(deck, post[i]);
-            free(post[i]);
         }
     }
+
+    /* Pass 2: FR cards, each followed by RP */
+    if (!s.have_fr) {
+        /* no frequency specified – use a default 14 MHz */
+        append_card_from_text(deck, "FR 0, 1, 0, 0, 14.0, 0");
+        append_card_from_text(deck, "RP 0, 37, 73, 1000, 0, 0, 5, 5");
+    } else {
+        for (int i = 0; i < np; i++) {
+            if (post[i] && post[i][0]=='F' && post[i][1]=='R' &&
+                           (post[i][2]==' ' || post[i][2]=='\0')) {
+                append_card_from_text(deck, post[i]);
+                append_card_from_text(deck, "RP 0, 37, 73, 1000, 0, 0, 5, 5");
+            }
+        }
+    }
+
+    /* free remaining post entries */
+    for (int i = 0; i < np; i++) free(post[i]);
 
     /* ---- EN termination ---------------------------------------------- */
     append_card_from_text(deck, "EN");

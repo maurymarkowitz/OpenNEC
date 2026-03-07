@@ -1,0 +1,20 @@
+CM Vee Beam
+CM
+CM Find optimal angle for a 1.5 wavelength Vee beam
+CM
+CE
+SY height=12
+SY d=1in
+GW 1,3,0,-d,height,0,d,height,awg14
+! 0.75 wavelength nominal
+SY y=15.97
+SY dy=y*sin(theta)
+SY dx=y*cos(theta)
+GW 2,13,0,-d,height,dx,-dy,height,awg14
+GW 3,13,0,d,height,dx,dy,height,awg14
+GE 0
+EX 0,1,2,0,1,0
+GN -1
+FR 0,1,0,0,14,0
+RP 0,37,73,1000,0,0,5,5
+EN

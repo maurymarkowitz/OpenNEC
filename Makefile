@@ -202,7 +202,7 @@ $(EXECUTABLE): src/main.o $(LIBRARY)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(LIB_OBJECTS) src/main.o $(LIBRARY) $(EXECUTABLE) bench_estimate roundtrip_test
+	rm -f $(LIB_OBJECTS) src/main.o $(LIBRARY) $(EXECUTABLE) bench_estimate roundtrip_test nc2nec maa_convert yo_convert
 
 # ---- round-trip test ---------------------------------------------------------
 # Build the read→parse→write round-trip tester (links libonec.a)
@@ -220,6 +220,12 @@ yo_convert: test/yo_convert.c $(LIBRARY) src/yo-support.c
 	$(CC) $(CFLAGS) test/yo_convert.c src/yo-support.c $(LIBRARY) $(LDFLAGS) -o yo_convert -lm
 
 .PHONY: yo_convert
+
+# Build the nc→nec converter utility
+nc2nec: tools/nc2nec.c $(LIBRARY)
+	$(CC) $(CFLAGS) tools/nc2nec.c $(LIBRARY) $(LDFLAGS) -o nc2nec -lm
+
+.PHONY: nc2nec
 
 # Run the round-trip test on all .nec/.deck files in test/
 .PHONY: roundtrip

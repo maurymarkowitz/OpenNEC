@@ -1,0 +1,11 @@
+CM dipole
+CE
+SY height=40ft
+SY length=5.0
+GW 1,21,0,-length,height,0,length,height,awg14
+GE 0
+EX 0,1,11,0,1,0
+GN -1
+FR 0,1,0,0,14,0
+RP 0,37,73,1000,0,0,5,5
+EN

@@ -1,0 +1,18 @@
+CM vertical with raised radials
+CE
+SY feed=0.5in
+SY bottom=25in
+! voltage feed a short feed section
+GW 1,21,0,0,bottom,0,0,feed+bottom,awg10
+! the rest of the vertical
+GW 2,21,0,0,feed+bottom,0,0,5.16,awg10
+! five raised radials
+! use extended thin-wire approximation for greater accuracy since feed segment is short
+! use good ground
+GE 0
+EX 0,1,11,0,1,0
+EK
+GN 0,0,0,0,20,0.0303
+FR 0,1,0,0,14,0
+RP 0,37,73,1000,0,0,5,5
+EN

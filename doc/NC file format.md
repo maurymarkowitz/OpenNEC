@@ -27,6 +27,7 @@ An NC file is plain text. It is compiled by cocoaNEC into a NEC-2 card deck befo
 being sent to the solver. The structure is:
 
 ```
+[global comments]
 [global variable declarations]
 
 model ( "model name" ) {
@@ -54,6 +55,15 @@ model ( "dipole" )
     voltageFeed( wire( 0, -5, 12, 0, 5, 12, 0.01, 21 ), 1, 0 ) ;
 }
 ```
+Comments
+--------
+
+The `model()` directive includes a title. If such a name is present, it is inserted into the output deck as a leading `CM` line. NC also allows comments at any point in the deck, and the conversion treats these differently depending on where they appear:
+
+- if the comment appears before the `model`, it will be added to the comment block at the top of the deck. If there is also a title in the `model`, an empty CM will be added to make it more readable.
+- if the comment appears within `model` section, on its own line, a new `!` type comment card will be inserted at that same point in the output deck.
+- if the comment is within `model` section and is at the end of a non-comment line, it will be insertedas a `!` comment at the end of that line.
+- comments found in parts of the NC we do not read are not retained.
 
 Variable Declarations
 ---------------------
@@ -78,23 +88,32 @@ internally-assigned wire tag numbers and do not appear in `SY` cards.
 
 ### Unit-conversion suffixes
 
-NC supports suffix modifiers that are applied at parse time:
+cocoaNEC uses unit suffixes in a fashion similar to OpenNEC and 4nec2, that is, one can add a unit to a measurement like "10in" in any field or formula.
 
-| Suffix | Conversion |
-|--------|-----------|
-| `"` (double-quote, no space) | inches to metres (`× 0.0254`) |
-| `'` (single-quote, no space) | feet to metres (`× 0.3048`) |
-| `#N` (hash before integer) | AWG gauge to wire radius (metres) |
-| `u` | `× 1e-6` |
-| `n` | `× 1e-9` |
-| `p` | `× 1e-12` |
+cocoaNEC differs from OpenNEC in that it also supports the alternative way of writing feet and inches, using the `'` and `"` characters. These are both used for other purposes in NEC decks, and cannot be easily converter in-place. When these are encountered the input file, they will be converted to `ft` and `in`. No examples of "mixed measurements" like `10'6"` were found, and this format is not supported.
 
-Examples: `1.35"` = 1.35 inches, `12'` = 12 feet, `#14` = AWG-14 wire radius.
+NC also adds `u`, `n` and `p` units for entering small values. These will be converted to `uH`, `nH` and `pH`, respectively.
+
+| Suffix | Emitted form | Runtime value |
+|--------|-------------|---------------|
+| `"` (double-quote, no space) | appends `in` unit symbol | `× 0.0254` (inches → metres) |
+| `'` (single-quote, no space) | appends `ft` unit symbol | `× 0.3048` (feet → metres) |
+| `#N` (hash before integer) | replaced by `awgN` symbol (e.g. `#14` → `awg14`) | AWG-N wire radius in metres |
+| `u` | replaced by `*1e-6` multiplier | `× 1e-6` (micro) |
+| `n` | replaced by `*1e-9` multiplier | `× 1e-9` (nano) |
+| `p` | replaced by `*1e-12` multiplier | `× 1e-12` (pico) |
+
+The `u`/`n`/`p` suffixes are recognised when immediately after a digit and not
+followed by an alphanumeric character (so compound unit symbols like `uH`, `nF`,
+`pF` that the evaluator already knows are left untouched).
+
+Examples: `1.35"` becomes `1.35in`; `12'` becomes `12ft`; `#14` becomes
+`awg14`; `100p` becomes `100*1e-12`; `47n` becomes `47*1e-9`.
 
 Geometry Functions
 ------------------
 
-All coordinates are in **metres** after unit conversion. Returned values are of type `element`.
+NEC-2 requires coordinates in **metres**. Expressions using unit suffixes (e.g. `12ft`) evaluate to metres at runtime. Returned values are of type `element`.
 
 ### `wire( x0, y0, z0, x1, y1, z1, radius, segments )`
 Defines a straight wire from `(x0,y0,z0)` to `(x1,y1,z1)` with the given radius and
@@ -226,6 +245,9 @@ addFrequency( f )           // add a second (or further) frequency point
 frequencySweep( f0, f1, n ) // n equally spaced frequencies from f0 to f1 inclusive
 ```
 
+**Default frequency:** if no frequency function is called the importer automatically
+inserts `FR 0,1,0,0,14.0,0` (14 MHz) so the deck is always runnable.
+
 Ground
 ------
 
@@ -258,6 +280,12 @@ These generate NEC-2 **RP** cards.
 azimuthPlotForElevationAngle( angle )   // elevation angle in degrees
 elevationPlotForAzimuthAngle( angle )   // azimuth angle in degrees
 ```
+
+**Automatic full-sphere pattern:** regardless of whether the NC file calls any
+radiation-pattern function, the importer always appends
+`RP 0, 37, 73, 1000, 0, 0, 5, 5` (full sphere at 5° resolution) just before
+`EN`. This mirrors what cocoaNEC itself produces and ensures output is always
+generated.
 
 Networks and Transmission Lines
 -------------------------------
@@ -397,6 +425,39 @@ runnable NEC deck:
 - User-defined recursive functions beyond simple substitution
 - `keepDataBetweenModelRuns()`, `pause()`, `printf()`
 - Vector and transform arithmetic beyond direct coordinate assignment
+
+### Known unsupported pattern: geometry driven by `control()` variables
+
+Some NC files declare global variables that are never assigned in the `model()` body;
+their values are only set inside the `control()` block (which the importer skips).
+When such variables are then used as wire coordinates or radii, the geometry is
+undefined and conversion will fail with formula evaluation errors.
+
+Example (`Gull.nc`):
+```nc
+real theta0, theta1, rho ;   // global — declared but never assigned in model()
+
+model ( "Gull" ) {
+    real y, dt, dy, dx ;
+    …
+    dt = rho*y ;             // rho is 0 (never assigned here)
+    dy = dt*sind( theta0 ) ; // theta0 is 0 (never assigned here)
+    …
+}
+
+control() {
+    theta0 = 42 ;   // only set here — too late for geometry
+    rho    = 0.57 ;
+    runModel() ;
+}
+```
+
+This pattern is used by parametric / optimization models where the `control()` block
+sweeps parameter values and calls `runModel()` multiple times. Supporting it would
+require executing the control block, including potential loops, conditionals, and
+user‑defined function calls — well beyond a static importer. Such files **cannot be
+imported** by `nc2nec` and should be converted manually or redesigned so that
+parameter values are assigned in the `model()` body.
 
 ---
 

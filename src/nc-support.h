@@ -7,8 +7,10 @@
  * cocoaNEC `.nc` scripting language.  The importer accepts a practical subset
  * of cocoaNEC sufficient to round-trip the example files included with the
  * project:
- *   - unit suffixes: inches ("), feet ('), and AWG (#N) are converted to metres
- *     / radii when parsing (e.g. `48"` → `48*0.0254`, `#14` → radius in m).
+ *   - unit suffixes: inches ("), feet ('), and AWG (#N) are recognised when
+ *     parsing. Inches and feet are expanded to metres (e.g. `48"` →
+ *     `48*0.0254`); AWG markers are accepted in geometry arguments and are
+ *     converted to wire radii when emitting `GW` cards.
  *   - symbol declarations and assignments (`real` / `int` / `SY`) are parsed
  *     into SY cards.
  *   - geometry and inline wires (`wire()`, `line()`, `taperedWire()`),

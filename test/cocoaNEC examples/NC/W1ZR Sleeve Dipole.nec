@@ -1,0 +1,33 @@
+CM W1ZR Skeleton Sleeve Dipole
+CM
+CM Ref. 2011.05 QST pg. 58
+CM Author: Willard Myers, K1GQ.
+CM Dimensions, wire and insulation properties from EZNEC model by Joel, W1ZR.
+CM
+CE
+SY r=awg18
+SY wireSigma=5.7471E7
+SY insulationPermittivity=2.25
+SY insulationRadius=2.074E-3
+SY l1=(30.9ft)/2 ! QST says 30.833'
+! QST says 30.833'
+SY l2=(55.9ft)/2 ! QST says 56.333'
+! QST says 56.333'
+SY l3=l1+4.2in ! QST say gap 4"
+! QST say gap 4"
+SY s=0.72in
+SY h=25ft
+GW 1,102,-l1,0,h,l1,0,h,r
+GW 2,183,-l2,0,h-s,l2,0,h-s,r
+GW 3,63,-l2,0,h,-l3,0,h,r
+GW 4,63,l2,0,h,l3,0,h,r
+GW 5,1,-l2,0,h,-l2,0,h-s,r
+GW 6,1,l2,0,h,l2,0,h-s,r
+GE 0
+EX 0,2,92,0,1,0
+GN 0,0,0,0,13,0.005
+FR 0,7,0,0,7,0.05
+RP 0,37,73,1000,0,0,5,5
+FR 0,8,0,0,14,0.05
+RP 0,37,73,1000,0,0,5,5
+EN

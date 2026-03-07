@@ -1,0 +1,20 @@
+CM simple Yagi-Uda
+CM
+CM simple 2 element Yagi-Uda beam antenna over average ground
+CM
+CE
+SY height=40ft
+SY length=5.18
+SY separation=2.0
+SY reflector=1.04
+! driven element
+GW 1,21,0,-length,height,0,length,height,1in
+! reflector, placed behind (negative x axis) the driven element
+GW 2,21,-separation,-length*reflector,height,-separation,length*reflector,height,1in
+! use average ground
+GE 0
+EX 0,1,11,0,1,0
+GN 0,0,0,0,13,0.005
+FR 0,1,0,0,14,0
+RP 0,37,73,1000,0,0,5,5
+EN
