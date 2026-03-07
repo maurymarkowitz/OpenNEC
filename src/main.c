@@ -17,9 +17,10 @@
 #include "input.h"
 #include "control.h"
 #include "output.h"
+#include "import-export/nec2-support.h"
 #include "deck_validations.h"
-#include "maa-support.h"
-#include "yo-support.h"
+#include "import-export/maa-support.h"
+#include "import-export/yo-support.h"
 
 #ifndef _GETOPT_H
 #include <getopt.h>
@@ -526,9 +527,11 @@ static int process_single_file(const char *input_filename, const char *output_fi
         if (wftype == FILETYPE_NEC) {
           write_deck_onec(ctx, &deck, wfp);
         } else if (wftype == FILETYPE_NEC2) {
-          write_deck_nec2(ctx, &deck, wfp, 0 /* keep inline comments */);
+          /* use the simplified NEC-2 writer introduced in nec2-support */
+          write_deck_nec2(&deck, wfp);
         } else if (wftype == FILETYPE_NEC4) {
-          write_deck_nec4(ctx, &deck, wfp);
+          /* use simplified NEC-4 writer */
+          write_deck_nec4(&deck, wfp);
         } else if (wftype == FILETYPE_MAA) {
           write_deck_maa(&deck, wfp);
         } else if (wftype == FILETYPE_YO) {

@@ -1,7 +1,6 @@
 CM phased vertical dipoles
 CM
 CM phased array of vertical dipoles
-CM
 CE
 SY lower=1.0
 SY upper=lower+10.2

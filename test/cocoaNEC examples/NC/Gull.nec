@@ -8,7 +8,6 @@ CM
 CM It can also be viewed as a piecewise linear version of one element of a Landstorfer-Sacher beam.
 CM 
 CM It has about 0.8 dB better directivity than a Vee beam of the same length, and has about 0.6 dB forward //	gain than the equivalent Vee Beam while having approximately the same 3 dB beamwidth.
-CM
 CE
 SY height=12
 SY d=1in

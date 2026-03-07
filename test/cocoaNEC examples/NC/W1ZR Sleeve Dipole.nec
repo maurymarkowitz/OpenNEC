@@ -3,7 +3,6 @@ CM
 CM Ref. 2011.05 QST pg. 58
 CM Author: Willard Myers, K1GQ.
 CM Dimensions, wire and insulation properties from EZNEC model by Joel, W1ZR.
-CM
 CE
 SY r=awg18
 SY wireSigma=5.7471E7

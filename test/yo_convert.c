@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "yo-support.h"
+#include "import-export/yo-support.h"
 #include "deck.h"
 #include "misc.h"
 

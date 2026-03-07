@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "maa-support.h"
+#include "import-export/maa-support.h"
 #include "deck.h"
 #include "misc.h"
 

@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "types.h"
-#include "nc-support.h"
+#include "import-export/nc-support.h"
 #include "input.h"
 #include "output.h"
 #include "deck.h"

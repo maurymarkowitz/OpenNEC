@@ -13,7 +13,6 @@ CM
 CM This is a simplistic model. The usual LPDA calculation of Tau, Sigma, and Alpha is not
 CM performed. Instead, the elements are equally spaced on the boom, and the difference in
 CM length from one element to the next is a constant.
-CM
 CE
 SY numElements=8
 SY boom=18ft

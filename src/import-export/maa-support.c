@@ -14,7 +14,7 @@
  *
  *****************************************************************************/
 
-#include "import-export/maa-support.h"
+#include "maa-support.h"
 #include "deck.h"    // for insert_card
 #include "misc.h"    // for add_error
 #include "geometry.h" // for compute_segmentation

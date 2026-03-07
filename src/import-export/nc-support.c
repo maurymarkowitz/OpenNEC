@@ -1516,6 +1516,7 @@ int read_deck_nc(deck_t *deck, FILE *fp)
     }
     /* ---- emit pre-model comments as CM cards (before CE) ------------- */
     if (pre_n > 0) {
+        // if there is a title, add a blank line to make it obvious
         bool has_title = (title_buf[0] != '\0');
         if (has_title) append_card_from_text(deck, "CM");
         const char *line = pre_comments;
