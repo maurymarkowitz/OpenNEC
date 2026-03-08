@@ -203,6 +203,8 @@ typedef struct card_t
   key_value_t *formulas; /**< Linked list of formulas for substitution */
 
   bool ignore;        /**< true if this card should be skipped during processing */
+
+  bool invisible;     /**< true if geometry should be hidden on-screen (onec extension or tag range) */
 } card_t;
 
 /**

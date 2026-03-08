@@ -242,6 +242,8 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
       // only treat ignore as an onec annotation if it's the annotated form (not prefix-commented)
       if (card->ignore && card->cmt_code[0] == '\0')
         hasOnec = true;
+      if (card->invisible)
+        hasOnec = true;
       if (card->extensns != NULL)
         hasOnec = true;
       // only flag hasOnec for formulas that are NOT already emitted inline as card fields
@@ -303,6 +305,10 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
         {
           fputs(" ignore:true", file);
         }
+        if (card->invisible)
+        {
+          fputs(" invisible:true", file);
+        }
         // formulas next - only the ones that aren't inline (inline ones are already in the card fields)
         if (card->formulas != NULL)
         {
@@ -322,14 +328,37 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *file)
         // any other key/value pairs
         if (card->extensns != NULL)
         {
-          key_value_t *pair = card->extensns;
-          while (pair != NULL)
+          /* walk the list and print any extensions except "invisible"; also
+             strip out unwanted invisible entries if the flag is false. */
+          key_value_t **pp = &card->extensns;
+          while (*pp)
           {
+            key_value_t *pair = *pp;
+            if (pair->key && strcasecmp(pair->key, "invisible") == 0)
+            {
+              if (!card->invisible)
+              {
+                /* drop this pair entirely */
+                *pp = pair->next;
+                free(pair->key);
+                free(pair->value);
+                free(pair);
+                continue;
+              }
+              else
+              {
+                /* keep it in the list but do not print; flag output above
+                   will generate the correct text */
+                pp = &pair->next;
+                continue;
+              }
+            }
+
             fputc(' ', file);
             fputs(pair->key, file);
             fputc('=', file);
             fputs(pair->value, file);
-            pair = pair->next;
+            pp = &pair->next;
           }
         }
         // and then finally the comment which has to be at the end of the line

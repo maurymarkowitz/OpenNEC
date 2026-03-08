@@ -1047,6 +1047,10 @@ void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors)
         card->ignore = (strcasecmp(v, "true") == 0 || strcasecmp(v, "yes") == 0 || strcasecmp(v, "1") == 0);
         continue;
       }
+      if (strcasecmp(k, "invisible") == 0) {
+        card->invisible = (strcasecmp(v, "true") == 0 || strcasecmp(v, "yes") == 0 || strcasecmp(v, "1") == 0);
+        continue;
+      }
       if (strcasecmp(k, "comment") == 0) {
         char *leftover = strstr(card->extn_str, "comment");
         if (leftover) {
@@ -1134,42 +1138,9 @@ void mark_4nec2_cards_invisible(nec_context_t *ctx, deck_t *deck)
     int tag = card->tag; /* populated during geometry build input parsing */
     if (tag < INV_MIN || tag >= INV_MAX) continue;
 
-    // check if an "invisible" extension already exists
-    bool has_invisible = false;
-    key_value_t *kv = card->extensns;
-    while (kv) {
-      if (kv->key && strcasecmp(kv->key, "invisible") == 0) {
-        has_invisible = true;
-        break;
-      }
-      kv = kv->next;
-    }
-    if (has_invisible) continue;
-
-    // append invisible=true to card->extensns
-    key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
-    if (!pair) {
-      add_error(ctx, &ctx->errors, "Memory allocation failed for 'invisible' key/value", FATAL);
-      return;
-    }
-    pair->key = (char *)calloc(strlen("invisible") + 1, sizeof(char));
-    pair->value = (char *)calloc(strlen("true") + 1, sizeof(char));
-    if (!pair->key || !pair->value) {
-      free(pair->key); free(pair->value); free(pair);
-      add_error(ctx, &ctx->errors, "Memory allocation failed for 'invisible' strings", FATAL);
-      return;
-    }
-    strcpy(pair->key, "invisible");
-    strcpy(pair->value, "true");
-    pair->separator = ':'; // default separator for extensions
-    pair->next = NULL;
-
-    if (card->extensns == NULL) {
-      card->extensns = pair;
-    } else {
-      key_value_t *tail = card->extensns;
-      while (tail->next) tail = tail->next;
-      tail->next = pair;
-    }
+    /* tags in this range indicate invisible geometry in 4nec2, so set the
+     * flag.  We do not need to append an extension here; the write path will
+     * generate one if the flag is true. */
+    card->invisible = true;
   }
 } /* end of input.c */

@@ -46,6 +46,7 @@ card_t *new_card(void)
     *card = (card_t){
         .edited = false,
         .ignore = false,
+        .invisible = false,
         .extn_code = {0}};
   }
   return card;

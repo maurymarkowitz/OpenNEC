@@ -986,7 +986,7 @@ int basis_func_component(nec_context_t *ctx, int i, int is, double *aa, double *
         int other_seg = (jcox < 0) ? -jcox : jcox;
         char err_msg[256];
         snprintf(err_msg, sizeof(err_msg),
-            "Segment connection cycle: segment %d (card %d) chains into segment %d (card %d) — geometry is degenerate",
+            "Segment loop: segment %d on card %d connects to segment %d on card %d ",
             i, ctx->geometry.card_nums[i-1],
             other_seg, ctx->geometry.card_nums[other_seg - 1]);
         add_error(ctx, &ctx->errors, err_msg, FATAL);

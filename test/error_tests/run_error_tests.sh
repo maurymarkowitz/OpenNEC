@@ -40,6 +40,12 @@ expected_for() {
     no_ge_card)
       echo "Failed to initialize calculation defaults \(no valid geometry\)";
       ;;
+    invisible)
+      echo "invisible:true";
+      ;;
+    invisible_ext)
+      echo "invisible:true";
+      ;;
     *)
       echo "";
       ;;
@@ -49,6 +55,27 @@ expected_for() {
 for deck in test/error_tests/*.deck; do
   name="$(basename "$deck" .deck)"
   expected_regex="$(expected_for "$name")"
+
+  # special case for invisibility decks: check output deck contents instead of errors
+  if [[ "$name" == "invisible" || "$name" == "invisible_ext" ]]; then
+    echo "Testing $name (visibility check)"
+    tmpout="/tmp/error_test_${name}.out"
+    # write the deck back to stdout so we can search for the extension
+    ./onec "$deck" -w - >"$tmpout" 2>&1
+    status=$?
+    if grep -q "invisible:true" "$tmpout"; then
+      echo "PASS: $name (invisible flag emitted)"
+      PASSED=$((PASSED+1))
+    else
+      echo "FAIL: $name (missing invisible:true in output)"
+      echo "--- Output ---"
+      cat "$tmpout" || true
+      echo "-------------------"
+      FAILED=$((FAILED+1))
+    fi
+    continue
+  fi
+
   if [[ -z "$expected_regex" ]]; then
     echo "SKIP: $name (no expected message configured)"
     continue

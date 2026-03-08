@@ -856,7 +856,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
           if(++chain_hops > ctx->geometry.num_segs) {
             int other_seg = (ix < 0) ? -ix : ix;
             snprintf(msg, sizeof(msg),
-              "Segment connection cycle: segment %d (card %d) chains into segment %d (card %d) — geometry is degenerate",
+              "Segment loop: segment %d on card %d connects to segment %d on card %d ",
               j + 1, ctx->geometry.card_nums[j],
               other_seg, ctx->geometry.card_nums[other_seg - 1]);
             add_error(ctx, &ctx->geometry.errors, msg, FATAL);
