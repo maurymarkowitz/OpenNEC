@@ -1,13 +1,12 @@
-/******************************************************************************
+/**
+ * @file main.c
+ * @brief Entry point for the command-line version of OpenNEC.
  *
- * main.c is the entry point for the command-line version of OpenNEC
- * It works along with input.c and output.c. Together they parse the
- * command line, read input files if provided, run the commands in
- * the deck, and then print the output to more files. It also uses the
- * various importers and exporters in *-support to read and write other
- * formats.
- *
- *****************************************************************************/
+ * This program works with input.c and output.c: parsing command lines,
+ * reading input decks, executing the commands, and emitting output files.
+ * It also exposes the import/export helpers in *-support for converting
+ * to/from other formats.
+ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -15,11 +14,11 @@
 
 #include "internals.h"
 #include "input.h"
-#include "control.h"
 #include "output.h"
+#include "control.h"
+#include "deck_validations.h"
 #include "import-export/nec2-support.h"
 #include "import-export/nec4-support.h"
-#include "deck_validations.h"
 #include "import-export/maa-support.h"
 #include "import-export/yo-support.h"
 
@@ -36,9 +35,6 @@
 #include <dirent.h>
 #include <unistd.h>
 
-/** signal handler */
-// static void sig_handler(int signal);
-
 // various switches for the command line arguments
 static bool run_simulation = true;
 static bool run_tests = false;
@@ -51,11 +47,11 @@ static char *greens_file = "";
 static char *write_file = "";  /* -w / --write-file: convert deck to this format */
 static int jobs = 1; // number of parallel jobs (-j)
 
-/******************************************************************************
- * print_version()
+/**
+ * @brief Print the version string and terminate.
  *
- * as the name implies, this simply prints the VERSION_STRING to stdout
- *
+ * This helper writes the constant VERSION_STRING followed by a newline and
+ * then exits the process with status zero.
  */
 static void print_version(void);
 static void print_version(void)
@@ -64,11 +60,11 @@ static void print_version(void)
   exit(0);
 }
 
-/******************************************************************************
- * print_usage()
+/**
+ * @brief Display command-line usage instructions.
  *
- * prints the usage notes
- *
+ * @param argv[] Program arguments; used solely to display the program name in
+ *                the usage text.
  */
 void print_usage(char *argv[])
 {
@@ -82,7 +78,7 @@ void print_usage(char *argv[])
   puts("    extension are collected; the filter is inherited by all subdirectories.");
   puts("  -n, --no-run: don't run the simulation after parsing");
   puts("  -t, --test-deck: run various sanity tests");
-  puts("  -i file, --input-file=file: read input file. this is not required if input_file is provided. if neither is provided, input is read from stdin");
+  puts("  -i file, --input-file=file: read input file. this is not required if <input_file> is provided. if neither is provided, input is read from stdin");
   puts("  -o file, --output-file=file: write output to file. omitted -o writes to stdout (single file) or <file>.out (multiple files)");
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -g, --greens[=file]: write a Green's function file; filename defaults to input path with .ngf extension");
@@ -93,25 +89,6 @@ void print_usage(char *argv[])
   puts("Multiple input files or folders can be specified; each file will generate a .out file.");
   puts("If no input_file is provided, input is read from stdin and output goes to stdout.");
   exit(0);
-}
-
-/******************************************************************************
- * stop()
- *
- * Cleanup and exit - the single exit point for the program
- * TODO: Make this static once all calculation files use add_error() instead
- *
- */
-int stop(const nec_context_t *ctx, int flag)
-{
-  if (ctx->input_fp != NULL)
-    fclose(ctx->input_fp);
-  if (ctx->output_fp != NULL)
-    fclose(ctx->output_fp);
-  if (ctx->plot_fp != NULL)
-    fclose(ctx->plot_fp);
-
-  exit(flag);
 }
 
 static struct option program_options[] =
@@ -129,11 +106,15 @@ static struct option program_options[] =
         {"write-file", required_argument, NULL, 'w'},
         {0, 0, 0, 0}};
 
-/******************************************************************************
- * parse_options()
+/**
+ * @brief Parse command-line options.
  *
- * parses the command line options
+ * Populates the global flags such as `recursive`, `run_tests`, and file
+ * paths based on argv/argc.  This wraps getopt_long() logic used throughout
+ * the program.
  *
+ * @param argc Argument count from main().
+ * @param argv Argument vector from main().
  */
 void parse_options(int argc, char *argv[])
 {
@@ -234,13 +215,13 @@ void parse_options(int argc, char *argv[])
 /* ---------- file-type detection ----------------------------------- */
 typedef enum {
   FILETYPE_NEC,          /* .nec  .deck  — native NEC/OpenNEC deck    */
-  FILETYPE_NEC2,         /* .nec2        — NEC-2 stripped output       */
-  FILETYPE_NEC4,         /* .nec4        — NEC-4 output (stub)         */
-  FILETYPE_YO,           /* .yo   .ant   .yag — Yagi Optimizer         */
-  FILETYPE_MAA,          /* .maa  .mma        — MMANA-GAL              */
-  FILETYPE_UNSUPPORTED,  /* known format, importer not yet available   */
-  FILETYPE_UNKNOWN,      /* unrecognised extension — try NEC parsing   */
-  FILETYPE_STDIN,        /* empty / "-" — stdin, no extension info     */
+  FILETYPE_NEC2,         /* .nec2        — NEC-2 stripped output      */
+  FILETYPE_NEC4,         /* .nec4        — NEC-4 output (stub)        */
+  FILETYPE_YO,           /* .yo   .ant   .yag — Yagi Optimizer        */
+  FILETYPE_MAA,          /* .maa  .mma   — MMANA-GAL                  */
+  FILETYPE_UNSUPPORTED,  /* known format, importer not yet available  */
+  FILETYPE_UNKNOWN,      /* unrecognised extension — try NEC parsing  */
+  FILETYPE_STDIN,        /* empty / "-" — stdin, no extension info    */
 } filetype_t;
 
 /* Maps extension to format.  Case-insensitive. */
@@ -343,9 +324,17 @@ static int parse_glob_arg(const char *arg,
   return 1;
 }
 
-/* Return 1 if entry_name should be collected from a directory scan.
- * ext_filter == NULL or "" means collect NEC-only (legacy behaviour).
- * Any other value is an explicit extension to match (case-insensitive). */
+/**
+ * @brief Determine whether a directory entry should be processed.
+ *
+ * The rule depends on the current extension filter:
+ *   - `NULL` or empty string: only NEC-style extensions are accepted.
+ *   - otherwise, the entry must have the given extension (case-insensitive).
+ *
+ * @param entry_name filename from readdir()
+ * @param ext_filter extension to match, or NULL/"" for NEC-only
+ * @return 1 if the file should be collected, 0 otherwise
+ */
 static int file_matches_ext_filter(const char *entry_name, const char *ext_filter)
 {
   if (!ext_filter || ext_filter[0] == '\0')
@@ -355,16 +344,31 @@ static int file_matches_ext_filter(const char *entry_name, const char *ext_filte
   return strcasecmp(ext, ext_filter) == 0;
 }
 
-/* forward declaration — defined after process_single_file */
+/**
+ * @brief Compute destination filename for a converted deck.
+ *
+ * If `wf` is a bare extension (".nec", ".maa", etc.) the output file
+ * will be placed alongside `input` with that extension.  Otherwise `wf` is
+ * treated as an explicit filename pattern.
+ *
+ * @param input  Input deck path
+ * @param wf     Write-file argument from command line
+ * @param buf    Output buffer to receive resolved filename
+ * @param bufsz  Size of `buf`
+ */
 static void resolve_write_filename(const char *input, const char *wf,
                                    char *buf, size_t bufsz);
 
-/******************************************************************************
- * process_single_file()
+/**
+ * @brief Run the full OpenNEC pipeline on one input deck.
  *
- * Process a single input file through the complete simulation pipeline.
- * Returns 0 on success, -1 on error.
+ * This function creates a context, reads the deck, optionally runs the
+ * simulation, and writes any output.  Errors are reported to `error_fp`.
  *
+ * @param input_filename  Path of the input deck
+ * @param output_filename Path for the generated output (may be NULL)
+ * @param error_fp        FILE* where warnings/errors are printed
+ * @return 0 on success, -1 on fatal error
  */
 static int process_single_file(const char *input_filename, const char *output_filename, FILE *error_fp)
 {
@@ -790,6 +794,13 @@ static void resolve_write_filename(const char *input, const char *wf,
 }
 
 /*-------------------------------------------------------------------*/
+/**
+ * @brief Command-line entry point for the onec executable.
+ *
+ * Parses options, collects input files, and dispatches them to
+ * process_single_file().  Handles error/log file opening and
+ * potentially runs regression or other special modes.
+ */
 int main(int argc, char **argv)
 {
   FILE *error_fp = NULL;

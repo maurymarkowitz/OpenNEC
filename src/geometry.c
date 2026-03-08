@@ -845,14 +845,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
     xa = ctx->geometry.end1_x[j];
     ya = ctx->geometry.end1_y[j];
     za = ctx->geometry.end1_z[j];
-    
-    /* if( ix == 0 ) Not needed??
-     {
-     fprintf( output_fp,
-     "\n  CONNECT - SEGMENT CONNECTION ERROR FOR SEGMENT: %d", ix );
-     stop(ctx, -1);
-     } */
-    
+        
     while(true) {
       if((ix != 0) && (ix != (j+1)) && (ix <= PCHCON)) {
         /* chain_limit: a valid connection chain can visit each segment at most
