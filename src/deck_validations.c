@@ -50,6 +50,15 @@ typedef struct
   int seg2;
 } tl_ref_t;
 
+typedef struct
+{
+  int line;
+  int segs;
+  double total_len;
+  double radius;
+  char code[3];
+} geom_seg_info_t;
+
 // Forward declarations for helper functions
 static double point_to_segment_distance(double px, double py, double pz,
                                         double qx1, double qy1, double qz1,
@@ -65,7 +74,17 @@ static void check_ge_low_height_hazard(const nec_context_t *ctx, errors_list_t *
                                        int GEType);
 static void check_junction_segmentation_consistency(const nec_context_t *ctx, errors_list_t *errors,
                                                     const wire_info_t *wires, int wire_count);
+static void check_connected_wire_radius_consistency(const nec_context_t *ctx, errors_list_t *errors,
+                                                    const wire_info_t *wires, int wire_count);
 static bool is_geometry_tag_ignored(const deck_t *deck, int tag);
+static double estimate_helix_length(double s, double hl, double a1, double b1, double a2, double b2);
+static void warn_segment_rules(const nec_context_t *ctx, errors_list_t *errors,
+                               const char *code, int line, int segs,
+                               double total_len, double radius, double wavelength);
+static void validate_geom_seg_info_list(const nec_context_t *ctx, errors_list_t *errors,
+                                        const geom_seg_info_t *items, int item_count,
+                                        const char *trigger_code, int trigger_line,
+                                        double wavelength);
 
 /******************************************************************************
  * is_geometry_tag_ignored
@@ -162,6 +181,8 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
   int ld_ref_count = 0;
   tl_ref_t tl_refs[512];
   int tl_ref_count = 0;
+  geom_seg_info_t geom_segs[1024];
+  int geom_seg_count = 0;
 
   // start with some obvious ones
   if (deck->num_cards == 0)
@@ -325,7 +346,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
       if (sawFR == false)
       {
         sawFR = i;
-        if (freq_mhz == 0.0)
+        if (deck->cards[i].f[1] > 0.0)
         {
           freq_mhz = deck->cards[i].f[1];
         }
@@ -664,21 +685,95 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
           {
             geom_tags[geom_tag_count++] = tag_i;
           }
-          // If this is a GW, capture its endpoints and segment count
-          if (strcmp(code, "GW") == 0 && wire_count < (int)(sizeof(wires) / sizeof(wires[0])))
+        }
+
+        // If this is a GW, capture its endpoints and segment count
+        if (strcmp(code, "GW") == 0 && wire_count < (int)(sizeof(wires) / sizeof(wires[0])))
+        {
+          wire_info_t w;
+          w.tag = deck->cards[i].i[1];
+          w.segs = deck->cards[i].i[2];
+          w.line = i + 1;
+          w.x1 = deck->cards[i].f[1];
+          w.y1 = deck->cards[i].f[2];
+          w.z1 = deck->cards[i].f[3];
+          w.x2 = deck->cards[i].f[4];
+          w.y2 = deck->cards[i].f[5];
+          w.z2 = deck->cards[i].f[6];
+          w.radius = deck->cards[i].f[7];
+          wires[wire_count++] = w;
+        }
+
+        // Per-geometry-card segmentation/radius validation inputs (GW/GA/GH)
+        if (geom_seg_count < (int)(sizeof(geom_segs) / sizeof(geom_segs[0])))
+        {
+          geom_seg_info_t g;
+          int captured = 0;
+          memset(&g, 0, sizeof(g));
+          g.line = i + 1;
+
+          if (strcmp(code, "GW") == 0)
           {
-            wire_info_t w;
-            w.tag = tag_i;
-            w.segs = deck->cards[i].i[2];
-            w.line = i + 1;
-            w.x1 = deck->cards[i].f[1];
-            w.y1 = deck->cards[i].f[2];
-            w.z1 = deck->cards[i].f[3];
-            w.x2 = deck->cards[i].f[4];
-            w.y2 = deck->cards[i].f[5];
-            w.z2 = deck->cards[i].f[6];
-            w.radius = deck->cards[i].f[7];
-            wires[wire_count++] = w;
+            double dx = deck->cards[i].f[4] - deck->cards[i].f[1];
+            double dy = deck->cards[i].f[5] - deck->cards[i].f[2];
+            double dz = deck->cards[i].f[6] - deck->cards[i].f[3];
+            g.total_len = sqrt(dx * dx + dy * dy + dz * dz);
+            g.segs = deck->cards[i].i[2];
+            g.radius = deck->cards[i].f[7];
+            strncpy(g.code, "GW", sizeof(g.code) - 1);
+            captured = 1;
+          }
+          else if (strcmp(code, "GA") == 0)
+          {
+            double radius = fabs(deck->cards[i].f[1]);
+            double theta = fabs(deck->cards[i].f[3] - deck->cards[i].f[2]) * (PI / 180.0);
+            g.total_len = radius * theta;
+            g.segs = deck->cards[i].i[2];
+            g.radius = deck->cards[i].f[4];
+            strncpy(g.code, "GA", sizeof(g.code) - 1);
+            captured = 1;
+          }
+          else if (strcmp(code, "GH") == 0)
+          {
+            g.total_len = estimate_helix_length(deck->cards[i].f[1], deck->cards[i].f[2], deck->cards[i].f[3], deck->cards[i].f[4], deck->cards[i].f[5], deck->cards[i].f[6]);
+            g.segs = deck->cards[i].i[2];
+            g.radius = deck->cards[i].f[7];
+            strncpy(g.code, "GH", sizeof(g.code) - 1);
+            captured = 1;
+          }
+
+          if (captured)
+          {
+            geom_segs[geom_seg_count++] = g;
+            if (freq_mhz > 0.0)
+            {
+              warn_segment_rules(ctx, errors, g.code, g.line, g.segs, g.total_len, g.radius, CVEL / freq_mhz);
+            }
+          }
+        }
+
+        // Transforms that can affect or duplicate geometry; validate current transformed set.
+        if (strcmp(code, "GS") == 0)
+        {
+          double sf = fabs(deck->cards[i].f[1]);
+          if (sf > 0.0)
+          {
+            for (int gi = 0; gi < geom_seg_count; gi++)
+            {
+              geom_segs[gi].total_len *= sf;
+              geom_segs[gi].radius *= sf;
+            }
+          }
+          if (freq_mhz > 0.0)
+          {
+            validate_geom_seg_info_list(ctx, errors, geom_segs, geom_seg_count, "GS", i + 1, CVEL / freq_mhz);
+          }
+        }
+        else if (strcmp(code, "GM") == 0 || strcmp(code, "GR") == 0 || strcmp(code, "GX") == 0)
+        {
+          if (freq_mhz > 0.0)
+          {
+            validate_geom_seg_info_list(ctx, errors, geom_segs, geom_seg_count, code, i + 1, CVEL / freq_mhz);
           }
         }
         break;
@@ -1007,6 +1102,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
   {
     check_ge_low_height_hazard(ctx, errors, wires, wire_count, GEType);
     check_junction_segmentation_consistency(ctx, errors, wires, wire_count);
+    check_connected_wire_radius_consistency(ctx, errors, wires, wire_count);
   }
 
   // TL segment bounds validation: ensure referenced segments exist on the given tags
@@ -1245,6 +1341,98 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
   }
 }
 
+static double estimate_helix_length(double s, double hl, double a1, double b1, double a2, double b2)
+{
+  double abs_hl = fabs(hl);
+  if (abs_hl <= 0.0)
+    return 0.0;
+  if (fabs(s) < 1.0e-12)
+    return abs_hl;
+
+  double turns = fabs(hl / s);
+  double b1_eff = (b1 == 0.0) ? a1 : b1;
+  double b2_eff = (b2 == 0.0) ? a2 : b2;
+  double a = 0.5 * (fabs(a1) + fabs(a2));
+  double b = 0.5 * (fabs(b1_eff) + fabs(b2_eff));
+
+  double perim;
+  if (fabs(a - b) <= 1.0e-12)
+  {
+    perim = 2.0 * PI * a;
+  }
+  else
+  {
+    perim = PI * (3.0 * (a + b) - sqrt((3.0 * a + b) * (a + 3.0 * b)));
+  }
+
+  {
+    double circum_path = perim * turns;
+    return sqrt(circum_path * circum_path + abs_hl * abs_hl);
+  }
+}
+
+static void warn_segment_rules(const nec_context_t *ctx, errors_list_t *errors,
+                               const char *code, int line, int segs,
+                               double total_len, double radius, double wavelength)
+{
+  char msg[MAX_ERROR_LEN];
+  if (segs <= 0 || total_len <= 0.0 || wavelength <= 0.0)
+    return;
+
+  {
+    double seg_len = total_len / (double)segs;
+    double min_seg = 1.0e-4 * wavelength;
+    if (seg_len < min_seg)
+    {
+      snprintf(msg, sizeof(msg), "%s on line %d: segment length %.6g is smaller than 1e-4 wavelength (%.6g).", code, line, seg_len, min_seg);
+      add_error(ctx, errors, msg, WARNING);
+    }
+
+    if (radius > 0.0)
+    {
+      double min_r_by_seg = 0.5 * seg_len;
+      double min_r_by_wav = 0.1 * wavelength;
+      if (radius < min_r_by_seg || radius < min_r_by_wav)
+      {
+        snprintf(msg, sizeof(msg), "%s on line %d: wire radius %.6g is smaller than 0.5*segment length (%.6g) or 0.1*wavelength (%.6g).", code, line, radius, min_r_by_seg, min_r_by_wav);
+        add_error(ctx, errors, msg, WARNING);
+      }
+    }
+  }
+}
+
+static void validate_geom_seg_info_list(const nec_context_t *ctx, errors_list_t *errors,
+                                        const geom_seg_info_t *items, int item_count,
+                                        const char *trigger_code, int trigger_line,
+                                        double wavelength)
+{
+  char msg[MAX_ERROR_LEN];
+  for (int i = 0; i < item_count; i++)
+  {
+    const geom_seg_info_t *g = &items[i];
+    if (g->segs <= 0 || g->total_len <= 0.0 || wavelength <= 0.0)
+      continue;
+
+    {
+      double seg_len = g->total_len / (double)g->segs;
+      double min_seg = 1.0e-4 * wavelength;
+      double min_r_by_seg = 0.5 * seg_len;
+      double min_r_by_wav = 0.1 * wavelength;
+
+      if (seg_len < min_seg)
+      {
+        snprintf(msg, sizeof(msg), "%s on line %d: transformed geometry from %s line %d has segment length %.6g < 1e-4 wavelength (%.6g).", trigger_code, trigger_line, g->code, g->line, seg_len, min_seg);
+        add_error(ctx, errors, msg, WARNING);
+      }
+      if (g->radius > 0.0 && (g->radius < min_r_by_seg || g->radius < min_r_by_wav))
+      {
+        snprintf(msg, sizeof(msg), "%s on line %d: transformed geometry from %s line %d has radius %.6g smaller than 0.5*segment (%.6g) or 0.1*wavelength (%.6g).", trigger_code, trigger_line, g->code, g->line, g->radius, min_r_by_seg, min_r_by_wav);
+        add_error(ctx, errors, msg, WARNING);
+      }
+    }
+  }
+}
+
 // Helper: point-to-segment distance in 3D
 static double point_to_segment_distance(double px, double py, double pz,
                                         double qx1, double qy1, double qz1,
@@ -1365,6 +1553,55 @@ static void check_junction_segmentation_consistency(const nec_context_t *ctx, er
         {
           snprintf(msg, sizeof(msg), "Connected wires (lines %d and %d, tags %d and %d) have very different segment lengths near the junction (%.4g m vs %.4g m); consider harmonizing segmentation.", a->line, b->line, a->tag, b->tag, aSeg, bSeg);
           add_error(ctx, errors, msg, 0);
+        }
+      }
+    }
+  }
+}
+
+// Helper: connected wires should use the same radius at the junction
+static void check_connected_wire_radius_consistency(const nec_context_t *ctx, errors_list_t *errors,
+                                                    const wire_info_t *wires, int wire_count)
+{
+  char msg[MAX_ERROR_LEN];
+  for (int i = 0; i < wire_count; i++)
+  {
+    const wire_info_t *a = &wires[i];
+    if (a->segs <= 0)
+      continue;
+
+    double aL = sqrt(pow(a->x2 - a->x1, 2) + pow(a->y2 - a->y1, 2) + pow(a->z2 - a->z1, 2));
+    double aSeg = aL / (double)a->segs;
+
+    for (int j = i + 1; j < wire_count; j++)
+    {
+      const wire_info_t *b = &wires[j];
+      if (b->segs <= 0)
+        continue;
+
+      double bL = sqrt(pow(b->x2 - b->x1, 2) + pow(b->y2 - b->y1, 2) + pow(b->z2 - b->z1, 2));
+      double bSeg = bL / (double)b->segs;
+      double tol = fmax(fmin(aSeg, bSeg) / 1000.0, 1e-9);
+
+      double d11 = sqrt(pow(a->x1 - b->x1, 2) + pow(a->y1 - b->y1, 2) + pow(a->z1 - b->z1, 2));
+      double d12 = sqrt(pow(a->x1 - b->x2, 2) + pow(a->y1 - b->y2, 2) + pow(a->z1 - b->z2, 2));
+      double d21 = sqrt(pow(a->x2 - b->x1, 2) + pow(a->y2 - b->y1, 2) + pow(a->z2 - b->z1, 2));
+      double d22 = sqrt(pow(a->x2 - b->x2, 2) + pow(a->y2 - b->y2, 2) + pow(a->z2 - b->z2, 2));
+      int connected = (d11 <= tol) || (d12 <= tol) || (d21 <= tol) || (d22 <= tol);
+      if (!connected)
+        continue;
+
+      if (a->radius <= 0.0 || b->radius <= 0.0)
+        continue;
+
+      {
+        double diff = fabs(a->radius - b->radius);
+        double maxr = fmax(a->radius, b->radius);
+        double rtol = fmax(1.0e-12, 1.0e-6 * maxr);
+        if (diff > rtol)
+        {
+          snprintf(msg, sizeof(msg), "Connected wires (lines %d and %d, tags %d and %d) have different radii at the junction (%.6g m vs %.6g m).", a->line, b->line, a->tag, b->tag, a->radius, b->radius);
+          add_error(ctx, errors, msg, WARNING);
         }
       }
     }

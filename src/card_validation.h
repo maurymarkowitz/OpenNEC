@@ -6,9 +6,9 @@
  * so it can highlight problems interactively as users type.
  *
  * Unlike deck_validations.c, which sweeps the whole deck and returns a message
- * list, these functions require only a single card_t and return a result by
- * value. Cross-card checks (tag existence, open-end placement, etc.) remain
- * in deck_validations.c.
+ * list, these functions primarily validate single cards and return a result by
+ * value. Deck-aware variants are provided when a field rule depends on deck
+ * context (for example, FR-driven wavelength checks).
  *
  * Severity uses the existing error_level enum from types.h:
  *   NONE    = 0  No problem detected, or no validation rule defined for field
@@ -55,6 +55,15 @@ typedef struct {
 field_validation_t validate_card_field(const card_t *card, const char *field_name);
 
 /*
+ * validate_card_field_with_deck
+ *
+ * Same as validate_card_field(), but may use deck context for rules that
+ * depend on other cards (for example FR-dependent segment-size warnings).
+ * If deck is NULL, deck-dependent rules are skipped.
+ */
+field_validation_t validate_card_field_with_deck(const card_t *card, const deck_t *deck, const char *field_name);
+
+/*
  * validate_card_all_fields
  *
  * Validates all 11 fields on a card in one call. Useful when a card is first
@@ -70,5 +79,12 @@ field_validation_t validate_card_field(const card_t *card, const char *field_nam
  * @param results  Caller-allocated array of 11 field_validation_t values
  */
 void validate_card_all_fields(const card_t *card, field_validation_t results[11]);
+
+/*
+ * validate_card_all_fields_with_deck
+ *
+ * Deck-aware equivalent of validate_card_all_fields().
+ */
+void validate_card_all_fields_with_deck(const card_t *card, const deck_t *deck, field_validation_t results[11]);
 
 #endif /* CARD_VALIDATION_H */
