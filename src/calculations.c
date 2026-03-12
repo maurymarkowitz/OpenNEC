@@ -353,7 +353,7 @@ int apply_impedance_loading(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldt
     
     /* ldtyp is validated (0–6) by control.c before storage; this should
      * never fire. If it does, it is a programming error, not a user error. */
-    assert(ldtyp[istepx] <= 6 && "INTERNAL: IMPROPER LOAD TYPE stored in zload.load_types");
+    assert(ldtyp[istepx] <= 7 && "INTERNAL: IMPROPER LOAD TYPE stored in zload.load_types");
     
     /* search segments for proper itags */
     ldtags= ldtag[istepx];
@@ -454,6 +454,23 @@ int apply_impedance_loading(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldt
           break;
         }
 
+        case 8: {
+          /* LD type 7: insulated wire coating (Cebik method).
+           * F1 = dielectric constant (epsilon), F2 = outer radius R (m).
+           * r = bare wire radius (m) = geometry.radius[i] * wavelength.
+           * Converts to distributed series inductance (H/m) per the 4nec2 formula:
+           *   L = 2e-7 * (eps*R/r)^(1/12) * (1 - 1/eps) * ln(R/r)
+           * then applies as a series per-unit-length load (same as LD type 2, case 3). */
+          double eps  = zlr[istepx];   /* dielectric constant */
+          double R    = zli[istepx];   /* outer (insulation) radius, metres */
+          double r    = ctx->geometry.radius[i] * ctx->geometry.wavelength; /* wire radius, metres */
+          double ratio = R / r;
+          double L_pm = 2.0e-7 * pow(eps * ratio, 1.0/12.0) * (1.0 - 1.0/eps) * log(ratio);
+          /* series distributed impedance per half-length: jω·L_pm·(2·half_len) / (2·half_len) = jω·L_pm */
+          zt = tpcj * ctx->geometry.half_len[i] * L_pm / ctx->geometry.wavelength;
+          break;
+        }
+
       } /* switch( jump ) */
       
       if(( fabs( creal( ctx->zload.seg_impedance[i]))+ fabs( cimag( ctx->zload.seg_impedance[i]))) > 1.0e-20) {
@@ -526,6 +543,10 @@ int apply_impedance_loading(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldt
 
       case 7:
            add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, zli[istepx], zlc[istepx], "LC-TRAP");
+        break;
+
+      case 8:
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx], zli[istepx], 0.0, "INSULATED WIRE");
         
     } /* switch( jump ) */
   } /* while( true ) */

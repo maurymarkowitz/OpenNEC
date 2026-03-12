@@ -653,7 +653,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                 continue;
             }
 
-            if (i1 > 6) {
+            if (i1 > 7) {
                 char msg[MAX_ERROR_LEN];
                 snprintf(msg, sizeof(msg), "LD on line %d: type %d is not supported.", card_idx + 1, i1);
                 add_error(ctx, &ctx->errors, msg, FATAL);

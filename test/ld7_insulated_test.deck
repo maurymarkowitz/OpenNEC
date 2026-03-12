@@ -1,0 +1,12 @@
+CM Insulated wire test (LD type 7)
+CM Simple dipole with PVC insulation (diel=3.5) on tag 2; coat radius = 3mm
+CM Wire radius (GW) = 1mm, coating adds 2mm => outer radius = 0.003m
+CE
+GW 1 10 0 0 0 0.1 0 0 0.001
+GW 2 16 0.1 0 0 0.2 0 0 0.001
+GE 0
+FR 0 1 0 0 145
+LD 7 2 1 16 3.5 0.003
+EX 0 1 5 0 1 0
+RP 0 1 1 1000 90 0 0 0
+EN
