@@ -4,8 +4,6 @@ Items still to be implemented:
 
 * get more info on the .ez format
 
-* does anything in card.c really need ctx?
-
 * ensure that the logic for optional placing the formulas in the onec comment is implemented, and that if it is used, and the deck is written in nec-2 format, that the value is copied into the corresponding field
 
 * remember to run clang static analyzer at some point
@@ -21,8 +19,6 @@ Items still to be implemented:
 * nec2++ examples/medium_test.nec has an "MP" card type
 
 * at some point, handle 4nec2 current sources, EX 6 (UA3SFH.nec, W2EEY.NEC, calvin.nec, class.NEC)
-
-* add support for LD type 7 from 4nec2
 
 * CVEL constant: currently set to 299.8 (matching the original NEC2 Fortran and nec2c) for numerical compatibility with reference outputs. The exact SI value is 299.792458 m/μs. Investigate whether to use the exact value and document the tradeoff: using 299.8 suppresses ~0.1-0.2% differences vs nec2c but is technically less accurate.
 
