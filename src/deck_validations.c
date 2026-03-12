@@ -544,6 +544,21 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
         snprintf(msg, sizeof(msg), "GN on line %d: no integer ground type specified.", i);
         add_error(ctx, errors, msg, 0);
       }
+      else
+      {
+        int gn_type = deck->cards[i].i[1];
+        if (gn_type < -1 || gn_type > 3)
+        {
+          snprintf(msg, sizeof(msg), "GN on line %d: type %d is not supported (valid: -1..3).", i, gn_type);
+          add_error(ctx, errors, msg, 0);
+        }
+        /* GN 3 (MiniNec) requires a positive dielectric constant */
+        if (gn_type == 3 && (deck->cards[i].flts_used < 1 || deck->cards[i].f[1] <= 0.0))
+        {
+          snprintf(msg, sizeof(msg), "GN on line %d (MiniNec ground): F1 (dielectric constant) must be positive.", i);
+          add_error(ctx, errors, msg, 0);
+        }
+      }
     }
 
     // LD: loading — require type, tag, segment and at least one non-zero value

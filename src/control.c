@@ -712,7 +712,25 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                 ctx->gnd.is_perfect = 0;
                 continue;
             }
-            
+
+            if (i1 == 3) {
+                /* GN type 3: 4nec2 MiniNec ground extension.
+                 * Internally equivalent to GN 1 (perfect ground for currents/impedance)
+                 * plus GD 0 0 0 0 <diel> <cond> (second medium starting at distance 0
+                 * for far-field calculations).  F1=dielectric constant, F2=conductivity. */
+                ctx->gnd.is_perfect = 1;   /* perfect ground for impedance computation */
+                ctx->gnd.num_radials = 0;
+                ctx->gnd.has_ground = 2;
+                ctx->save.ground_epsr  = f1;
+                ctx->save.ground_sigma = f2;
+                /* second medium starts at distance 0, height 0 (far-field uses real ground) */
+                ctx->fpat.epsr2       = f1;
+                ctx->fpat.sigma2      = f2;
+                ctx->fpat.cliff_dist  = 0.0;
+                ctx->fpat.cliff_height = 0.0;
+                continue;
+            }
+
             ctx->gnd.is_perfect = i1;
             ctx->gnd.num_radials = i2;
             ctx->gnd.has_ground = 2;
