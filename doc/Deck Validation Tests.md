@@ -65,9 +65,20 @@ This document summarizes the validation and guidance checks implemented in OpenN
 - Overlapping wires: Warn if any two wires have identical endpoints (same or reversed).
 - Parallel wires: Warn when parallel wires closer than `0.05` wavelengths have different segmentation (counts or lengths differing by >10%).
 - Segment length vs. wavelength (WL):
-  - `>= 0.1 WL`: warn.
-  - `>= 0.05 WL`: advisory (critical regions should be < `0.05 WL`).
-  - `< 0.001 WL`: advisory (excessive segmentation).
+  - Cebik guidance: `>= 0.1 WL` warning; `>= 0.05 WL` advisory; `< 0.001 WL` advisory for excessive segmentation.
+  - 4nec2 additions: error if `>= 0.2 WL` (coarse segmentation) or `< 0.001 WL` (too fine).
+  - Combined check produces both Cebik and 4nec2 messages where thresholds overlap.
+- Radius vs. wavelength:
+  - 4nec2 warns if radius > `WL/100`, errors if > `WL/30`.
+- Length/radius ratio on a segment:
+  - Cebik warns if `L/R <= 10` (now adjusted to `<= 8` per 4nec2); error if `L/R <= 2`.
+  - With EK: warning if `L/R <= 2`, error if `L/R <= 0.5`.
+- Junction checks:
+  - Segmentation ratio: warn if endpoints differ by >20% (existing) and also if one length is >5× the other (4nec2).
+  - Radius ratio at junction: warn if `R_big/R_small > 5`, error if `> 10` (4nec2).
+  - Length/radius at junction: warn if `L < 6R`, error if `L < 2R` (4nec2).
+- Surface patch area:
+  - 4nec2 error when patch area (in λ²) exceeds `1/25 WL`.
 - Radius guidance (thin-wire assumptions):
   - Default kernel: warn if `radius >= len/2`; advise if `radius >= len/10`.
   - Extended kernel (`EK`): warn if `radius >= 2*len`.

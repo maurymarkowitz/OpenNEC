@@ -43,119 +43,21 @@ static field_validation_t ok(void)
   return r;
 }
 
-/* Find the first usable FR base frequency in MHz. Returns 1 when found. */
-static int get_first_fr_mhz(const deck_t *deck, double *freq_mhz)
+
+
+/* Stubs for geometry segment warnings
+ *
+ * The earlier implementation made a best-effort to compute a warning based on
+ * the first FR card in the deck.  That is a deck-level check and belongs in
+ * deck_validations.c, not in this per-card module.  We simply return OK here
+ * and drop the dependency on the deck pointer.  The API remains simple and
+ * deck-agnostic.
+ */
+static field_validation_t validate_geometry_segment_field(const card_t *c, int is_int, int idx)
 {
-  if (!deck || !freq_mhz)
-    return 0;
-
-  for (int i = 0; i < deck->num_cards; i++)
-  {
-    const card_t *c = &deck->cards[i];
-    if (strncmp(c->card_code, "FR", 2) != 0)
-      continue;
-    if (c->ignore)
-      continue;
-    if (c->f[1] > 0.0)
-    {
-      *freq_mhz = c->f[1];
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
-static double estimate_helix_length(double s, double hl, double a1, double b1, double a2, double b2)
-{
-  double abs_hl = fabs(hl);
-  if (abs_hl <= 0.0)
-    return 0.0;
-  if (fabs(s) < 1.0e-12)
-    return abs_hl;
-
-  double turns = fabs(hl / s);
-  double b1_eff = (b1 == 0.0) ? a1 : b1;
-  double b2_eff = (b2 == 0.0) ? a2 : b2;
-  double a = 0.5 * (fabs(a1) + fabs(a2));
-  double b = 0.5 * (fabs(b1_eff) + fabs(b2_eff));
-
-  double perim;
-  if (fabs(a - b) <= 1.0e-12)
-    perim = 2.0 * PI * a;
-  else
-    perim = PI * (3.0 * (a + b) - sqrt((3.0 * a + b) * (a + 3.0 * b)));
-
-  {
-    double circum_path = perim * turns;
-    return sqrt(circum_path * circum_path + abs_hl * abs_hl);
-  }
-}
-
-/* Deck-aware warning on I2 segment field for GW/GA/GH. */
-static field_validation_t validate_geometry_segment_field_with_deck(const card_t *c, const deck_t *deck, int is_int, int idx)
-{
-  if (!c || !is_int || idx != 2)
-    return ok();
-
-  if (!(strcmp(c->card_code, "GW") == 0 || strcmp(c->card_code, "GA") == 0 || strcmp(c->card_code, "GH") == 0))
-    return ok();
-
-  if (c->i[2] <= 0)
-    return ok(); /* Existing card-local validators report the hard error. */
-
-  double freq_mhz = 0.0;
-  if (!get_first_fr_mhz(deck, &freq_mhz))
-    return ok(); /* Explicitly silent when no FR exists in deck. */
-
-  if (freq_mhz <= 0.0)
-    return ok();
-
-  double wavelength = CVEL / freq_mhz;
-  if (wavelength <= 0.0)
-    return ok();
-
-  double total_len = 0.0;
-  double radius = 0.0;
-  if (strcmp(c->card_code, "GW") == 0)
-  {
-    double dx = c->f[4] - c->f[1];
-    double dy = c->f[5] - c->f[2];
-    double dz = c->f[6] - c->f[3];
-    total_len = sqrt(dx * dx + dy * dy + dz * dz);
-    radius = c->f[7];
-  }
-  else if (strcmp(c->card_code, "GA") == 0)
-  {
-    double arc_r = fabs(c->f[1]);
-    double theta = fabs(c->f[3] - c->f[2]) * (PI / 180.0);
-    total_len = arc_r * theta;
-    radius = c->f[4];
-  }
-  else if (strcmp(c->card_code, "GH") == 0)
-  {
-    total_len = estimate_helix_length(c->f[1], c->f[2], c->f[3], c->f[4], c->f[5], c->f[6]);
-    radius = c->f[7];
-  }
-
-  if (total_len <= 0.0)
-    return ok();
-
-  {
-    double seg_len = total_len / (double)c->i[2];
-    double min_seg = 1.0e-4 * wavelength;
-    if (seg_len < min_seg)
-      RESULT(WARNING, "%s on line %d: I2 gives segment length %.6g, smaller than 1e-4 wavelength (%.6g).", c->card_code, c->card_num, seg_len, min_seg);
-
-    if (radius > 0.0)
-    {
-      double lim_seg = 0.5 * seg_len;
-      double lim_wav = 0.1 * wavelength;
-      if (radius < lim_seg || radius < lim_wav)
-        RESULT(WARNING, "%s on line %d: I2 implies segment length %.6g, and wire radius %.6g is smaller than 0.5*segment (%.6g) or 0.1*wavelength (%.6g).", c->card_code, c->card_num, seg_len, radius, lim_seg, lim_wav);
-    }
-  }
-
+  (void)c;
+  (void)is_int;
+  (void)idx;
   return ok();
 }
 
@@ -639,7 +541,7 @@ static field_validation_t validate_SP_field(const card_t *c, int is_int, int idx
  * validate_card_field — public dispatch entry point
  *****************************************************************************/
 
-field_validation_t validate_card_field_with_deck(const card_t *card, const deck_t *deck, const char *field_name)
+field_validation_t validate_card_field(const card_t *card, const char *field_name)
 {
   if (!card || !field_name)
     return ok();
@@ -703,16 +605,13 @@ field_validation_t validate_card_field_with_deck(const card_t *card, const deck_
   if (base.severity != NONE)
     return base;
 
-  return validate_geometry_segment_field_with_deck(card, deck, is_int, idx);
+  /* deck-independent stub (see notes above) */
+  return validate_geometry_segment_field(card, is_int, idx);
 
   /* GF: no field rules — filename lives in card_str, not i[]/f[] */
   /* CM, CE, EN, SY, and others: no per-field rules at this level */
 }
 
-field_validation_t validate_card_field(const card_t *card, const char *field_name)
-{
-  return validate_card_field_with_deck(card, NULL, field_name);
-}
 
 /******************************************************************************
  * validate_card_all_fields — validate all 11 fields in one call
@@ -722,20 +621,16 @@ field_validation_t validate_card_field(const card_t *card, const char *field_nam
  *   results[4..10] => F1..F7  (F_idx = fieldN + 3)
  *****************************************************************************/
 
-void validate_card_all_fields_with_deck(const card_t *card, const deck_t *deck, field_validation_t results[11])
+void validate_card_all_fields(const card_t *card, field_validation_t results[11])
 {
   /* I1..I4 at indices 0..3 */
   static const char *int_names[] = {"I1", "I2", "I3", "I4"};
   for (int n = 0; n < 4; n++)
-    results[n] = validate_card_field_with_deck(card, deck, int_names[n]);
+    results[n] = validate_card_field(card, int_names[n]);
 
   /* F1..F7 at indices 4..10 */
   static const char *flt_names[] = {"F1", "F2", "F3", "F4", "F5", "F6", "F7"};
   for (int n = 0; n < 7; n++)
-    results[4 + n] = validate_card_field_with_deck(card, deck, flt_names[n]);
+    results[4 + n] = validate_card_field(card, flt_names[n]);
 }
 
-void validate_card_all_fields(const card_t *card, field_validation_t results[11])
-{
-  validate_card_all_fields_with_deck(card, NULL, results);
-}

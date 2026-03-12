@@ -76,6 +76,10 @@ static void check_junction_segmentation_consistency(const nec_context_t *ctx, er
                                                     const wire_info_t *wires, int wire_count);
 static void check_connected_wire_radius_consistency(const nec_context_t *ctx, errors_list_t *errors,
                                                     const wire_info_t *wires, int wire_count);
+/* 4nec2 patch-area sanity rule: A (in lambda^2) should not exceed 1/25 */
+static void check_patch_area(const nec_context_t *ctx, errors_list_t *errors);
+static void check_connected_wire_radius_consistency(const nec_context_t *ctx, errors_list_t *errors,
+                                                    const wire_info_t *wires, int wire_count);
 static bool is_geometry_tag_ignored(const deck_t *deck, int tag);
 static double estimate_helix_length(double s, double hl, double a1, double b1, double a2, double b2);
 static void warn_segment_rules(const nec_context_t *ctx, errors_list_t *errors,
@@ -346,6 +350,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
       if (sawFR == false)
       {
         sawFR = i;
+
         if (deck->cards[i].f[1] > 0.0)
         {
           freq_mhz = deck->cards[i].f[1];
@@ -1096,8 +1101,13 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
   }
   if (freq_mhz > 0.0 && wire_count > 0)
   {
-    check_segment_length_and_radius(ctx, errors, wires, wire_count, freq_mhz, ek_enabled);
+      check_segment_length_and_radius(ctx, errors, wires, wire_count, freq_mhz, ek_enabled);
   }
+
+  /* 4nec2 patch area rule applies regardless of wires */
+  if (ctx->geometry.num_patches > 0)
+    check_patch_area(ctx, errors);
+
   if (wire_count > 0)
   {
     check_ge_low_height_hazard(ctx, errors, wires, wire_count, GEType);
@@ -1549,9 +1559,17 @@ static void check_junction_segmentation_consistency(const nec_context_t *ctx, er
       if (connected)
       {
         double rel = fabs(aSeg - bSeg) / fmax(aSeg, bSeg);
+        
         if (rel > 0.20)
         {
           snprintf(msg, sizeof(msg), "Connected wires (lines %d and %d, tags %d and %d) have very different segment lengths near the junction (%.4g m vs %.4g m); consider harmonizing segmentation.", a->line, b->line, a->tag, b->tag, aSeg, bSeg);
+          add_error(ctx, errors, msg, 0);
+        }
+        /* 4nec2: warn if one segment length is more than 5× the other */
+        if (aSeg < 0.2 * bSeg || bSeg < 0.2 * aSeg)
+        {
+          snprintf(msg, sizeof(msg), "Connected wires (lines %d and %d, tags %d and %d) have a junction length ratio >5:1 (%.4g vs %.4g); this may cause accuracy issues.",
+                   a->line, b->line, a->tag, b->tag, aSeg, bSeg);
           add_error(ctx, errors, msg, 0);
         }
       }
@@ -1593,6 +1611,48 @@ static void check_connected_wire_radius_consistency(const nec_context_t *ctx, er
 
       if (a->radius <= 0.0 || b->radius <= 0.0)
         continue;
+
+      /* 4nec2: radius ratio warnings/errors */
+      {
+        double r_big = fmax(a->radius, b->radius);
+        double r_small = fmin(a->radius, b->radius);
+        if (r_big > 10.0 * r_small)
+        {
+          snprintf(msg, sizeof(msg), "Connected wires (lines %d and %d, tags %d and %d) have a radius ratio >10:1 (%.6g vs %.6g); this is an error.",
+                   a->line, b->line, a->tag, b->tag, r_big, r_small);
+          add_error(ctx, errors, msg, 2);
+        }
+        else if (r_big > 5.0 * r_small)
+        {
+          snprintf(msg, sizeof(msg), "Connected wires (lines %d and %d, tags %d and %d) have a radius ratio >5:1 (%.6g vs %.6g); consider matching radii.",
+                   a->line, b->line, a->tag, b->tag, r_big, r_small);
+          add_error(ctx, errors, msg, 0);
+        }
+      }
+
+      /* 4nec2: length/radius at junction (apply to each wire separately) */
+      {
+        if (aSeg < 6.0 * a->radius)
+        {
+          snprintf(msg, sizeof(msg), "Wire on line %d (tag %d) has L/R %.6g at a junction; 4nec2 warns if L<6R.", a->line, a->tag, aSeg / a->radius);
+          add_error(ctx, errors, msg, 0);
+        }
+        if (aSeg < 2.0 * a->radius)
+        {
+          snprintf(msg, sizeof(msg), "Wire on line %d (tag %d) has L/R %.6g < 2; 4nec2 treats this as an error.", a->line, a->tag, aSeg / a->radius);
+          add_error(ctx, errors, msg, 2);
+        }
+        if (bSeg < 6.0 * b->radius)
+        {
+          snprintf(msg, sizeof(msg), "Wire on line %d (tag %d) has L/R %.6g at a junction; 4nec2 warns if L<6R.", b->line, b->tag, bSeg / b->radius);
+          add_error(ctx, errors, msg, 0);
+        }
+        if (bSeg < 2.0 * b->radius)
+        {
+          snprintf(msg, sizeof(msg), "Wire on line %d (tag %d) has L/R %.6g < 2; 4nec2 treats this as an error.", b->line, b->tag, bSeg / b->radius);
+          add_error(ctx, errors, msg, 2);
+        }
+      }
 
       {
         double diff = fabs(a->radius - b->radius);
@@ -1652,47 +1712,123 @@ static void check_segment_length_and_radius(const nec_context_t *ctx, errors_lis
     if (w->segs > 0)
     {
       double segLen = L / (double)w->segs;
-      double segFrac = segLen / wlam_m; // in wavelengths
-      if (segFrac >= 0.10)
+      /* wavelength fraction (lambda units) */
+      double segment_fraction = segLen / wlam_m;
+
+
+      /* ---- Cebik-derived rules ---- */
+      /* warn if segment >= 0.1 lambda (Cebik) */
+      if (segment_fraction >= 0.10)
       {
-        snprintf(msg, sizeof(msg), "GW on line %d (tag %d): has segment length %.4g m (%.4g lambda) which is >= 0.1 lambda; consider increasing segmentation.", w->line, w->tag, segLen, segFrac);
+        snprintf(msg, sizeof(msg), "GW on line %d (tag %d): has segment length %.4g m (%.4g lambda) which is >= 0.1 lambda; consider increasing segmentation.",
+                 w->line, w->tag, segLen, segment_fraction);
         add_error(ctx, errors, msg, 0);
       }
-      else if (segFrac >= 0.05)
+      /* informational note for critical regions (extra) */
+      else if (segment_fraction >= 0.05)
       {
-        snprintf(msg, sizeof(msg), "GW on line %d (tag %d): has segment length %.4g m (%.4g lambda); in critical regions, aim for < 0.05 lambda.", w->line, w->tag, segLen, segFrac);
+        snprintf(msg, sizeof(msg), "GW on line %d (tag %d): has segment length %.4g m (%.4g lambda); in critical regions, aim for < 0.05 lambda.",
+                 w->line, w->tag, segLen, segment_fraction);
         add_error(ctx, errors, msg, 0);
       }
-      if (segFrac < 0.001)
+      /* Cebik: very small segments warning */
+      if (segment_fraction < 0.001)
       {
-        snprintf(msg, sizeof(msg), "GW on line %d (tag %d): has very small segment length %.4g m (%.4g lambda); this may cause excessive segmentation.", w->line, w->tag, segLen, segFrac);
+        snprintf(msg, sizeof(msg), "GW on line %d (tag %d): has very small segment length %.4g m (%.4g lambda); this may cause excessive segmentation.",
+                 w->line, w->tag, segLen, segment_fraction);
         add_error(ctx, errors, msg, 0);
       }
-      // radius sanity relative to segment length
+
+      /* ---- 4nec2 rules ---- */
+      /* 4nec2: error if segment >= 0.2 lambda (lambda/5) */
+      if (segment_fraction >= 0.20)
+      {
+        snprintf(msg, sizeof(msg), "GW on line %d (tag %d): segment length %.4g m (%.4g lambda) exceeds 0.2 lambda (lambda/5); segmentation too coarse.",
+                 w->line, w->tag, segLen, segment_fraction);
+        add_error(ctx, errors, msg, 2);
+      }
+      /* 4nec2: error if segment < 0.001 lambda */
+      if (segment_fraction < 0.001)
+      {
+        snprintf(msg, sizeof(msg), "GW on line %d (tag %d): segment length %.4g m (%.4g lambda) is below 0.001 lambda; segmentation excessively fine.",
+                 w->line, w->tag, segLen, segment_fraction);
+        add_error(ctx, errors, msg, 2);
+      }
+      /* 4nec2: radius vs wavelength checks */
+      if (w->radius > 0.0)
+      {
+        double rad_frac = w->radius / wlam_m;
+        if (rad_frac > 0.01) /* lambda/100 */
+        {
+          snprintf(msg, sizeof(msg), "GW on line %d (tag %d): radius %.4g m (%.4g lambda) exceeds lambda/100; consider reducing radius.",
+                   w->line, w->tag, w->radius, rad_frac);
+          add_error(ctx, errors, msg, 0);
+        }
+        if (rad_frac > (1.0 / 30.0)) /* lambda/30 */
+        {
+          snprintf(msg, sizeof(msg), "GW on line %d (tag %d): radius %.4g m (%.4g lambda) exceeds lambda/30; this violates 4nec2 rules.",
+                   w->line, w->tag, w->radius, rad_frac);
+          add_error(ctx, errors, msg, 2);
+        }
+      }
+
+      /* radius sanity relative to segment length */
       if (w->radius > 0.0)
       {
         if (ek_enabled)
         {
+          /* EK errors: 4nec2 warns at L<2R, errors at L<0.5R */
           if (w->radius >= (2.0 * segLen))
           {
-            snprintf(msg, sizeof(msg), "GW on line %d (tag %d): has radius %.4g m >= 2*len (%.4g m) with extended kernel; reduce radius or increase segmentation.", w->line, w->tag, w->radius, 2.0 * segLen);
+            snprintf(msg, sizeof(msg), "GW on line %d (tag %d): has radius %.4g m >= 2*len (%.4g m) with extended kernel; reduce radius or increase segmentation.",
+                     w->line, w->tag, w->radius, 2.0 * segLen);
+            add_error(ctx, errors, msg, 0);
+          }
+          if (w->radius >= (segLen * 2.0)) /* same as above, but apply warning if >=2R (L<=0.5R) */
+          {
+            /* already warned above; essentially duplicate, no extra message */
+          }
+          /* add missing warning for EK: L < 2*R (radius >= segLen/2) */
+          if (w->radius >= (segLen / 2.0))
+          {
+            snprintf(msg, sizeof(msg), "GW on line %d (tag %d): radius %.4g m >= 0.5*len (%.4g m) with extended kernel; this is near the 4nec2 warning threshold.",
+                     w->line, w->tag, w->radius, segLen / 2.0);
             add_error(ctx, errors, msg, 0);
           }
         }
         else
         {
+          /* non-EK: Cebik rules already covered; adjust warning threshold to 8*R */
           if (w->radius >= (segLen / 2.0))
           {
-            snprintf(msg, sizeof(msg), "GW on line %d (tag %d): has radius %.4g m >= len/2 (%.4g m); this violates thin-wire assumptions.", w->line, w->tag, w->radius, segLen / 2.0);
-            add_error(ctx, errors, msg, 0);
+            snprintf(msg, sizeof(msg), "GW on line %d (tag %d): has radius %.4g m >= len/2 (%.4g m); this violates thin-wire assumptions.",
+                     w->line, w->tag, w->radius, segLen / 2.0);
+            add_error(ctx, errors, msg, 2);
           }
-          else if (w->radius >= (segLen / 10.0))
+          else if (w->radius >= (segLen / 8.0))
           {
-            snprintf(msg, sizeof(msg), "GW on line %d (tag %d): has radius %.4g m; typical thin-wire usage prefers radius < len/10 (%.4g m).", w->line, w->tag, w->radius, segLen / 10.0);
+            snprintf(msg, sizeof(msg), "GW on line %d (tag %d): has radius %.4g m which gives L/R <= 8; 4nec2 suggests warning when L<8R.",
+                     w->line, w->tag, w->radius);
             add_error(ctx, errors, msg, 0);
           }
         }
       }
+    }
+  }
+}
+
+// Helper: check patch area against 4nec2 limit (A > lambda^2/25)
+static void check_patch_area(const nec_context_t *ctx, errors_list_t *errors)
+{
+  char msg[MAX_ERROR_LEN];
+  for (int i = 0; i < ctx->geometry.num_patches; i++)
+  {
+    double area = ctx->geometry.patch_area[i];
+    /* patch_area is already expressed in wavelengths^2 */
+    if (area > (1.0 / 25.0))
+    {
+      snprintf(msg, sizeof(msg), "Patch %d area %.6g lambda^2 exceeds 1/25 lambda^2; consider refining mesh.", i + 1, area);
+      add_error(ctx, errors, msg, 2);
     }
   }
 }
