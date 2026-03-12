@@ -412,7 +412,8 @@ typedef struct
 		screen_wire_len,    /* scrwlt — Fortran SCRWLT: screen radial wire length (m) */
 		screen_wire_radius, /* scrwrt — Fortran SCRWRT: screen radial wire radius (m) */
 		freq_mhz,           /* fmhz — Fortran FMHZ: current frequency (MHz) */
-		freq_step;          /* delfrq: frequency step size */
+		freq_step,          /* delfrq: frequency step size */
+		first_fr_mhz;       /* frequency from the first FR card; used as LD6 design-freq default */
 
 } run_params_t;
 
@@ -588,9 +589,10 @@ typedef struct
 		*ldcard_num;	/* Deck line number of the originating LD card */
 	
 	double
-		*load_r,  /* zlr — Fortran ZLR: R value (Ω, H, or F depending on type) */
-		*load_l,  /* zli — Fortran ZLI: L value */
-		*load_c;  /* zlc — Fortran ZLC: C value */
+		*load_r,    /* zlr — Fortran ZLR: R value (Ω, H, or F depending on type) */
+		*load_l,    /* zli — Fortran ZLI: L value */
+		*load_c,    /* zlc — Fortran ZLC: C value */
+		*load_freq; /* LD type-6 design frequency (MHz); 0 = use first FR card */
 	
 	complex double *seg_impedance; /* zarray — Fortran ZARRAY: per-segment normalized impedance */
 } impedance_loading_t;

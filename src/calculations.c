@@ -351,9 +351,9 @@ int apply_impedance_loading(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldt
       
     } /* if( istep > ctx->zload.num_loads) */
     
-    /* ldtyp is validated (0–5) by control.c before storage; this should
+    /* ldtyp is validated (0–6) by control.c before storage; this should
      * never fire. If it does, it is a programming error, not a user error. */
-    assert(ldtyp[istepx] <= 5 && "INTERNAL: IMPROPER LOAD TYPE stored in zload.load_types");
+    assert(ldtyp[istepx] <= 6 && "INTERNAL: IMPROPER LOAD TYPE stored in zload.load_types");
     
     /* search segments for proper itags */
     ldtags= ldtag[istepx];
@@ -430,7 +430,30 @@ int apply_impedance_loading(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldt
           
         case 6:
           wire_surface_impedance( ctx, zlr[istepx]* ctx->geometry.wavelength, ctx->geometry.radius[i], &zt );
-          
+          break;
+
+        case 7: {
+          /* LD type 6: LC-trap.  Convert to parallel-RLC at the design frequency.
+           * F1 = unloaded-Q of the inductor (0 -> 100), F2 = L (H), F3 = C (F)
+           * F4 = optional design frequency in MHz (0 -> use first FR card). */
+          double f0_mhz = (ctx->zload.load_freq[istepx] != 0.0)
+                              ? ctx->zload.load_freq[istepx]
+                              : ctx->save.first_fr_mhz;
+          double Q     = (fabs(zlr[istepx]) < 1.0e-20) ? 100.0 : zlr[istepx];
+          double L     = zli[istepx];
+          double C     = zlc[istepx];
+          double omega0 = 2.0 * M_PI * f0_mhz * 1.0e6;
+          double R_par  = Q * omega0 * L;  /* parallel loss resistance at design freq */
+          /* Apply parallel-RLC formula (same as type 1 / case 2) */
+          zt = tpcj * ctx->geometry.half_len[i] * C / ctx->geometry.wavelength;
+          if (fabs(L) > 1.0e-20)
+            zt += ctx->geometry.half_len[i] * ctx->geometry.wavelength / (tpcj * L);
+          if (R_par > 1.0e-20)
+            zt += ctx->geometry.half_len[i] / R_par;
+          zt = 1.0 / zt;
+          break;
+        }
+
       } /* switch( jump ) */
       
       if(( fabs( creal( ctx->zload.seg_impedance[i]))+ fabs( cimag( ctx->zload.seg_impedance[i]))) > 1.0e-20) {
@@ -499,6 +522,10 @@ int apply_impedance_loading(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldt
         
       case 6:
            add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], zlr[istepx], 0.0, 0.0, "WIRE");
+        break;
+
+      case 7:
+           add_loading_output(ctx, ldtags, ldtagf[istepx], ldtagt[istepx], 0.0, zli[istepx], zlc[istepx], "LC-TRAP");
         
     } /* switch( jump ) */
   } /* while( true ) */

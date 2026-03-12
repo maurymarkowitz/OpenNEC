@@ -1,7 +1,5 @@
 Items still to be implemented:
 
-* add support for the nec-2 style calling convention, using a tmp file with the input and output file names on separate lines
-
 * finish maa support, need to properly handle the loading based on wire and segment
 
 * get more info on the .ez format
@@ -22,7 +20,7 @@ Items still to be implemented:
 
 * nec2++ examples/medium_test.nec has an "MP" card type
 
-* at some point, handle 4nec2 current sources, EX 6 and 7 (UA3SFH.nec, W2EEY.NEC, calvin.nec, class.NEC)
+* at some point, handle 4nec2 current sources, EX 6 (UA3SFH.nec, W2EEY.NEC, calvin.nec, class.NEC)
 
 * add support for LD type 7 from 4nec2
 

@@ -434,6 +434,7 @@ static void reset_loading_buffers(nec_context_t *ctx)
         mem_free(ctx, (void **)&ctx->zload.load_r);
         mem_free(ctx, (void **)&ctx->zload.load_l);
         mem_free(ctx, (void **)&ctx->zload.load_c);
+        mem_free(ctx, (void **)&ctx->zload.load_freq);
         ctx->zload.num_loads = 0;
     }
     if (ctx->loading_outputs.entries != NULL) {
@@ -643,6 +644,8 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             ctx->save.num_freq = (i2 == 0) ? 1 : i2;
             ctx->save.freq_mhz = f1;
             ctx->save.freq_step = f2;
+            if (ctx->save.first_fr_mhz == 0.0)
+                ctx->save.first_fr_mhz = f1;
         }
         else if (strcmp(code, "LD") == 0) {
             // LD card - Loading
@@ -650,7 +653,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                 continue;
             }
 
-            if (i1 > 5) {
+            if (i1 > 6) {
                 char msg[MAX_ERROR_LEN];
                 snprintf(msg, sizeof(msg), "LD on line %d: type %d is not supported.", card_idx + 1, i1);
                 add_error(ctx, &ctx->errors, msg, FATAL);
@@ -676,6 +679,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             mem_realloc(ctx, (void **)&ctx->zload.load_r, mreq);
             mem_realloc(ctx, (void **)&ctx->zload.load_l, mreq);
             mem_realloc(ctx, (void **)&ctx->zload.load_c, mreq);
+            mem_realloc(ctx, (void **)&ctx->zload.load_freq, mreq);
             
             int idx = ctx->zload.num_loads - 1;
             ctx->zload.load_types[idx] = i1;
@@ -696,6 +700,9 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             ctx->zload.load_r[idx] = f1;
             ctx->zload.load_l[idx] = f2;
             ctx->zload.load_c[idx] = f3;
+            /* For LD type 6: f4 optionally overrides the design frequency (MHz).  
+             * 0 means "use the first FR card's frequency" (resolved at compute time). */
+            ctx->zload.load_freq[idx] = (i1 == 6) ? f4 : 0.0;
         }
         else if (strcmp(code, "GN") == 0) {
             // GN card - Ground parameters  

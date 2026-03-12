@@ -561,7 +561,7 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
         int tag = deck->cards[i].i[2];
         int seg1 = deck->cards[i].i[3];
         int seg2 = deck->cards[i].i[4];
-        if (type < -1)
+        if (type < -1 || (type > 6 && type != -1))
         {
           snprintf(msg, sizeof(msg), "LD on line %d: unexpected type I1=%d.", i, type);
           add_error(ctx, errors, msg, 0);
@@ -587,6 +587,15 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
       {
         snprintf(msg, sizeof(msg), "LD on line %d: load values F1..F3 are all zero.", i);
         add_error(ctx, errors, msg, 0);
+      }
+      // LD type 6 (LC-trap): L and C are required
+      if (deck->cards[i].ints_used >= 1 && deck->cards[i].i[1] == 6)
+      {
+        if (deck->cards[i].flts_used < 3 || deck->cards[i].f[2] == 0.0 || deck->cards[i].f[3] == 0.0)
+        {
+          snprintf(msg, sizeof(msg), "LD on line %d (LC-trap): F2 (L) and F3 (C) must be non-zero.", i);
+          add_error(ctx, errors, msg, 0);
+        }
       }
     }
     // record for open-end placement validation later (only for LD cards)
