@@ -9,6 +9,7 @@ Items still to be implemented:
 * remember to run clang static analyzer at some point
 
 * add handlers for ITeration and OPtimization cards, which produce multiple output runs from a single deck. in onec these should be processed out into some sort of "run" or "simulate" object with any differences from the original definitions. It is not clear whether these are really used in the wild, or if this is entirely in the 4nec2 UI.
+NOTE: 
 
 * add TIA-804-B (.adf) pattern output, which is simply a standard way of writing the NEC pattern
 

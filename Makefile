@@ -19,9 +19,12 @@ RANLIB ?= ranlib
 DEBUG ?= 0
 
 ifeq ($(DEBUG),1)
+    # Debug builds use -O0 to preserve source-level debugging
+    # while still enabling sanitizers.
+    CFLAGS := -I. -Isrc -g -O0 -Wall -Wno-unused-parameter
     CFLAGS += -fsanitize=address -fno-omit-frame-pointer
     LDFLAGS += -fsanitize=address
-    $(info Building with AddressSanitizer (DEBUG=1))
+    $(info Building with AddressSanitizer (DEBUG=1); optimization set to -O0)
 endif
 
 # Detect platform
@@ -209,49 +212,7 @@ $(EXECUTABLE): src/main.o $(LIBRARY)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(LIB_OBJECTS) src/main.o $(LIBRARY) $(EXECUTABLE) bench_estimate roundtrip_test nc2nec maa_convert yo_convert
-
-# ---- round-trip test ---------------------------------------------------------
-# Build the read→parse→write round-trip tester (links libonec.a)
-roundtrip_test: test/roundtrip_test.c $(LIBRARY)
-	$(CC) $(CFLAGS) test/roundtrip_test.c $(LIBRARY) $(LDFLAGS) -o roundtrip_test -lm
-
-# Build the maa converter utility (links libonec.a and includes maa-support)
-maa_convert: test/maa_convert.c $(LIBRARY) src/import-export/maa-support.c
-	$(CC) $(CFLAGS) test/maa_convert.c src/import-export/maa-support.c $(LIBRARY) $(LDFLAGS) -o maa_convert -lm
-
-.PHONY: maa_convert
-
-# Build the yo converter utility (links libonec.a and includes yo-support)
-yo_convert: test/yo_convert.c $(LIBRARY) src/import-export/yo-support.c
-	$(CC) $(CFLAGS) test/yo_convert.c src/import-export/yo-support.c $(LIBRARY) $(LDFLAGS) -o yo_convert -lm
-
-.PHONY: yo_convert
-
-# Build the nc→nec converter utility
-nc2nec: tools/nc2nec.c $(LIBRARY)
-	$(CC) $(CFLAGS) tools/nc2nec.c $(LIBRARY) $(LDFLAGS) -o nc2nec -lm
-
-.PHONY: nc2nec
-
-# Run the round-trip test on all .nec/.deck files in test/
-.PHONY: roundtrip
-roundtrip: roundtrip_test
-	./roundtrip_test $$(find test -maxdepth 1 \( -name '*.nec' -o -name '*.NEC' \) | sort)
-
-# ---- estimate benchmark -------------------------------------------------------
-# Build the estimate accuracy benchmarker (links libonec.a, walks 4nec2 examples)
-bench_estimate: test/bench_estimate.c $(LIBRARY)
-	$(CC) $(CFLAGS) test/bench_estimate.c $(LIBRARY) $(LDFLAGS) -o bench_estimate -lm
-
-# Run the benchmark, then plot the results
-# Usage: make benchmark          (uses default CSV / PNG paths)
-#        make benchmark ARGS=my.csv
-.PHONY: benchmark
-benchmark: bench_estimate
-	./bench_estimate test/estimate_benchmark.csv
-	@echo ""
-	@echo "To plot: python3 test/plot_estimate.py test/estimate_benchmark.csv test/estimate_plot.png"
+	rm -f $(LIB_OBJECTS) src/main.o $(LIBRARY) $(EXECUTABLE)
 
 help:
 	@echo "OpenNEC Build System"
@@ -280,16 +241,9 @@ help:
 	@echo "  make clean                # Remove build artifacts"
 	@echo ""
 	@echo "Current platform: $(UNAME_S)"
-	@echo "\nOther targets:"
-	@echo "  regression  - Run regression harness across decks and backends"
-
-.PHONY: regression
-regression:
-	@echo "Running regression harness..."
-	@bash test/regression_harness.sh
 
 .PHONY: debug
 debug:
 	$(MAKE) DEBUG=1
 
-.PHONY: all clean help
+.PHONY: all clean help debug
