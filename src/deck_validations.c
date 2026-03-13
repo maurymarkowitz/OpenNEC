@@ -63,6 +63,49 @@ typedef struct
 static double point_to_segment_distance(double px, double py, double pz,
                                         double qx1, double qy1, double qz1,
                                         double qx2, double qy2, double qz2);
+
+// Percent-segment resolver duplicated from control.c. 4nec2 allows an input
+// integer field to be a percentage of the total segment count, e.g. "50%",
+// in which case the value should be rounded within [1,count]. The deck
+// validation phase must apply the same logic so range checks see the
+// canonical segment index.
+static int resolve_pct_segment_local(const nec_context_t *ctx, const card_t *card,
+                                     int field_idx, int tag)
+{
+    if (!card->int_form_inline[field_idx])
+        return card->i[field_idx];
+
+    char key[3] = { 'I', (char)('0' + field_idx), '\0' };
+    const key_value_t *kv = card->formulas;
+    while (kv) {
+        if (kv->key && strcmp(kv->key, key) == 0 && kv->value) {
+            size_t vlen = strlen(kv->value);
+            if (vlen > 1 && kv->value[vlen - 1] == '%') {
+                double pct = strtod(kv->value, NULL);
+                int count = 0;
+                if (tag == 0) {
+                    count = ctx->geometry.num_segs;
+                } else {
+                    for (int i = 0; i < ctx->geometry.num_segs; i++) {
+                        if (ctx->geometry.tag_nums[i] == tag)
+                            count++;
+                    }
+                }
+                if (count <= 0)
+                    return card->i[field_idx];
+                int seg = (int)round(pct / 100.0 * (double)count);
+                if (seg < 1)
+                    seg = 1;
+                if (seg > count)
+                    seg = count;
+                return seg;
+            }
+            break;
+        }
+        kv = kv->next;
+    }
+    return card->i[field_idx];
+}
 static void check_parallel_wire_segmentation(const nec_context_t *ctx, errors_list_t *errors,
                                              const wire_info_t *wires, int wire_count,
                                              double freq_mhz);
@@ -478,9 +521,9 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
       {
         tl_refs[tl_ref_count].line = i + 1;
         tl_refs[tl_ref_count].tag1 = deck->cards[i].i[1];
-        tl_refs[tl_ref_count].seg1 = deck->cards[i].i[2];
+        tl_refs[tl_ref_count].seg1 = resolve_pct_segment_local(ctx, &deck->cards[i], 2, deck->cards[i].i[1]);
         tl_refs[tl_ref_count].tag2 = deck->cards[i].i[3];
-        tl_refs[tl_ref_count].seg2 = deck->cards[i].i[4];
+        tl_refs[tl_ref_count].seg2 = resolve_pct_segment_local(ctx, &deck->cards[i], 4, deck->cards[i].i[3]);
         tl_ref_count++;
       }
     }
@@ -625,8 +668,8 @@ void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_li
     // record for open-end placement validation later (only for LD cards)
     if (strcmp(code, "LD") == 0 && deck->cards[i].ints_used >= 3)
     {
-      int segStart = deck->cards[i].i[3];
-      int segEnd = deck->cards[i].i[4];
+      int segStart = resolve_pct_segment_local(ctx, &deck->cards[i], 3, deck->cards[i].i[2]);
+      int segEnd   = resolve_pct_segment_local(ctx, &deck->cards[i], 4, deck->cards[i].i[2]);
       ref_info_t r = {
           .line = i + 1,
           .tag = deck->cards[i].i[2],

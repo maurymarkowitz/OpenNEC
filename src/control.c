@@ -685,8 +685,11 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             ctx->zload.load_types[idx] = i1;
             ctx->zload.load_tags[idx] = i2;
             ctx->zload.ldcard_num[idx] = card_idx + 1;
-            ctx->zload.load_tag_from[idx] = (i4 == 0) ? i3 : i3;
-            ctx->zload.load_tag_to[idx] = (i4 == 0) ? i3 : i4;
+            /* resolve percentage-style segment specifiers against the tag count */
+            int start_seg = resolve_pct_segment(ctx, card, 3, i2);
+            int end_seg   = resolve_pct_segment(ctx, card, 4, i2);
+            ctx->zload.load_tag_from[idx] = (i4 == 0) ? start_seg : start_seg;
+            ctx->zload.load_tag_to[idx]   = (i4 == 0) ? start_seg : end_seg;
             
             if (ctx->zload.load_tag_to[idx] < ctx->zload.load_tag_from[idx]) {
                 char msg[MAX_ERROR_LEN];
@@ -859,17 +862,20 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
                 ctx->netcx.net_types[idx] = 2;
             }
             
-            ctx->netcx.net_seg1[idx] = segment_number(ctx, i1, i2);
+            /* endpoints may be specified with a percentage value, resolve first */
+            int seg1_idx = resolve_pct_segment(ctx, card, 2, i1);
+            ctx->netcx.net_seg1[idx] = segment_number(ctx, i1, seg1_idx);
             if (ctx->netcx.net_seg1[idx] == 0) {
                 char msg[MAX_ERROR_LEN];
-                snprintf(msg, sizeof(msg), "%s on line %d: references invalid tag %d, segment %d", code, card_idx + 1, i1, i2);
+                snprintf(msg, sizeof(msg), "%s on line %d: references invalid tag %d, segment %d", code, card_idx + 1, i1, seg1_idx);
                 add_error(ctx, &ctx->errors, msg, FATAL);
                 return -1;
             }
-            ctx->netcx.net_seg2[idx] = segment_number(ctx, i3, i4);
+            int seg2_idx = resolve_pct_segment(ctx, card, 4, i3);
+            ctx->netcx.net_seg2[idx] = segment_number(ctx, i3, seg2_idx);
             if (ctx->netcx.net_seg2[idx] == 0) {
                 char msg[MAX_ERROR_LEN];
-                snprintf(msg, sizeof(msg), "%s on line %d: references invalid tag %d, segment %d", code, card_idx + 1, i3, i4);
+                snprintf(msg, sizeof(msg), "%s on line %d: references invalid tag %d, segment %d", code, card_idx + 1, i3, seg2_idx);
                 add_error(ctx, &ctx->errors, msg, FATAL);
                 return -1;
             }
@@ -906,7 +912,8 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
             mem_realloc(ctx, (void **)&ctx->yparm.pair_tags, mreq);
             mem_realloc(ctx, (void **)&ctx->yparm.pair_segs, mreq);
             ctx->yparm.pair_tags[ctx->yparm.num_pairs - 1] = i1;
-            ctx->yparm.pair_segs[ctx->yparm.num_pairs - 1] = i2;
+            ctx->yparm.pair_segs[ctx->yparm.num_pairs - 1] =
+                resolve_pct_segment(ctx, card, 2, i1);
             
             // Second antenna (if specified)
             if (i4 != 0) {
