@@ -12,9 +12,7 @@ This software is released under the MIT license. See [LICENSE](LICENSE) for deta
 Introduction
 ------------
 
-OpenNEC is an implementation of the NEC-2 code written in the C programming language. It is used to simulate the reception and transmission patterns of radio frequency antennas.
-
-The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". These are stored in text files normally with a `.nec` extension, or more rarely, `.deck`.
+OpenNEC is an implementation of the NEC-2 code written in the C programming language. It is used to simulate the reception and transmission patterns of radio frequency antennas. The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". These are stored in text files normally with a `.nec` extension, or more rarely, `.deck`.
 
 OpenNEC will read the design in the deck and can run a number of calculations to determine the antenna's performance. It can also provide warnings about common design problems, and import and export the deck to and from other common antenna file formats.
 
@@ -76,7 +74,7 @@ Short options with no parameters can be ganged, for instance, `-nt`.
 
 There are two changes in the command-line interface on windows, to better support existing NEC-2 workflows.
 
-The first is that running the `onec.exe` with no command line switches or positional arguments will instead expect to be fed input from `CONIN$` (the windows `stdin`). The input should contain two lines of text, the first having the input filename, and the second the output filename. If the file is not passed in, the program will wait forever, so use cntr-C to abort if you have to.
+The first is that running the `onec.exe` with no command line switches or positional arguments will instead expect to be fed input from `CONIN$` (the windows `stdin`). The input should contain two lines of text, the first having the input filename, and the second the output filename. If the file is not passed in, the program will wait forever, so use control-C to abort if you have to.
 
 The only other change is to add the `/?` command line switch, the same as `-h`.
 
@@ -114,7 +112,7 @@ onec has built-in readers for various 3rd party file formats. For instance:
 
 ```./onec example.mma```
 
-This will read the file `example.mma`, convert it to NEC format, and then run the simulations as if it were a NEC deck from the start. When started with a path, or with the `-r` option, normally only NEC files will be processed. You can force it to read other files using a globbing expression:
+This will read the file `example.maa`, convert it to NEC format, and then run the simulations as if it were a NEC deck from the start. When started with a path, or with the `-r` option, normally only NEC files will be processed. You can force it to read other files using a globbing expression:
 
 ```./onec -r /example_files/*.mma```
 
@@ -149,15 +147,15 @@ There are a number of limitations in these importers as the various formats supp
 
 OpenNEC concept
 ---------------
-OpenNEC's code ultimately traces its history to the NEC-2 Fortran code released by Lawrence Livermore in the early 1980s. A port to C was made by Neoklis Kyriazis in the nec2c program which was first released on 20 August 2003. OpenNEC was forked from the 1.3 version of nec2c, released in 2014. Although initially conceived a simple update, OpenNEC was eventually completely re-written, but an effort was made to keep the overall layout of the project.
+OpenNEC's code ultimately traces its history to the NEC-2 Fortran code released by Lawrence Livermore in the early 1980s. A port to C using an automated conversion tool was made by Neoklis Kyriazis in the nec2c program which was first released on 20 August 2003. OpenNEC was forked from the 1.3 version of nec2c, released in 2014. Although initially conceived a simple update to nec2c, OpenNEC was eventually completely re-written, but an effort was made to keep the overall layout of the nec2c project.
 
-The primary difference between OpenNEC and nec2c is its form; nec2c is a command-line program, while most of the OpenNEC code is in the form of a static library. This allows OpenNEC to be embedded in any program written in a language that provides access to C libraries, like Rust, Java, or Swift. The optional `main.c` wraps the library to provide a command line tool similar to the original nec2c, but adds a number of new command line switches to provide finer control over execution and many new options.
+The primary difference between OpenNEC and nec2c is its form; nec2c is a command-line program, while most of the OpenNEC code is in the form of a static library. This allows OpenNEC to be embedded in any program written in a language that provides access to C libraries, like Rust, Java, or Swift. The optional `main.c` included in the project wraps the library to provide a command line tool similar to the original nec2c, but adds a number of new command line switches to provide finer control over execution and many new options.
 
 Programs that wish to use OpenNEC as their calculation engine can directly access the various structures like the segment list and radiation patterns. They can also change the deck by adding or modifying cards, or by changing the simulation parameters and re-running the calculations. Using the segment list is particularly useful during the antenna layout and design stage; programs can use the code to turn their geometry cards into a segments structure which can then be sent to a 3D library.
 
-OpenNEC also improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. See [OpenNEC, NEC-2 and nec2c](doc/OpenNEC,%20NEC-2%20and%20nec2c.md) for details.
+OpenNEC also improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. See [OpenNEC, NEC-2 and nec2c](doc/OpenNEC,%20NEC-2%20and%20nec2c.md) for details. On large files, OpenNEC can be 7 to 10 times as fast as the original code.
 
-OpenNEC also adds many of the features found in the popular 4nec2 program on Windows. In particular, it supports the symbols (variables), formulas and calculations that make it easier to design complex antennas. These features are widely used and found in many of the real-world `.nec` decks found on the 'net.
+OpenNEC also adds many of the features found in the popular 4nec2 program on Windows. In particular, it supports the symbols (variables), formulas and calculations that make it easier to design complex antennas. These features are widely used and found in many of the real-world `.nec` decks found on the 'net. It also supports new variants of the `LD` and `EX` cards and other 4nec2 additions.
 
 **NOTE:** One curiousity in the nec2c code is that the value for the speed of light, the constant `CVEL` is set to 299.8. This is not very accurate, and changing this to a more accurate value, 299.792458, results in 1 to 2% changes in most files. The original value has been retained in onec for compatibility reasons.
 

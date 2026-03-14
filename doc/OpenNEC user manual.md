@@ -7,16 +7,11 @@ OpenNEC is an open-source implementation of the NEC (Numerical Electromagnetics 
 
 This manual focuses on using OpenNEC as a library in other programs, and the internal structures and functions that you call from the library in your programs. It also includes guidance on generating and validating NEC decks, controlling simulations, import and export of other formats, and interpreting output.
 
-Library API Overview
---------------------
-### Initialization and cleanup
-### Core data structures (context, decks, errors)
-### Running a simulation (API calls and workflow)
-
 Using OpenNEC as a Library
 --------------------------
 - High-level architecture (core library + CLI)
 - Header files and public API
+- Core data structures (context, decks, errors)
 - Initialization and cleanup
 - Performing a simulation from C/C++
 
@@ -75,6 +70,37 @@ Appendices
 - onec extension reference
 - AWG conversion table
 - Wire conductivity
+- typical insulation
+
+Aluminium-oxide 10
+Bakelite 3.5 - 4.5
+Copper-oxide 18.1
+Glass 5.0 - 9.0
+Glass (window) 7.6
+Mica 4.0 - 8.0
+Neoprene 4.0 - 6.7
+Oil 1.5 - 4.7
+Paper 1.6 - 2.6
+Parrafin 2.0 - 3.0
+Pertinax 4.3 - 5.5
+Plexiglas 2.6 - 3.5
+Polycarbonate 2.9 - 3.2
+Polyethylene 2.4
+Polyamide (nylon) 3.4 - 3.5
+Polystyrene 2.4 - 3.0
+Porcelain 5.0 - 6.5
+PVC (hard) 3.0 - 4.0
+PVC (soft) 4.0 - 5.0
+Rubber 2.7 - 3.2
+Shellac (Nat.) 2.9 - 3.9
+Styrofoam 1.03
+Teflon 2.1
+Water (destil) 34 - 78
+Wood (dry) 1.4 - 2.9
+Most plastics appear to have a dielectric constant (permittivity) between 2.0 and 3.5. The dielectric
+constant of air is around 1.0, so if we would specify a value of 1.0, no matter what radius we would get
+the performance of bare wire.
+
 - Ground types
 - References and further reading
 - Change log / version history

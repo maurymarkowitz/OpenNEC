@@ -4,9 +4,9 @@ MMANA‑GAL ".maa" file format
 Introduction
 ------------
 
-The MMANA‑GAL software (and its derivatives) use a text format for saving antenna models. The files normally use the `.maa` extension, or more rarely `.mma`. These files contain an ordered sequence of text lines, separated by header lines and line counts, somewhat similar to the YO format.
+The MMANA‑GAL software (and its derivatives) use a text format for saving antenna models. The files normally use the `.maa` extension, or more rarely `.mma`. These files contain an ordered sequence of text lines, separated by header lines and line counts, somewhat similar to the [YO format](YO file format.md).
 
-Although the format is undocumented, a large number of examples on‑line allow the structure to be inferred. The variation seen in the wild ranges from the minimal 4‑line variant used by simple exporters (frequency, counts, wires, loads, sources) up through more elaborate files which include segmentation parameters, ground and measurement options, and comment blocks. After reading this description you should be able to glance at an existing `.maa` file and understand which parts will be carried over when using OpenNEC's conversion functions.
+Although the format is undocumented, a large number of examples online allow the structure to be inferred. The variation seen in the wild ranges from the minimal 4‑line variant used by simple exporters (frequency, counts, wires, loads, sources) up through more elaborate files which include segmentation parameters, ground and measurement options, and comment blocks. After reading this description you should be able to examine an existing `.maa` file and understand which parts will be carried over when using OpenNEC's conversion functions.
 
 This document summarises the features that OpenNEC’s import/export code understands and points out the sections that are currently ignored.
 
@@ -15,14 +15,14 @@ Format overview
 
 A typical `.maa` file is organised into the following logical sections. Two distinct structural variants exist in the wild (see *Format variants* below). They differ in their use of section headers, which are marked in the file with `***…***`. 
 
-1. **Title line.**  Arbitrary text used as a description of the model. The title is optional in Variant B — 220 of 935 files omit it and begin with a bare `*` separator instead. When present and the file is imported the converter creates a `CM` card containing this line (followed immediately by a `CE` card). During export the first comment card in the deck is written back as the title line.
-2. **Frequency line.**  A single floating‑point value giving the design frequency in megahertz. Some files (Variant B) include a bare `*` on a separate line between the title and the frequency; this is ignored.
+1. **Title line.**  Arbitrary text used as a description of the model. The title is optional in Variant B — 220 of 935 files omit it and begin with a bare `*` separator instead. When present and the file is imported, the converter creates a `CM` card containing this line followed by a `CE` card. During export to .maa, the first comment card in the deck is written back as the title line.
+2. **Frequency line.**  A single floating‑point value giving the design frequency in megahertz. Some files (Variant B) include a bare `*` on a separate line between the title and the frequency.
 3. **Counts.**  In Variant A a single line holds three integers: wire count, load count, source count. In Variant B each count appears on its own line immediately inside the relevant `***…***` section.
 4. **Wire (geometry) block.**  Exactly `N_wires` following lines, each containing eight numeric values. The fields represent the end‑point coordinates of a straight wire in metres, the radius, and the segment count. Example:
    ````
    0.0, -21.1, -3.662e-07,  0.0, 0.0, 0.0, 0.001, -1
    ````
-
+   
    **Radius units.**  The radius field is always in metres. Although the MMANA‑GAL GUI lets the user enter wire dimensions in millimetres or wavelengths, the software converts to metres before writing the file. OpenNEC imports and exports the value without conversion.
 
    **Segment count special values.**  A positive integer gives the exact NEC segment count for that wire.  The following negative and zero values are MMANA auto‑segmentation directives:
@@ -263,7 +263,6 @@ During import, OpenNEC uses the `***Segmentation***` parameters together with th
 If the wires use different modes, the common-mode field is omitted from the global annotation and each `GW` card instead receives a per-wire `!segmentation:N` suffix.
 
 This approach fixes the segment counts so that all other NEC cards (EX, LD, TL, etc.) that reference segment numbers are correct. The annotation also allows the exporter to reconstruct the original MMANA `.maa` file with the correct (negative) mode values in the SEG column and a `***Segmentation***` block containing the original parameters — completing the round-trip.
-
 
 Features not supported by OpenNEC
 ---------------------------------

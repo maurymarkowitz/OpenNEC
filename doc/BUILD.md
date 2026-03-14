@@ -1,4 +1,3 @@
-````markdown
 OpenNEC Build Notes
 ===================
 
@@ -7,16 +6,6 @@ OpenNEC is designed to build on any system with a working makefile system. It us
 The original NEC-2 used internal code to perform various matrix calculations. OpenNEC allows the optional use of a number of math libraries that can dramatically improve performance on large models, especially those over 1000 segments. These optional components can be specified during `make` using the `BACKEND` directive on the command line.
 
 The following sections describe the backends that OpenNEC supports on different platforms, and how to install and configure them if they are not included by default.
-
-Regression testing
-------------------
-The `regression` target builds available backends and compares outputs across decks, normalizing timing. Artifacts are saved under test/regression.
-
-```bash
-make regression
-```
-
-It is highly recommended you run these tests on your platform after building to ensure the different libraries produce the same results.
 
 Linux Setup
 -----------
@@ -214,5 +203,3 @@ make BACKEND=mkl
 
 Notes:
 - MKL linking flags and library names differ on native Windows with MSVC; this Makefile targets GCC/Unix-like environments. For native Visual Studio builds, a separate project configuration is required.
-
-````
