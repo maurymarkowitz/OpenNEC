@@ -12,9 +12,9 @@ This software is released under the MIT license. See [LICENSE](LICENSE) for deta
 Introduction
 ------------
 
-OpenNEC is an implementation of the NEC-2 code written in the C programming language. It is used to simulate the reception and transmission patterns of radio frequency antennas. The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". These are stored in text files normally with a `.nec` extension, or more rarely, `.deck`.
+OpenNEC is an implementation of the NEC-2 code written in the C programming language. It is used to simulate the reception and transmission patterns of radio frequency antennas. The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". Decks are stored in text files normally with a `.nec` extension, or more rarely, `.deck`.
 
-OpenNEC will read the design in the deck and can run a number of calculations to determine the antenna's performance. It can also provide warnings about common design problems, and import and export the deck to and from other common antenna file formats.
+OpenNEC will read the design in the deck and can run a number of calculations to determine the antenna's performance. The output can be read directly, or exported to a text file, normally with an `.out` extension. It can also provide warnings about common design problems, and import and export the deck to and from other common antenna file formats.
 
 Installing OpenNEC
 ------------------
@@ -153,7 +153,7 @@ The primary difference between OpenNEC and nec2c is its form; nec2c is a command
 
 Programs that wish to use OpenNEC as their calculation engine can directly access the various structures like the segment list and radiation patterns. They can also change the deck by adding or modifying cards, or by changing the simulation parameters and re-running the calculations. Using the segment list is particularly useful during the antenna layout and design stage; programs can use the code to turn their geometry cards into a segments structure which can then be sent to a 3D library.
 
-OpenNEC also improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. See [OpenNEC, NEC-2 and nec2c](doc/OpenNEC,%20NEC-2%20and%20nec2c.md) for details. On large files, OpenNEC can be 7 to 10 times as fast as the original code.
+OpenNEC also improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. On large files, OpenNEC can be 7 to 10 times as fast as the original code. See [OpenNEC, NEC-2 and nec2c](doc/OpenNEC,%20NEC-2%20and%20nec2c.md) for details.
 
 OpenNEC also adds many of the features found in the popular 4nec2 program on Windows. In particular, it supports the symbols (variables), formulas and calculations that make it easier to design complex antennas. These features are widely used and found in many of the real-world `.nec` decks found on the 'net. It also supports new variants of the `LD` and `EX` cards and other 4nec2 additions.
 

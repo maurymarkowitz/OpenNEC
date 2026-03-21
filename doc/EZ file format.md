@@ -1,16 +1,12 @@
-EZNEC `.EZ` File Format
+EZNEC ".EZ" File Format
 =======================
 
-Overview
---------
+Introduction
+------------
 
-The `.EZ` file format is the proprietary binary format used by EZNEC and EZNEC Pro antenna-modelling software (by W7EL). It stores antenna geometry, excitation, loading, ground parameters and display settings in a compact little-endian binary representation.
+The `.EZ` file format is the proprietary binary format used by EZNEC and EZNEC Pro antenna-modelling software by Roy Lewellan (W7EL). It stores antenna geometry, excitation, loading, ground parameters and display settings in a compact little-endian binary representation. In data terms, it is similar to a wire-only NEC-2 file.
 
-The format was reverse-engineered by inspecting 5,478 `.EZ` / `.ez` files from L.B. Cebik's published model collection, cross-referencing them with matching `.NEC` text files that EZNEC exports.
-
-> **Status:** This is a reverse-engineered description.  Field names are
-> inferred; no official specification has been published by W7EL.
-> Confirmed fields are marked ✓; uncertain fields are marked (?).
+The format was reverse-engineered by inspecting 5,478 `.EZ` / `.ez` files from L.B. Cebik's published model collection, cross-referencing them with matching `.NEC` text files that EZNEC exports. Because it's reverse-engineered, the field names below are not official. Fields that we can be sure of are marked ✓, uncertain fields are marked ?.
 
 File Identification
 -------------------
@@ -21,7 +17,9 @@ Almost all `.EZ` files begin with the byte sequence:
 xx xx 00 00 52 ...
 ```
 
-where `xx xx` is a little-endian 16-bit wire count and `0x52` = `'R'` appears to be a constant version/format marker. A small number of files in the corpus are actually FrontPage/SharePoint web-metadata sidecars (starting with `vti_encoding:SR|`) — these should be ignored.
+where `xx xx` is a little-endian 16-bit wire count and `0x52` = `'R'` appears to be a constant version/format marker.
+
+A small number of files in the collection are actually FrontPage/SharePoint web-metadata sidecars (starting with `vti_encoding:SR|`) - these should be ignored.
 
 File sizes range from ~680 bytes for a file with 1 wire and no loads, to several hundred kilobytes for models with hundreds of wires.
 
@@ -50,7 +48,7 @@ Header Block 1 (0x00–0x2F)
 |--------|------|------------|-------------|
 | 0x00   | 2    | int16      | ✓ Number of wires (`N`) |
 | 0x02   | 2    | int16      | (?) Usually 0; sometimes 1 |
-| 0x04   | 1    | char       | ✓ Format marker — always `'R'` (0x52) in examined corpus |
+| 0x04   | 1    | char       | ✓ Format marker — always `'R'` (0x52) in examined files |
 | 0x05   | 4    | float32    | ✓ Design frequency in **MHz** |
 | 0x09   | 1    | char       | (?) Unit / coordinate-system flag.  `'A'` is most common; `'E'` observed in some models.  See Unit System section. |
 | 0x0A   | 2    | —          | (?) Reserved; always `0x00 0x00` |
@@ -128,7 +126,7 @@ wire[k] at 0x00BA + k × 170
 
 ### Notes on Wire Geometry
 
-- **Units** — Coordinates are stored in the same unit the user chose in EZNEC (feet or meters).  The two most common cases observed in the corpus are:
+- **Units** — Coordinates are stored in the same unit the user chose in EZNEC (feet or meters).  The two most common cases observed in the collection are:
   - **Feet** — typical for US-authored HF models (values like 342.62, 85.655)
   - **Meters** — typical for metric authors and VHF/UHF models (values like −13.356, 1.895)
   - The unit byte at header offset 0x09 and/or 0x41 likely encodes the system, but the exact mapping has not been fully confirmed.
@@ -237,14 +235,13 @@ EX 0,1,81,0,1.414214,0.
 EN
 ```
 
-Corpus Statistics (Cebik collection)
-------------------------------------
+File Statistics (Cebik collection)
+----------------------------------
 
 | Metric | Value |
 |--------|-------|
 | Total `.EZ`/`.ez` files examined | 5,478 |
-| Smallest file | ~533 bytes (VTI metadata sidecar, not an EZ model) |
-| Smallest true EZ model | ~680 bytes (1 wire) |
+| Smallest file | ~680 bytes (1 wire) |
 | Most common size cluster | 924 – 1,530 bytes (1–6 wire simple antennas) |
 | Largest file | ~419 KB (tri-corner reflector with 2461 wires) |
 | Files with confirmed foot-unit coordinates | observed for HF models |
@@ -260,4 +257,4 @@ Known Unknowns
 - Transmission line (TL card) representation.
 - Differential (DL), networks (NT/TL/CP) representation.
 - EZNEC Pro/4 vs. EZNEC+ vs. EZNEC v5 format differences (the `0x40` version byte may discriminate these).
-- Non-ASCII (Cyrillic / multibyte) titles — some files in the corpus have non-Latin titles that cause confusion in the title field.
+- Non-ASCII (Cyrillic / multibyte) titles — some files in the collection have non-Latin titles that cause confusion in the title field.

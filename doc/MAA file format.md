@@ -4,18 +4,18 @@ MMANA‑GAL ".maa" file format
 Introduction
 ------------
 
-The MMANA‑GAL software (and its derivatives) use a text format for saving antenna models. The files normally use the `.maa` extension, or more rarely `.mma`. These files contain an ordered sequence of text lines, separated by header lines and line counts, somewhat similar to the [YO format](YO file format.md).
+The MMANA‑GAL software (and its derivatives) use a text format for saving antenna models. The files normally use the `.maa` extension, or more rarely `.mma`. These files contain an ordered sequence of text lines, separated by header lines and line counts, somewhat similar to the [YO format](YO%20file%20format.md).
 
-Although the format is undocumented, a large number of examples online allow the structure to be inferred. The variation seen in the wild ranges from the minimal 4‑line variant used by simple exporters (frequency, counts, wires, loads, sources) up through more elaborate files which include segmentation parameters, ground and measurement options, and comment blocks. After reading this description you should be able to examine an existing `.maa` file and understand which parts will be carried over when using OpenNEC's conversion functions.
+Although the format is undocumented, a large number of examples online allow the structure to be inferred. The variation seen in the wild ranges from the minimal 4‑line variant used by simple exporters (frequency, counts, wires, loads, sources) through more elaborate files which include segmentation parameters, ground and measurement options, and comment blocks.
 
 This document summarises the features that OpenNEC’s import/export code understands and points out the sections that are currently ignored.
 
 Format overview
 ---------------
 
-A typical `.maa` file is organised into the following logical sections. Two distinct structural variants exist in the wild (see *Format variants* below). They differ in their use of section headers, which are marked in the file with `***…***`. 
+A typical `.maa` file is organised into several sections, separated by section markers of the form`*** SECTION NAME ***`. Two distinct variants exist in the wild (see *Format variants* below). The main sections are:
 
-1. **Title line.**  Arbitrary text used as a description of the model. The title is optional in Variant B — 220 of 935 files omit it and begin with a bare `*` separator instead. When present and the file is imported, the converter creates a `CM` card containing this line followed by a `CE` card. During export to .maa, the first comment card in the deck is written back as the title line.
+1. **Title line.**  Arbitrary text used as a description of the model, lacking a section header. The title is optional in Variant B — 220 of 935 files omit it and begin with a bare `*` separator instead. When present, the converter creates a `CM` card containing this line followed by a `CE` card. During export to .maa, the first comment card in the deck is written back as the title line.
 2. **Frequency line.**  A single floating‑point value giving the design frequency in megahertz. Some files (Variant B) include a bare `*` on a separate line between the title and the frequency.
 3. **Counts.**  In Variant A a single line holds three integers: wire count, load count, source count. In Variant B each count appears on its own line immediately inside the relevant `***…***` section.
 4. **Wire (geometry) block.**  Exactly `N_wires` following lines, each containing eight numeric values. The fields represent the end‑point coordinates of a straight wire in metres, the radius, and the segment count. Example:
@@ -89,7 +89,7 @@ A typical `.maa` file is organised into the following logical sections. Two dist
    the comment at its original position relative to the geometry and load
    blocks. During import each comment is turned into a CM/CE card, and when
    exporting any comment cards present in the deck are emitted back as
-   `###Comment### …` lines.
+   `###Comment###` lines.
 
    The `***Segmentation***` section is imported as described below.
 

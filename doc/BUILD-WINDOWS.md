@@ -2,7 +2,7 @@
 BUILDING ON WINDOWS
 ===================
 
-This guide shows how to build OpenNEC on Windows using a standalone MinGW-w64 toolchain (64-bit).
+OpenNEC relies on several features of C99 for its calculations. As Microsoft has not yet (as of 2026) released a C99 compiler, building OpenNEC on that platform requires the use of a 3rd party toolchain. This guide shows how to build OpenNEC on Windows using the MinGW-w64 toolchain (64-bit).
 
 Getting started
 ---------------

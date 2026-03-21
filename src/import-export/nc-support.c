@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 /* Maximum GW tag number we track for element-variable assignment. */
 #define NC_MAX_TAGS  1024
