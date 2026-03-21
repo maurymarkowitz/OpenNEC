@@ -214,7 +214,7 @@ $(LIBRARY): $(LIB_OBJECTS)
 	$(RANLIB) $@
 
 $(EXECUTABLE): src/main.o $(LIBRARY)
-	$(CC) $(LDFLAGS) src/main.o $(LIBRARY) -o $@ -lm
+	$(CC) src/main.o $(LIBRARY) $(LDFLAGS) -o $@ -lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
