@@ -32,7 +32,7 @@ OpenNEC (`onec`) can be used as a drop-in replacement for the traditional NEC-2 
 
 ### Option 1: Direct Executable Replacement (Windows)
 
-The simplest approach is to replace the executables while keeping 4nec2's batch infrastructure:
+The simplest approach is to replace the NEC calculation engine while keeping 4nec2's batch infrastructure. **No somnec2d replacement needed** — OpenNEC handles ground calculations internally:
 
 #### Step 1: Build OpenNEC for Windows
 
@@ -54,6 +54,8 @@ cd C:\4nec2\exe
 ren nec2d.exe nec2d.exe.bak
 copy C:\path\to\onec.exe nec2d.exe
 ```
+
+**Do NOT replace somnec2d.exe** — OpenNEC's internal Sommerfeld-Norton implementation will be automatically invoked when needed.
 
 #### Step 3: Test
 
@@ -168,10 +170,13 @@ This allows 4nec2 to work with complex antenna arrays beyond the original NEC-2 
 
 ### Ground Calculations
 
-4nec2's ground handling is **optional and depends on your configuration**:
+**Important architectural difference**: OpenNEC performs Sommerfeld-Norton ground calculations **internally** as part of the main calculation engine, unlike the traditional NEC-2 approach which requires a separate `somnec2d.exe` invocation.
 
-**When somnec2d is called:**
+4nec2's ground handling with traditional NEC-2:
+
+**When somnec2d is called (traditional nec2d.exe):**
 - Only when using **Sommerfeld-Norton ground** with the original `nec2d.exe` engine
+- 4nec2 calls `somnec2d.exe < som2d.tmp` to pre-calculate ground parameters
 - 4nec2 automatically generates ground files (`.gnd` extension) in the `\out` folder
 - For frequency sweeps, 4nec2 uses a "negative conductivity trick" to calculate ground parameters once (faster, less precise)
 
@@ -180,10 +185,11 @@ This allows 4nec2 to work with complex antenna arrays beyond the original NEC-2 
 - Free space models
 - Sommerfeld-Norton ground with `nec2dXS.exe` (ground calculations are built-in)
 
-**With OpenNEC**: 
-- Replace `somnec2d.exe` with a copy/symlink of `onec` only if you use Sommerfeld-Norton ground
-- If using perfect ground or free space, you don't need somnec2d replacement at all
-- OpenNEC implements Sommerfeld-Norton ground calculations identically to the original somnec2d
+**With OpenNEC:** 
+- **No external somnec2d binary needed** — all Sommerfeld-Norton ground calculations happen automatically
+- Simply replace `nec2d.exe` with `onec.exe`; ground handling is transparent
+- For frequency sweeps, OpenNEC recalculates ground parameters for each frequency (more precise than the traditional "trick")
+- OpenNEC implements Sommerfeld-Norton ground calculation identically to the original somnec2d algorithm
 
 ## Troubleshooting
 
