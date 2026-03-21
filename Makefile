@@ -78,10 +78,18 @@ else ifeq ($(BACKEND),openblas)
             $(error ERROR: OpenBLAS not found. Install with: apt install libopenblas-dev (Debian/Ubuntu) or yum install openblas-devel (RHEL/Fedora))
         endif
     else
-        LDFLAGS += $(shell pkg-config --libs openblas)
+        OPENBLAS_LIBS := $(shell pkg-config --libs openblas)
+        LDFLAGS += $(OPENBLAS_LIBS)
         CFLAGS += $(shell pkg-config --cflags openblas) -DHAVE_OPENBLAS
-        $(info Building with OpenBLAS)
+        $(info Building with OpenBLAS via pkg-config)
     endif
+
+    # Ensure lapack symbols get resolved for builds where OpenBLAS may not expose full LAPACK API
+    ifeq ($(UNAME_S),Linux)
+        LDFLAGS += -llapack -lgfortran
+    endif
+    $(info OpenBLAS backend: LDFLAGS=$(LDFLAGS))
+
 else ifeq ($(BACKEND),mkl)
     # Intel MKL - check for installation
     MKL_ROOT ?= /opt/intel/mkl
