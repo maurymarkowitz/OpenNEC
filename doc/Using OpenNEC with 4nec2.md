@@ -29,13 +29,13 @@ So the overall control flow is:
 
 3. **Output Handling**: The engine writes results to stdout, which 4nec2 captures for display
 
-### OpenNEC Compatibility: Matching Original Prompts
+### OpenNEC Compatibility
 
 When invoked with no arguments on Windows, OpenNEC prints the same prompts as the original Fortran engines:
 - `ENTER NAME OF INPUT FILE >`
 - `ENTER NAME OF OUTPUT FILE >`
 
-This ensures complete compatibility with 4nec2's batch invocation method. When 4nec2 pipes filenames via stdin redirection, users see the familiar prompts, providing transparency about the batch operation.
+This ensures complete compatibility with systems that might expect these prompts.
 
 ## Engine Selection in 4nec2
 
@@ -47,11 +47,11 @@ This ensures complete compatibility with 4nec2's batch invocation method. When 4
 
 ## Setting Up OpenNEC with 4nec2
 
-A mao
+A major difference between the original Fortran code and OpenNEC is that onec can calculate the Sommerfeld-Norton ground internally and does so automatically. No file needs to be generated for decks that use this feature. However, as 4nec2 users might expect to find the `.gnd` file, the batch file can still call `somnec2d.exe` without any issues for onec.
 
-### Option 1: Direct Executable Replacement (Windows)
+### Option 1: GUI Engine Selection (Windows)
 
-The simplest approach is to replace the NEC calculation engine while keeping 4nec2's batch infrastructure. **No somnec2d replacement needed** — OpenNEC handles ground calculations internally:
+The simplest approach is to copy the OpenNEC executable into 4nec2's engine directory, then select it as your engine in the 4nec2 GUI. **No somnec2d replacement needed** — OpenNEC handles ground calculations internally:
 
 #### Step 1: Build OpenNEC for Windows
 
@@ -62,35 +62,36 @@ make BACKEND=original
 
 This produces `onec.exe` (or `onec` on Unix-like systems).
 
-#### Step 2: Rename and Place the Executable
+#### Step 2: Copy the Executable
 
 1. Locate your 4nec2 installation directory (typically `C:\4nec2\exe`)
-2. Rename the original `nec2d.exe` to `nec2d.exe.bak` (as backup)
-3. Copy `onec.exe` to the 4nec2 `exe` directory and rename it to `nec2d.exe`
+2. Copy `onec.exe` to the 4nec2 `exe` directory (keep the original `nec2d.exe` in place)
 
 ```batch
 cd C:\4nec2\exe
-ren nec2d.exe nec2d.exe.bak
-copy C:\path\to\onec.exe nec2d.exe
+copy C:\path\to\onec.exe onec.exe
 ```
 
-**Do NOT replace somnec2d.exe** — OpenNEC's internal Sommerfeld-Norton implementation will be automatically invoked when needed.
+This preserves the original `nec2d.exe` as your fallback engine.
 
-#### Step 3: Test
+#### Step 3: Configure 4nec2 to Use OpenNEC
 
 1. Open 4nec2
-2. Create a simple antenna test case
-3. Generate calculations (F7 / "Calculate")
-4. Verify that calculations complete successfully
+2. Go to **Settings → NEC engine**
+3. Click the path selector button and navigate to `C:\4nec2\exe\onec.exe`
+4. Select `onec.exe` and confirm
+5. Close Settings to save your selection
+6. Create a simple antenna test case and generate calculations (F7 / "Calculate")
+7. Verify that calculations complete successfully
 
 **Advantages:**
-- Minimal changes to 4nec2 installation
-- Automatic upgrades by replacing single executable
+- Keeps original `nec2d.exe` as a fallback
+- Easy to switch between engines anytime
 - Works with all 4nec2 features
+- Simple upgrade path (just replace `onec.exe`)
 
 **Limitations:**
-- Only replaces nec2d functionality
-- Requires rebuilding for Windows each time
+- None significant; this is the recommended approach
 
 ### Option 2: Custom Batch File Wrapper
 
@@ -206,7 +207,6 @@ This allows 4nec2 to work with complex antenna arrays beyond the original NEC-2 
 
 **With OpenNEC:** 
 - **No external somnec2d binary needed** — all Sommerfeld-Norton ground calculations happen automatically
-- Simply replace `nec2d.exe` with `onec.exe`; ground handling is transparent
 - For frequency sweeps, OpenNEC recalculates ground parameters for each frequency (more precise than the traditional "trick")
 - OpenNEC implements Sommerfeld-Norton ground calculation identically to the original somnec2d algorithm
 
@@ -231,9 +231,9 @@ This allows 4nec2 to work with complex antenna arrays beyond the original NEC-2 
 ### Issue: License errors from original DLL dependencies
 
 **Solution:**
-- If the original nec2d.exe references Fortran runtime libraries, deleting those libraries might break it
+- If the original nec2d.exe references Fortran runtime libraries, you may need them when using that engine
 - OpenNEC has no external dependencies (self-contained)
-- Simply replace nec2d.exe with onec.exe
+- Simply select `onec.exe` in 4nec2 Settings and you won't need any Fortran libraries
 
 ## Performance Comparison
 
@@ -250,28 +250,32 @@ Typical improvements when using OpenNEC:
 
 ## Advanced: Command-Line Mode
 
-4nec2 supports command-line mode (since v5.7.3). This integrates well with OpenNEC:
+4nec2 supports command-line mode (since v5.7.3). This works seamlessly with OpenNEC:
 
 ```batch
-REM Run 4nec2 with input file, using OpenNEC for calculations
+REM Run 4nec2 with input file using the GUI-selected engine
 4nec2.exe input.nec /run /silent
 ```
 
-This works with OpenNEC as a drop-in replacement since 4nec2 handles all pre/post-processing and simply calls the NEC engine via batch infrastructure.
+Or force a specific engine via the command line:
+
+```batch
+REM Run with OpenNEC directly
+onec.exe < input.tmp > output.txt
+```
+
+This works because 4nec2 handles all pre/post-processing and simply invokes the selected NEC engine via stdin/stdout.
 
 ## Reverting to Original Engines
 
 To return to the original Fortran-based engines:
 
-```batch
-REM Windows
-cd C:\4nec2\exe
-ren nec2d.exe nec2d.exe.bak
-ren nec2d.exe.bak nec2d.exe
+1. Open 4nec2 **Settings → NEC engine**
+2. Click the path selector button and navigate back to `C:\4nec2\exe\nec2d.exe`
+3. Select the original engine and confirm
+4. Close Settings to save your selection
 
-REM Or restore from backup
-copy nec2d.exe.bak nec2d.exe
-```
+The original engines remain intact and can be selected anytime. You can also simply delete `onec.exe` from the `exe` folder if you no longer need it.
 
 ## Building OpenNEC for Windows
 

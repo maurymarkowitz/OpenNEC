@@ -1,0 +1,24 @@
+BV155CA.YAG, optimized 26'boom
+21.000 21.225 21.450 MHz
+5 elements, inches
+           1.045    0.875    0.500    0.438 
+  0.000    2.500   78.250    3.250   62.625 
+ 48.000    2.625   66.130    3.250   64.875 
+ 96.000    2.500   66.250    3.250   63.875 
+178.750    2.500   66.250    3.250   61.625 
+306.000    2.500   66.250    3.250   55.000 
+
+This element taper is that of the Hy-Gain 155BA or
+155CA. Note that the .5" o.d. section is modeling
+the taper swaging of the .875" o.d. element tubing,
+and the length of the 0.5" section subtracts from
+the overall 84" or 72" length of the first section
+-- as does the modeling of the element clamp and
+boom also, represented by the 1.045" first section.
+
+This design was optimized for F/R over band > 20 dB,
+and SWR over the band < 2:1, with a mid-band free-
+space gain of 9.9 dBi. Torque compensator is 2.5" OD 
+PVC, 39.625" long, mounted 12" behind Director 3, 
+on flat metal plate with U-bolts. 
+

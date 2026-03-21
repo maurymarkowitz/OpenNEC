@@ -1,0 +1,21 @@
+706-22H.YAG, 7-ele. 6-m Yagi, 22' boom
+50.000 50.500 51.000 50.400 MHz
+7 elements, inches
+            2.9447    0.7500    0.6250 
+  0.0000    3.0000   33.0000   24.2500 
+ 27.0161    3.0000   33.0000   15.6250 
+ 46.9148    3.0000   33.0000   18.5000 
+ 91.9873    3.0000   33.0000   15.3750
+149.1069    3.0000   33.0000   15.8750 
+201.0419    3.0000   33.0000   16.5000 
+258.9362    3.0000   33.0000   12.5000 
+
+NOTE: the lengths of the 0.750" o.d. sections have
+been reduced by the lengths of the 2.9447" o.d.
+sections which simulate 5" x 6" x 0.375" plates.
+These elements are heavy-duty (120 mph).
+
+This design was optimized for F/R over band > 25 dB,
+and SWR over the band < 1.6:1, with a mid-band free-
+space gain of 11.5 dBi.
+

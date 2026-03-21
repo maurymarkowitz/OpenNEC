@@ -1,0 +1,22 @@
+BV204CA.YAG, optimized Hy-Gain 204BA
+14.000 14.175 14.350 MHz
+4 elements, inches
+           2.140    1.250    1.125    0.875    0.625    0.438 
+  0.000    2.925   41.575   46.000   50.500   24.000   54.500 
+ 85.000    2.925   32.075   46.000   50.500   24.000   50.125 
+157.000    2.925   18.075   46.000   50.500   24.000   61.500 
+306.000    2.925   13.825   46.000   50.500   24.000   50.125 
+
+This design has been tweaked for a little better
+F/R over band 14.0 to 14.35 MHz. The element taper
+is that of the Hy-Gain 204BA. Note that the 2.140"
+o.d. section is modeling the element clamp and boom,
+and that the length of the 1.250" section is
+shortened by the length of the 2.140" section.
+
+This design was optimized for F/R over band > 20 dB,
+and SWR over the band < 2:1, with a mid-band free-
+space gain of 8.3 dBi. Torque compensator is 2.5" OD 
+PVC, 47 " long, mounted 12" behind Director 3, on flat 
+metal plate with U-bolts.
+

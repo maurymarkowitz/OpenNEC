@@ -3,7 +3,7 @@ OpenNEC, NEC-2 and nec2c
 
 OpenNEC, onec for short, is a re-implementation of the nec2c code, which is a reimplementation of the original Fortran NEC-2 code. The differences between onec and nec2c are much greater than those between nec2c and NEC-2.
 
-This document describes the main changes, which include changes to the original nec2c, as well as the large number of additions and features not found in the original code.
+This document describes the main changes, which include changes to the original nec2c, as well as the large number of additions and features not found in the original nec2c code.
 
 Changes from nec2c
 ------------------
@@ -15,9 +15,9 @@ Changes from nec2c
 - onec parses the entire deck in one pass, which allows it to perform whole-deck checks and perform file-type conversions.
 
 - nec2c can calculate only one file at a time.
-- onec's command line can process multiple files, all the files in a directory, and can recurse through directories.
+- onec's command line can process multiple files, all the files in a directory, and can recurse through all the files in multiple directories.
 
-- nec2c has considerable global state inherited from the original Fortran code's COMMON sections. This makes it non-reentrant and it cannot be used in a threaded fashion.
+- nec2c has considerable global state inherited from the original Fortran code's `COMMON` sections. This makes it non-reentrant and it cannot be used in a threaded fashion.
 - onec has been refactored so there is no global state and is completely thread-safe. Programs can use the library to work on multiple decks, and the command shell can run multiple input files at the same time.
 
 - nec2c uses the original Fortran matrix calculation code. A number of forks of nec2c support one matrix library or another.
@@ -35,7 +35,7 @@ Other basic changes
 
 - onec includes extensive input validations that test for errors in the deck setup, like a missing `GE` card, `FR`s lacking a frequency, or a `GN` that is not followed by `GD`. These tests can be run against any NEC-2 compatible deck.
 
-- the tests also include a geometry and calculation sanity check system that looks for common errors like overlapping wires or wires touching ground. This is currently limited in scope, but will be expanded over time.
+- the tests also include a geometry and calculation sanity check system that looks for common errors like overlapping wires or wires touching ground. These are based on the rules from Cebik's extensive documentation as well as additional rules from 4nec2/
 
 Note: Most validations are emitted as warnings (non-fatal) to preserve compatibility with existing decks while highlighting potential issues.
 
@@ -56,6 +56,6 @@ A number of features commonly found in other popular NEC-based programs have bee
 
 * In-line formulas can be used to support measurement units on a per-field basis. For instance, one can use "1ft" to define the span of a wire. Internally, this is converted to the formula "1*ft", where ft is a variable with the conversion from feet to meters. This is the same basic logic used in 4nec2.
 
-* onec supports the `XT` card type from nec2c, which stops processing at that point. onec will still read the entire deck, but will only process up to the point of the XT. This allows additional cards to be placed in the deck but ignored during processing, and those can be "turned on" by removing the XT.
+* onec supports the `XT` card type from nec2c, which stops processing at that point. onec will still read the entire deck, but will only *process* up to the point of the XT. This allows additional cards to be placed in the deck but ignored during processing, and those can be "turned on" by removing the XT or using the onec `ignore:true` flag.
 
 * onec supports the `#` comment marker from nec2c. This was used to insert whole-line comments at any point in the deck, a system that does not appear to be widely used in other systems. Note that the `#` comment marker can only appear at the start of a line and cannot be used to insert end-of-line comments. At any other location in the line, # is used as it is in 4nec2, to indicate a field is using AWG measurements. The leading-`#` is included only for compatibility, it is not considered to be part of the onec standard and should not be used except to produce nec2c compatible files. The modern replacement is `!`.

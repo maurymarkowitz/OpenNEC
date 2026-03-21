@@ -1,4 +1,5 @@
-# Using OpenNEC (onec) with cocoaNEC
+Using OpenNEC (onec) with cocoaNEC
+==================================
 
 ## Overview
 
@@ -25,7 +26,7 @@ cocoaNEC uses a two-tier computation model:
 When cocoaNEC uses an external NEC engine (such as NEC-4):
 
 1. **Model Preparation**: cocoaNEC generates antenna model from:
-   - NC language programs (C-like scientific language)
+   - NC language programs (C-like programming language)
    - Spreadsheet interface (deprecated but still supported)
    - Direct NEC card deck files
 

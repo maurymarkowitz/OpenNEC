@@ -1,0 +1,21 @@
+602-08H.YAG, 6-ele., 8' boom, 12.1 dBi midband gain
+144.000 146.000 148.000 MHz
+6 elements, inches
+          0.2500  
+ 0.000   20.2588  
+ 6.990   18.7424  
+18.835   18.3978  
+41.069   17.9216  
+69.322   17.7325  
+92.623   17.3442  
+
+This design was scaled using SCALE program
+from 620-80H.YAG and has F/R better than 
+20 dB and SWR less than 2:1 over entire 
+2-m band, with mid-band free-space gain 
+of 12.1 dBi. 
+
+Experiment with changing the element lengths
+to closest 1/8" values to see effect of
+element tolerances.
+

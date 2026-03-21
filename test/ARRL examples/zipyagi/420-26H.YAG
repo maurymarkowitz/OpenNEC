@@ -1,0 +1,19 @@
+420-26H.YAG, 4-ele., 26' boom, heavy-duty elements
+14.000 14.100 14.200 14.200 MHz
+4 elements, inches
+           3.706    1.250    1.000    0.875    0.750    0.625    0.500 
+  0.000    4.000   44.000   24.000   20.000   42.000   20.000   65.625 
+ 72.000    4.000   44.000   24.000   20.000   42.000   20.000   53.375 
+132.000    4.000   44.000   24.000   20.000   42.000   20.000   51.750 
+306.000    4.000   44.000   24.000   20.000   42.000   20.000   38.625 
+
+NOTE: the lengths of the 1.25" o.d. sections have
+been reduced by the lengths of the 3.706" o.d.
+sections to simulate element mounting plates, which
+are 8" L x 6" W x 0.375" thick. These elements are
+heavy-duty (120 mph).
+
+This design was optimized for F/R over band > 20 dB,
+and SWR over the band < 2:1, with a mid-band free-
+space gain of 8.6 dBi.
+

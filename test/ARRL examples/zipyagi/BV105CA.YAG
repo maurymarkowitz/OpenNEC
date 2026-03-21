@@ -1,0 +1,22 @@
+BV105CA.YAG, optimized Hy-Gain 105BA
+28.000 28.400 29.000 28.500 MHz
+5 elements, inches
+           1.045    0.875    0.625    0.438 
+  0.000    2.500   41.500   21.500   44.250 
+ 40.000    3.250   20.750   23.500   53.625 
+ 80.000    2.500   21.500   23.500   52.500 
+169.500    2.500   21.500   23.500   50.500 
+281.750    2.500   21.500   23.500   44.750 
+
+The element taper is that of the Hy-Gain 105BA. 
+Note that the 1.045" o.d. section is modeling
+the element clamp and boom, and that the length 
+of the 0.875" section is shortened by the length 
+of the 1.045" section. 
+
+This design was optimized for F/R over band > 20 dB,
+and SWR over the band < 2:1, with a mid-band free-
+space gain of 10.1 dBi. Torque compensator is 2.5" 
+OD PVC, 30.5 " long, mounted 12" behind Director 3, 
+on flat metal plate with U-bolts. 
+

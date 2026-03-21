@@ -1,0 +1,22 @@
+806-36H.YAG, 8-ele., 36' boom
+50.000 50.500 51.000 MHz
+8 elements, inches
+            2.4053    0.7500    0.6250 
+  0.0000    2.0000   34.0000   23.8750 
+ 23.5000    2.0000   34.0000   18.6250 
+ 43.6250    2.0000   34.0000   18.7500 
+ 91.8750    2.0000   34.0000   17.3750 
+160.6250    2.0000   34.0000   16.1250 
+245.2500    2.0000   34.0000   14.8750 
+331.6250    2.0000   34.0000   15.6250 
+400.0000    2.0000   34.0000   13.8750 
+
+NOTE: the lengths of the 0.750" o.d. sections have
+been reduced by the lengths of the 2.4053" o.d.
+sections which simulate 5" x 6" x 0.375"  plates.
+These elements are heavy-duty (120 mph).
+
+This design was optimized for F/R over band > 25 dB,
+and SWR over the band < 1.4:1, with a mid-band free-
+space gain of 13.2 dBi.
+

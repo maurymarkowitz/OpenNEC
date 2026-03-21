@@ -1,0 +1,14 @@
+Dipole of #12 Wire
+over ground
+14 MHz
+1 copper wire, feet
+1   0 -16 10   0 16 10   #12
+1 source
+Wire 1, center
+
+Wire length was determined by the ARRL dipole formula, length (ft) = 468 / f
+(MHz).  AO says that the free-space antenna is short, resonating at 7.312 MHz.
+The discrepancy probably arises because the formula is intended for dipoles over
+ground (it was derived years ago by testing a dipole in the alley behind ARRL
+Hq).  When rerun over ground, resonance for this model occurs very close to 7.15
+MHz, as predicted by the formula.

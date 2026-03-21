@@ -1,0 +1,18 @@
+317-14H.YAG, 3-ele., 14' boom, heavy-duty elements
+18.068 18.118 18.168 MHz
+3 elements, inches
+           3.512    1.000    0.875    0.750    0.625    0.500 
+  0.000    4.000   20.000   24.000   36.000   24.000   60.125 
+ 65.000    4.000   20.000   24.000   36.000   24.000   52.625 
+162.000    4.000   20.000   24.000   36.000   24.000   48.500 
+
+NOTE: the lengths of the 1.000" o.d. sections have
+been reduced by the lengths of the 3.512" o.d.
+sections to simulate mounting plates, which are 
+6" x 8" x 0.375". These elements are heavy-duty 
+(123 mph).
+
+This design was optimized for F/R over band > 20 dB,
+and SWR over the band < 2:1, with a mid-band free-
+space gain of 8.1 dBi.
+

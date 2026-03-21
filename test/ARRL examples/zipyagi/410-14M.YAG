@@ -1,0 +1,19 @@
+410-14M.YAG, 4-ele., 14' boom, medium-duty elements
+28.000 28.400 28.800 MHz
+4 elements, inches
+           2.310    0.625    0.500 
+  0.000    2.000   34.000   70.000 
+ 36.000    2.000   34.000   63.875 
+ 72.000    2.000   34.000   62.250 
+162.000    2.000   34.000   53.125 
+
+NOTE: the lengths of the 0.625" o.d. sections have
+been reduced by the lengths of the 2.310" o.d.
+sections to simulate mounting plates, which are 
+4" x 4" x 0.250" aluminum plates. These medium-duty
+elements will withstand 96 mph winds.
+
+This design was optimized for F/R over band > 20 dB,
+and SWR over the band < 2:1, and a mid-band free-
+space gain of 8.4 dBi.
+

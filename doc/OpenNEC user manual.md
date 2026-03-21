@@ -7,6 +7,16 @@ OpenNEC is an open-source implementation of the NEC (Numerical Electromagnetics 
 
 This manual focuses on using OpenNEC as a library in other programs, and the internal structures and functions that you call from the library in your programs. It also includes guidance on generating and validating NEC decks, controlling simulations, import and export of other formats, and interpreting output.
 
+Using OpenNEC as a plug-in engine
+---------------------------------
+The OpenNEC command-line shell, `onec`, has been designed to be able to work as a drop-in replacement for the original Fortran nec2 executables like `nec2d.exe` as well as programs that expect the slightly different inputs from the `nec2c` version.
+
+On Windows, `onec` can be called with no parameters which will invoke an "interactive mode", which will prompt the user for the input deck name and the output file name. On Unix and macOS, this will instead print the usage notes, as these versions expect 
+
+
+- Using onec in 4nec2
+- Using onec in cocoaNEC
+
 Using OpenNEC as a Library
 --------------------------
 - High-level architecture (core library + CLI)

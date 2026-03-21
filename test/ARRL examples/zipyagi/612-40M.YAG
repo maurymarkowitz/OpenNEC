@@ -1,0 +1,22 @@
+612-40M.YAG, 6-ele., 40' boom, medium-duty elements
+24.890 24.940 24.990 MHz
+6 elements, inches
+           2.857    0.625    0.500 
+  0.000    3.000   45.000   71.875 
+ 46.000    3.000   45.000   65.125 
+ 92.000    3.000   45.000   62.500 
+183.000    3.000   45.000   62.500 
+340.000    3.000   45.000   62.125 
+474.000    3.000   45.000   59.500 
+
+NOTE: the lengths of the 0.625" o.d. sections have
+been reduced by the lengths of the 2.857" o.d.
+sections to simulate mounting plates, which are
+5" x 6" x 0.375" plates. The elements are medium-
+duty, capable of 85 mph winds.
+
+This design was optimized for F/R over band > 20 dB,
+and SWR over the band < 2:1, with a mid-band free-
+space gain of 11.8 dBi.
+
+

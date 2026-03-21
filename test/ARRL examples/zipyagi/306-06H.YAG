@@ -1,0 +1,17 @@
+306-06H.YAG, 3-ele., 6'boom, 8.1 dBi midband gain
+50.000 50.500 51.000 50.250 MHz
+3 elements, inches
+           0.7500    0.6250 
+ 0.0000   36.0000   22.5000 
+24.0000   36.0000   16.0000 
+66.0000   36.0000   15.5000 
+
+NOTE: the lengths of the .75" o.d. sections have
+been reduced by the  lengths of the 1.628" o.d.
+sections which simulate element clamp plates.  which
+are 4" L x 2" W x 0.250" thick. These elements are
+heavy-duty (120 mph).
+
+This design was optimized for F/R over band > 20 dB,
+and SWR over the band < 2:1.
+

@@ -1,0 +1,23 @@
+810-60H.YAG, 8-ele., 60' boom, heavy-duty elements
+28.000 28.400 29.000 MHz
+8 elements, inches
+           2.405    0.750    0.625    0.500 
+  0.000    2.000   22.000   18.000   65.000 
+ 42.000    2.000   22.000   18.000   57.375 
+ 79.000    2.000   22.000   18.000   57.125 
+166.000    2.000   22.000   18.000   55.375 
+293.000    2.000   22.000   18.000   53.250 
+434.000    2.000   22.000   18.000   51.875 
+591.000    2.000   22.000   18.000   52.500 
+714.000    2.000   22.000   18.000   50.125 
+
+NOTE: the lengths of the 0.750" o.d. sections have
+been reduced by the  lengths of the 2.405" o.d.
+sections which simulate mounting plates, which are 
+4" x 4" x 0.250" aluminum plates. These heavy-duty
+elements will withstand 125 mph winds.
+
+This design was optimized for F/R over band > 20 dB,
+and SWR over the band < 2:1, with a mid-band free-
+space gain of 13.3 dBi.
+
