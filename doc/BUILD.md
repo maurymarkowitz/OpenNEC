@@ -15,7 +15,7 @@ On Linux, you can use OpenBLAS for best performance, MKL, or the reference BLAS/
 
 ```bash
 sudo apt update
-sudo apt install -y build-essential pkg-config libopenblas-dev
+sudo apt install -y build-essential pkg-config libopenblas-dev liblapack-dev gfortran
 ```
 
 - OpenBLAS (RHEL/Fedora):

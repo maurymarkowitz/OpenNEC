@@ -1,0 +1,10 @@
+Version 1.2.0 - 2026 March 21
+
+- added reliable OpenBLAS + LAPACK/gfortran Linux CI builds
+- fixed runtime and link errors (zgetrf_ / zgetrs_) on Ubuntu
+- added missing SIZE_MAX header include
+- bunch of other changes in the CI machinery
+- lots of changes to the docs
+
+Version 1.1.3 - 2026 March 7
+- first real production release

@@ -13,12 +13,12 @@ This document summarises the features that OpenNEC’s import/export code unders
 Format overview
 ---------------
 
-A typical `.maa` file is organised into several sections, separated by section markers of the form`*** SECTION NAME ***`. Two distinct variants exist in the wild (see *Format variants* below). The main sections are:
+A typical `.maa` file is organised into several sections, separated by section markers of the form `*** SECTION NAME ***`. Two distinct variants exist in the wild (see *Format variants* below). The main sections are:
 
 1. **Title line.**  Arbitrary text used as a description of the model, lacking a section header. The title is optional in Variant B — 220 of 935 files omit it and begin with a bare `*` separator instead. When present, the converter creates a `CM` card containing this line followed by a `CE` card. During export to .maa, the first comment card in the deck is written back as the title line.
 2. **Frequency line.**  A single floating‑point value giving the design frequency in megahertz. Some files (Variant B) include a bare `*` on a separate line between the title and the frequency.
 3. **Counts.**  In Variant A a single line holds three integers: wire count, load count, source count. In Variant B each count appears on its own line immediately inside the relevant `***…***` section.
-4. **Wire (geometry) block.**  Exactly `N_wires` following lines, each containing eight numeric values. The fields represent the end‑point coordinates of a straight wire in metres, the radius, and the segment count. Example:
+4. **Wire (geometry) block.**  Following the section header line is the number of wires, followed by one line for each wire, each containing eight numeric values. The fields represent the end‑point coordinates of a straight wire in metres, the radius, and the segment count. Example:
    ````
    0.0, -21.1, -3.662e-07,  0.0, 0.0, 0.0, 0.001, -1
    ````
@@ -252,7 +252,7 @@ A key feature of the MMANA program is auto-segmentation, or as they refer to it,
 
 http://gal-ana.de/basicmm/en/
 
-In NEC, geometry like a `GW` card includes a value for the number of segments it should be divided into. For instance, one might want a 10 metre long element to be represented internally as ten 1 meter parts. This "even segmentation" approach has several problems. For one, you generally want to use more segments where there are curves, as curvature can strongly influence the results. You can simply choose large numbers of segments, and some files do this, but this leads to longer calculation times.
+In NEC, geometry like a `GW` card includes a value for the number of segments it should be divided into. For instance, one might want a 10 metre long element to be represented internally as ten 1 meter parts. This "even segmentation" approach has several problems. For one, you generally want to use more segments where there are curves, as curvature can strongly influence the results. You can simply choose to use large numbers of segments, and some files do this, but this leads to longer calculation times.
 
 MMANA-GA adds a system that calculates reasonable segment counts based on the size and shape of the element. It does this based on the wavelength of the test signal, which in NEC is found on the `FR` card. It also adjusts the segment sizes by their position, adding more segments at the ends of the elements and fewer in the center. This minimizes the number of small segments, and improves calculation time. There are settings to control whether to use manual segments (the NEC solution), use smaller segments at both ends, or at one end or the other. The manual strongly suggests using the both-ends method, -1, for most designs.
 
@@ -262,7 +262,7 @@ During import, OpenNEC uses the `***Segmentation***` parameters together with th
 
 If the wires use different modes, the common-mode field is omitted from the global annotation and each `GW` card instead receives a per-wire `!segmentation:N` suffix.
 
-This approach fixes the segment counts so that all other NEC cards (EX, LD, TL, etc.) that reference segment numbers are correct. The annotation also allows the exporter to reconstruct the original MMANA `.maa` file with the correct (negative) mode values in the SEG column and a `***Segmentation***` block containing the original parameters — completing the round-trip.
+This approach fixes the segment counts so that all other NEC cards (EX, LD, TL, etc.) that reference segment numbers are correct. The annotation also allows the exporter to reconstruct the original MMANA `.maa` file with the correct (negative) mode values in the SEG column and a `***Segmentation***` block containing the original parameters to complete the round-trip.
 
 Features not supported by OpenNEC
 ---------------------------------
@@ -332,4 +332,4 @@ Mod by UR0GT, 02.04.2008 0:06:04
 
 The SEG column is restored to `-1` (the original MMANA mode marker) for all seven wires rather than the computed counts. The `***Segmentation***` block is written from the `! maa-segmentation:` annotation. The `sc=2` (taper ratio) value is written as `2` rather than `2.0` because trailing `.0` is suppressed by the `%.4g` format descriptor. The original Cyrillic characters in the comment are reproduced faithfully if the terminal encoding matches; they may appear garbled in ASCII-only environments.
 
-The `*` separator between the title and frequency is always emitted. If no `CM` card is present the title line is left blank (the `*` is still written). If the deck has no `! maa-segmentation:` annotation (e.g. it was not imported from a `.maa` file), the `***Segmentation***` block is omitted and wire SEG columns contain the computed positive segment counts.
+The `*` separator between the title and frequency is always emitted. If no `CM` card is present the title line is left blank but the `*` is still written. If the deck has no `! maa-segmentation:` annotation (e.g. it was not imported from a `.maa` file), the `***Segmentation***` block is omitted and wire SEG columns contain the computed positive segment counts.

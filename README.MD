@@ -14,7 +14,7 @@ Introduction
 
 OpenNEC is an implementation of the NEC-2 code written in the C programming language. It is used to simulate the reception and transmission patterns of radio frequency antennas. The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". Decks are stored in text files normally with a `.nec` extension, or more rarely, `.deck`.
 
-OpenNEC will read the design in the deck and can run a number of calculations to determine the antenna's performance. The output can be read directly, or exported to a text file, normally with an `.out` extension. It can also provide warnings about common design problems, and import and export the deck to and from other common antenna file formats.
+OpenNEC will read the design in the deck and can run a number of calculations to determine the antenna's performance. The output can be read directly, or exported to a text file, normally with an `.out` extension. It can also provide warnings about common design problems, and import and export decks to and from other common antenna file formats. OpenNEC uses the latest features of modern computers and runs much faster than older implementations.
 
 Installing OpenNEC
 ------------------
@@ -74,7 +74,7 @@ Short options with no parameters can be ganged, for instance, `-nt`.
 
 There are two changes in the command-line interface on windows, to better support existing NEC-2 workflows.
 
-The first is that running the `onec.exe` with no command line switches or positional arguments will instead expect to be fed input from `CONIN$` (the windows `stdin`). The input should contain two lines of text, the first having the input filename, and the second the output filename. If the file is not passed in, the program will wait forever, so use control-C to abort if you have to.
+The first is that running the `onec.exe` with no command line switches or positional arguments will instead expect to be fed input from `CONIN$` (the windows `stdin`). The input is a file that contains two lines of text, the first having the input filename, and the second the output filename. If the file is not passed in, the program will wait forever, so use control-C to abort if you have to.
 
 The only other change is to add the `/?` command line switch, the same as `-h`.
 
