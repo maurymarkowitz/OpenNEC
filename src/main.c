@@ -809,17 +809,22 @@ int main(int argc, char **argv)
   parse_options(argc, argv);
 
   /* On Windows, if invoked with no args, read two lines from stdin
-   * (input and output filenames) to support 4nec2-style callers. */
+   * (input and output filenames) to support 4nec2-style callers.
+   * Print prompts to match the behavior of the original nec2d.exe. */
 #if defined(_WIN32)
   if (argc == 1) {
     char inbuf[4096];
     char outbuf[4096];
+    printf(" ENTER NAME OF INPUT FILE >\n");
+    fflush(stdout);
     if (fgets(inbuf, sizeof inbuf, stdin) != NULL) {
       size_t l = strlen(inbuf);
       while (l > 0 && (inbuf[l-1] == '\n' || inbuf[l-1] == '\r')) { inbuf[--l] = '\0'; }
       if (l > 0) {
         input_file = strdup(inbuf);
       }
+      printf(" ENTER NAME OF OUTPUT FILE >\n");
+      fflush(stdout);
       if (fgets(outbuf, sizeof outbuf, stdin) != NULL) {
         size_t m = strlen(outbuf);
         while (m > 0 && (outbuf[m-1] == '\n' || outbuf[m-1] == '\r')) { outbuf[--m] = '\0'; }

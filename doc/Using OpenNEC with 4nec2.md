@@ -29,13 +29,13 @@ So the overall control flow is:
 
 3. **Output Handling**: The engine writes results to stdout, which 4nec2 captures for display
 
-### OpenNEC Advantage: Silent Batch Mode
+### OpenNEC Compatibility: Matching Original Prompts
 
-The original Fortran engines prompt interactively:
-- `nec2d.exe`: `ENTER NAME OF INPUT FILE >`  and `ENTER NAME OF OUTPUT FILE >`
-- `somnec2d.exe`: `ENTER EPR,SIG,FMHZ,IPT >`
+When invoked with no arguments on Windows, OpenNEC prints the same prompts as the original Fortran engines:
+- `ENTER NAME OF INPUT FILE >`
+- `ENTER NAME OF OUTPUT FILE >`
 
-**OpenNEC eliminates these prompts** on Windows. When invoked with no arguments and stdin redirected, it silently reads filenames from stdin, producing no prompts in the DOS window. This makes batch operation with 4nec2 **cleaner and more reliable** — no accidental pauses waiting for user input.
+This ensures complete compatibility with 4nec2's batch invocation method. When 4nec2 pipes filenames via stdin redirection, users see the familiar prompts, providing transparency about the batch operation.
 
 ## Engine Selection in 4nec2
 
@@ -46,6 +46,8 @@ The original Fortran engines prompt interactively:
 - **somnec2d.exe** - Ground parameter generation engine
 
 ## Setting Up OpenNEC with 4nec2
+
+A mao
 
 ### Option 1: Direct Executable Replacement (Windows)
 
