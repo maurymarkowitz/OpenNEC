@@ -168,12 +168,22 @@ This allows 4nec2 to work with complex antenna arrays beyond the original NEC-2 
 
 ### Ground Calculations
 
-4nec2's Sommerfeld-Norton ground handling:
+4nec2's ground handling is **optional and depends on your configuration**:
 
-- **Default behavior**: 4nec2 calls `somnec2d.exe` to pre-calculate ground parameters for each frequency
-- **With OpenNEC**: The same process works; replace `somnec2d.exe` with a symlink/copy of `onec`
+**When somnec2d is called:**
+- Only when using **Sommerfeld-Norton ground** with the original `nec2d.exe` engine
+- 4nec2 automatically generates ground files (`.gnd` extension) in the `\out` folder
+- For frequency sweeps, 4nec2 uses a "negative conductivity trick" to calculate ground parameters once (faster, less precise)
 
-**Note**: OpenNEC implements Sommerfeld-Norton ground calculation identically to the original somnec2d. The batch file routing in 4nec2 handles mode selection automatically.
+**When somnec2d is NOT called:**
+- Perfect ground models (default)
+- Free space models
+- Sommerfeld-Norton ground with `nec2dXS.exe` (ground calculations are built-in)
+
+**With OpenNEC**: 
+- Replace `somnec2d.exe` with a copy/symlink of `onec` only if you use Sommerfeld-Norton ground
+- If using perfect ground or free space, you don't need somnec2d replacement at all
+- OpenNEC implements Sommerfeld-Norton ground calculations identically to the original somnec2d
 
 ## Troubleshooting
 
