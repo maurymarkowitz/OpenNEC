@@ -60,12 +60,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build (macOS x86_64)
-        env:
-          CFLAGS: '-arch x86_64 -mmacosx-version-min=10.15'
-          LDFLAGS: '-arch x86_64 -mmacosx-version-min=10.15'
         run: |
           make clean
-          make CC=clang CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" BACKEND=original
+          make CC=clang CFLAGS="-I. -Isrc -g -O2 -Wall -Wno-unused-parameter -arch x86_64 -mmacosx-version-min=10.15" LDFLAGS="-arch x86_64 -mmacosx-version-min=10.15" BACKEND=original
       - name: Package
         run: |
           mkdir -p dist
@@ -86,12 +83,9 @@ jobs:
           uname -m || true
           sysctl -n hw.machine || true
       - name: Build (macOS arm64)
-        env:
-          CFLAGS: '-arch arm64 -mmacosx-version-min=11.0'
-          LDFLAGS: '-arch arm64 -mmacosx-version-min=11.0'
         run: |
           make clean
-          make CC=clang CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" BACKEND=original
+          make CC=clang CFLAGS="-I. -Isrc -g -O2 -Wall -Wno-unused-parameter -arch arm64 -mmacosx-version-min=11.0" LDFLAGS="-arch arm64 -mmacosx-version-min=11.0" BACKEND=original
       - name: Package
         run: |
           mkdir -p dist
