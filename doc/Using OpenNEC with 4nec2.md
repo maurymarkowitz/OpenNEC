@@ -1,16 +1,25 @@
-# Using OpenNEC (onec) with 4nec2
+Using OpenNEC (onec) with 4nec2
+===============================
 
 ## Overview
 
-OpenNEC (`onec`) can be used as a drop-in replacement for the traditional NEC-2 calculation engines in 4nec2, providing better performance, cross-platform compatibility, and modern long-integer segment support. This guide explains how to configure 4nec2 to use `onec` instead of the older Fortran-based executables.
+OpenNEC (`onec`) can be used as a drop-in replacement for the traditional NEC-2 calculation engines in 4nec2, providing better performance, cross-platform compatibility, and large numbers of segments. This guide explains how to configure 4nec2 to use `onec` instead of the older Fortran-based executables.
 
 ## How 4nec2 Invokes NEC Engines
 
-4nec2 uses batch files to invoke NEC calculation engines. The process works as follows:
+The original Fortran code, which 4nec2 uses, is an interactive program which prompts the user for filenames for the input and output files. To drive these programs in an automated fashion, 4nec2 uses input redirection. It does this by producing a temporary file containing just the names of the input and output files on two lines in a text file, `nec2d.tmp`. It then calls `4nec2.bat`, which calls the user-selected engine program and passes in the temporary file. Ultimately, what's run is something like this:
 
-1. **File Preparation**: 4nec2 prepares temporary input files:
-   - `nec2d.tmp` - Standard NEC-2 calculation input
-   - `som2d.tmp` - Ground parameter generation input (Sommerfeld-Norton mode)
+`nec2d.exe < nec2d.tmp`
+
+This invokes the `nec2d.exe` program with the filenames passed into it using redirection. The deck data is read from the named input file, and the result is sent to the named output file.
+
+If the Sommerfeld-Norton ground is selected, a second text file is prepared, `som2d.tmp`. The same batch file first calls `somnec2d.exe` using the same method, passing in the file names in the temporary folder. This is called before calling `nec2d.exe`, and results in a file being written to the same directory, `som2d.gnd`. The nec2d program looks for this file when it runs and the Sommerfeld ground is encountered in the deck.
+
+So the overall control flow is:
+
+1. **File Preparation**: 4nec2 prepares one or two temporary input files:
+   - `nec2d.tmp` - 4nec2 deck data re-written into standard NEC-2 form
+   - `som2d.tmp` - Ground parameter generation input, if Sommerfeld-Norton mode is used
 
 2. **Engine Invocation**: Engines are called via stdin redirection:
    ```batch
@@ -19,6 +28,14 @@ OpenNEC (`onec`) can be used as a drop-in replacement for the traditional NEC-2 
    ```
 
 3. **Output Handling**: The engine writes results to stdout, which 4nec2 captures for display
+
+### OpenNEC Advantage: Silent Batch Mode
+
+The original Fortran engines prompt interactively:
+- `nec2d.exe`: `ENTER NAME OF INPUT FILE >`  and `ENTER NAME OF OUTPUT FILE >`
+- `somnec2d.exe`: `ENTER EPR,SIG,FMHZ,IPT >`
+
+**OpenNEC eliminates these prompts** on Windows. When invoked with no arguments and stdin redirected, it silently reads filenames from stdin, producing no prompts in the DOS window. This makes batch operation with 4nec2 **cleaner and more reliable** — no accidental pauses waiting for user input.
 
 ## Engine Selection in 4nec2
 
