@@ -1,5 +1,4 @@
 Version 1.2.0 - 2026 March 21
-
 - better handling of % for 4nec2 connections on LD and EX
 - added LD 6 and EX 6 and 7, and GN 3 support from 4nec2
 - cleaned up deck warnings and validations based on Cebik's and 4nec2 rules
