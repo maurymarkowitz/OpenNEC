@@ -25,11 +25,6 @@
 #include <ctype.h>
 #include <limits.h>
 
-
-/**
- * @copydoc write_deck_maa
- */
-
 /**
  * @brief Parse the nth numeric token from a card's string (1-based, past the code).
  *
@@ -57,6 +52,9 @@ static double card_field_n(const card_t *c, int n)
     return 0.0;
 }
 
+/**
+ * @copydoc write_deck_maa
+ */
 int write_deck_maa(const deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;

@@ -6,7 +6,7 @@ Items still to be implemented:
 
 * get more info on the .ez format
 
-* add TIA-804-B (Antenna Digital Format, .adf or rately .xap or .dat) pattern output, which is simply a standard way of writing the NEC pattern. Same for the similar NSMA WG 16.99.050.
+* add TIA-804-B (Antenna Digital Format, .adf or rarely .xap or .dat) pattern output, which is simply a standard way of writing the NEC pattern. Same for the similar NSMA WG 16.99.050.
 
 * add Planet Antenna File (.paf, .pln) XML support (https://www.wireless-planning.com/msi-antenna-pattern-file-library). This is actually an output format, not an antenna design per-se. Some documentation here: https://e6.ijs.si/RaPlaT/files/doc/GRASS-RaPlaT_User_Manual_3_0.pdf.
 

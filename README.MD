@@ -51,7 +51,7 @@ Running OpenNEC
 
 OpenNEC includes a command-line interace, `onec`, that can be used to parse decks from the shell, and will write the calculated results to `stdout` or to a specific file using the `-o` flag.
 
-It is normally invoked from the shell, `Terminal` on macOS or `CMD` on Windows. To run it, use a command similar to this example, replacing the "<FILE/PATH>" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
+It is normally invoked from your unix shell, `Terminal` on macOS, or `CMD` on Windows. To run it, use a command similar to this example, replacing the "<FILE/PATH>" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
 
 ```./onec [options] <FILE/PATH>...```
 
@@ -74,9 +74,9 @@ Short options with no parameters can be ganged, for instance, `-nt`.
 
 There are two changes in the command-line interface on windows, to better support existing NEC-2 workflows.
 
-The first is that running the `onec.exe` with no command line switches or positional arguments will instead expect to be fed input from `CONIN$` (the windows `stdin`). The input is a file that contains two lines of text, the first having the input filename, and the second the output filename. If the file is not passed in, the program will wait forever, so use control-C to abort if you have to.
+The first is to add the `/?` command line switch, the same as `-h`.
 
-The only other change is to add the `/?` command line switch, the same as `-h`.
+The second is that running the `onec.exe` with no command line switches or positional arguments will prompt the user for input and output filenames, rather than printing the usage notes. This matches the behavior of the original Fortran code, which is normally fed input from `CONIN$` (the windows `stdin`). The input is a file that contains two lines of text, the first having the input filename, and the second the output filename. If the filename is empty, the program will exit with an error.
 
 Examples
 --------
@@ -112,13 +112,13 @@ onec has built-in readers for various 3rd party file formats. For instance:
 
 ```./onec example.mma```
 
-This will read the file `example.maa`, convert it to NEC format, and then run the simulations as if it were a NEC deck from the start. When started with a path, or with the `-r` option, normally only NEC files will be processed. You can force it to read other files using a globbing expression:
+This will read the file `example.maa`, convert it to NEC format, and then run the simulations. When started with a path, or with the `-r` option, normally only NEC files will be processed. You can force it to read other files using a globbing expression:
 
 ```./onec -r /example_files/*.mma```
 
 In this example it will ignore anything that is not an `.mma` file.
 
-onec can also write files in different formats using the `-w` option. This is normally used with a "bare" extension like `.nec`, but you can also provide a complete filename if you wish to rename the converted deck. In most cases, one would convert a particular `.mma` file to NEC format using:
+onec can also write files in different formats using the `-w` option. This is normally used with a "bare" extension like `.nec`, but you can also provide a complete filename if you wish to rename the converted deck. In most cases, you use something like:
 
 ```./onec -w .nec example.mma```
 

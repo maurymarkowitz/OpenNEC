@@ -13,7 +13,9 @@
 #include <string.h>    /* for strcmp, snprintf */
 #include <stdio.h>
 
-
+/**
+ * @copydoc read_deck_nec4
+ */
 int read_deck_nec4(deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
@@ -58,12 +60,7 @@ static void strip_onec(const char *src, char *dst, size_t sz)
 }
 
 /**
- * Write a deck in NEC-4 format, retaining standalone `CM`/`CE` comments and
- * converting any inline or trailing comment text to `!` cards.
- *
- * The algorithm mirrors write_deck_nec2 but allows comments in more locations
- * and normalises their markers.  SY cards are omitted and all formulas are
- * evaluated prior to output.
+ * @copydoc write_deck_nec4
  */
 int write_deck_nec4(const deck_t *deck, FILE *file)
 {

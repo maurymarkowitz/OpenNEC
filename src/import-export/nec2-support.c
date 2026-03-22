@@ -13,6 +13,9 @@
 #include <stdio.h>
 #include <string.h>   /* for strcmp, snprintf, etc. */
 
+/**
+ * @copydoc read_deck_nec2
+ */
 int read_deck_nec2(deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
@@ -23,11 +26,9 @@ int read_deck_nec2(deck_t *deck, FILE *fp)
     return 0;
 }
 
-/* Copy of original write_deck_nec2 logic from output.c.  We expose the
- * internal function so that existing callers (e.g., main.c) don't need to
- * change.  The public, simplified version declared in nec2-support.h wraps
- * this helper and is intended for new clients that don't want to manage a
- * context. */
+/**
+ * @copydoc write_deck_nec2
+ */
 int write_deck_nec2(const deck_t *deck, FILE *file)
 {
     if (!deck || !file) return -1;

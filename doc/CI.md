@@ -21,7 +21,7 @@ Platform notes
   container to build on `ubuntu:22.04`.
 
 Triggering
----------
+----------
 - CI runs on pushes and pull requests.
 - Release builds run when a GitHub Release is published; you can also run the
   release workflow manually from the Actions UI (`workflow_dispatch`).

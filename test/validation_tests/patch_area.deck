@@ -2,10 +2,9 @@ CM patch_area
 CE
 # tiny wire and load so deck is valid but doesn’t affect patch test
 GW 1 1 0 0 0 1 0 0 0.001
-LD 0 1 1 0 0 0
-
 # cheat by putting desired area into ZW2 (F6) since nx=0 branch uses az2 directly
 SP 0 0 0 0 0 4000
 GE 0
+LD 0 1 1 0 0 0
 FR 0 1 0 0 1
 EN

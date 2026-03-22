@@ -221,10 +221,9 @@ static int parse_sy_card_all(const card_t *c,
     return added;
 }
 
-/* -------------------------------------------------------------------------
- * write_deck_nc
- * ---------------------------------------------------------------------- */
-
+/**
+ * @copydoc write_deck_nc
+ */
 int write_deck_nc(const deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
@@ -941,6 +940,7 @@ typedef struct {
 
     /* variable registries */
     char  sy_vars[NCR_MAX_VARS][64];  /* real/int variable names    */
+    bool  sy_assigned[NCR_MAX_VARS];  /* has this variable received an assignment */
     int   n_syv;
     char  el_vars[NCR_MAX_VARS][64];  /* element variable names     */
     int   el_tags[NCR_MAX_VARS];      /* assigned GW tag (0=none)   */
@@ -1323,7 +1323,7 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
     nc_skip(&s->p);
 
     /* ---- type declarations ------------------------------------------ */
-    bool is_real_int = (strcmp(ident, "real") == 0 || strcmp(ident, "int") == 0);
+    bool is_real_int = (strcmp(ident, "real") == 0 || strcmp(ident, "int") == 0 || strcmp(ident, "float") == 0);
     bool is_elem     = (strcmp(ident, "element") == 0);
     bool is_other_type = (!is_real_int && !is_elem &&
                           (strcmp(ident, "coaxtype") == 0 ||
@@ -1335,10 +1335,21 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
             char name[64];
             nc_ident(&s->p, name, sizeof name);
             if (name[0]) {
-                if (is_real_int && s->n_syv < NCR_MAX_VARS)
-                    strncpy(s->sy_vars[s->n_syv++], name, 63);
+                if (is_real_int && s->n_syv < NCR_MAX_VARS) {
+                    bool already = false;
+                    for (int i = 0; i < s->n_syv; i++) {
+                        if (strcmp(s->sy_vars[i], name) == 0) { already = true; break; }
+                    }
+                    if (!already) {
+                        strncpy(s->sy_vars[s->n_syv], name, 63);
+                        s->sy_vars[s->n_syv][63] = '\0';
+                        s->sy_assigned[s->n_syv] = false;
+                        s->n_syv++;
+                    }
+                }
                 if (is_elem && s->n_elv < NCR_MAX_VARS) {
                     strncpy(s->el_vars[s->n_elv], name, 63);
+                    s->el_vars[s->n_elv][63] = '\0';
                     s->el_tags[s->n_elv] = 0;
                     s->el_segs[s->n_elv][0] = '\0';
                     s->n_elv++;
@@ -1420,6 +1431,14 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
         char expr[512];
         expand_expr(expr_raw, expr, sizeof expr);
 
+        /* If this identifier is one of the declared real/int vars, mark it assigned */
+        for (int i = 0; i < s->n_syv; i++) {
+            if (strcmp(s->sy_vars[i], ident) == 0) {
+                s->sy_assigned[i] = true;
+                break;
+            }
+        }
+
         /* check if 'c' constant is needed */
         if (expr_uses_c(expr)) s->need_c = true;
 
@@ -1446,10 +1465,9 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
     nc_semi(&s->p);
 }
 
-/* -------------------------------------------------------------------------
- * read_deck_nc — public entry point
- * ---------------------------------------------------------------------- */
-
+/**
+ * @copydoc read_deck_nc
+ */
 int read_deck_nc(deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
@@ -1499,6 +1517,32 @@ int read_deck_nc(deck_t *deck, FILE *fp)
             }
             break;
         }
+
+        /* top-level real/int/float declarations (outside model) */
+        if (strcmp(tok, "real") == 0 || strcmp(tok, "int") == 0 || strcmp(tok, "float") == 0) {
+            while (*s.p && *s.p != ';') {
+                nc_skip(&s.p);
+                char name[64];
+                nc_ident(&s.p, name, sizeof name);
+                if (name[0] && s.n_syv < NCR_MAX_VARS) {
+                    bool already = false;
+                    for (int i = 0; i < s.n_syv; i++) {
+                        if (strcmp(s.sy_vars[i], name) == 0) { already = true; break; }
+                    }
+                    if (!already) {
+                        strncpy(s.sy_vars[s.n_syv], name, 63);
+                        s.sy_vars[s.n_syv][63] = '\0';
+                        s.sy_assigned[s.n_syv] = false;
+                        s.n_syv++;
+                    }
+                }
+                nc_skip(&s.p);
+                if (*s.p == ',') s.p++;
+            }
+            nc_semi(&s.p);
+            continue;
+        }
+
         /* skip any other top-level construct */
         if (*s.p == '(') {
             char tmp[1024]; nc_parens(&s.p, tmp, sizeof tmp);
@@ -1577,6 +1621,16 @@ int read_deck_nc(deck_t *deck, FILE *fp)
             continue;
         }
         ncr_stmt(&s, deck, post, &np, NCR_MAX_POST);
+    }
+
+    /* ---- initialize unassigned real/int variables to zero ------------- */
+    for (int i = 0; i < s.n_syv; i++) {
+        if (!s.sy_assigned[i]) {
+            char zbuf[128];
+            snprintf(zbuf, sizeof zbuf, "SY %s=0", s.sy_vars[i]);
+            append_card_from_text(deck, zbuf);
+            s.sy_assigned[i] = true;
+        }
     }
 
     /* ---- GE termination ---------------------------------------------- */
