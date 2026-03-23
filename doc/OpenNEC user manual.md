@@ -9,16 +9,22 @@ This manual focuses on using OpenNEC as a library in other programs, and the int
 
 Using OpenNEC as a plug-in engine
 ---------------------------------
-The OpenNEC command-line shell, `onec`, has been designed to be able to work as a drop-in replacement for the original Fortran nec2 executables like `nec2d.exe` as well as programs that expect the slightly different inputs from the `nec2c` version.
+The OpenNEC command-line shell, `onec`, has been designed to be able to work as a drop-in replacement for the original Fortran NEC-2 executables like nec2d as well as programs that expect the slightly different parameter style found in the nec2c and necpp versions.
 
-On Windows, `onec` can be called with no parameters which will invoke an "interactive mode", which will prompt the user for the input deck name and the output file name. On Unix and macOS, this will instead print the usage notes, as these versions expect 
+On Unixen, `onec` matches the nec2c interface, which used the `-i` parameter to define the input filename, and `-o` for the output filename. If no `-o` is provided, it uses the input name and changes the extension to `.out`. If no paramaters are provided, the program will exit with usage notes.
 
+The Windows version supports the same switches for input and output, but changes the behaviour in the no-parameter case to match nec2d. In that case, it interactively asks for the input and output filenames, and exits if the former is blank.
 
-- Using onec in 4nec2
-- Using onec in cocoaNEC
+As the exact calling proceedure varies among programs, separate document have been created for each commonly used program. For now, these include:
+
+- [Using OpenNEC with 4nec2](Using&20%OpenNEC&20%with&20%4nec2.md)
+- [Using onec with cocoaNEC](Using&20%OpenNEC&20%with&20%cocoaNEC.md)
 
 Using OpenNEC as a Library
 --------------------------
+Although `onec` provides a compatible interface for existing programs, it is mostly intended to be used as a statically-linked library within other programs.
+
+
 - High-level architecture (core library + CLI)
 - Header files and public API
 - Core data structures (context, decks, errors)

@@ -1,3 +1,8 @@
+Version 1.2.1 - 2026 March 22
+- moved the example decks into the new examples folder, out of test
+- fixed an issue in the cocoaNEC importer that led to some variables not becoming SYs
+- fixed an error in one of the test decks (in the deck, not the code)
+
 Version 1.2.0 - 2026 March 21
 - better handling of % for 4nec2 connections on LD and EX
 - added LD 6 and EX 6 and 7, and GN 3 support from 4nec2
