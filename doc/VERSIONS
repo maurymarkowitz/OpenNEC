@@ -1,5 +1,5 @@
-Version 1.2.1 - 2026 March 22
-- moved the example decks into the new examples folder, out of test
+Version 1.2.1 - 2026 March 23
+- moved the example decks into the new examples folder, out of test, added readme
 - fixed an issue in the cocoaNEC importer that led to some variables not becoming SYs
 - fixed an error in one of the test decks (in the deck, not the code)
 
