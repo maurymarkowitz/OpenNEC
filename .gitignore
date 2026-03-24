@@ -5,18 +5,6 @@ nec2c
 *.o
 *.a
 
-# Xcode
-DerivedData/
-build/
-*.xcuserdata/
-*.xcuserstate
-*.xcworkspace
-xcshareddata/
-
-# macOS
-.DS_Store
-.deps
-
 # old code
 old/
 
@@ -54,20 +42,44 @@ src/types.h
 *-vp
 
 # Local cebik test files
-test/cebik collection/
+#  these are simply too large to check in, and they are not needed for anyone else to run the code
+examples/cebik collection/
 
+# cocoaNEC example NEC files
+#  these are the conversion artifaces and shouldn't be checked in
+examples/cocoaNEC examples/**/*.nec
+examples/cocoaNEC examples/**/*.NEC
+
+# and similiarily...
+examples/DF9CY EZNEC files/**/*.nec
+examples/DF9CY EZNEC files/**/*.NEC
+
+# there are other example files, but they are .nec so they are fine
+
+# and some build artifacts
 doc/MMA format survey.md
 maa_convert
 maa_sy_test
 test/maa_convert
 test/maa_convert.c
 test/maa_sy_test.c
-
 plans/
 
+# Xcode
+DerivedData/
+build/
+*.xcuserdata/
+*.xcuserstate
+*.xcworkspace
+xcshareddata/
+
+# macOS
+.DS_Store
+.deps
 # macOS debug symbol bundles
 .dSYM/
 *.dSYM/
 
 # Windows executables
 *.exe
+

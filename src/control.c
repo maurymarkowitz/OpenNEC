@@ -31,6 +31,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
 static int execute_extra_patterns(nec_context_t *ctx, const deck_t *deck, int batch_start, int batch_end);
 static int count_tag_segments(const nec_context_t *ctx, int tag);
 static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card, int field_idx, int tag);
+static void validate_geometry_post_calculation(nec_context_t *ctx, errors_list_t *errors);
 
 /******************************************************************************
  * count_tag_segments()
@@ -85,6 +86,92 @@ static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card,
 }
 
 /******************************************************************************
+ * validate_geometry_post_calculation()
+ *
+ * Private helper: Post-calculation geometry sanity checks. These validations
+ * run AFTER geometry calculation and formula evaluation, but BEFORE the NEC
+ * solver (fill_interaction_matrix). They check for physical impossibilities
+ * that would cause calculation failures or looping.
+ *
+ * Checks performed:
+ * 1. No zero-length wires (half_len must be > 0)
+ * 2. No zero-radius wires (radius must be > 0)  
+ * 3. No zero-area patches (patch_area must be > 0)
+ *
+ * These are FATAL validation errors that stop calculation.
+ *
+ * @param ctx     The NEC context with calculated geometry
+ * @param errors  The errors_list_t to append errors to
+ */
+static void validate_geometry_post_calculation(nec_context_t *ctx, errors_list_t *errors)
+{
+  char msg[MAX_ERROR_LEN];
+
+  if (ctx == NULL || errors == NULL) {
+    return;
+  }
+
+  /* Check wire segments for zero length or zero radius */
+  if (ctx->geometry.num_segs > 0) {
+    if (ctx->geometry.half_len == NULL || ctx->geometry.radius == NULL) {
+      snprintf(msg, sizeof(msg), 
+               "Internal error: geometry has %d segments but half_len or radius array is NULL.",
+               ctx->geometry.num_segs);
+      add_error(ctx, errors, msg, FATAL);
+      return;
+    }
+
+    for (int i = 0; i < ctx->geometry.num_segs; i++) {
+      double len = ctx->geometry.half_len[i];
+      double rad = ctx->geometry.radius[i];
+      int tag = ctx->geometry.tag_nums[i];
+
+      /* Check for zero or negative length */
+      if (len <= 0.0) {
+        snprintf(msg, sizeof(msg),
+                 "Wire segment %d (tag %d): has zero or negative length (%.6g m). "
+                 "This prevents NEC solver from running.", 
+                 i + 1, tag, len);
+        add_error(ctx, errors, msg, FATAL);
+      }
+
+      /* Check for zero or negative radius */
+      if (rad <= 0.0) {
+        snprintf(msg, sizeof(msg),
+                 "Wire segment %d (tag %d): has zero or negative radius (%.6g m). "
+                 "This prevents NEC solver from running.",
+                 i + 1, tag, rad);
+        add_error(ctx, errors, msg, FATAL);
+      }
+    }
+  }
+
+  /* Check patch geometry for zero area */
+  if (ctx->geometry.num_patches > 0) {
+    if (ctx->geometry.patch_area == NULL) {
+      snprintf(msg, sizeof(msg),
+               "Internal error: geometry has %d patches but patch_area array is NULL.",
+               ctx->geometry.num_patches);
+      add_error(ctx, errors, msg, FATAL);
+      return;
+    }
+
+    for (int i = 0; i < ctx->geometry.num_patches; i++) {
+      double area = ctx->geometry.patch_area[i];
+
+      /* Check for zero or negative area (patch_area is in wavelengths^2) */
+      if (area <= 0.0) {
+        snprintf(msg, sizeof(msg),
+                 "Patch %d: has zero or negative area (%.6g lambda^2). "
+                 "This prevents NEC solver from running.",
+                 i + 1, area);
+        add_error(ctx, errors, msg, FATAL);
+      }
+    }
+  }
+}
+
+/******************************************************************************
  * nec_run_simulation()
  *
  * Complete wrapper function for running an NEC simulation from a parsed deck.
@@ -117,6 +204,20 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
             // Transfer already-logged errors without re-printing them
             transfer_errors(&geometry_errors, &ctx->errors);
             return -1;
+        }
+    }
+    
+    // Step 1b: Post-geometry sanity checks on calculated values
+    // This validates that formulas evaluated correctly and geometry is physically valid
+    // (no zero-length wires, zero-radius wires, or zero-area patches).
+    // These checks prevent looping or crashes in the NEC solver.
+    validate_geometry_post_calculation(ctx, &ctx->errors);
+    if (ctx->errors.num_errors > 0) {
+        // Check for any FATAL errors in post-calculation validation
+        for (int i = 0; i < ctx->errors.num_errors; i++) {
+            if (ctx->errors.errors[i].severity == FATAL) {
+                return -1;
+            }
         }
     }
     

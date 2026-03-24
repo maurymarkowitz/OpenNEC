@@ -35,7 +35,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (read_deck_nc(&deck, inf) != 0) {
+    if (read_deck_nc(ctx, &deck, inf, &import_errors) != 0) {
         fprintf(stderr, "nc2nec: read_deck_nc failed for %s\n", inpath);
         fclose(inf);
         nec_destroy_context(ctx);

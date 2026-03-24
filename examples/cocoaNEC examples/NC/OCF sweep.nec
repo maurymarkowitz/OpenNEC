@@ -4,6 +4,7 @@ CM Demonstration of the keepDataBetweenModelRuns.
 CM Plots multiple feedpiont impedances on the same Smith Chart.
 CM An OCF dipole is fed at different locations, starting at the center and moving to 5% of the length.
 CE
+SY fraction=0 ' value not set in model(),  in SY
 SY w=5.165
 SY a=(w*2)*fraction-w-0.05
 SY b=a+0.1

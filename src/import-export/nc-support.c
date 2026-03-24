@@ -804,6 +804,203 @@ static int nc_split(const char *s, char out[][256], int max)
 }
 
 /* -------------------------------------------------------------------------
+ * NC reader state definitions
+ * ---------------------------------------------------------------------- */
+
+#define NCR_MAX_VARS   64
+#define NCR_MAX_GW    512
+#define NCR_MAX_POST  256
+
+typedef struct {
+    const char *p;            /* current scan position            */
+
+    /* variable registries */
+    char  sy_vars[NCR_MAX_VARS][64];  /* real/int variable names    */
+    bool  sy_assigned[NCR_MAX_VARS];  /* has this variable received an assignment */
+    char  sy_values[NCR_MAX_VARS][256]; /* assigned value expression */
+    int   n_syv;
+    char  el_vars[NCR_MAX_VARS][64];  /* element variable names     */
+    int   el_tags[NCR_MAX_VARS];      /* assigned GW tag (0=none)   */
+    char  el_segs[NCR_MAX_VARS][64];  /* segment-count expression   */
+    int   n_elv;
+    int   next_tag;           /* next GW tag to assign            */
+
+    /* variables used in model() expressions */
+    char  used_vars[NCR_MAX_VARS][64]; /* identifiers referenced in formulas */
+    int   n_used_vars;
+
+    /* emitted-card flags */
+    bool  need_c;             /* inject SY c=299.792458?          */
+    bool  have_gn;            /* any GN call seen?                */
+    bool  have_fr;            /* any FR card emitted?             */
+    int   sommerfeld;         /* useSommerfeldGround arg          */
+    bool  first_freq;         /* setFrequency not yet emitted     */
+} ncr_t;
+
+/* -------------------------------------------------------------------------
+ * Control-section variable detection
+ *
+ * When reading .nc files, we need to warn if a variable used in the model()
+ * section is only assigned in the control() section, as conversion to flat
+ * NEC format will lose the control-section assignments.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Extract all identifiers from an expression string into the given array.
+ * Returns count of unique identifiers found.
+ */
+static int nc_extract_identifiers(const char *expr, char idents[][64], int max)
+{
+    int count = 0;
+    const char *p = expr;
+    
+    while (*p) {
+        /* Skip non-identifier characters */
+        if (!isalpha((unsigned char)*p) && *p != '_') {
+            p++;
+            continue;
+        }
+        
+        /* Read identifier */
+        char ident[64];
+        int n = 0;
+        while (*p && (isalnum((unsigned char)*p) || *p == '_')) {
+            if (n < 63) ident[n++] = *p;
+            p++;
+        }
+        ident[n] = '\0';
+        
+        /* Skip built-in functions and constants */
+        if (strcmp(ident, "sin") == 0 || strcmp(ident, "cos") == 0 ||
+            strcmp(ident, "tan") == 0 || strcmp(ident, "sqrt") == 0 ||
+            strcmp(ident, "abs") == 0 || strcmp(ident, "log") == 0 ||
+            strcmp(ident, "exp") == 0 || strcmp(ident, "asin") == 0 ||
+            strcmp(ident, "acos") == 0 || strcmp(ident, "atan") == 0 ||
+            strcmp(ident, "sinh") == 0 || strcmp(ident, "cosh") == 0 ||
+            strcmp(ident, "tanh") == 0 || strcmp(ident, "sind") == 0 ||
+            strcmp(ident, "cosd") == 0 || strcmp(ident, "tand") == 0 ||
+            strcmp(ident, "atand") == 0 || strcmp(ident, "c") == 0 ||
+            strcmp(ident, "pi") == 0 || strcmp(ident, "e") == 0) {
+            continue;
+        }
+        
+        /* Check if already in list */
+        bool already = false;
+        for (int i = 0; i < count; i++) {
+            if (strcmp(idents[i], ident) == 0) { already = true; break; }
+        }
+        if (!already && count < max) {
+            strncpy(idents[count++], ident, 63);
+            idents[count-1][63] = '\0';
+        }
+    }
+    
+    return count;
+}
+
+/**
+ * Scan the control() block text (starting at first 'control') and extract
+ * all variable names that appear to be assigned (on LHS of '=').
+ * Returns count of variables found.
+ */
+static int nc_scan_control_vars(const char *text, char vars[][64], int max)
+{
+    int count = 0;
+    const char *p = text;
+    
+    /* Find 'control' keyword at statement level */
+    while (*p) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (p[0] == 'c' && p[1] == 'o' && p[2] == 'n' && p[3] == 't' &&
+            p[4] == 'r' && p[5] == 'o' && p[6] == 'l' &&
+            (isspace((unsigned char)p[7]) || p[7] == '(')) {
+            p += 7;
+            break;
+        }
+        /* Skip to next line */
+        while (*p && *p != '\n') p++;
+        if (*p == '\n') p++;
+    }
+    
+    if (!*p) return 0;  /* control() not found */
+    
+    /* Skip to opening brace */
+    while (*p && *p != '{') p++;
+    if (*p != '{') return 0;
+    p++;
+    
+    /* Scan inside control() block */
+    int depth = 1;
+    while (*p && depth > 0) {
+        /* Skip whitespace and comments */
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (p[0] == '/' && p[1] == '/') {
+            while (*p && *p != '\n') p++;
+            continue;
+        }
+        
+        if (*p == '{') { depth++; p++; continue; }
+        if (*p == '}') { depth--; p++; continue; }
+        if (!*p) break;
+        
+        /* Try to read an identifier */
+        if (isalpha((unsigned char)*p) || *p == '_') {
+            char ident[64];
+            int n = 0;
+            while (*p && (isalnum((unsigned char)*p) || *p == '_')) {
+                if (n < 63) ident[n++] = *p;
+                p++;
+            }
+            ident[n] = '\0';
+            
+            /* Skip whitespace after identifier */
+            while (*p && isspace((unsigned char)*p)) p++;
+            
+            /* If next non-whitespace is '=', this is an assignment */
+            if (*p == '=') {
+                /* Check if not already in list */
+                bool already = false;
+                for (int i = 0; i < count; i++) {
+                    if (strcmp(vars[i], ident) == 0) { already = true; break; }
+                }
+                if (!already && count < max) {
+                    strncpy(vars[count++], ident, 63);
+                    vars[count-1][63] = '\0';
+                }
+            }
+        } else {
+            p++;
+        }
+    }
+    
+    return count;
+}
+
+/**
+ * Helper: add identifiers from an expression to the used_vars list
+ */
+static void nc_track_expr_vars(ncr_t *s, const char *expr)
+{
+    if (!expr || !*expr) return;
+    
+    char expr_idents[32][64];
+    int n_idents = nc_extract_identifiers(expr, expr_idents, 32);
+    for (int i = 0; i < n_idents; i++) {
+        bool already = false;
+        for (int j = 0; j < s->n_used_vars; j++) {
+            if (strcmp(s->used_vars[j], expr_idents[i]) == 0) {
+                already = true;
+                break;
+            }
+        }
+        if (!already && s->n_used_vars < NCR_MAX_VARS) {
+            strncpy(s->used_vars[s->n_used_vars++], expr_idents[i], 63);
+            s->used_vars[s->n_used_vars-1][63] = '\0';
+        }
+    }
+}
+
+/* -------------------------------------------------------------------------
  * Expression transformation: NC → tinyexpr-compatible
  * ---------------------------------------------------------------------- */
 
@@ -931,31 +1128,6 @@ static bool expr_uses_c(const char *s)
  * NC reader state
  * ---------------------------------------------------------------------- */
 
-#define NCR_MAX_VARS   64
-#define NCR_MAX_GW    512
-#define NCR_MAX_POST  256
-
-typedef struct {
-    const char *p;            /* current scan position            */
-
-    /* variable registries */
-    char  sy_vars[NCR_MAX_VARS][64];  /* real/int variable names    */
-    bool  sy_assigned[NCR_MAX_VARS];  /* has this variable received an assignment */
-    int   n_syv;
-    char  el_vars[NCR_MAX_VARS][64];  /* element variable names     */
-    int   el_tags[NCR_MAX_VARS];      /* assigned GW tag (0=none)   */
-    char  el_segs[NCR_MAX_VARS][64];  /* segment-count expression   */
-    int   n_elv;
-    int   next_tag;           /* next GW tag to assign            */
-
-    /* emitted-card flags */
-    bool  need_c;             /* inject SY c=299.792458?          */
-    bool  have_gn;            /* any GN call seen?                */
-    bool  have_fr;            /* any FR card emitted?             */
-    int   sommerfeld;         /* useSommerfeldGround arg          */
-    bool  first_freq;         /* setFrequency not yet emitted     */
-} ncr_t;
-
 /* Forward declaration */
 static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp);
 
@@ -982,6 +1154,25 @@ static int ncr_wire(ncr_t *s, const char *argstr, deck_t *deck,
     if (seg_out) {
         strncpy(seg_out, xa[7], seg_sz - 1);
         seg_out[seg_sz - 1] = '\0';
+    }
+
+    /* Track all variables used in wire arguments */
+    for (int i = 0; i < 8; i++) {
+        char wire_idents[32][64];
+        int n_idents = nc_extract_identifiers(xa[i], wire_idents, 32);
+        for (int j = 0; j < n_idents; j++) {
+            bool already = false;
+            for (int k = 0; k < s->n_used_vars; k++) {
+                if (strcmp(s->used_vars[k], wire_idents[j]) == 0) {
+                    already = true;
+                    break;
+                }
+            }
+            if (!already && s->n_used_vars < NCR_MAX_VARS) {
+                strncpy(s->used_vars[s->n_used_vars++], wire_idents[j], 63);
+                s->used_vars[s->n_used_vars-1][63] = '\0';
+            }
+        }
     }
 
     char buf[512];
@@ -1087,6 +1278,8 @@ static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
         char re[256], im[256];
         expand_expr(args[1], re, sizeof re);
         expand_expr(args[2], im, sizeof im);
+        nc_track_expr_vars(s, re);
+        nc_track_expr_vars(s, im);
         char buf[512];
         snprintf(buf, sizeof buf,
                  "EX %d, %d, %s, 0, %s, %s",
@@ -1431,29 +1624,51 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
         char expr[512];
         expand_expr(expr_raw, expr, sizeof expr);
 
+        /* Extract identifiers used in this expression and add to used_vars */
+        {
+            char expr_idents[32][64];
+            int n_idents = nc_extract_identifiers(expr, expr_idents, 32);
+            for (int i = 0; i < n_idents; i++) {
+                bool already = false;
+                for (int j = 0; j < s->n_used_vars; j++) {
+                    if (strcmp(s->used_vars[j], expr_idents[i]) == 0) {
+                        already = true;
+                        break;
+                    }
+                }
+                if (!already && s->n_used_vars < NCR_MAX_VARS) {
+                    strncpy(s->used_vars[s->n_used_vars++], expr_idents[i], 63);
+                    s->used_vars[s->n_used_vars-1][63] = '\0';
+                }
+            }
+        }
+
         /* If this identifier is one of the declared real/int vars, mark it assigned */
+        int assigned_index = -1;
         for (int i = 0; i < s->n_syv; i++) {
             if (strcmp(s->sy_vars[i], ident) == 0) {
-                s->sy_assigned[i] = true;
+                assigned_index = i;
                 break;
             }
+        }
+        if (assigned_index < 0 && s->n_syv < NCR_MAX_VARS) {
+            assigned_index = s->n_syv;
+            strncpy(s->sy_vars[s->n_syv], ident, 63);
+            s->sy_vars[s->n_syv][63] = '\0';
+            s->sy_assigned[s->n_syv] = false;
+            s->sy_values[s->n_syv][0] = '\0';
+            s->n_syv++;
+        }
+        if (assigned_index >= 0) {
+            s->sy_assigned[assigned_index] = true;
+            strncpy(s->sy_values[assigned_index], expr, 255);
+            s->sy_values[assigned_index][255] = '\0';
         }
 
         /* check if 'c' constant is needed */
         if (expr_uses_c(expr)) s->need_c = true;
 
-        /* We emit SY cards deferred (in the final card flush), but since
-         * append_card_from_text appends in order, we need to emit SY before
-         * GW.  We're inside the model body, but GW cards may interleave with
-         * SY assignments.  Strategy: emit SY inline here, before any later
-         * GW emitted in the same pass.  This matches the NEC-2 rule that SY
-         * must precede GW cards. */
-        char buf[512];
-        if (eol[0])
-            snprintf(buf, sizeof buf, "SY %s=%s ! %s", ident, expr, eol);
-        else
-            snprintf(buf, sizeof buf, "SY %s=%s", ident, expr);
-        append_card_from_text(deck, buf);
+        /* Do not append SY cards now; they will be emitted before geometry. */
         return;
     }
 
@@ -1468,7 +1683,7 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
 /**
  * @copydoc read_deck_nc
  */
-int read_deck_nc(deck_t *deck, FILE *fp)
+int read_deck_nc(nec_context_t *ctx, deck_t *deck, FILE *fp, errors_list_t *errors)
 {
     if (!deck || !fp) return -1;
 
@@ -1623,13 +1838,68 @@ int read_deck_nc(deck_t *deck, FILE *fp)
         ncr_stmt(&s, deck, post, &np, NCR_MAX_POST);
     }
 
-    /* ---- initialize unassigned real/int variables to zero ------------- */
+    /* ---- detect variables used in model() but only assigned in control() ---- */
+    {
+        char control_vars[NCR_MAX_VARS][64];
+        int n_control_vars = nc_scan_control_vars(s.p, control_vars, NCR_MAX_VARS);
+        
+        /* For each variable used in model(), check if it's not assigned in model()
+         * but IS assigned in control() */
+        for (int i = 0; i < s.n_used_vars; i++) {
+            const char *used_var = s.used_vars[i];
+            
+            /* Check if assigned in model() */
+            bool assigned_in_model = false;
+            for (int j = 0; j < s.n_syv; j++) {
+                if (strcmp(s.sy_vars[j], used_var) == 0 && s.sy_assigned[j]) {
+                    assigned_in_model = true;
+                    break;
+                }
+            }
+            
+            /* Check if assigned in control() */
+            bool assigned_in_control = false;
+            for (int j = 0; j < n_control_vars; j++) {
+                if (strcmp(control_vars[j], used_var) == 0) {
+                    assigned_in_control = true;
+                    break;
+                }
+            }
+            
+            /* Warn if used in model() but only assigned in control() */
+            if (!assigned_in_model && assigned_in_control) {
+                size_t mlen = strlen(used_var) * 2 + 128;
+                char *msg = malloc(mlen);
+                if (msg) {
+                    sprintf(msg, "WARNING: variable '%s' is used in model() but only assigned in control(); the generated NEC output will have SY %s=0 and requires user initialization.", used_var, used_var);
+                    add_error(ctx, errors, msg, WARNING);
+                }
+            }
+        }
+    }
+
+    /* ---- emit SY variables (at top of NEC deck) ---------------------- */
+    int ce_index = -1;
+    for (int i = 0; i < deck->num_cards; i++) {
+        if (deck->cards[i].card_code[0] == 'C' && deck->cards[i].card_code[1] == 'E') {
+            ce_index = i;
+            break;
+        }
+    }
+    int insert_at = (ce_index >= 0) ? (ce_index + 1) : 0;
+
     for (int i = 0; i < s.n_syv; i++) {
-        if (!s.sy_assigned[i]) {
-            char zbuf[128];
-            snprintf(zbuf, sizeof zbuf, "SY %s=0", s.sy_vars[i]);
-            append_card_from_text(deck, zbuf);
-            s.sy_assigned[i] = true;
+        char zbuf[384];
+        if (s.sy_assigned[i]) {
+            snprintf(zbuf, sizeof zbuf, "SY %s=%s", s.sy_vars[i], s.sy_values[i]);
+        } else {
+            snprintf(zbuf, sizeof zbuf, "SY %s=0 ' value not set in model(),  in SY", s.sy_vars[i]);
+        }
+        append_card_from_text(deck, zbuf);
+        int last_index = deck->num_cards - 1;
+        if (last_index >= 0 && insert_at <= last_index) {
+            move_card(deck, last_index, insert_at);
+            insert_at++;
         }
     }
 

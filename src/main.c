@@ -21,6 +21,7 @@
 #include "import-export/nec4-support.h"
 #include "import-export/maa-support.h"
 #include "import-export/yo-support.h"
+#include "import-export/nc-support.h"
 
 #ifndef _GETOPT_H
 #include <getopt.h>
@@ -84,7 +85,7 @@ void print_usage(char *argv[])
   puts("  -g, --greens[=file]: write a Green's function file; filename defaults to input path with .ngf extension");
   puts("  -j, --jobs N: process up to N files in parallel (default 1)");
   puts("  -w file, --write-file=file: write the deck to file in the format inferred from its extension");
-  puts("    Supported: .nec/.deck (OpenNEC), .nec2 (NEC-2), .nec4 (NEC-4), .maa/.mma (MMANA-GAL), .yo/.ant/.yag (Yagi Optimizer)");
+  puts("    Supported: .nec/.deck (OpenNEC), .nec2 (NEC-2), .nec4 (NEC-4), .maa/.mma (MMANA-GAL), .yo/.ant/.yag (Yagi Optimizer), .nc (cocoaNEC)");
   puts("    Pass a bare extension (e.g. -w .maa) to convert multiple input files in place.");
   puts("Multiple input files or folders can be specified; each file will generate a .out file.");
   puts("If no input_file is provided, input is read from stdin and output goes to stdout.");
@@ -219,6 +220,7 @@ typedef enum {
   FILETYPE_NEC4,         /* .nec4        — NEC-4 output (stub)        */
   FILETYPE_YO,           /* .yo   .ant   .yag — Yagi Optimizer        */
   FILETYPE_MAA,          /* .maa  .mma   — MMANA-GAL                  */
+  FILETYPE_NC,           /* .nc  — cocoaNEC script                    */
   FILETYPE_UNSUPPORTED,  /* known format, importer not yet available  */
   FILETYPE_UNKNOWN,      /* unrecognised extension — try NEC parsing  */
   FILETYPE_STDIN,        /* empty / "-" — stdin, no extension info    */
@@ -249,6 +251,7 @@ static filetype_t classify_by_extension(const char *filename)
   if (strcasecmp(ext, ".mma") == 0) return FILETYPE_MAA;
 
   if (strcasecmp(ext, ".4nec") == 0) return FILETYPE_NEC;         /* 4nec2 project — identical to NEC deck */
+  if (strcasecmp(ext, ".nc")   == 0) return FILETYPE_NC;
 
   if (strcasecmp(ext, ".ez")   == 0) return FILETYPE_UNSUPPORTED; /* EZNEC         */
   if (strcasecmp(ext, ".ezn")  == 0) return FILETYPE_UNSUPPORTED; /* EZNEC newer   */
@@ -490,6 +493,14 @@ static int process_single_file(const char *input_filename, const char *output_fi
   } else if (ftype == FILETYPE_MAA) {
     if (read_deck_maa(&deck, input_fp) != 0) {
       fprintf(error_fp, "onec: failed to parse MMANA-GAL file '%s'\n", input_filename);
+      if (input_fp != stdin) fclose(input_fp);
+      if (output_fp != stdout) fclose(output_fp);
+      nec_destroy_context(ctx);
+      return -1;
+    }
+  } else if (ftype == FILETYPE_NC) {
+    if (read_deck_nc(ctx, &deck, input_fp, &import_errors) != 0) {
+      add_error(ctx, &import_errors, strdup("onec: failed to parse cocoaNEC .nc file"), FATAL);
       if (input_fp != stdin) fclose(input_fp);
       if (output_fp != stdout) fclose(output_fp);
       nec_destroy_context(ctx);

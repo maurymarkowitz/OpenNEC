@@ -72,6 +72,6 @@ int write_deck_nc(const deck_t *deck, FILE *fp);
  * @param fp    Open file handle for reading.
  * @return 0 on success, -1 on error.
  */
-int read_deck_nc(deck_t *deck, FILE *fp);
+int read_deck_nc(nec_context_t *ctx, deck_t *deck, FILE *fp, errors_list_t *errors);
 
 #endif /* NC_SUPPORT_H */

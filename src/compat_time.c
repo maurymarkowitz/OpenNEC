@@ -2,7 +2,7 @@
  * Uses QueryPerformanceCounter for high-resolution monotonic time.
  */
 
-#if defined(_WIN32) && !defined(__MINGW64_VERSION_MAJOR)
+#if defined(_WIN32)
 
 #include "compat.h"
 #include <windows.h>
