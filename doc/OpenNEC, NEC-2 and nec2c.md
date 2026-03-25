@@ -1,9 +1,9 @@
-OpenNEC, NEC-2 and nec2c
-============================================
+OpenNEC, NEC-2, nec2c and others
+================================
 
-OpenNEC, onec for short, is a re-implementation of the nec2c code, which is a reimplementation of the original Fortran NEC-2 code. The differences between onec and nec2c are much greater than those between nec2c and NEC-2.
+OpenNEC, onec for short, is a re-implementation of the nec2c code, which is a reimplementation of the original Fortran NEC-2 code. The differences between onec and nec2c are much greater than those between nec2c and NEC-2. This document describes the main changes between nec2c and OpenNEC.
 
-This document describes the main changes, which include changes to the original nec2c, as well as the large number of additions and features not found in the original nec2c code.
+OpenNEC also includes many features inspired by other NEC engines. The sections below outline these features, as well as listing a number of alternative NEC engines similar OpenNEC.
 
 Changes from nec2c
 ------------------
@@ -33,9 +33,9 @@ Other basic changes
 
 - onec has extensively updated error reporting that, wherever possible, reports the card and tag that caused the issue. This makes debugging stacks much easier.
 
-- onec includes extensive input validations that test for errors in the deck setup, like a missing `GE` card, `FR`s lacking a frequency, or a `GN` that is not followed by `GD`. These tests can be run against any NEC-2 compatible deck.
+- onec includes extensive whole-deck validations that test for errors in the deck setup, like a missing `GE` card, `FR`s lacking a frequency, or a `GN` that is not followed by `GD`. These tests can be run against any NEC-2 compatible deck.
 
-- the tests also include a geometry and calculation sanity check system that looks for common errors like overlapping wires or wires touching ground. These are based on the rules from Cebik's extensive documentation as well as additional rules from 4nec2/
+- the tests also include a geometry and calculation sanity check system that looks for common errors like overlapping wires or wires touching ground. These are based on the rules from Cebik's extensive documentation as well as additional rules from 4nec2
 
 Note: Most validations are emitted as warnings (non-fatal) to preserve compatibility with existing decks while highlighting potential issues.
 
@@ -59,3 +59,44 @@ A number of features commonly found in other popular NEC-based programs have bee
 * onec supports the `XT` card type from nec2c, which stops processing at that point. onec will still read the entire deck, but will only *process* up to the point of the XT. This allows additional cards to be placed in the deck but ignored during processing, and those can be "turned on" by removing the XT or using the onec `ignore:true` flag.
 
 * onec supports the `#` comment marker from nec2c. This was used to insert whole-line comments at any point in the deck, a system that does not appear to be widely used in other systems. Note that the `#` comment marker can only appear at the start of a line and cannot be used to insert end-of-line comments. At any other location in the line, # is used as it is in 4nec2, to indicate a field is using AWG measurements. The leading-`#` is included only for compatibility, it is not considered to be part of the onec standard and should not be used except to produce nec2c compatible files. The modern replacement is `!`.
+
+Other NEC engines
+=================
+
+### xnec2c
+
+A further development of nec2c by Neoklis Kyriazis to add an X Windows-based GUI. This version of the system was extended to include multi-threaded capabilities and support for math libraries. While OpenNEC also adds these capabilties, it did not use the code from xnec2c to do so. The project appears to be moribund.
+
+The xnec2c code can be found here:
+
+https://github.com/KJ7LNW/xnec2c
+
+### nec2++
+
+Another re-factoring of the original NEC-2 code, this time as a re-implementation in C++, as opposed to a port. nec2++ is very similar to OpenNEC in concept, including threading support, math library support, an object-oriented structure (based on structs in OpenNEC), and so-forth. It also includes some deck and card validation functionality.
+
+So why make OpenNEC if nec2++ does many of the same things? The main reason is that pure-C implementations generally integrate with other languages more cleanly. In particular, the original target for OpenNEC is a Swift GUI, and integrating C code with Swift is *much* easier than using C++ code.
+
+OpenNEC also expands the system in several ways that nec2++ didn't, including measurement units, symbols and formulas, and import/export. All of these could be easily ported back to nec2++.
+
+The nec2++ code can be found here:
+
+https://github.com/tmolteno/necpp
+
+### 4nec2
+
+4nec2 is a powerful GUI program for Windows machines by Arie Voors, started in the 1990s and seeing continual development since then. Over time, it added a number of features like formulas and additional NEC options like EX 6.
+
+The actual calculations are carried out using Windows compiled versions of the original Fortran code, which is called through a batch files. OpenNEC attempts to implement these same features directly in the library, avoiding the need to create temporary decks or process the resulting output text. However, many of these features are poorly documented, if at all, so these will require further testing and comparison to ensure they work as 4nec2 intends.
+
+4nec2 is distributed only in compiled form, and can be found here:
+
+https://www.qsl.net/4nec2/
+
+### The other OpenNEC
+
+Long after starting work on OpenNEC, I came across *another* OpenNEC project, this time on SorceForge:
+
+https://sourceforge.net/projects/gnec/
+
+The repo consists only of the original NEC-2 documentation. It appears the project never moved forward.

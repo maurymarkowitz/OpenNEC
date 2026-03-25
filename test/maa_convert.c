@@ -8,7 +8,7 @@
 
 static int convert_file(const char *inpath)
 {
-    deck_t deck = {0};
+    deck_t deck; init_deck(&deck);
     FILE *inf = fopen(inpath, "r");
     if (!inf) {
         perror(inpath);

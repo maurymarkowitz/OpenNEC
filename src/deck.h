@@ -10,8 +10,46 @@
 
 #include "types.h"
 
-/* Card insertion, removal, and reordering */
+/**
+ * insert_card - add a card_t to the deck at a specific location.
+ * 
+ * Inserts the given card_t into the deck's cards array at the specified location,
+ * shifting existing cards as needed.  Location is 0-based index for the new card.
+ * Used by all the format importers (maa, yo, nc) and also for card reordering.
+ *
+ * @param deck  Target deck (non-NULL).
+ * @param card  Card to insert (non-NULL).
+ * @param location  0-based index for the new card.
+ * @return 0 on success, -1 on allocation / insertion failure.
+ */
 int insert_card(deck_t *deck, card_t *card, int location);
+
+/**
+ * move_card - move a card from one location to another within the deck.
+ * *
+ * Moves the card at index src to index dst, shifting other cards as needed.
+ * Used for reordering cards within the deck, such as when inserting SY cards
+ * in the correct position.
+ *
+ * @param deck  Target deck (non-NULL).
+ * @param src   0-based index of the card to move.
+ * @param dst   0-based index of the destination location for the card.
+ * @return 0 on success, -1 on failure (e.g. invalid indices).
+ */
+int move_card(deck_t *deck, int src, int dst);
+
+/**
+ * remove_card - remove a card from the deck at a specific location..
+ *
+ * Removes the card at the specified index from the deck's cards array,
+ * shifting remaining cards as needed.  Used for deleting cards during
+ * editing or cleanup.
+ *
+ * @param deck  Target deck (non-NULL).
+ * @param location  0-based index of the card to remove.
+ * @return 0 on success, -1 on failure (e.g. invalid index).
+ */
+int remove_card(deck_t *deck, int location);
 
 /**
  * append_card_from_text - allocate and append a card from a plain text line.
@@ -25,8 +63,7 @@ int insert_card(deck_t *deck, card_t *card, int location);
  * @return 0 on success, -1 on allocation / insertion failure.
  */
 int append_card_from_text(deck_t *deck, const char *text);
-int move_card(deck_t *deck, int src, int dst);
-int remove_card(deck_t *deck, int location);
+
 
 /* Card enable/disable (comment out / uncomment) for GUI toggling */
 bool card_is_toggleable(const card_t *card);
@@ -34,9 +71,11 @@ void card_disable(deck_t *deck, card_t *card);
 void card_enable(deck_t *deck, card_t *card);
 
 /**
- * card_is_invisible - card is annotated invisible (ignore=true, no leading marker).
- * Geometry IS generated but goes to ignored_geometry rather than live geometry.
- * The card remains visible to the GUI and can be toggled back on.
+ * card_is_invisible - check if a card is set to invisible.
+ * 
+ * A card is invisible if it is marked to be ignored but has no leading comment
+ * marker (e.g. '!', '\'', '#').
+ * 
  */
 static inline bool card_is_invisible(const card_t *card)
 {
@@ -44,7 +83,11 @@ static inline bool card_is_invisible(const card_t *card)
 }
 
 /**
- * card_is_commented_out - card has a leading comment marker (e.g. '!', '\'', '#').
+ * card_is_commented_out - check if a card is commented out.
+ * 
+ * A card is commented out if it is marked to be ignored and has a leading comment
+ * marker (e.g. '!', '\'', '#').
+ * 
  * Entirely skipped during geometry and calculation — no geometry is generated at all.
  */
 static inline bool card_is_commented_out(const card_t *card)
@@ -61,18 +104,32 @@ bool is_extension(const card_t *card);
 /* Return true if this card type assigns an ITG tag to generated segments */
 bool card_has_itag(const card_t *card);
 
-/* Card field counts */
+/**
+ * Card field counts
+ * 
+ * Return the expected number of integer or float fields for a card, based on
+ * the card code and the values of certain fields. Used for validating card
+ * inputs and for determining how many fields to parse.
+ * 
+ * For example, an FR card has two forms: if I1 is 0, it has no float fields;
+ * if I1 is non-zero, it has F1 and F2. These functions encapsulate that logic.
+ * 
+ * @param card Card to test (non-NULL).
+ * @return Expected number of integer or float fields for this card, based on
+ *  its code and field values.
+ */
 int min_int_fields(const card_t *card);
 int max_int_fields(const card_t *card);
 int min_flt_fields(const card_t *card);
 int max_flt_fields(const card_t *card);
 
 /* Deck lifecycle */
-void free_deck(deck_t *deck);
-void update_deck_values(nec_context_t *ctx, deck_t *deck);
+void init_deck(deck_t *deck);
+void destroy_deck(deck_t *deck);
+void update_deck_values(context_t *ctx, deck_t *deck);
 void initialize_symbol_table(deck_t *deck, errors_list_t *errors);
-void evaluate_formula(nec_context_t *ctx, key_value_t *formula, deck_t *deck, errors_list_t *errors);
-void evaluate_symbols_in_comments(nec_context_t *ctx, deck_t *deck, errors_list_t *errors);
+void evaluate_formula(context_t *ctx, key_value_t *formula, deck_t *deck, errors_list_t *errors);
+void evaluate_symbols_in_comments(context_t *ctx, deck_t *deck, errors_list_t *errors);
 
 /* Cross-module deck functions */
 void add_key_value(const card_t *card, key_value_t **list, char *key, char *value, char separator);

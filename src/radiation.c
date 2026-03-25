@@ -16,7 +16,7 @@
  * - Support image contributions where applicable to account for ground/cliff
  *   effects on the observed fields.
  *
- * Operates on `nec_context_t`, reading geometry (`geometry`), current
+ * Operates on `context_t`, reading geometry (`geometry`), current
  * expansions (`crnt`), and ground parameters (`gnd`) to assemble the far
  * field at requested angles.
  *****************************************************************************/
@@ -29,18 +29,18 @@
 
 /* Forward declarations for internal functions */
 /* Formerly nec2c: ffld */
-static void far_e_field(nec_context_t *restrict ctx, double thet, double phi, complex double *restrict eth, complex double *restrict eph);
+static void far_e_field(context_t *restrict ctx, double thet, double phi, complex double *restrict eth, complex double *restrict eph);
 /* Formerly nec2c: fflds */
-static void far_e_field_surface(nec_context_t *restrict ctx, double rox, double roy, double roz, complex double *restrict scur, complex double *restrict ex, complex double *restrict ey, complex double *restrict ez);
+static void far_e_field_surface(context_t *restrict ctx, double rox, double roy, double roz, complex double *restrict scur, complex double *restrict ex, complex double *restrict ey, complex double *restrict ez);
 /* Formerly nec2c: gfld */
-static void radiated_field_with_ground(nec_context_t *restrict ctx, double rho, double phi, double rz, complex double *restrict eth, complex double *restrict epi, complex double *restrict erd, complex double ux, int ksymp);
+static void radiated_field_with_ground(context_t *restrict ctx, double rho, double phi, double rz, complex double *restrict eth, complex double *restrict epi, complex double *restrict erd, complex double ux, int ksymp);
 
 /*-----------------------------------------------------------------------*/
 
 /* ffld calculates the far zone radiated electric fields, */
 /* the factor exp(j*k*r)/(r/lamda) not included */
 /* Formerly nec2c: ffld */
-void far_e_field(nec_context_t *restrict ctx, double thet, double phi,
+void far_e_field(context_t *restrict ctx, double thet, double phi,
 	complex double *restrict eth, complex double *restrict eph )
 {
   int k, i, ip;
@@ -345,7 +345,7 @@ void far_e_field(nec_context_t *restrict ctx, double thet, double phi,
 /* calculates the xyz components of the electric */
 /* field due to surface currents */
 /* Formerly nec2c: fflds */
-void far_e_field_surface(nec_context_t *restrict ctx, double rox, double roy, double roz,
+void far_e_field_surface(context_t *restrict ctx, double rox, double roy, double roz,
 	complex double *restrict scur, complex double *restrict ex,
 	complex double *restrict ey, complex double *restrict ez )
 {
@@ -391,7 +391,7 @@ void far_e_field_surface(nec_context_t *restrict ctx, double rox, double roy, do
 
 /* gfld computes the radiated field including ground wave. */
 /* Formerly nec2c: gfld */
-void radiated_field_with_ground(nec_context_t *restrict ctx, double rho, double phi, double rz,
+void radiated_field_with_ground(context_t *restrict ctx, double rho, double phi, double rz,
 	complex double *restrict eth, complex double *restrict epi,
 	complex double *restrict erd, complex double ux, int ksymp )
 {
@@ -424,7 +424,7 @@ void radiated_field_with_ground(nec_context_t *restrict ctx, double rho, double 
  * Refactored version that only performs calculations and stores results in ctx->rpat
  */
 /* Formerly nec2c: rdpat */
-void compute_radiation_pattern(nec_context_t *ctx)
+void compute_radiation_pattern(context_t *ctx)
 {
   int i, kth, kph, point_idx;
   double prad, gcon, gcop, gmax, pint, tmp1, tmp2;

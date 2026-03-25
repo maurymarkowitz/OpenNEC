@@ -22,7 +22,7 @@
  * @param deck The deck associated with the simulation.
  * @param pfile Output file pointer.
  */
-void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *pfile);
+void write_nec_output(context_t *ctx, const deck_t *deck, FILE *pfile);
 
 /**
  * @brief Writes the one-time geometry preamble section.
@@ -31,7 +31,7 @@ void write_nec_output(nec_context_t *ctx, const deck_t *deck, FILE *pfile);
  * input card listing.  Called once per simulation section before the
  * frequency loop begins.
  */
-void write_nec_preamble(nec_context_t *ctx, const deck_t *deck, FILE *file);
+void write_nec_preamble(context_t *ctx, const deck_t *deck, FILE *file);
 
 /**
  * @brief Writes all per-frequency-step output sections.
@@ -41,7 +41,7 @@ void write_nec_preamble(nec_context_t *ctx, const deck_t *deck, FILE *file);
  * near-field data for the current frequency step.  Called at the end of each
  * frequency iteration inside execute_frequency_loop().
  */
-void write_frequency_step_output(FILE *file, nec_context_t *ctx);
+void write_frequency_step_output(FILE *file, context_t *ctx);
 
 /**
  * @brief Writes only the radiation-pattern (or near-field) output section.
@@ -51,7 +51,30 @@ void write_frequency_step_output(FILE *file, nec_context_t *ctx);
  * header, loading, matrix timing, and power budget and jumps straight to
  * the pattern computation.
  */
-void write_extra_pattern_output(FILE *file, nec_context_t *ctx);
+void write_extra_pattern_output(FILE *file, context_t *ctx);
+
+/**
+ * @brief Writes the EN and NX end cards as separate batches.
+ *
+ * Outputs EN and NX cards as individual batches with their own DATA CARD No:
+ * lines, appearing near the end of the output file before the footer.
+ *
+ * @param file Output file pointer.
+ * @param deck The deck associated with the simulation.
+ */
+void write_end_cards(FILE *file, const deck_t *deck);
+
+/**
+ * @brief Writes the output file footer.
+ *
+ * Outputs timing and summary information at the end of the output file.
+ * Called after all frequency and pattern data has been written.
+ *
+ * @param file Output file pointer.
+ * @param ctx The simulation context.
+ * @param deck The deck associated with the simulation.
+ */
+void write_footer(FILE *file, const context_t *ctx, const deck_t *deck);
 
 
 /**
@@ -64,7 +87,7 @@ void write_extra_pattern_output(FILE *file, nec_context_t *ctx);
  * @param deck The deck to save.
  * @param pfile Output file pointer.
  */
-void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *pfile);
+void write_deck_onec(const context_t *ctx, const deck_t *deck, FILE *pfile);
 
 /**
  * @brief Writes an OpenNEC binary NGF (Green's function) file.
@@ -79,7 +102,7 @@ void write_deck_onec(const nec_context_t *ctx, const deck_t *deck, FILE *pfile);
  * @param cm    Unfactored CM matrix, column-major, neq×neq complex doubles.
  * @return      true on success, false on I/O error.
  */
-bool write_greens_binary(FILE *file, const nec_context_t *ctx,
+bool write_greens_binary(FILE *file, const context_t *ctx,
                           int neq, const complex double *cm);
 
 /**
@@ -93,6 +116,6 @@ bool write_greens_binary(FILE *file, const nec_context_t *ctx,
  * @param ctx   The simulation context to populate.
  * @return      true on success, false on format/I/O error.
  */
-bool read_greens_binary(FILE *file, nec_context_t *ctx);
+bool read_greens_binary(FILE *file, context_t *ctx);
 
 #endif /* OUTPUT_H */

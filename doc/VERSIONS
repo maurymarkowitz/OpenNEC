@@ -1,6 +1,15 @@
-Version 1.2.1 - 2026 March 23
+Version 1.3.0 - 2026 March 25
+- some API cleanup, on the way to a stable API
+- started fleshing out the user manual, with C example and comments for other languages
+- fixed an obscure memory bug in reflection in large stacks
+- updated the output to always generate the geometry section in the .out, unless -n is turned on (matches NEC behavior)
+- properly moved the EN and NX cards to their own "batch" at the end of the .out
+- fixed an issue with hard-newlines in the middle of fields, which fixes rhom.nec
+- added a command-line switch, --skip-large, which skips files with T>=10^11 when processing multiple files
 - moved the example decks into the new examples folder, out of test, added readme
+- added a test script in examples to run onec against all files, with --skip-large turned on
 - fixed an issue in the cocoaNEC importer that led to some variables not becoming SYs
+- added a warning in the cocoaNEC importer if an SY is only set in the control() section
 - fixed an error in one of the test decks (in the deck, not the code)
 
 Version 1.2.0 - 2026 March 21

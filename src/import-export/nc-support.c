@@ -1683,7 +1683,7 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
 /**
  * @copydoc read_deck_nc
  */
-int read_deck_nc(nec_context_t *ctx, deck_t *deck, FILE *fp, errors_list_t *errors)
+int read_deck_nc(context_t *ctx, deck_t *deck, FILE *fp, errors_list_t *errors)
 {
     if (!deck || !fp) return -1;
 

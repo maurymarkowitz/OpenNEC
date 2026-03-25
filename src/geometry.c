@@ -13,17 +13,17 @@
 #include "output.h"
 
 /* Forward declarations for internal functions */
-static void wire(nec_context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs, double xw1, double yw1, double zw1, double xw2, double yw2, double zsw2, double rad, double rdel, double rrad);
-static void arc(nec_context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs, double rada, double ang1, double ang2, double rad);
-static void helix(nec_context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs, double s, double hl, double a1, double b1, double a2, double b2, double rad, outputs_list_t *outputs);
-static void patch(nec_context_t *ctx, geometry_t *geom, int card_num, int nx, int ny, double ax1, double ay1, double az1, double ax2, double ay2, double az2, double ax3, double ay3, double az3, double ax4, double ay4, double az4);
-static void calculate_patch(nec_context_t *ctx, int nx, int ny);
-static void reproduce(nec_context_t *ctx, double rox, double roy, double roz, double xs, double ys, double zs, int its, int nrpt, int itgi);
-static void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy, int iz);
-static void rotate(nec_context_t *ctx, int card_num, int tag_increment, int num_copies);
-static void scale(nec_context_t *ctx, double xw1);
-static int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs);
-static void finish_geometry(nec_context_t *ctx);
+static void wire(context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs, double xw1, double yw1, double zw1, double xw2, double yw2, double zsw2, double rad, double rdel, double rrad);
+static void arc(context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs, double rada, double ang1, double ang2, double rad);
+static void helix(context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs, double s, double hl, double a1, double b1, double a2, double b2, double rad, outputs_list_t *outputs);
+static void patch(context_t *ctx, geometry_t *geom, int card_num, int nx, int ny, double ax1, double ay1, double az1, double ax2, double ay2, double az2, double ax3, double ay3, double az3, double ax4, double ay4, double az4);
+static void calculate_patch(context_t *ctx, int nx, int ny);
+static void reproduce(context_t *ctx, double rox, double roy, double roz, double xs, double ys, double zs, int its, int nrpt, int itgi);
+static void reflect(context_t *ctx, int card_num, int tag_increment, int ix, int iy, int iz);
+static void rotate(context_t *ctx, int card_num, int tag_increment, int num_copies);
+static void scale(context_t *ctx, double xw1);
+static int connect_segments(context_t *ctx, int ignd, outputs_list_t *outputs);
+static void finish_geometry(context_t *ctx);
 
 /******************************************************************************
  * peek_next_geom
@@ -53,12 +53,12 @@ static int peek_next_geometry(deck_t *deck, int current) {
  * It's likely useful to create a new errors object for every geometry, but
  * it's equally usable by passing in a global errors.
  *
- * @param ctx nec_context_t structure that will be modified
+ * @param ctx context_t structure that will be modified
  * @param deck deck_t structure that has the geometry cards
  * @param errors a list of errors to add to
  *
  */
-void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors, outputs_list_t *outputs)
+void calculate_geometry(context_t *ctx, deck_t *deck, errors_list_t *errors, outputs_list_t *outputs)
 {
   //(void)outputs;// currently unused
   card_t *card;
@@ -584,7 +584,7 @@ void calculate_geometry(nec_context_t *ctx, deck_t *deck, errors_list_t *errors,
  * @param m The segment number within that structure
  *
  */
-int segment_number(nec_context_t *ctx, int tag, int seg)
+int segment_number(context_t *ctx, int tag, int seg)
 {
   int icnt, iseg;
   char msg[MAX_ERROR_LEN]; // used for seg <= 0 error below
@@ -629,7 +629,7 @@ int segment_number(nec_context_t *ctx, int tag, int seg)
  * @param ignd If a ground plane is in use, checks if wires touch ground
  *
  */
-int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
+int connect_segments(context_t *ctx, int ignd, outputs_list_t *outputs)
 {
   int i, iz, ic, j, jx, ix, ixx, iseg, iend, jend, jump, ipf;
   double sep=0., xi1, yi1, zi1, xi2, yi2, zi2;
@@ -699,8 +699,9 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
       jump = false;
       if(ignd > 0) {
         if(zi1 <= -slen) {
+          int card_num = ctx->geometry.card_nums[i];
           char l_msg[MAX_ERROR_LEN];
-          snprintf(l_msg, sizeof(l_msg), "GEOMETRY DATA ERROR -- SEGMENT %d EXTENDS BELOW GROUND", iz);
+          snprintf(l_msg, sizeof(l_msg), "Card %d: Segment %d extends below ground", card_num, iz);
           add_error(ctx, &ctx->geometry.errors, l_msg, 1);
           return -1;
         }
@@ -736,16 +737,18 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
       /* determine connection data for end 2 of segment. */
       if( (ignd > 0) || jump ) {
         if( zi2 <= -slen) {
+          int card_num = ctx->geometry.card_nums[i];
           char err_msg[256];
-          snprintf(err_msg, sizeof(err_msg), "GEOMETRY DATA ERROR -- SEGMENT %d EXTENDS BELOW GROUND", iz);
+          snprintf(err_msg, sizeof(err_msg), "Card %d: Segment %d extends below ground", card_num, iz);
           add_error(ctx, &ctx->errors, err_msg, FATAL);
           return -1;
         }
         
         if( zi2 <= slen) {
           if( ctx->geometry.seg_end1_conn[i] == iz ) {
+            int card_num = ctx->geometry.card_nums[i];
             char err_msg[256];
-            snprintf(err_msg, sizeof(err_msg), "GEOMETRY DATA ERROR -- SEGMENT %d LIES IN GROUND PLANE", iz);
+            snprintf(err_msg, sizeof(err_msg), "Card %d: Segment %d lies in the ground plane", card_num, iz);
             add_error(ctx, &ctx->errors, err_msg, FATAL);
             return -1;
           }
@@ -1009,7 +1012,7 @@ int connect_segments(nec_context_t *ctx, int ignd, outputs_list_t *outputs)
  * cached here may be removed entirely.
  *
  */
-void finish_geometry(nec_context_t *ctx)
+void finish_geometry(context_t *ctx)
 {
   size_t mreq;
   double xw1, yw1, zw1;
@@ -1092,7 +1095,7 @@ void finish_geometry(nec_context_t *ctx)
  * @param rrad Taper parameter radius
  *
  */
-void wire(nec_context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs,
+void wire(context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs,
           double xw1, double yw1, double zw1,
           double xw2, double yw2, double zw2,
           double rad, double rdel, double rrad)
@@ -1213,7 +1216,7 @@ void wire(nec_context_t *ctx, geometry_t *geom, int card_num, int tag_num, int s
  * @param wire_radius Radius of the wire
  *
  */
-void arc(nec_context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs, double rada, double ang1, double ang2, double rad)
+void arc(context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs, double rada, double ang1, double ang2, double rad)
 {
   double ang, dang, xs1, xs2, zs1, zs2;
   int first_segment_num = geom->num_segs;
@@ -1296,7 +1299,7 @@ void arc(nec_context_t *ctx, geometry_t *geom, int card_num, int tag_num, int se
  * @param rad Radius of the wire
  *
  */
-void helix(nec_context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs, double s, double hl,
+void helix(context_t *ctx, geometry_t *geom, int card_num, int tag_num, int segs, double s, double hl,
            double a1, double b1, double a2, double b2, double rad, outputs_list_t *outputs)
 {
   int first_seg_num;
@@ -1425,7 +1428,7 @@ void helix(nec_context_t *ctx, geometry_t *geom, int card_num, int tag_num, int 
  * @param scale_factor the amount to scale by
  *
  */
-void scale(nec_context_t *ctx, double xw1)
+void scale(context_t *ctx, double xw1)
 {
   /* GS card: NEC-2 spec says GS affects new structure only, not NGF segments.
    * Start from ngf_n_segs so frozen NGF segments are left untouched. */
@@ -1469,7 +1472,7 @@ void scale(nec_context_t *ctx, double xw1)
  * formerly known as move(), but that conflicts with stdio
  *
  */
-void reproduce(nec_context_t *ctx, double rox, double roy, double roz, double xs,
+void reproduce(context_t *ctx, double rox, double roy, double roz, double xs,
                double ys, double zs, int its, int nrpt, int tag_increment)
 {
   int nrp, ix, i1, k, i;
@@ -1590,6 +1593,7 @@ void reproduce(nec_context_t *ctx, double rox, double roy, double roz, double xs
     mem_realloc(ctx, (void *)&ctx->geometry.patch_t2z, mreq);
     mem_realloc(ctx, (void *)&ctx->geometry.patch_area, mreq);
     mem_realloc(ctx, (void *)&ctx->geometry.patch_normal_z, mreq);
+    mem_realloc(ctx, (void *)&ctx->geometry.patch_card_nums, mreq);
 
     for( ii = 0; ii < nrp; ii++ ) {
       for( i = i1; i < original_m; i++ ) {
@@ -1613,6 +1617,7 @@ void reproduce(nec_context_t *ctx, double rox, double roy, double roz, double xs
         ctx->geometry.patch_t2z[k]= xi* zx+ yi* zy+ zi* zz;
         ctx->geometry.patch_normal_z[k]= ctx->geometry.patch_normal_z[i];
         ctx->geometry.patch_area[k]= ctx->geometry.patch_area[i];
+        ctx->geometry.patch_card_nums[k]= ctx->geometry.patch_card_nums[i];
         k++;
       } /* for( i = i1; i < data.m; i++ ) */
 
@@ -1653,7 +1658,7 @@ void reproduce(nec_context_t *ctx, double rox, double roy, double roz, double xs
  * @param iz flags indicating whether to relect on this axis
  *
  */
-void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy, int iz)
+void reflect(context_t *ctx, int card_num, int tag_increment, int ix, int iy, int iz)
 {
   int iti, i, nx, itagi;
   size_t mreq;
@@ -1727,11 +1732,11 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
         e2 = ctx->geometry.end2_z[i];
 
         if((fabs(e1) + fabs(e2) <= 1.0e-12) || (e1 * e2 < -1.0e-12)) {
+          int card_num = ctx->geometry.card_nums[i];
           char l_msg[MAX_ERROR_LEN];
           snprintf(l_msg, sizeof(l_msg),
-                  "\n  GEOMETRY DATA ERROR--SEGMENT %d"
-                  " LIES IN PLANE OF SYMMETRY",
-                  i + 1);
+                  "\n  Card %d: Segment %d lies in the plane of symmetry or crosses it.",
+                  card_num, i + 1);
           add_error(ctx, &ctx->geometry.errors, l_msg, 1);
           return;
         }
@@ -1779,15 +1784,17 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
       mem_realloc(ctx, (void *)&ctx->geometry.patch_t2z, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.patch_area, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.patch_normal_z, mreq);
+      mreq = (size_t)(2 * ctx->geometry.num_patches) * sizeof(int);
+      mem_realloc(ctx, (void *)&ctx->geometry.patch_card_nums, mreq);
 
       for(i = 0; i < ctx->geometry.num_patches; i++) {
         nx = i+ctx->geometry.num_patches;
         if(fabs(ctx->geometry.patch_z_center[i]) <= 1.0e-10) {
+          int card_num = ctx->geometry.patch_card_nums[i];
           char l_msg[MAX_ERROR_LEN];
           snprintf(l_msg, sizeof(l_msg),
-                  "\n  GEOMETRY DATA ERROR--PATCH %d"
-                  " LIES IN PLANE OF SYMMETRY",
-                  i + 1);
+                  "\n  Card %d: Patch %d lies in the plane of symmetry or crosses it.",
+                  card_num, i + 1);
           add_error(ctx, &ctx->geometry.errors, l_msg, 1);
           return;
         }
@@ -1803,6 +1810,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
         ctx->geometry.patch_t2z[nx]= -ctx->geometry.patch_t2z[i];
         ctx->geometry.patch_normal_z[nx]= -ctx->geometry.patch_normal_z[i];
         ctx->geometry.patch_area[nx]= ctx->geometry.patch_area[i];
+        ctx->geometry.patch_card_nums[nx] = ctx->geometry.patch_card_nums[i];
       }
 
       ctx->geometry.num_patches= ctx->geometry.num_patches*2;
@@ -1837,11 +1845,10 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
         e2= ctx->geometry.end2_y[i];
 
         if((fabs(e1)+fabs(e2) <= 1.0e-12) || (e1*e2 < -1.0e-12)) {
+          int card_num = ctx->geometry.card_nums[i];
           char l_msg[MAX_ERROR_LEN];
           snprintf(l_msg, sizeof(l_msg),
-                  "\n  GEOMETRY DATA ERROR--SEGMENT %d"
-                  " LIES IN PLANE OF SYMMETRY",
-                  i + 1);
+                  "Card %d: Segment %d lies in the plane of symmetry or crosses it.", card_num, i + 1);
           add_error(ctx, &ctx->geometry.errors, l_msg, 1);
           return;
         }
@@ -1885,15 +1892,17 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
       mem_realloc(ctx, (void *)&ctx->geometry.patch_t2z, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.patch_area, mreq);
       mem_realloc(ctx, (void *)&ctx->geometry.patch_normal_z, mreq);
+      mreq = (size_t)(2 * ctx->geometry.num_patches) * sizeof(int);
+      mem_realloc(ctx, (void *)&ctx->geometry.patch_card_nums, mreq);
 
       for( i = 0; i < ctx->geometry.num_patches; i++ ) {
         nx= i+ctx->geometry.num_patches;
         if( fabs( ctx->geometry.patch_y_center[i]) <= 1.0e-10) {
+          int card_num = ctx->geometry.patch_card_nums[i];
           char l_msg[MAX_ERROR_LEN];
           snprintf(l_msg, sizeof(l_msg),
-                  "\n  GEOMETRY DATA ERROR--PATCH %d"
-                  " LIES IN PLANE OF SYMMETRY",
-                  i + 1);
+                  "Card %d: Patch %d lies in the plane of symmetry or crosses it.",
+                  card_num, i + 1);
           add_error(ctx, &ctx->geometry.errors, l_msg, 1);
           return;
         }
@@ -1909,6 +1918,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
         ctx->geometry.patch_t2z[nx]= ctx->geometry.patch_t2z[i];
         ctx->geometry.patch_normal_z[nx]= -ctx->geometry.patch_normal_z[i];
         ctx->geometry.patch_area[nx]= ctx->geometry.patch_area[i];
+        ctx->geometry.patch_card_nums[nx] = ctx->geometry.patch_card_nums[i];
 
       } /* for( i = m2; i <= ctx->geometry.num_patches; i++ ) */
 
@@ -1950,11 +1960,11 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
       e2= ctx->geometry.end2_x[i];
 
       if( (fabs(e1)+fabs(e2) <= 1.0e-12) || (e1*e2 < -1.0e-12) ) {
+        int card_num = ctx->geometry.card_nums[i];
         char l_msg[MAX_ERROR_LEN];
         snprintf(l_msg, sizeof(l_msg),
-                "\n  GEOMETRY DATA ERROR--SEGMENT %d"
-                " LIES IN PLANE OF SYMMETRY",
-                i + 1);
+                "Card %d: Segment %d lies in the plane of symmetry or crosses it.",
+                card_num, i + 1);
         add_error(ctx, &ctx->geometry.errors, l_msg, 1);
         return;
       }
@@ -1999,15 +2009,17 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
   mem_realloc(ctx, (void *)&ctx->geometry.patch_t2z, mreq);
   mem_realloc(ctx, (void *)&ctx->geometry.patch_area, mreq);
   mem_realloc(ctx, (void *)&ctx->geometry.patch_normal_z, mreq);
+  mreq = (size_t)(2 * ctx->geometry.num_patches) * sizeof(int);
+  mem_realloc(ctx, (void *)&ctx->geometry.patch_card_nums, mreq);
 
   for( i = 0; i < ctx->geometry.num_patches; i++ ) {
     nx = i+ctx->geometry.num_patches;
     if(fabs(ctx->geometry.patch_x_center[i]) <= 1.0e-10) {
+      int card_num = ctx->geometry.patch_card_nums[i];
       char l_msg[MAX_ERROR_LEN];
       snprintf(l_msg, sizeof(l_msg),
-              "\n  GEOMETRY DATA ERROR--PATCH %d"
-              " LIES IN PLANE OF SYMMETRY",
-              i + 1);
+              "Card %d: Patch %d lies in the plane of symmetry or crosses it.",
+              card_num, i + 1);
       add_error(ctx, &ctx->geometry.errors, l_msg, 1);
       return;
     }
@@ -2023,6 +2035,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
     ctx->geometry.patch_t2z[nx]= ctx->geometry.patch_t2z[i];
     ctx->geometry.patch_normal_z[nx]= -ctx->geometry.patch_normal_z[i];
     ctx->geometry.patch_area[nx]= ctx->geometry.patch_area[i];
+    ctx->geometry.patch_card_nums[nx] = ctx->geometry.patch_card_nums[i];
   }
 
   ctx->geometry.num_patches= ctx->geometry.num_patches * 2;
@@ -2047,7 +2060,7 @@ void reflect(nec_context_t *ctx, int card_num, int tag_increment, int ix, int iy
  * @param num_copies number of new copies to produce
  *
  */
-void rotate(nec_context_t *ctx, int card_num, int tag_increment, int num_copies)
+void rotate(context_t *ctx, int card_num, int tag_increment, int num_copies)
 {
   int nx, itagi, k;
   size_t mreq;
@@ -2148,6 +2161,7 @@ void rotate(nec_context_t *ctx, int card_num, int tag_increment, int num_copies)
   mem_realloc(ctx, (void *)&ctx->geometry.patch_t2z, mreq);
   mem_realloc(ctx, (void *)&ctx->geometry.patch_area, mreq);
   mem_realloc(ctx, (void *)&ctx->geometry.patch_normal_z, mreq);
+  mem_realloc(ctx, (void *)&ctx->geometry.patch_card_nums, mreq);
   
   for(int i = nx; i < ctx->geometry.num_patches; i++) {
     k = i-ctx->geometry.num_patches_sym;
@@ -2168,6 +2182,7 @@ void rotate(nec_context_t *ctx, int card_num, int tag_increment, int num_copies)
     ctx->geometry.patch_t2z[i]= ctx->geometry.patch_t2z[k];
     ctx->geometry.patch_normal_z[i]= ctx->geometry.patch_normal_z[k];
     ctx->geometry.patch_area[i]= ctx->geometry.patch_area[k];
+    ctx->geometry.patch_card_nums[i]= ctx->geometry.patch_card_nums[k];
   } /* for( i = nx; i < data.m; i++ ) */
 } /* end of rotate */
 
@@ -2184,7 +2199,7 @@ void rotate(nec_context_t *ctx, int card_num, int tag_increment, int num_copies)
  * @param ny ... and y.
  *
  */
-void patch(nec_context_t *ctx, geometry_t *geom, int card_num, int nx, int ny,
+void patch(context_t *ctx, geometry_t *geom, int card_num, int nx, int ny,
            double ax1, double ay1, double az1,
            double ax2, double ay2, double az2,
            double ax3, double ay3, double az3,
@@ -2217,6 +2232,9 @@ void patch(nec_context_t *ctx, geometry_t *geom, int card_num, int nx, int ny,
   mem_realloc(ctx, (void *)&geom->patch_t2z, mreq);
   mem_realloc(ctx, (void *)&geom->patch_area, mreq);
   mem_realloc(ctx, (void *)&geom->patch_normal_z, mreq);
+  mem_realloc(ctx, (void *)&geom->patch_card_nums, mreq);
+  
+  geom->patch_card_nums[mi] = card_num;
   
   if(nx > 0)
     ntp = 2;
@@ -2388,7 +2406,7 @@ void patch(nec_context_t *ctx, geometry_t *geom, int card_num, int nx, int ny,
  * patch()
  *
  */
-void calculate_patch(nec_context_t *ctx, int nx, int ny )
+void calculate_patch(context_t *ctx, int nx, int ny )
 {
   int mia, ix, iy, mi;
   size_t mreq;

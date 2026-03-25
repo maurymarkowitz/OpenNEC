@@ -235,7 +235,7 @@ typedef struct deck_t
 /** @brief Opaque handle to the internal simulation state. 
  *  Forward declared to maintain ABI stability.
  */
-typedef struct nec_context_t nec_context_t;
+typedef struct context_t context_t;
 
 /** @name Context Lifecycle
  *  Functions for creating and destroying the simulation context.
@@ -245,12 +245,12 @@ typedef struct nec_context_t nec_context_t;
 /** @brief Creates and initializes a new NEC simulation context.
  *  @return Pointer to the new context, or NULL if allocation fails.
  */
-nec_context_t* nec_create_context(void);
+context_t* create_context(void);
 
 /** @brief Safely destroys a context and frees all associated memory.
  *  @param ctx The context to destroy.
  */
-void nec_destroy_context(nec_context_t *ctx);
+void destroy_context(context_t *ctx);
 /** @} */
 
 /** @name Logging and Callbacks
@@ -264,7 +264,7 @@ typedef enum {
     ONEC_SEV_WARNING = 1, /**< Non-fatal issues (e.g., slightly overlapping segments) */
     ONEC_SEV_ERROR = 2,   /**< Calculation issues that may invalidate results */
     ONEC_SEV_FATAL = 3    /**< Unrecoverable errors that halt simulation */
-} nec_severity_t;
+} severity_t;
 
 /** 
  * @brief Callback signature for capturing log messages.
@@ -272,7 +272,7 @@ typedef enum {
  * @param level Severity level of the message.
  * @param message The null-terminated message string.
  */
-typedef void (*nec_log_callback_t)(void *user_data, int level, const char *message);
+typedef void (*log_callback_t)(void *user_data, int level, const char *message);
 
 /** 
  * @brief Registers a callback to receive real-time log updates.
@@ -280,7 +280,7 @@ typedef void (*nec_log_callback_t)(void *user_data, int level, const char *messa
  * @param callback The function to call when a log occurs.
  * @param user_data Pointer passed back to the callback.
  */
-void nec_set_log_callback(nec_context_t *ctx, nec_log_callback_t callback, void *user_data);
+void set_log_callback(context_t *ctx, log_callback_t callback, void *user_data);
 /** @} */
 
 // typedefs for backward compatibility

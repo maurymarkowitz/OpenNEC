@@ -27,7 +27,7 @@
 #include <string.h>
 #include "internals.h"
 
-/* ---- null log callback — suppress nec_report() noise during parse ---- */
+/* ---- null log callback — suppress report() noise during parse ---- */
 static void null_log(void *ud, int level, const char *msg)
 {
     (void)ud; (void)level; (void)msg;
@@ -55,22 +55,22 @@ static int roundtrip_file(const char *inpath)
     make_onec_path(inpath, outpath, sizeof(outpath));
 
     /* --- create context --- */
-    nec_context_t *ctx = nec_create_context();
+    context_t *ctx = create_context();
     if (!ctx) {
         fprintf(stderr, "  ERROR: could not allocate NEC context\n");
         return -1;
     }
-    nec_set_log_callback(ctx, null_log, NULL);
+    set_log_callback(ctx, null_log, NULL);
     ctx->source_filename = (char *)inpath;
 
     /* --- read --- */
     FILE *ifp = fopen(inpath, "r");
     if (!ifp) {
         perror(inpath);
-        nec_destroy_context(ctx);
+        destroy_context(ctx);
         return -1;
     }
-    deck_t deck = {0};
+    deck_t deck; init_deck(&deck);
     read_deck(ctx, &deck, ifp);
     fclose(ifp);
 
@@ -89,8 +89,8 @@ static int roundtrip_file(const char *inpath)
     FILE *ofp = fopen(outpath, "w");
     if (!ofp) {
         perror(outpath);
-        free_deck(&deck);
-        nec_destroy_context(ctx);
+        destroy_deck(&deck);
+        destroy_context(ctx);
         return -1;
     }
     write_deck_onec(ctx, &deck, ofp);
@@ -102,8 +102,8 @@ static int roundtrip_file(const char *inpath)
         printf("  [%d parse warning(s)]", parse_warnings);
     printf("\n");
 
-    free_deck(&deck);
-    nec_destroy_context(ctx);
+    destroy_deck(&deck);
+    destroy_context(ctx);
     return 0;
 }
 

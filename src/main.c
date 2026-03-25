@@ -35,12 +35,15 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <limits.h>
 
 // various switches for the command line arguments
-static bool run_simulation = true;
+static bool do_run_simulation = true;
 static bool run_tests = false;
 static bool run_greens = false;
 static bool recursive = false;
+static bool skip_large = false;
+static int num_input_files = 1; /* for skip-large group behavior */
 static char *input_file = "";
 static char *output_file = "";
 static char *error_file = "";
@@ -77,6 +80,7 @@ void print_usage(char *argv[])
   puts("    With a bare directory (e.g. /models/) only .nec/.deck files are collected.");
   puts("    With a quoted glob pattern (e.g. '/models/*.yo') files matching that");
   puts("    extension are collected; the filter is inherited by all subdirectories.");
+  puts("  --skip-large: with multiple files (or -r), skip decks with complexity T >= 1e11");
   puts("  -n, --no-run: don't run the simulation after parsing");
   puts("  -t, --test-deck: run various sanity tests");
   puts("  -i file, --input-file=file: read input file. this is not required if <input_file> is provided. if neither is provided, input is read from stdin");
@@ -105,6 +109,7 @@ static struct option program_options[] =
         {"greens", optional_argument, NULL, 'g'},
         {"jobs", required_argument, NULL, 'j'},
         {"write-file", required_argument, NULL, 'w'},
+        {"skip-large", no_argument, NULL, 'S'},
         {0, 0, 0, 0}};
 
 /**
@@ -135,7 +140,7 @@ void parse_options(int argc, char *argv[])
   {
     // eat an option and exit if we're done
     /* portable short options: 'g' has an optional argument */
-    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:", program_options, &option_index); // should match the items above
+    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:S", program_options, &option_index); // should match the items above
     if (c == -1)
       break;
 
@@ -174,7 +179,7 @@ void parse_options(int argc, char *argv[])
       break;
 
     case 'n':
-      run_simulation = false;
+      do_run_simulation = false;
       break;
 
     case 't':
@@ -189,6 +194,9 @@ void parse_options(int argc, char *argv[])
       jobs = atoi(optarg);
       if (jobs < 1)
         jobs = 1;
+      break;
+    case 'S':
+      skip_large = true;
       break;
 
     case 'w':
@@ -261,6 +269,46 @@ static filetype_t classify_by_extension(const char *filename)
   if (strcasecmp(ext, ".mmae") == 0) return FILETYPE_UNSUPPORTED; /* MMANA-EZ      */
 
   return FILETYPE_UNKNOWN;
+}
+
+/* Gets the relative path to a file, so we don't print the full path during logging. */
+static char **g_input_roots = NULL;
+static int g_input_root_count = 0;
+static void get_relative_input_path(const char *input, char *out, size_t outsz)
+{
+  if (!input || !*input) {
+    if (outsz > 0) out[0] = '\0';
+    return;
+  }
+
+  const char *best = input;
+  size_t best_len = strlen(input);
+
+  for (int i = 0; i < g_input_root_count; ++i) {
+    const char *root = g_input_roots[i];
+    size_t root_len = strlen(root);
+    if (root_len == 0 || root_len > strlen(input))
+      continue;
+
+    if (strncmp(input, root, root_len) == 0) {
+      const char *rel = input + root_len;
+      if (*rel == '/' || *rel == '\\')
+        rel++;
+      size_t rel_len = strlen(rel);
+      if (rel_len < best_len) {
+        best = rel;
+        best_len = rel_len;
+      }
+    }
+  }
+
+  if (best_len >= outsz) {
+    best_len = outsz > 0 ? outsz - 1 : 0;
+  }
+  if (outsz > 0) {
+    memcpy(out, best, best_len);
+    out[best_len] = '\0';
+  }
 }
 
 /* Human-readable format name for error messages. */
@@ -375,7 +423,7 @@ static void resolve_write_filename(const char *input, const char *wf,
  */
 static int process_single_file(const char *input_filename, const char *output_filename, FILE *error_fp)
 {
-  nec_context_t *ctx = nec_create_context();
+  context_t *ctx = create_context();
   if (ctx == NULL)
   {
     fprintf(error_fp, "onec: Failed to allocate NEC context.\n");
@@ -383,7 +431,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
   }
 
   // main variables
-  deck_t deck = {0};
+  deck_t deck; init_deck(&deck);
   errors_list_t import_errors = {0};
   errors_list_t test_errors = {0};
 
@@ -402,7 +450,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
       char mesg[88] = "onec: ";
       strcat(mesg, input_filename);
       perror(mesg);
-      nec_destroy_context(ctx);
+      destroy_context(ctx);
       return -1;
     }
     ctx->input_fp = input_fp;
@@ -424,7 +472,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
       perror(mesg);
       if (input_fp != stdin)
         fclose(input_fp);
-      nec_destroy_context(ctx);
+      destroy_context(ctx);
       return -1;
     }
     ctx->output_fp = output_fp;
@@ -465,7 +513,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
     ctx->green_fp = fopen(path, "wb");
     if (!ctx->green_fp)
     {
-      nec_report(ctx, ONEC_SEV_WARNING, "Could not open greens file '%s' for writing; skipping.", path);
+      report(ctx, ONEC_SEV_WARNING, "Could not open greens file '%s' for writing; skipping.", path);
     }
   }
 
@@ -478,7 +526,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
             input_filename, fmt);
     if (input_fp != stdin) fclose(input_fp);
     if (output_fp != stdout) fclose(output_fp);
-    nec_destroy_context(ctx);
+    destroy_context(ctx);
     return -1;
   }
 
@@ -487,7 +535,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
       fprintf(error_fp, "onec: failed to parse Yagi Optimizer file '%s'\n", input_filename);
       if (input_fp != stdin) fclose(input_fp);
       if (output_fp != stdout) fclose(output_fp);
-      nec_destroy_context(ctx);
+      destroy_context(ctx);
       return -1;
     }
   } else if (ftype == FILETYPE_MAA) {
@@ -495,7 +543,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
       fprintf(error_fp, "onec: failed to parse MMANA-GAL file '%s'\n", input_filename);
       if (input_fp != stdin) fclose(input_fp);
       if (output_fp != stdout) fclose(output_fp);
-      nec_destroy_context(ctx);
+      destroy_context(ctx);
       return -1;
     }
   } else if (ftype == FILETYPE_NC) {
@@ -503,7 +551,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
       add_error(ctx, &import_errors, strdup("onec: failed to parse cocoaNEC .nc file"), FATAL);
       if (input_fp != stdin) fclose(input_fp);
       if (output_fp != stdout) fclose(output_fp);
-      nec_destroy_context(ctx);
+      destroy_context(ctx);
       return -1;
     }
   } else {
@@ -520,6 +568,22 @@ static int process_single_file(const char *input_filename, const char *output_fi
 
   // Evaluate all formulas in the deck
   update_deck_values(ctx, &deck);
+
+  /* --skip-large: when group mode is active (multiple files or -r), skip files whose
+     estimated complexity is too high (T >= 1e11). */
+  if (skip_large && (recursive || num_input_files > 1)) {
+    double T = estimate_time(ctx, &deck);
+    if (T >= 1.0e11) {
+      report(ctx, ONEC_SEV_WARNING,
+                 "Skipping %s: complexity T=%.2e >= 1e11 (skip-large enabled)",
+                 input_filename && input_filename[0] ? input_filename : "stdin", T);
+      if (input_fp != stdin) fclose(input_fp);
+      if (output_fp != stdout) fclose(output_fp);
+      destroy_deck(&deck);
+      destroy_context(ctx);
+      return 0;
+    }
+  }
 
   /* -w / --write-file: export the deck in the requested format.
      This is independent of simulation; combine with -n for a pure conversion.
@@ -562,7 +626,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
   if (import_errors.num_errors > 0)
   {
     const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
-    nec_report(ctx, ONEC_SEV_INFO, "=== Found %d Import Errors for %s ===", import_errors.num_errors, display_name);
+    report(ctx, ONEC_SEV_INFO, "=== Found %d Import Errors for %s ===", import_errors.num_errors, display_name);
   }
 
   // run basic sanity checks on the structure
@@ -577,14 +641,14 @@ static int process_single_file(const char *input_filename, const char *output_fi
   if (test_errors.num_errors > 0)
   {
     const char *display_name = strlen(input_filename) > 0 ? input_filename : "stdin";
-    nec_report(ctx, ONEC_SEV_INFO, "=== Found %d Structural Errors for %s ===", test_errors.num_errors, display_name);
+    report(ctx, ONEC_SEV_INFO, "=== Found %d Structural Errors for %s ===", test_errors.num_errors, display_name);
   }
 
   // run it if we've been asked to
-  if (run_simulation)
+  if (do_run_simulation)
   {
     // Run complete simulation with batch processing
-    int sim_result = nec_run_simulation(ctx, &deck);
+    int sim_result = run_simulation(ctx, &deck);
 
     // Check for any errors that occurred during calculation (whether simulation failed or succeeded)
     if (ctx->errors.num_errors > 0 || sim_result != 0)
@@ -597,30 +661,45 @@ static int process_single_file(const char *input_filename, const char *output_fi
 
       if (ctx->errors.num_errors > 0)
       {
-        nec_report(ctx, ONEC_SEV_INFO, "=== Found %d Simulation Errors ===", ctx->errors.num_errors);
+        report(ctx, ONEC_SEV_INFO, "=== Found %d Simulation Errors ===", ctx->errors.num_errors);
       }
 
       if (input_fp != stdin)
         fclose(input_fp);
       if (output_fp != stdout)
         fclose(output_fp);
-      nec_destroy_context(ctx);
+      destroy_context(ctx);
       return -1;
     }
   }
 
-  // write out the results (only if simulation was configured and ran)
-  // write out the results — only if the frequency loop actually ran (i.e., an output
-  // request card RP/NE/NH/XQ/WG was present). Matching Fortran/nec2c behaviour: a deck
-  // with FR/LD/EX/EN but no RP or NF card is valid and produces no output.
-  if (run_simulation) {
-    if (ctx->frequency_loop_ran) {
-      write_nec_output(ctx, &deck, output_fp);
-    } else if (ctx->xt_terminated) {
+  // write out the results
+  // According to NEC-2 standard, the output file should contain:
+  // - Always: geometry preamble (header, structure, segments, patches)
+  // - Optional: frequency-specific data (only if output request card present)
+  // Exception: if -n (--no-run) was used, don't write any output at all
+  if (do_run_simulation) {
+    if (ctx->xt_terminated) {
       // XT card halted execution before any output request — expected, not an error
-      nec_report(ctx, ONEC_SEV_WARNING, "Simulation halted by XT card; no output generated.");
+      report(ctx, ONEC_SEV_WARNING, "Simulation halted by XT card; no output generated.");
+    } else {
+      // Write geometry preamble always (unless already written inside frequency loop)
+      if (!ctx->freq_step_output_written) {
+        write_nec_preamble(ctx, &deck, output_fp);
+      }
+      
+      // Write frequency-specific data only if output request card was present
+      // and hasn't been written already inside the frequency loop
+      if (ctx->frequency_loop_ran && !ctx->freq_step_output_written) {
+        write_frequency_step_output(output_fp, ctx);
+      }
+      
+      // Write EN and NX cards as separate batches before footer
+      write_end_cards(output_fp, &deck);
+      
+      // Write footer
+      write_footer(output_fp, ctx, &deck);
     }
-    // else: valid deck with no output request card (no RP/NE/NH/XQ) — silent, matching nec2c
   }
 
   // close greens file if open
@@ -630,12 +709,12 @@ static int process_single_file(const char *input_filename, const char *output_fi
     ctx->green_fp = NULL;
   }
 
-  free_deck(&deck);
+  destroy_deck(&deck);
   if (input_fp != stdin)
     fclose(input_fp);
   if (output_fp != stdout)
     fclose(output_fp);
-  nec_destroy_context(ctx);
+  destroy_context(ctx);
 
   return 0;
 }
@@ -705,8 +784,12 @@ static void *worker_thread(void *arg)
     task_t *t = &q->tasks[idx];
 
     // Print progress for parallel processing
-    fprintf(stderr, "Processing %d of %d: %s...\n", idx + 1, q->task_count, t->input);
-    fflush(stderr);
+    {
+      char rel_input[PATH_MAX];
+      get_relative_input_path(t->input, rel_input, sizeof(rel_input));
+      fprintf(stderr, "Processing %d of %d: %s...\n", idx + 1, q->task_count, rel_input);
+      fflush(stderr);
+    }
 
     // capture logs using open_memstream
     char *buf = NULL;
@@ -715,7 +798,11 @@ static void *worker_thread(void *arg)
     if (!memfp)
     {
       // fallback: use stderr (may interleave)
-      fprintf(stderr, "Processing %d of %d: %s...\n", idx + 1, q->task_count, t->input);
+      {
+        char rel_input[PATH_MAX];
+        get_relative_input_path(t->input, rel_input, sizeof(rel_input));
+        fprintf(stderr, "Processing %d of %d: %s...\n", idx + 1, q->task_count, rel_input);
+      }
       fflush(stderr);
       t->status = process_single_file(t->input, t->output, stderr);
       t->log_buf = NULL;
@@ -738,8 +825,11 @@ static void add_to_string_list(char ***list, int *count, int *cap, const char *s
 {
   if (*list == NULL || *count >= *cap)
   {
-    if (*cap == 0)
+    if (*cap == 0) {
       *cap = 16;
+    } else {
+      *cap *= 2;
+    }
     char **new_list = realloc(*list, *cap * sizeof(char *));
     if (!new_list)
       abort();
@@ -869,6 +959,11 @@ int main(int argc, char **argv)
   int file_cap = 4096;
   int failed_count = 0;
 
+  // Track root paths supplied by the user for relative output normalization.
+  char **input_roots = NULL;
+  int input_root_count = 0;
+  int input_root_cap = 64;
+
   if (optind >= argc)
   {
     // If -i was given, treat it like a single positional file argument
@@ -933,10 +1028,20 @@ int main(int argc, char **argv)
         if (S_ISDIR(st.st_mode))
         {
           ADD_DIR(argv[i], ""); /* bare directory → NEC-only filter */
+          add_to_string_list(&input_roots, &input_root_count, &input_root_cap, argv[i]);
         }
         else
         {
           add_to_string_list(&file_list, &num_files, &file_cap, argv[i]);
+          /* Also support file-based partial paths relative to file parent */
+          char parent_dir[PATH_MAX];
+          strncpy(parent_dir, argv[i], sizeof(parent_dir)-1);
+          parent_dir[sizeof(parent_dir)-1] = '\0';
+          char *slash = strrchr(parent_dir, '/');
+          if (slash) {
+            *slash = '\0';
+            add_to_string_list(&input_roots, &input_root_count, &input_root_cap, parent_dir);
+          }
         }
       }
       else
@@ -1068,6 +1173,9 @@ int main(int argc, char **argv)
     free(dir_ext_queue);
     #undef ADD_DIR
 
+    g_input_roots = input_roots;
+    g_input_root_count = input_root_count;
+
     if (num_files == 0)
     {
       fprintf(error_fp, "No compatible files found to process.\n");
@@ -1075,6 +1183,8 @@ int main(int argc, char **argv)
         fclose(error_fp);
       return EXIT_FAILURE;
     }
+
+    num_input_files = num_files;
 
     // Process files (possibly in parallel)
     struct timespec _t0, _t1;
@@ -1093,7 +1203,9 @@ int main(int argc, char **argv)
         resolve_output(input, (num_files == 1) ? output_file : "", output, sizeof(output));
         if (num_files > 1)
         {
-          fprintf(error_fp, "Processing %d of %d: %s...\n", i + 1, num_files, input);
+          char rel_input[PATH_MAX];
+          get_relative_input_path(input, rel_input, sizeof(rel_input));
+          fprintf(error_fp, "Processing %d of %d: %s...\n", i + 1, num_files, rel_input);
           fflush(error_fp);
         }
         if (process_single_file(input, output, error_fp) != 0)

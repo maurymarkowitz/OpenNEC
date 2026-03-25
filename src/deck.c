@@ -21,13 +21,13 @@
 #include "tinyexpr.h"
 
 /* Forward declarations for internal functions */
-static void update_symbol_values(nec_context_t *ctx, deck_t *deck, errors_list_t *errors);
+static void update_symbol_values(context_t *ctx, deck_t *deck, errors_list_t *errors);
 static void update_card_values(deck_t *deck);
 static void add_default_symbols(deck_t *deck);
 static void update_symbol_list(deck_t *deck, errors_list_t *errors);
 
 static bool references(const char *expr, const char *symname);
-static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, nec_context_t *ctx, errors_list_t *errors);
+static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, context_t *ctx, errors_list_t *errors);
 
 /******************************************************************************
  * new_card
@@ -92,7 +92,7 @@ void free_card(card_t *card)
     free(temp);
   }
 
-  // do NOT free(card) here; cards are part of an array and freed in free_deck
+  // do NOT free(card) here; cards are part of an array and freed in destroy_deck
 }
 
 /******************************************************************************
@@ -182,14 +182,31 @@ deck_t *new_deck(void)
 }
 
 /******************************************************************************
- * free_deck
+ * init_deck
  *
- * deletes all the Cards in this deck_t and then any local bits
+ * Initializes a deck_t to an empty state. Works for both stack- and
+ * heap-allocated deck_t instances. Must be called before any other deck
+ * operation.
  *
- * @param deck the deck_t to free
- *
+ * @param deck the deck_t to initialize
  */
-void free_deck(deck_t *deck)
+void init_deck(deck_t *deck)
+{
+  if (deck == NULL)
+    return;
+  memset(deck, 0, sizeof(deck_t));
+}
+
+/******************************************************************************
+ * destroy_deck
+ *
+ * Frees all heap memory owned by a deck_t (cards and their contents, and the
+ * symbols pointer array). Does NOT free the deck_t struct itself — the caller
+ * controls allocation.
+ *
+ * @param deck the deck_t to destroy
+ */
+void destroy_deck(deck_t *deck)
 {
   if (deck == NULL)
     return;
@@ -933,7 +950,7 @@ void initialize_symbol_table(deck_t *deck, errors_list_t *errors)
  * after making a change to any of the SY cards, or just before any deck-wide
  * actions like saving it out or running a calculation.
  */
-void update_deck_values(nec_context_t *ctx, deck_t *deck)
+void update_deck_values(context_t *ctx, deck_t *deck)
 {
   // Reinitialize with defaults first
   if (deck->symbols)
@@ -1150,7 +1167,7 @@ void add_default_symbols(deck_t *deck)
  * Symbols are calculated in dependency order: if a symbol's formula references
  * other symbols, those referenced symbols are evaluated first.
  */
-void update_symbol_values(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
+void update_symbol_values(context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   key_value_t **syms = deck->symbols;
   bool *evaluated = calloc(deck->num_symbols, sizeof(bool));
@@ -1226,7 +1243,7 @@ static char *get_formula_error_description(const char *formula, int error_pos)
 }
 
 // Recursive evaluation for symbol dependencies
-static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, nec_context_t *ctx, errors_list_t *errors)
+static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, context_t *ctx, errors_list_t *errors)
 {
   // Check recursion depth to prevent infinite loops using ctx->eval_depth
   if (ctx)
@@ -1491,7 +1508,7 @@ void update_card_values(deck_t *deck)
  * @param deck     The deck containing the symbol table
  * @param errors   Error list for reporting undefined symbols or syntax errors
  */
-void evaluate_formula(nec_context_t *ctx, key_value_t *formula, deck_t *deck, errors_list_t *errors)
+void evaluate_formula(context_t *ctx, key_value_t *formula, deck_t *deck, errors_list_t *errors)
 {
   // Prepare variables for tinyexpr - bind all current symbols (original case)
   int num_syms = deck ? deck->num_symbols : 0;
@@ -1567,7 +1584,7 @@ void evaluate_formula(nec_context_t *ctx, key_value_t *formula, deck_t *deck, er
  * @param deck     The deck containing cards and symbols
  * @param errors   Error list for reporting evaluation errors
  */
-void evaluate_symbols_in_comments(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
+void evaluate_symbols_in_comments(context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   if (!deck || deck->num_cards == 0)
   {

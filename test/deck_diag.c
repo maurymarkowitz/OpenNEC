@@ -7,10 +7,10 @@ static void null_log(void *ud, int level, const char *msg) { (void)ud;(void)leve
 
 int main(int argc, char *argv[]) {
     const char *path = (argc > 1) ? argv[1] : "test/4nec2 examples/Example3.nec";
-    nec_context_t *ctx = nec_create_context();
-    nec_set_log_callback(ctx, null_log, NULL);
+    context_t *ctx = create_context();
+    set_log_callback(ctx, null_log, NULL);
 
-    deck_t deck; memset(&deck, 0, sizeof(deck));
+    deck_t deck; init_deck(&deck);
     FILE *f = fopen(path, "r");
     if (!f) { fprintf(stderr, "Cannot open %s\n", path); return 1; }
     read_deck(ctx, &deck, f);
@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
     }
     for (int i = 0; i < errs.num_errors; i++) free(errs.errors[i].message);
     free(errs.errors);
-    free_deck(&deck);
-    nec_destroy_context(ctx);
+    destroy_deck(&deck);
+    destroy_context(ctx);
     return 0;
 }

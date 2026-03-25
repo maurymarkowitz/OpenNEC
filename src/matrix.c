@@ -20,7 +20,7 @@
  *   (zgetrs) on per-mode blocks with careful handling of storage layout and
  *   pivots to ensure numerical stability across backends.
  *
- * These routines operate on `nec_context_t`, drawing geometry, material,
+ * These routines operate on `context_t`, drawing geometry, material,
  * ground, and matrix parameters to build and solve the system.
  ****************************************************************************/
 
@@ -31,15 +31,15 @@
 
 /* Forward declarations for internal functions */
 /* Formerly nec2c: cmss */
-static void fill_patch_patch_matrix(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2, complex double *restrict cm, int nrow, int itrp);
+static void fill_patch_patch_matrix(context_t *restrict ctx, int j1, int j2, int im1, int im2, complex double *restrict cm, int nrow, int itrp);
 /* Formerly nec2c: cmsw */
-static void fill_patch_wire_matrix(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex double *restrict cm, complex double *restrict cw, int ncw, int nrow, int itrp);
+static void fill_patch_wire_matrix(context_t *restrict ctx, int j1, int j2, int i1, int i2, complex double *restrict cm, complex double *restrict cw, int ncw, int nrow, int itrp);
 /* Formerly nec2c: cmws */
-static void fill_wire_patch_matrix(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int itrp);
+static void fill_wire_patch_matrix(context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int itrp);
 /* Formerly nec2c: cmww */
-static void fill_wire_wire_matrix(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int nw, int itrp);
+static void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int nw, int itrp);
 /* Formerly nec2c: qdsrc */
-void charge_discontinuity_source(nec_context_t *restrict ctx, int is, complex double v, complex double *restrict e);
+void charge_discontinuity_source(context_t *restrict ctx, int is, complex double v, complex double *restrict e);
 
 #ifdef HAVE_ACCELERATE
 #include <Accelerate/Accelerate.h>
@@ -67,7 +67,7 @@ extern void zgetrs_(char*, int*, int*, double _Complex*, int*, int*, double _Com
 
 /* cmset sets up the complex structure matrix in the array cm */
 /* Formerly nec2c: cmset */
-int fill_interaction_matrix(nec_context_t *restrict ctx, int nrow, complex double *restrict cm, double rkhx, int iexkx)
+int fill_interaction_matrix(context_t *restrict ctx, int nrow, complex double *restrict cm, double rkhx, int iexkx)
 {
   int mp2, neq, npeq, it, i, j, i1, i2, in2;
   int im1, im2, ist, ij, ipr, jss, jm1, jm2, jst, k, ka, kk;
@@ -219,7 +219,7 @@ int fill_interaction_matrix(nec_context_t *restrict ctx, int nrow, complex doubl
 
 /* cmss computes matrix elements for surface-surface interactions. */
 /* Formerly nec2c: cmss */
-void fill_patch_patch_matrix(nec_context_t *restrict ctx, int j1, int j2, int im1, int im2,
+void fill_patch_patch_matrix(context_t *restrict ctx, int j1, int j2, int im1, int im2,
     complex double *restrict cm, int nrow, int itrp )
 {
   int i1, i2, icomp, ii1, i, il, ii2, jj1, j, jl, /*jl2,*/ jj2;
@@ -326,7 +326,7 @@ void fill_patch_patch_matrix(nec_context_t *restrict ctx, int j1, int j2, int im
 
 /* computes matrix elements for e along wires due to patch current */
 /* Formerly nec2c: cmsw */
-void fill_patch_wire_matrix(nec_context_t *restrict ctx, int j1, int j2, int i1, int i2, complex double *restrict cm,
+void fill_patch_wire_matrix(context_t *restrict ctx, int j1, int j2, int i1, int i2, complex double *restrict cm,
     complex double *restrict cw, int ncw, int nrow, int itrp )
 {
   int jsnox; /* -1 offset to "jsno" for array indexing */
@@ -463,7 +463,7 @@ void fill_patch_wire_matrix(nec_context_t *restrict ctx, int j1, int j2, int i1,
 
 /* cmws computes matrix elements for wire-surface interactions */
 /* Formerly nec2c: cmws */
-void fill_wire_patch_matrix(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
+void fill_wire_patch_matrix(context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
     int nr, complex double *restrict cw, int itrp )
  {
   int ipr, i, ipatch, ik, js=0, ij, jx;
@@ -571,7 +571,7 @@ void fill_wire_patch_matrix(nec_context_t *restrict ctx, int j, int i1, int i2, 
 
 /* cmww computes matrix elements for wire-wire interactions */
 /* Formerly nec2c: cmww */
-void fill_wire_wire_matrix(nec_context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
+void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
     int nr, complex double *restrict cw, int nw, int itrp)
  {
   int ipr, iprx, i, ij, jx;
@@ -767,7 +767,7 @@ void fill_wire_wire_matrix(nec_context_t *restrict ctx, int j, int i1, int i2, c
 /* electric field incident on the structure. e is the */
 /* right hand side of the matrix equation. */
 /* Formerly nec2c: etmns */
-void fill_excitation_vector(nec_context_t *restrict ctx, double p1, double p2, double p3, double p4,
+void fill_excitation_vector(context_t *restrict ctx, double p1, double p2, double p3, double p4,
     double p5, double p6, int ipr, complex double *restrict e )
 {
   int i, is, i1, i2=0, neq;
@@ -1090,7 +1090,7 @@ void fill_excitation_vector(nec_context_t *restrict ctx, double p1, double p2, d
 /* text.    (matrix transposed.) */
 
 /* Formerly nec2c: factr */
-void factor_matrix(const nec_context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip, int ndim)
+void factor_matrix(const context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip, int ndim)
 {
 #if defined(HAVE_ACCELERATE) || defined(HAVE_OPENBLAS) || defined(HAVE_BLAS) || defined(HAVE_MKL)
 	/* LAPACK-backed LU factorization using a local np×np buffer to honor layout. */
@@ -1126,9 +1126,9 @@ void factor_matrix(const nec_context_t *restrict ctx, int n, complex double *res
 	zgetrf_(&m, &m, (double _Complex *)buf, &lda, ipiv, &info);
 
 	if (info < 0) {
-		nec_report(ctx, ONEC_SEV_ERROR, "ZGETRF ERROR: Illegal argument %d", -info);
+		report(ctx, ONEC_SEV_ERROR, "ZGETRF ERROR: Illegal argument %d", -info);
 	} else if (info > 0) {
-		nec_report(ctx, ONEC_SEV_WARNING, "ZGETRF WARNING: U(%d,%d) is exactly zero", info, info);
+		report(ctx, ONEC_SEV_WARNING, "ZGETRF WARNING: U(%d,%d) is exactly zero", info, info);
 	}
 
 	/* Copy LU factors back into the big matrix block. */
@@ -1230,7 +1230,7 @@ void factor_matrix(const nec_context_t *restrict ctx, int n, complex double *res
 
 	if( iflg == true )
 	{
-	  nec_report(ctx, ONEC_SEV_INFO, "PIVOT(%d)= %16.8E", r, dmax);
+	  report(ctx, ONEC_SEV_INFO, "PIVOT(%d)= %16.8E", r, dmax);
 	  iflg=false;
 	}
 
@@ -1249,7 +1249,7 @@ void factor_matrix(const nec_context_t *restrict ctx, int n, complex double *res
 /* matricies.  if no symmetry, the routine is called to factor the */
 /* complete matrix. */
 /* Formerly nec2c: factrs */
-void factor_matrix_symmetric(nec_context_t *restrict ctx, int np, int nrow, complex double *restrict a, int *restrict ip )
+void factor_matrix_symmetric(context_t *restrict ctx, int np, int nrow, complex double *restrict a, int *restrict ip )
 {
   int kk, ka;
 
@@ -1267,7 +1267,7 @@ void factor_matrix_symmetric(nec_context_t *restrict ctx, int np, int nrow, comp
 /* fblock sets parameters for out-of-core */
 /* solution for the primary matrix (a) */
 /* Formerly nec2c: fblock */
-int factor_block_matrix(nec_context_t *ctx, int nrow, int ncol, int imax, int ipsym )
+int factor_block_matrix(context_t *ctx, int nrow, int ncol, int imax, int ipsym )
 {
   int i, j, k, ka, kk;
   double phaz, arg;
@@ -1351,7 +1351,7 @@ int factor_block_matrix(nec_context_t *ctx, int nrow, int ncol, int imax, int ip
 /* lower triangular matrix and u is an upper triangular matrix both */
 /* of which are stored in a.  the rhs vector b is input and the */
 /* solution is returned through vector b.   (matrix transposed. */
-void solve(const nec_context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip,
+void solve(const context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip,
 		complex double *restrict b, int ndim )
 {
 #if defined(HAVE_ACCELERATE) || defined(HAVE_OPENBLAS) || defined(HAVE_BLAS) || defined(HAVE_MKL)
@@ -1387,7 +1387,7 @@ void solve(const nec_context_t *restrict ctx, int n, complex double *restrict a,
 					ipiv, (double _Complex *)rhs, &ldb, &info);
 
 	if (info != 0) {
-		nec_report(ctx, ONEC_SEV_ERROR, "ZGETRS ERROR: Illegal argument %d", -info);
+		report(ctx, ONEC_SEV_ERROR, "ZGETRS ERROR: Illegal argument %d", -info);
 	}
 
 	/* Copy solution back to b */
@@ -1449,7 +1449,7 @@ void solve(const nec_context_t *restrict ctx, int n, complex double *restrict a,
 /* transformation of the right hand side vector and solution */
 /* of the matrix eq. */
 /* Formerly nec2c: solves */
-void solve_symmetric(nec_context_t *restrict ctx, complex double *restrict a, int *restrict ip, complex double *restrict b,
+void solve_symmetric(context_t *restrict ctx, complex double *restrict a, int *restrict ip, complex double *restrict b,
     int neq, int nrh, int np, int n, int mp, int m)
 {
   int npeq, nrow, ic, i, kk, ia, ib, j, k;

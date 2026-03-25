@@ -19,10 +19,10 @@
 int read_deck_nec2(deck_t *deck, FILE *fp)
 {
     if (!deck || !fp) return -1;
-    nec_context_t *ctx = nec_create_context();
+    context_t *ctx = create_context();
     if (!ctx) return -1;
     read_deck(ctx, deck, fp);
-    nec_destroy_context(ctx);
+    destroy_context(ctx);
     return 0;
 }
 

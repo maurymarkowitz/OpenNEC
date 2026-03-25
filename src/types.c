@@ -16,7 +16,7 @@
  *   special handling for feet+inches and AWG wire gauge.
  * - Declaring and initializing the variable name arrays (fnames/inames) for
  *   formula evaluation with tinyexpr, using 1-based indexing.
- * - Implementing context initialization and cleanup routines for nec_context_t,
+ * - Implementing context initialization and cleanup routines for context_t,
  *   including allocation of ground grid arrays and error lists.
  *
  * These definitions are shared across the parser, deck, and calculation
@@ -81,24 +81,24 @@ const char *inames[MAX_INT_FIELDS + 1] = {
   "", "I1", "I2", "I3", "I4"
 };
 
-nec_context_t* nec_create_context(void)
+context_t* create_context(void)
 {
-    nec_context_t *ctx = (nec_context_t*)calloc(1, sizeof(nec_context_t));
+    context_t *ctx = (context_t*)calloc(1, sizeof(context_t));
     if (ctx) {
-        nec_context_init(ctx);
+        context_init(ctx);
     }
     return ctx;
 }
 
-void nec_destroy_context(nec_context_t *ctx)
+void destroy_context(context_t *ctx)
 {
     if (ctx) {
-        nec_context_cleanup(ctx);
+        context_cleanup(ctx);
         free(ctx);
     }
 }
 
-void nec_set_log_callback(nec_context_t *ctx, nec_log_callback_t callback, void *user_data)
+void set_log_callback(context_t *ctx, log_callback_t callback, void *user_data)
 {
     if (ctx) {
         ctx->log_callback = callback;
@@ -106,9 +106,9 @@ void nec_set_log_callback(nec_context_t *ctx, nec_log_callback_t callback, void 
     }
 }
 
-void nec_context_init(nec_context_t *ctx)
+void context_init(context_t *ctx)
 {
-    memset(ctx, 0, sizeof(nec_context_t));
+    memset(ctx, 0, sizeof(context_t));
     
     // Initialize error list
     ctx->errors.num_errors = 0;
@@ -126,7 +126,7 @@ void nec_context_init(nec_context_t *ctx)
     ctx->save.freq_mhz = CVEL;
     
     // Start timing for total runtime
-    nec_get_time_ms(ctx, &ctx->start_time);
+    get_time_ms(ctx, &ctx->start_time);
     
     // Initialize ground grid parameters for somnec (from old main.c lines 145-175)
     ctx->ggrid = (green_grid_t){
@@ -157,7 +157,7 @@ void nec_context_init(nec_context_t *ctx)
     };
 }
 
-void nec_context_cleanup(nec_context_t *ctx)
+void context_cleanup(context_t *ctx)
 {
     // Free ggrid arrays
     if (ctx->ggrid.table1 != NULL) {

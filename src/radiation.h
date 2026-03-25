@@ -12,6 +12,6 @@
 
 /* Radiation pattern - called from control.c */
 /* Formerly nec2c: rdpat */
-void compute_radiation_pattern(nec_context_t *ctx);
+void compute_radiation_pattern(context_t *ctx);
 
 #endif /* RADIATION_H */

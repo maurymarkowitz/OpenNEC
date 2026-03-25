@@ -1,0 +1,100 @@
+=== 4nec2 examples issues ===
+Internal error: geometry has 22 segments but half_len or radius array is NULL.
+Processing 189 of 471: HFsimple/TriangleError.nec...
+Error evaluating formula '#.4' at position 1 on card 4
+Completed 471 file(s) in 15.2s with 55 error(s)
+Internal error: geometry has 22 segments but half_len or radius array is NULL.
+Processing 189 of 471: HFsimple/TriangleError.nec...
+Error evaluating formula '#.4' at position 1 on card 4
+Completed 471 file(s) in 15.0s with 55 error(s)
+Internal error: geometry has 22 segments but half_len or radius array is NULL.
+Processing 189 of 471: HFsimple/TriangleError.nec...
+Error evaluating formula '#.4' at position 1 on card 4
+Completed 471 file(s) in 15.6s with 55 error(s)
+Internal error: geometry has 22 segments but half_len or radius array is NULL.
+Processing 189 of 471: HFsimple/TriangleError.nec...
+Error evaluating formula '#.4' at position 1 on card 4
+Completed 471 file(s) in 15.3s with 55 error(s)
+--- WARNING: onec returned status 134 for 4nec2 examples ---
+Internal error: geometry has 22 segments but half_len or radius array is NULL.
+Processing 189 of 471: HFsimple/TriangleError.nec...
+Error evaluating formula '#.4' at position 1 on card 4
+
+ZERO-BYTE OUT: 4nec2 examples/HFbeams/NinjaBeam.out
+ZERO-BYTE OUT: 4nec2 examples/HFbeams/40MYAG2.out
+ZERO-BYTE OUT: 4nec2 examples/HFbeams/Unwin.out
+ZERO-BYTE OUT: 4nec2 examples/HFbeams/Unwin_mod.out
+ZERO-BYTE OUT: 4nec2 examples/Fractals/Random2.out
+ZERO-BYTE OUT: 4nec2 examples/Fractals/RANDOM1.out
+ZERO-BYTE OUT: 4nec2 examples/Fractals/MI2 Loop.out
+ZERO-BYTE OUT: 4nec2 examples/Fractals/MI3.out
+ZERO-BYTE OUT: 4nec2 examples/LFvertical/cutler_single .out
+ZERO-BYTE OUT: 4nec2 examples/VHFbeams/QFH1280.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/N4PCLOOP.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/Vert1.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/Dipole1.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/4SQTL.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/Cardioid.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/DipTL.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/VHFGP.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/CardTL.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/W8JK.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/LOGPER.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/NBSYAGI.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/20M5ELYA.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/15MQUAD.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/LOGPERTL.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/4SQUARE.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/BYDipole.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/FDSP.out
+ZERO-BYTE OUT: 4nec2 examples/zz_EZnec/v3.0/BYVee.out
+ZERO-BYTE OUT: 4nec2 examples/HFActiveFeed/BRDZPR10.out
+ZERO-BYTE OUT: 4nec2 examples/HFActiveFeed/ZLSPTS10.out
+ZERO-BYTE OUT: 4nec2 examples/HFActiveFeed/3vertical.out
+ZERO-BYTE OUT: 4nec2 examples/HFActiveFeed/2lsloper.out
+ZERO-BYTE OUT: 4nec2 examples/HFActiveFeed/2phased.out
+ZERO-BYTE OUT: 4nec2 examples/HFActiveFeed/ZLTROM10.out
+ZERO-BYTE OUT: 4nec2 examples/HFsimple/Coax.out
+ZERO-BYTE OUT: 4nec2 examples/HFsimple/EDZ_TL.out
+ZERO-BYTE OUT: 4nec2 examples/HFsimple/HorLoop80.out
+ZERO-BYTE OUT: 4nec2 examples/HFsimple/FANDPL10.out
+ZERO-BYTE OUT: 4nec2 examples/HFsimple/SLOPE1.out
+ZERO-BYTE OUT: 4nec2 examples/HFsimple/Patch.out
+ZERO-BYTE OUT: 4nec2 examples/HFmultiband/40MYAG2.out
+ZERO-BYTE OUT: 4nec2 examples/HFcollinear/W8BYA Collinear 7 MHz.out
+ZERO-BYTE OUT: 4nec2 examples/HFcollinear/SLOPER2.out
+ZERO-BYTE OUT: 4nec2 examples/Nec4/Catenary.out
+ZERO-BYTE OUT: 4nec2 examples/HFvertical/Varray.out
+ZERO-BYTE OUT: 4nec2 examples/HFvertical/4SQTL.out
+ZERO-BYTE OUT: 4nec2 examples/HFvertical/CARDIOID.out
+ZERO-BYTE OUT: 4nec2 examples/HFvertical/CardTL.out
+ZERO-BYTE OUT: 4nec2 examples/HFvertical/40M2EL.out
+ZERO-BYTE OUT: 4nec2 examples/HFvertical/4SQUARE.out
+ZERO-BYTE OUT: 4nec2 examples/HFshort/DPLNLD10.out
+ZERO-BYTE OUT: 4nec2 examples/HFshort/Minibeam.out
+ZERO-BYTE OUT: 4nec2 examples/HFshort/LinLoad2.out
+ZERO-BYTE OUT: 4nec2 examples/HFshort/LinLoad.out
+ZERO-BYTE OUT: 4nec2 examples/Aperiodic/ON4BAAWD.out
+ZERO-BYTE OUT: 4nec2 examples/Aperiodic/D2T.out
+=== ARRL examples issues ===
+Completed 7 file(s) in 0.0s with 1 error(s)
+Completed 7 file(s) in 0.0s with 1 error(s)
+Completed 7 file(s) in 0.0s with 1 error(s)
+Completed 7 file(s) in 0.0s with 1 error(s)
+Completed 7 file(s) in 0.0s with 1 error(s)
+Completed 7 file(s) in 0.0s with 1 error(s)
+Completed 7 file(s) in 0.0s with 1 error(s)
+Completed 7 file(s) in 0.1s with 1 error(s)
+Completed 7 file(s) in 0.0s with 1 error(s)
+Completed 7 file(s) in 0.1s with 1 error(s)
+--- WARNING: onec returned status 134 for ARRL examples ---
+Completed 7 file(s) in 0.0s with 1 error(s)
+Completed 7 file(s) in 0.0s with 1 error(s)
+Completed 7 file(s) in 0.1s with 1 error(s)
+Completed 7 file(s) in 0.1s with 1 error(s)
+Completed 7 file(s) in 0.1s with 1 error(s)
+Completed 7 file(s) in 0.1s with 1 error(s)
+Completed 7 file(s) in 0.0s with 1 error(s)
+Completed 7 file(s) in 0.0s with 1 error(s)
+
+ZERO-BYTE OUT: ARRL examples/other/CAR2.out

@@ -1,10 +1,10 @@
 /*
- * bench_estimate.c — Benchmark nec_estimate_time() against real run times.
+ * bench_estimate.c — Benchmark estimate_time() against real run times.
  *
  * Recursively walks test/4nec2 example models/, computes the dimensionless
  * complexity T for each .nec/.NEC file, then:
  *
- *   1. Calls nec_run_simulation() directly (output → /dev/null) and records
+ *   1. Calls run_simulation() directly (output → /dev/null) and records
  *      the simulation-only wall time in sim_ms.  This isolates the matrix
  *      fill + factorisation + solve + far-field work that T models.
  *
@@ -18,8 +18,8 @@
  *
  * CSV columns:
  *   path        – relative path to the .nec file
- *   T           – nec_estimate_time() (-1 if parse failed)
- *   sim_ms      – nec_run_simulation() wall time (ms); -1 on error
+ *   T           – estimate_time() (-1 if parse failed)
+ *   sim_ms      – run_simulation() wall time (ms); -1 on error
  *   total_ms    – ./onec subprocess wall time (ms)
  *   exit_code   – subprocess exit code (0 = success)
  *   timed_out   – 1 if the subprocess was killed after TIMEOUT_MS
@@ -115,10 +115,10 @@ static void null_log(void *ud, int level, const char *msg)
     (void)ud; (void)level; (void)msg;
 }
 
-/* ---- load and parse a deck into *deck (caller must call free_deck()) ---- */
-static int load_deck_for_bench(nec_context_t *ctx, const char *path, deck_t *deck)
+/* ---- load and parse a deck into *deck (caller must call destroy_deck()) ---- */
+static int load_deck_for_bench(context_t *ctx, const char *path, deck_t *deck)
 {
-    memset(deck, 0, sizeof(*deck));
+    init_deck(deck);
     FILE *f = fopen(path, "r");
     if (!f) return -1;
     read_deck(ctx, deck, f);
@@ -135,19 +135,19 @@ static int load_deck_for_bench(nec_context_t *ctx, const char *path, deck_t *dec
 /* ---- compute T (-1.0 on failure) ---- */
 static double compute_T(const char *path)
 {
-    nec_context_t *ctx = nec_create_context();
-    nec_set_log_callback(ctx, null_log, NULL);
+    context_t *ctx = create_context();
+    set_log_callback(ctx, null_log, NULL);
     deck_t deck;
     int rc = load_deck_for_bench(ctx, path, &deck);
-    /* nec_estimate_time() will call calculate_geometry() internally, so the
+    /* estimate_time() will call calculate_geometry() internally, so the
      * geometry is built and T reflects the true post-expansion segment count. */
-    double T = (rc == 0) ? nec_estimate_time(ctx, &deck) : -1.0;
-    if (rc == 0) free_deck(&deck);
-    nec_destroy_context(ctx);
+    double T = (rc == 0) ? estimate_time(ctx, &deck) : -1.0;
+    destroy_deck(&deck);
+    destroy_context(ctx);
     return T;
 }
 
-/* ---- run nec_run_simulation() directly, timing only that call ------------
+/* ---- run run_simulation() directly, timing only that call ------------
  *
  * Deck load + parse are done before the timer starts so they are excluded.
  * Output is directed to /dev/null so file I/O does not inflate the time.
@@ -159,8 +159,8 @@ static double run_sim_direct(const char *path, int *ok_out)
 {
     *ok_out = 0;
 
-    nec_context_t *ctx = nec_create_context();
-    nec_set_log_callback(ctx, null_log, NULL);
+    context_t *ctx = create_context();
+    set_log_callback(ctx, null_log, NULL);
 
     /* redirect all output to /dev/null so ctx internals that write don't block */
     FILE *devnull = fopen("/dev/null", "w");
@@ -168,22 +168,24 @@ static double run_sim_direct(const char *path, int *ok_out)
     ctx->error_fp  = devnull ? devnull : stderr;
 
     deck_t deck;
-    if (load_deck_for_bench(ctx, path, &deck) != 0) {
+    int load_rc = load_deck_for_bench(ctx, path, &deck);
+    if (load_rc != 0) {
+        destroy_deck(&deck);
         if (devnull) fclose(devnull);
-        nec_destroy_context(ctx);
+        destroy_context(ctx);
         return -1.0;
     }
 
     /* ---- start timer AFTER all deck setup ---- */
     double t0 = ms_now();
-    int rc = nec_run_simulation(ctx, &deck);
+    int rc = run_simulation(ctx, &deck);
     double sim_ms = ms_now() - t0;
 
     *ok_out = (rc == 0 && ctx->errors.num_errors == 0) ? 1 : 0;
 
-    free_deck(&deck);
+    destroy_deck(&deck);
     if (devnull) fclose(devnull);
-    nec_destroy_context(ctx);
+    destroy_context(ctx);
     return sim_ms;
 }
 

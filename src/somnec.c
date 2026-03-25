@@ -16,7 +16,7 @@
  *   phasor scaling, and write results into the grid arrays in `ggrid`.
  * - Handle the r=0 limit for the first grid using closed-form expressions.
  *
- * These routines operate on `nec_context_t`, primarily the `ggrid` common
+ * These routines operate on `context_t`, primarily the `ggrid` common
  * block for grid settings and output arrays, and rely on shared constants and
  * helper evaluators to produce consistent data for ground calculations.
  *****************************************************************************/
@@ -26,23 +26,23 @@
 #include "calculations.h"
 
 /* Forward declarations for internal functions */
-static void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex double *j0p);
+static void bessel(context_t *ctx, complex double z, complex double *j0, complex double *j0p);
 /* Formerly nec2c: evlua */
-static void evaluate_sommerfeld_integrals(nec_context_t *ctx, complex double *erv, complex double *ezv, complex double *erh, complex double *eph);
+static void evaluate_sommerfeld_integrals(context_t *ctx, complex double *erv, complex double *ezv, complex double *erh, complex double *eph);
 /* Formerly nec2c: gshank */
-static int shanks_integration(nec_context_t *ctx, complex double start, complex double dela, complex double *sum, int nans, complex double *seed, int ibk, complex double bk, complex double delb);
-static int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex double *h0p);
+static int shanks_integration(context_t *ctx, complex double start, complex double dela, complex double *sum, int nans, complex double *seed, int ibk, complex double bk, complex double delb);
+static int hankel(context_t *ctx, complex double z, complex double *h0, complex double *h0p);
 /* Formerly nec2c: lambda */
-static void sommerfeld_lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam);
+static void sommerfeld_lambda(context_t *ctx, double t, complex double *xlam, complex double *dxlam);
 /* Formerly nec2c: rom1 */
-static void romberg_integrate_1d(nec_context_t *ctx, int n, complex double *sum, int nx);
+static void romberg_integrate_1d(context_t *ctx, int n, complex double *sum, int nx);
 /* Formerly nec2c: saoa */
-static void sommerfeld_asymptotic(nec_context_t *ctx, double t, complex double *ans);
+static void sommerfeld_asymptotic(context_t *ctx, double t, complex double *ans);
 
 /*-----------------------------------------------------------------------*/
 
 /* This is the "main" of somnec */
-void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
+void somnec(context_t *ctx, double epr, double sig, double fmhz )
 {
   int k, nth, ith, irs, ir, nr;
   double tim, wlam, tst, dr, dth=0.0, r, rk, thet, tfac1, tfac2;
@@ -55,7 +55,7 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
   else
     ctx->ggrid.dielectric=cmplx(epr,sig);
 
-  nec_get_time_ms(ctx, &tst);
+  get_time_ms(ctx, &tst);
   ctx->somnec.evlcom.ck2 = TP;
   ctx->somnec.evlcom.ck2sq = ctx->somnec.evlcom.ck2 * ctx->somnec.evlcom.ck2;
 
@@ -168,7 +168,7 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
   ctx->ggrid.table1[0+ith*11+330]=eph;
   }
 
-  nec_get_time_ms(ctx, &tim);
+  get_time_ms(ctx, &tim);
   tim -= tst;
 
   return;
@@ -178,7 +178,7 @@ void somnec(nec_context_t *ctx, double epr, double sig, double fmhz )
 
 /* bessel evaluates the zero-order bessel function */
 /* and its derivative for complex argument z. */
-void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex double *j0p )
+void bessel(context_t *ctx, complex double z, complex double *j0, complex double *j0p )
 {
   int k, ib;
   double zms;
@@ -279,7 +279,7 @@ void bessel(nec_context_t *ctx, complex double z, complex double *j0, complex do
 /* evlua controls the integration contour in the complex */
 /* lambda plane for evaluation of the sommerfeld integrals */
 /* Formerly nec2c: evlua */
-void evaluate_sommerfeld_integrals(nec_context_t *ctx, complex double *erv, complex double *ezv,
+void evaluate_sommerfeld_integrals(context_t *ctx, complex double *erv, complex double *ezv,
 	complex double *erh, complex double *eph )
 {
   int i, jump;
@@ -418,7 +418,7 @@ void evaluate_sommerfeld_integrals(nec_context_t *ctx, complex double *erv, comp
 
 /* fbar is sommerfeld attenuation function for numerical distance p */
 /* Formerly nec2c: fbar */
-void norton_attenuation_factor(nec_context_t *ctx, complex double p, complex double *fbar )
+void norton_attenuation_factor(context_t *ctx, complex double p, complex double *fbar )
 {
   int i, minus;
   double tms, sms;
@@ -479,7 +479,7 @@ void norton_attenuation_factor(nec_context_t *ctx, complex double p, complex dou
 /* algorithm to accelerate convergence of a slowly converging series */
 /* is used */
 /* Formerly nec2c: gshank */
-int shanks_integration(nec_context_t *ctx, complex double start, complex double dela,
+int shanks_integration(context_t *ctx, complex double start, complex double dela,
 	complex double *sum, int nans, complex double *seed,
 	int ibk, complex double bk, complex double delb )
 {
@@ -629,7 +629,7 @@ int shanks_integration(nec_context_t *ctx, complex double start, complex double 
 
 /* hankel evaluates hankel function of the first kind,   */
 /* order zero, and its derivative for complex argument z */
-int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex double *h0p )
+int hankel(context_t *ctx, complex double z, complex double *h0, complex double *h0p )
 {
   int k, ib;
   complex double clogz, j0, j0p, p0z, p1z, q0z, q1z, y0=CPLX_00, y0p=CPLX_00, zi, zi2, zk;
@@ -737,7 +737,7 @@ int hankel(nec_context_t *ctx, complex double z, complex double *h0, complex dou
 
 /* compute integration parameter xlam=lambda from parameter t. */
 /* Formerly nec2c: lambda */
-void sommerfeld_lambda(nec_context_t *ctx, double t, complex double *xlam, complex double *dxlam )
+void sommerfeld_lambda(context_t *ctx, double t, complex double *xlam, complex double *dxlam )
 {
   *dxlam=ctx->somnec.cntour.b-ctx->somnec.cntour.a;
   *xlam=ctx->somnec.cntour.a+*dxlam*t;
@@ -749,7 +749,7 @@ void sommerfeld_lambda(nec_context_t *ctx, double t, complex double *xlam, compl
 /* rom1 integrates the 6 sommerfeld integrals from a to b in lambda. */
 /* the method of variable interval width romberg integration is used. */
 /* Formerly nec2c: rom1 */
-void romberg_integrate_1d(nec_context_t *ctx, int n, complex double *sum, int nx )
+void romberg_integrate_1d(context_t *ctx, int n, complex double *sum, int nx )
 {
   int jump, lstep, nogo, i, ns, nt;
 
@@ -906,7 +906,7 @@ void romberg_integrate_1d(nec_context_t *ctx, int n, complex double *sum, int nx
 /* saoa computes the integrand for each of the 6 sommerfeld */
 /* integrals for source and observer above ground */
 /* Formerly nec2c: saoa */
-void sommerfeld_asymptotic(nec_context_t *ctx, double t, complex double *ans)
+void sommerfeld_asymptotic(context_t *ctx, double t, complex double *ans)
 {
   double xlr;
   complex double xl, dxl, cgam1, cgam2, b0, b0p, com, dgam, den1, den2;

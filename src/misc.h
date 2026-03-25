@@ -12,13 +12,13 @@
 #include "compat.h"
 
 /* Memory management */
-int mem_alloc(const nec_context_t *ctx, void **ptr, size_t req);
-int mem_realloc(const nec_context_t *ctx, void **ptr, size_t req);
-void mem_free(const nec_context_t *ctx, void **ptr);
+int mem_alloc(const context_t *ctx, void **ptr, size_t req);
+int mem_realloc(const context_t *ctx, void **ptr, size_t req);
+void mem_free(const context_t *ctx, void **ptr);
 
 /* Error and message handling */
-void add_error(const nec_context_t *ctx, errors_list_t *errors, char *message, int severity);
-void add_message(const nec_context_t *ctx, outputs_list_t *outputs, char *message);
+void add_error(const context_t *ctx, errors_list_t *errors, char *message, int severity);
+void add_message(const context_t *ctx, outputs_list_t *outputs, char *message);
 void transfer_errors(errors_list_t *src, errors_list_t *dst);
 
 /* Path utilities */
@@ -34,11 +34,11 @@ void resolve_path_relative_to_input(const char *path, const char *source_filenam
                                     char *buf, size_t bufsz);
 
 /* Unified logging and reporting */
-void nec_report(const nec_context_t *ctx, int level, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
+void report(const context_t *ctx, int level, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
 
 /* Timing */
 /** @brief Returns high-resolution monotonic time in milliseconds */
-void nec_get_time_ms(const nec_context_t *ctx, double *ms);
+void get_time_ms(const context_t *ctx, double *ms);
 
 /**
  * @brief Returns a dimensionless complexity estimate proportional to run time.
@@ -52,24 +52,24 @@ void nec_get_time_ms(const nec_context_t *ctx, double *ms);
  * T4 = 0 when no RP card is present; Nc (wire-surface junctions) is omitted.
  * When a FR card is present, Nfreq multiplies the entire T (fill, factorisation,
  * solve, and far-field all repeat for each frequency in NEC-2).
- * See nec_estimate_time() in misc.c for the full formula and design notes.
+ * See estimate_time() in misc.c for the full formula and design notes.
  *
  * @param  ctx   NEC context (geometry is populated as a side effect if not already done)
  * @param  deck  Parsed deck (symbols evaluated)
  * @return       T >= 0.0, or 0.0 if ctx or deck is NULL
  */
-double nec_estimate_time(nec_context_t *ctx, deck_t *deck);
+double estimate_time(context_t *ctx, deck_t *deck);
 
 /* Error handling */
-int stop(const nec_context_t *ctx, int flag);
-void abort_on_error(const nec_context_t *ctx, int why);
+int stop(const context_t *ctx, int flag);
+void abort_on_error(const context_t *ctx, int why);
 
 /* String utilities (used internally by input/deck modules) */
-char* substr(const nec_context_t *ctx, char* dest, char *src, int start, int len);
+char* substr(const context_t *ctx, char* dest, char *src, int start, int len);
 char* trim_start(char* dest);
 char* trim_end(char* dest);
 char* trim(char* dest);
-int str_ends_with(const nec_context_t *ctx, const char *str, const char *suffix);
+int str_ends_with(const context_t *ctx, const char *str, const char *suffix);
 
 /* Field separator detection */
 field_sep_t detect_field_separator(const char *card_str);

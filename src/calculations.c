@@ -15,12 +15,12 @@
 
 /* Forward declarations for internal functions */
 /* Formerly nec2c: gf */
-static void wire_e_integrand(nec_context_t *ctx, double zk, double *co, double *si);
+static void wire_e_integrand(context_t *ctx, double zk, double *co, double *si);
 /* Formerly nec2c: sbf */
-static int basis_func_component(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc);
+static int basis_func_component(context_t *ctx, int i, int is, double *aa, double *bb, double *cc);
 
 /* Helper function to add loading output entries */
-static void add_loading_output(nec_context_t *ctx, int tag, int tagf, int tagt, double conductivity, double f1, double f2, const char *type)
+static void add_loading_output(context_t *ctx, int tag, int tagf, int tagt, double conductivity, double f1, double f2, const char *type)
 {
     if (ctx->loading_outputs.count >= ctx->loading_outputs.capacity) {
         ctx->loading_outputs.capacity = ctx->loading_outputs.capacity == 0 ? 16 : ctx->loading_outputs.capacity * 2;
@@ -44,7 +44,7 @@ static void add_loading_output(nec_context_t *ctx, int tag, int tagf, int tagt, 
 /* cosine (c) terms in the current interpolation functions for the */
 /* current vector cur. */
 /* Formerly nec2c: cabc */
-void compute_current_coefficients(nec_context_t *restrict ctx, complex double *restrict curx)
+void compute_current_coefficients(context_t *restrict ctx, complex double *restrict curx)
 {
   int i, is, j, jx, jco1, jco2;
   double ar, ai, sh;
@@ -143,7 +143,7 @@ void compute_current_coefficients(nec_context_t *restrict ctx, complex double *r
 
 /* couple computes the maximum coupling between pairs of segments. */
 /* Formerly nec2c: couple */
-void compute_coupling(nec_context_t *ctx, complex double *cur, double wlam )
+void compute_coupling(context_t *ctx, complex double *cur, double wlam )
 {
   int j, j1, j2, l1, i, k, itt1, itt2, its1, its2, isg1, isg2, npm1;
   double dbc, c, gmax;
@@ -257,7 +257,7 @@ void compute_coupling(nec_context_t *ctx, complex double *cur, double wlam )
 /* load calculates the impedance of specified */
 /* segments for various types of loading */
 /* Formerly nec2c: load */
-int apply_impedance_loading(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
+int apply_impedance_loading(context_t *ctx, int *ldtyp, int *ldtag, int *ldtagf, int *ldtagt,
           double *zlr, double *zli, double *zlc )
 {
   int i, istep, istepx, l1, l2, ldtags, jump, ichk;
@@ -298,7 +298,7 @@ int apply_impedance_loading(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldt
       {
         if (dup_count == 0)
         {
-          nec_report(ctx, ONEC_SEV_WARNING,
+          report(ctx, ONEC_SEV_WARNING,
                      "Some segments have been loaded more than once; impedances added.");
         }
         else
@@ -321,7 +321,7 @@ int apply_impedance_loading(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldt
                             dup_tags[k], owner_line, repeat_line,
                             (k + 1 == show && dup_count > show) ? ",..." : "");
           }
-          nec_report(ctx, ONEC_SEV_WARNING, "%s", buf);
+          report(ctx, ONEC_SEV_WARNING, "%s", buf);
         }
       }
 
@@ -556,7 +556,7 @@ int apply_impedance_loading(nec_context_t *ctx, int *ldtyp, int *ldtag, int *ldt
 
 /* gf computes the integrand exp(jkr)/(kr) for numerical integration. */
 /* Formerly nec2c: gf */
-void wire_e_integrand(nec_context_t *ctx, double zk, double *co, double *si )
+void wire_e_integrand(context_t *ctx, double zk, double *co, double *si )
 {
   double zdk, rk, rks;
   
@@ -585,7 +585,7 @@ void wire_e_integrand(nec_context_t *ctx, double zk, double *co, double *si )
 /*-----------------------------------------------------------------------*/
 
 /* function db10 returns db for magnitude (field) */
-double db10(const nec_context_t *ctx, double x )
+double db10(const context_t *ctx, double x )
 {
   if( x < 1.e-20 )
     return( -999.99 );
@@ -596,7 +596,7 @@ double db10(const nec_context_t *ctx, double x )
 /*-----------------------------------------------------------------------*/
 
 /* function db20 returns db for mag**2 (power) i */
-double db20(const nec_context_t *ctx, double x )
+double db20(const context_t *ctx, double x )
 {
   if( x < 1.e-20 )
     return( -999.99 );
@@ -609,7 +609,7 @@ double db20(const nec_context_t *ctx, double x )
 /* intrp uses bivariate cubic interpolation to obtain */
 /* the values of 4 functions at the point (x,y). */
 /* Formerly nec2c: intrp */
-void interpolate_sommerfeld_grid(nec_context_t *restrict ctx, double x, double y, complex double *restrict f1,
+void interpolate_sommerfeld_grid(context_t *restrict ctx, double x, double y, complex double *restrict f1,
            complex double *restrict f2, complex double *restrict f3, complex double *restrict f4 )
 {
   int nda[3]={11,17,9}, ndpa[3]={110,85,72};
@@ -783,7 +783,7 @@ void interpolate_sommerfeld_grid(nec_context_t *restrict ctx, double x, double y
 /* variable interval width romberg integration.  the integrand value */
 /* is supplied by subroutine gf. */
 /* Formerly nec2c: intx */
-void romberg_integrate_wire_e(nec_context_t *ctx, double el1, double el2, double b,
+void romberg_integrate_wire_e(context_t *ctx, double el1, double el2, double b,
           int ij, double *sgr, double *sgi)
 {
   int ns, nt;
@@ -904,7 +904,7 @@ void romberg_integrate_wire_e(nec_context_t *ctx, double el1, double el2, double
     {
       nt=0;
       if( ns >= nma)
-        nec_report(ctx, ONEC_SEV_WARNING, "Step size limited at Z= %10.5f", z);
+        report(ctx, ONEC_SEV_WARNING, "Step size limited at Z= %10.5f", z);
       else
       {
         /* halve step size */
@@ -930,7 +930,7 @@ void romberg_integrate_wire_e(nec_context_t *ctx, double el1, double el2, double
     z += dz;
     if( !isfinite(z) || ++intx_iters > intx_max )
     {
-      nec_report(ctx, ONEC_SEV_WARNING,
+      report(ctx, ONEC_SEV_WARNING,
         "intx: integration did not converge (degenerate geometry?); results may be inaccurate");
       return;
     }
@@ -963,7 +963,7 @@ void romberg_integrate_wire_e(nec_context_t *ctx, double el1, double el2, double
 /*-----------------------------------------------------------------------*/
 
 /* returns smallest of two arguments */
-int min(const nec_context_t *ctx, int a, int b )
+int min(const context_t *ctx, int a, int b )
 {
   if( a < b )
     return(a);
@@ -975,7 +975,7 @@ int min(const nec_context_t *ctx, int a, int b )
 
 /* test for convergence in numerical integration */
 /* Formerly nec2c: test */
-void test_romberg_convergence(nec_context_t *ctx, double f1r, double f2r, double *tr,
+void test_romberg_convergence(context_t *ctx, double f1r, double f2r, double *tr,
           double f1i, double f2i, double *ti, double dmin )
 {
   double den;
@@ -1005,7 +1005,7 @@ void test_romberg_convergence(nec_context_t *ctx, double f1r, double f2r, double
 
 /* compute component of basis function i on segment is. */
 /* Formerly nec2c: sbf */
-int basis_func_component(nec_context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
+int basis_func_component(context_t *ctx, int i, int is, double *aa, double *bb, double *cc )
 {
   int ix, jsno, june, jcox, jcoxx, jend, iend, njun1=0, njun2;
   double d, sig, pp, sdh, cdh, sd, omc, aj, pm=0, cd, ap, qp, qm, xxi;
@@ -1232,7 +1232,7 @@ int basis_func_component(nec_context_t *ctx, int i, int is, double *aa, double *
 
 /* compute basis function i */
 /* Formerly nec2c: tbf */
-int compute_basis_func(nec_context_t *ctx, int i, int icap )
+int compute_basis_func(context_t *ctx, int i, int icap )
 {
   int ix, jcox, jcoxx, jend, iend, njun1=0, njun2, jsnop, jsnox;
   double pp, sdh, cdh, sd, omc, aj, pm=0, cd, ap, qp, qm, xxi;
@@ -1454,7 +1454,7 @@ int compute_basis_func(nec_context_t *ctx, int i, int icap )
 
 /* compute the components of all basis functions on segment j */
 /* Formerly nec2c: trio */
-int compute_all_basis_funcs_on_seg(nec_context_t *ctx, int j )
+int compute_all_basis_funcs_on_seg(context_t *ctx, int j )
 {
   int jcox, jcoxx, jsnox, jx, jend=0, iend=0;
   
@@ -1596,7 +1596,7 @@ int compute_all_basis_funcs_on_seg(nec_context_t *ctx, int j )
 
 /* zint computes the internal impedance of a circular wire */
 /* Formerly nec2c: zint */
-void wire_surface_impedance(nec_context_t *restrict ctx, double sigl, double rolam, complex double *restrict zint )
+void wire_surface_impedance(context_t *restrict ctx, double sigl, double rolam, complex double *restrict zint )
 {
 #define cc1		( 6.0e-7     + I*1.9e-6)
 #define cc2		(-3.4e-6     + I*5.1e-6)
@@ -1668,7 +1668,7 @@ void wire_surface_impedance(nec_context_t *restrict ctx, double sigl, double rol
 
 /* cang returns the phase angle of a complex number in degrees. */
 /* Formerly nec2c: cang */
-double complex_angle_deg(const nec_context_t *ctx, complex double z )
+double complex_angle_deg(const context_t *ctx, complex double z )
 {
   return( carg(z)*TD );
 }

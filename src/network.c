@@ -20,7 +20,7 @@
 /* network solves for structure currents for a given */
 /* excitation including the effect of non-radiating networks if */
 /* present. */
-void network(nec_context_t *restrict ctx, complex double *restrict cm, int *restrict ip, complex double *restrict einc )
+void network(context_t *restrict ctx, complex double *restrict cm, int *restrict ip, complex double *restrict einc )
 {
   int *ipnt = NULL, *nteqa = NULL, *ntsca = NULL;
   int nteq=0, ntsc=0, irow2=0, j, ndimn;

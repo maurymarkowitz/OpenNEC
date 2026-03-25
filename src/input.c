@@ -36,11 +36,11 @@
 #include "input.h"
 
 /* Forward declarations for internal functions */
-static int read_line(nec_context_t *ctx, char *buff, FILE *pfile, int line_num);
-static void parse_comment_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
-static void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
-static void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors);
-static void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors);
+static int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num);
+static void parse_comment_card(context_t *ctx, card_t *card, errors_list_t *errors);
+static void parse_geometry_or_control_card(context_t *ctx, card_t *card, errors_list_t *errors);
+static void parse_onec_card(context_t *ctx, card_t *card, errors_list_t *errors);
+static void parse_key_values(context_t *ctx, card_t *card, errors_list_t *errors);
 
 /******************************************************************************
  * read_deck()
@@ -54,7 +54,7 @@ static void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *er
  *  to have been opened previous to this call
  *
  */
-void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
+void read_deck(context_t *ctx, deck_t *deck, FILE *pfile)
 {
   char line_buf[1024];  // make it large enough to hold any line
   size_t line_len;      // actual length of the current card being read
@@ -82,6 +82,42 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
         break;
       }
     }
+
+    // Handle hard-newline continuation lines (e.g. 4nec2 split fields)
+    // by appending numeric continuation lines to the previous card.
+    size_t first_nonws = 0;
+    while (line_buf[first_nonws] && isspace((unsigned char)line_buf[first_nonws])) {
+      first_nonws++;
+    }
+    bool continuation_line = false;
+    if (deck->num_cards > 0 && first_nonws < strlen(line_buf)) {
+      char c = line_buf[first_nonws];
+      if (c == '+' || c == '-' || c == '.' || isdigit((unsigned char)c)) {
+        continuation_line = true;
+      }
+    }
+    if (continuation_line) {
+      card_t *prev_card = &deck->cards[deck->num_cards - 1];
+      size_t prev_len = strlen(prev_card->orig_str);
+      size_t add_len = strlen(line_buf);
+      char *new_str = realloc(prev_card->orig_str, prev_len + 1 + add_len + 1);
+      if (!new_str) {
+        char msg[MAX_ERROR_LEN];
+        snprintf(msg, MAX_ERROR_LEN, "[read_deck] ERROR: realloc failed for continuation line %d", line_num);
+        add_error(ctx, &ctx->errors, msg, FATAL);
+        return;
+      }
+      prev_card->orig_str = new_str;
+      prev_card->orig_str[prev_len] = ' ';
+      memcpy(prev_card->orig_str + prev_len + 1, line_buf, add_len + 1);
+      // Do not add a new card for continuation lines.
+      if (read_result == EOF && !last_line_nonempty) {
+        break;
+      }
+      last_line_nonempty = 0;
+      continue;
+    }
+
     line_len = strlen(line_buf);
     if(deck->num_cards == 0) {
       deck->num_cards++;
@@ -158,14 +194,14 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile)
  * This code also automatically capitalizes the first two characters
  * on the line, regardless of how they were entered originally.
  *
- * @param ctx The current nec_context_t, used for error reporting
+ * @param ctx The current context_t, used for error reporting
  * @param buff String containing the contents of one line
  * @param file file pointer to the file to be read, assumed
  * @param line_num The current line number in the file, for error reporting
  *  to have been opened previous to this call
  * 
 */
-int read_line(nec_context_t *ctx, char *buff, FILE *pfile, int line_num)
+int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num)
 {
   int
     num_chr = 0,  // number of characters read, excluding lf/cr
@@ -259,7 +295,7 @@ int read_line(nec_context_t *ctx, char *buff, FILE *pfile, int line_num)
  * extn_str.
  *
  */
-void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
+void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   card_t *card;
   
@@ -641,7 +677,7 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
  * only applies to whole-line comments.
  *
  */
-void parse_comment_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
+void parse_comment_card(context_t *ctx, card_t *card, errors_list_t *errors)
 {
   // look for the different comment markers in the card_code and then
   // just copy everything else on the line to the comment. this
@@ -683,7 +719,7 @@ void parse_comment_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
  * the addition of parsers for measurement units and formulas.
  *
  */
-void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
+void parse_geometry_or_control_card(context_t *ctx, card_t *card, errors_list_t *errors)
 {
   int ints_processed = 0;
   int flts_processed = 0;
@@ -883,7 +919,7 @@ void parse_geometry_or_control_card(nec_context_t *ctx, card_t *card, errors_lis
  *   produce multiple output runs
  *
  */
-void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
+void parse_onec_card(context_t *ctx, card_t *card, errors_list_t *errors)
 {
   // see if this is an SY card, otherwise exit
   // TODO: add all onec_codes here, we currently only do SY
@@ -966,7 +1002,7 @@ void parse_onec_card(nec_context_t *ctx, card_t *card, errors_list_t *errors)
  * everything after the marker is a comment
  *
  */
-void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors)
+void parse_key_values(context_t *ctx, card_t *card, errors_list_t *errors)
 {
   char str[MAX_LINE_LEN];
   
@@ -1122,7 +1158,7 @@ void parse_key_values(nec_context_t *ctx, card_t *card, errors_list_t *errors)
  * If such a card is found, and it does not already have an "invisible"
  * extension, one is added with the value "true".
  */
-void mark_4nec2_cards_invisible(nec_context_t *ctx, deck_t *deck)
+void mark_4nec2_cards_invisible(context_t *ctx, deck_t *deck)
 {
   const int INV_MIN = 9800;
   const int INV_MAX = 9900; // 9900 and up are current sources

@@ -6,7 +6,7 @@
  * user edits a card.
  *
  * Each exported function takes only a single card_t pointer (no deck_t or
- * nec_context_t), so it can be called on any card in isolation. Validation
+ * context_t), so it can be called on any card in isolation. Validation
  * rules that require knowledge of other cards in the deck — such as whether
  * a referenced tag exists, or whether a wire end is open — are intentionally
  * out of scope here and remain in deck_validations.c.

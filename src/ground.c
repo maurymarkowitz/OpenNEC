@@ -17,7 +17,7 @@
  * - Producing the x, y, z components of the field for constant, sine, and
  *   cosine current distributions.
  *
- * These routines operate on the shared nec_context_t state, reading geometry,
+ * These routines operate on the shared context_t state, reading geometry,
  * ground parameters, and segment/source data from the common blocks to derive
  * coefficients and accumulate results for near-field and radiation calculations.
  *****************************************************************************/
@@ -36,7 +36,7 @@
 /* field components - the x, y, and z components due to constant, */
 /* sine, and cosine current distributions. */
 /* Formerly nec2c: rom2 */
-int romberg_integrate_sommerfeld(nec_context_t *restrict ctx, double a, double b, complex double *restrict sum, double dmin)
+int romberg_integrate_sommerfeld(context_t *restrict ctx, double a, double b, complex double *restrict sum, double dmin)
 {
   int i, ns, nt;
   bool flag=true;
@@ -178,9 +178,8 @@ int romberg_integrate_sommerfeld(nec_context_t *restrict ctx, double a, double b
       
       if (!ctx->step_size_warned) {
         ctx->step_size_warned = true;
-        nec_report(ctx, ONEC_SEV_WARNING,
-          "Step size limited at Z= %12.5E near source segment (%.4g, %.4g, %.4g);"
-          " further occurrences suppressed",
+        report(ctx, ONEC_SEV_WARNING,
+          "Step size limited at Z= %12.5E near source segment (%.4g, %.4g, %.4g)",
           z, ctx->dataj.src_x, ctx->dataj.src_y, ctx->dataj.src_z);
       }
       
@@ -212,7 +211,7 @@ int romberg_integrate_sommerfeld(nec_context_t *restrict ctx, double a, double b
 /* sfldx returns the field due to ground for a current element on */
 /* the source segment at t relative to the segment center. */
 /* Formerly nec2c: sflds */
-void sommerfeld_field(nec_context_t *restrict ctx, double t, complex double *restrict e )
+void sommerfeld_field(context_t *restrict ctx, double t, complex double *restrict e )
 {
   double xt, yt, zt, rhx, rhy, rhs, rho, phx, phy;
   double cph, sph, zphs, r2s, rk, sfac, thet;

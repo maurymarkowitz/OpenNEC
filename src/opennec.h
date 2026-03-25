@@ -13,7 +13,7 @@
 #define	OPENNEC_H 1
 
 /** @brief OpenNEC version string */
-#define VERSION_STRING "1.2.1"
+#define VERSION_STRING "1.3.0"
 
 #include <math.h>
 #include <complex.h>

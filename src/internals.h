@@ -77,8 +77,9 @@ typedef struct geometry_t /* Formerly: Fortran /DATA/ → nec2c: data_t */
 		*seg_end1_conn,   /* icon1 — Fortran ICON1: segment end-1 connection index */
 		*seg_end2_conn,   /* icon2 — Fortran ICON2: segment end-2 connection index */
 		*tag_nums,        /* Fortran ITAG: segment tag numbers */
-    	*card_nums;       /* OpenNEC: source card line numbers */
-  
+    	*card_nums,       /* OpenNEC: source card line numbers */
+    	*patch_card_nums; /* OpenNEC: source card line numbers for patches */
+
 	double
     	// Wire segment data
     	*end1_x, *end1_y, *end1_z, /* x1/y1/z1 — Fortran X/Y/Z (pre-CABC): seg end-1 coords */
@@ -614,8 +615,8 @@ typedef struct loading_outputs_t {
     loading_output_t *entries;
 } loading_outputs_t;
 
-/* nec_context_t structure containing all context variables */
-struct nec_context_t
+/* context_t structure containing all context variables */
+struct context_t
 {
 	geometry_t geometry;
 	geometry_t ignored_geometry;
@@ -667,7 +668,7 @@ struct nec_context_t
 	outputs_list_t outputs;
 	
 	/* Logging callbacks */
-	nec_log_callback_t log_callback;
+	log_callback_t log_callback;
 	void *log_user_data;
 	
 	/* Timing data for output */
@@ -690,8 +691,8 @@ struct nec_context_t
 	bool step_size_warned;    /* True once the Romberg step-size-limited warning has been emitted */
 };
 
-/* Internal initialization and cleanup (called by nec_create_context/nec_destroy_context) */
-void nec_context_init(nec_context_t *ctx);
-void nec_context_cleanup(nec_context_t *ctx);
+/* Internal initialization and cleanup (called by create_context/destroy_context) */
+void context_init(context_t *ctx);
+void context_cleanup(context_t *ctx);
 
 #endif /* OPENNEC_INTERNALS_H */

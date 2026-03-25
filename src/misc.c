@@ -16,10 +16,10 @@
 
 /***  ONEC utils ***/
 
-void add_error(const nec_context_t *ctx, errors_list_t *errors, char *message, int severity)
+void add_error(const context_t *ctx, errors_list_t *errors, char *message, int severity)
 {
   // Trigger callback and logging via unified helper
-  nec_report(ctx, severity, "%s", message);
+  report(ctx, severity, "%s", message);
 
   // make a new error object and fill it out
   error_t newErr;
@@ -67,7 +67,7 @@ void resolve_path_relative_to_input(const char *path, const char *source_filenam
   buf[bufsz - 1] = '\0';
 }
 
-/* Transfer already-logged errors from src into dst without re-emitting them via nec_report. */
+/* Transfer already-logged errors from src into dst without re-emitting them via report. */
 void transfer_errors(errors_list_t *src, errors_list_t *dst)
 {
   for (int i = 0; i < src->num_errors; i++) {
@@ -85,10 +85,10 @@ void transfer_errors(errors_list_t *src, errors_list_t *dst)
   }
 }
 
-void add_message(const nec_context_t *ctx, outputs_list_t *outputs, char *message)
+void add_message(const context_t *ctx, outputs_list_t *outputs, char *message)
 {
   // Trigger callback and logging via unified helper
-  nec_report(ctx, ONEC_SEV_INFO, "%s", message);
+  report(ctx, ONEC_SEV_INFO, "%s", message);
 
   // make a new message string
   char *newMsg = calloc(strlen(message) + 1, sizeof(char));
@@ -106,7 +106,7 @@ void add_message(const nec_context_t *ctx, outputs_list_t *outputs, char *messag
 /***  String utils ***/
 
 /*-------------------------------------------------------------------*/
-int str_ends_with(const nec_context_t *ctx, const char *str, const char *suffix)
+int str_ends_with(const context_t *ctx, const char *str, const char *suffix)
 {
     if (!str || !suffix)
         return 1;
@@ -121,7 +121,7 @@ int str_ends_with(const nec_context_t *ctx, const char *str, const char *suffix)
 }
 
 /*-------------------------------------------------------------------*/
-char* substr(const nec_context_t *ctx, char* dest, char *src, int start, int len)
+char* substr(const context_t *ctx, char* dest, char *src, int start, int len)
 {
   strncpy(dest, src+start, len);
   dest[len] = '\0';
@@ -156,7 +156,7 @@ char* trim(char* str)
 }
 
 /*-------------------------------------------------------------------*/
-void nec_report(const nec_context_t *ctx, int level, const char *format, ...)
+void report(const context_t *ctx, int level, const char *format, ...)
 {
     char buffer[2048];
     va_list args;
@@ -185,36 +185,36 @@ void nec_report(const nec_context_t *ctx, int level, const char *format, ...)
  *  prints an error message and exits
  */
 
-void abort_on_error(const nec_context_t *ctx, int why)
+void abort_on_error(const context_t *ctx, int why)
 {
   switch(why)
   {
 	case -1 : /* abort if input file name too long */
-	  nec_report(ctx, ONEC_SEV_FATAL, "onec: Input file name too long - aborting");
+	  report(ctx, ONEC_SEV_FATAL, "onec: Input file name too long - aborting");
 	  break;
 
 	case -2 : /* abort if output file name too long */
-	  nec_report(ctx, ONEC_SEV_FATAL, "onec: Output file name too long - aborting");
+	  report(ctx, ONEC_SEV_FATAL, "onec: Output file name too long - aborting");
 	  break;
 
 	case -3 : /* abort on input file read error */
-	  nec_report(ctx, ONEC_SEV_FATAL, "onec: Error reading input file - aborting");
+	  report(ctx, ONEC_SEV_FATAL, "onec: Error reading input file - aborting");
 	  break;
 
 	case -4 : /* Abort on malloc failure */
-	  nec_report(ctx, ONEC_SEV_FATAL, "onec: A memory allocation request has failed - aborting");
+	  report(ctx, ONEC_SEV_FATAL, "onec: A memory allocation request has failed - aborting");
 	  break;
 
 	case -5 : /* Abort if a GF card is read */
-	  nec_report(ctx, ONEC_SEV_FATAL, "onec: NGF solution option not supported - aborting");
+	  report(ctx, ONEC_SEV_FATAL, "onec: NGF solution option not supported - aborting");
 	  break;
 
 	case -6: /* No convergence in shanks_integration() */
-	  nec_report(ctx, ONEC_SEV_FATAL, "onec: No convergence in shanks_integration() - aborting");
+	  report(ctx, ONEC_SEV_FATAL, "onec: No convergence in shanks_integration() - aborting");
 	  break;
 
 	case -7: /* Error in hankel() */
-	  nec_report(ctx, ONEC_SEV_FATAL, "onec: Hankel not valid for z=0. - aborting");
+	  report(ctx, ONEC_SEV_FATAL, "onec: Hankel not valid for z=0. - aborting");
 
   }  /* switch( why ) */
 
@@ -226,7 +226,7 @@ void abort_on_error(const nec_context_t *ctx, int why)
 /*------------------------------------------------------------------------*/
 
 /* Returns high-resolution monotonic time in milliseconds */
-void nec_get_time_ms(const nec_context_t *ctx, double *ms)
+void get_time_ms(const context_t *ctx, double *ms)
 {
   struct timespec ts;
   if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
@@ -242,7 +242,7 @@ void nec_get_time_ms(const nec_context_t *ctx, double *ms)
 
 /*------------------------------------------------------------------------*/
 
-int mem_alloc( const nec_context_t *ctx, void **ptr, size_t req )
+int mem_alloc( const context_t *ctx, void **ptr, size_t req )
 {
   mem_free(ctx, ptr );
   *ptr = malloc( req );
@@ -255,7 +255,7 @@ int mem_alloc( const nec_context_t *ctx, void **ptr, size_t req )
 
 /*------------------------------------------------------------------------*/
 
-int mem_realloc(const nec_context_t *ctx, void **ptr, size_t req)
+int mem_realloc(const context_t *ctx, void **ptr, size_t req)
 {
   *ptr = realloc(*ptr, req);
   if(*ptr == NULL) {
@@ -267,7 +267,7 @@ int mem_realloc(const nec_context_t *ctx, void **ptr, size_t req)
 
 /*------------------------------------------------------------------------*/
 
-void mem_free( const nec_context_t *ctx, void **ptr )
+void mem_free( const context_t *ctx, void **ptr )
 {
   if( *ptr != NULL )
 	free( *ptr );
@@ -618,7 +618,7 @@ char *preprocess_implicit_multiplication(const char *formula) {
  * @param k_gnd   OUT: ground complexity factor (1=none, 2=approx/perfect, 4=Sommerfeld)
  * @param nfreq   OUT: number of frequencies from FR card (1 if absent)
  */
-static void nec_estimate_setup(const deck_t *deck,
+static void estimate_setup(const deck_t *deck,
     int *ns, int *np, int *nf, int *m_sym, int *k_gnd, int *nfreq)
 {
   *ns    = 0;
@@ -698,7 +698,7 @@ static void nec_estimate_setup(const deck_t *deck,
 /*------------------------------------------------------------------------*/
 
 /******************************************************************************
- * nec_estimate_time
+ * estimate_time
  *
  * Returns a dimensionless complexity value T proportional to the expected
  * run time, based on the NEC-2 Part III performance formula:
@@ -736,13 +736,13 @@ static void nec_estimate_setup(const deck_t *deck,
  * @return        Dimensionless complexity estimate T >= 0.0, or 0.0 if the
  *                deck pointer is NULL.
  */
-double nec_estimate_time(nec_context_t *ctx, deck_t *deck)
+double estimate_time(context_t *ctx, deck_t *deck)
 {
   if (!ctx || !deck) return 0.0;
 
   /* Ensure geometry is expanded so we get the post-GM segment count.
    * calculate_geometry() is coordinate math only — no matrix work.
-   * If it was already called (e.g. by a preceding nec_run_simulation,
+   * If it was already called (e.g. by a preceding run_simulation,
    * or by a GUI that built the geometry view), we reuse the result. */
   if (ctx->geometry.num_segs == 0 && ctx->geometry.num_patches == 0) {
     errors_list_t tmp_errs = {0};
@@ -755,7 +755,7 @@ double nec_estimate_time(nec_context_t *ctx, deck_t *deck)
    * these because they live outside the geometry section. The geometry
    * portion of nec_estimate_setup is now superseded by ctx->geometry. */
   int ns_scan, np_scan, nf, m_sym_scan, k_gnd, nfreq;
-  nec_estimate_setup(deck, &ns_scan, &np_scan, &nf, &m_sym_scan, &k_gnd, &nfreq);
+  estimate_setup(deck, &ns_scan, &np_scan, &nf, &m_sym_scan, &k_gnd, &nfreq);
 
   /* Derive ns / np / m_sym from the expanded geometry.
    *  ctx->geometry.num_segs_sym  = segments in one symmetry cell (< .n when GR is used)

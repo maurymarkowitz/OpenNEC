@@ -19,26 +19,26 @@ int main(int argc, char **argv)
     const char *inpath = argv[1];
     const char *outpath = argv[2];
 
-    nec_context_t *ctx = nec_create_context();
+    context_t *ctx = create_context();
     if (!ctx) {
         fprintf(stderr, "nc2nec: failed to create context\n");
         return 1;
     }
 
-    deck_t deck = {0};
+    deck_t deck; init_deck(&deck);
     errors_list_t import_errors = {0};
 
     FILE *inf = fopen(inpath, "r");
     if (!inf) {
         perror("open input");
-        nec_destroy_context(ctx);
+        destroy_context(ctx);
         return 1;
     }
 
     if (read_deck_nc(ctx, &deck, inf, &import_errors) != 0) {
         fprintf(stderr, "nc2nec: read_deck_nc failed for %s\n", inpath);
         fclose(inf);
-        nec_destroy_context(ctx);
+        destroy_context(ctx);
         return 1;
     }
     fclose(inf);
@@ -58,14 +58,14 @@ int main(int argc, char **argv)
     FILE *outf = fopen(outpath, "w");
     if (!outf) {
         perror("open output");
-        free_deck(&deck);
-        nec_destroy_context(ctx);
+        destroy_deck(&deck);
+        destroy_context(ctx);
         return 1;
     }
     write_deck_onec(ctx, &deck, outf);
     fclose(outf);
 
-    free_deck(&deck);
-    nec_destroy_context(ctx);
+    destroy_deck(&deck);
+    destroy_context(ctx);
     return 0;
 }

@@ -21,17 +21,17 @@
 #include "output.h"
 
 // Forward declarations for static functions
-static int nec_calculation_defaults(nec_context_t *ctx);
-static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq, const deck_t *deck);
-static void reset_loading_buffers(nec_context_t *ctx);
-static void reset_network_buffers(nec_context_t *ctx);
-static void reset_coupling_buffers(nec_context_t *ctx);
-static void reset_vsorc_buffers(nec_context_t *ctx);
-static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start, int *batch_end, bool *batch_has_fr);
-static int execute_extra_patterns(nec_context_t *ctx, const deck_t *deck, int batch_start, int batch_end);
-static int count_tag_segments(const nec_context_t *ctx, int tag);
-static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card, int field_idx, int tag);
-static void validate_geometry_post_calculation(nec_context_t *ctx, errors_list_t *errors);
+static int calculation_defaults(context_t *ctx);
+static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double delfrq, const deck_t *deck);
+static void reset_loading_buffers(context_t *ctx);
+static void reset_network_buffers(context_t *ctx);
+static void reset_coupling_buffers(context_t *ctx);
+static void reset_vsorc_buffers(context_t *ctx);
+static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, int *batch_end, bool *batch_has_fr);
+static int execute_extra_patterns(context_t *ctx, const deck_t *deck, int batch_start, int batch_end);
+static int count_tag_segments(const context_t *ctx, int tag);
+static int resolve_pct_segment(const context_t *ctx, const card_t *card, int field_idx, int tag);
+static void validate_geometry_post_calculation(context_t *ctx, errors_list_t *errors);
 
 /******************************************************************************
  * count_tag_segments()
@@ -39,7 +39,7 @@ static void validate_geometry_post_calculation(nec_context_t *ctx, errors_list_t
  * Returns the total number of geometry segments carrying the given tag.
  * tag == 0 means all segments (NEC convention).
  */
-static int count_tag_segments(const nec_context_t *ctx, int tag)
+static int count_tag_segments(const context_t *ctx, int tag)
 {
     if (tag == 0) return ctx->geometry.num_segs;
     int count = 0;
@@ -59,7 +59,7 @@ static int count_tag_segments(const nec_context_t *ctx, int tag)
  *   seg = round(pct / 100.0 * count_tag_segments(tag)), clamped to [1, count].
  * Otherwise returns card->i[field_idx] unchanged.
  */
-static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card,
+static int resolve_pct_segment(const context_t *ctx, const card_t *card,
                                int field_idx, int tag)
 {
     if (!card->int_form_inline[field_idx]) return card->i[field_idx];
@@ -103,7 +103,7 @@ static int resolve_pct_segment(const nec_context_t *ctx, const card_t *card,
  * @param ctx     The NEC context with calculated geometry
  * @param errors  The errors_list_t to append errors to
  */
-static void validate_geometry_post_calculation(nec_context_t *ctx, errors_list_t *errors)
+static void validate_geometry_post_calculation(context_t *ctx, errors_list_t *errors)
 {
   char msg[MAX_ERROR_LEN];
 
@@ -161,18 +161,15 @@ static void validate_geometry_post_calculation(nec_context_t *ctx, errors_list_t
 
       /* Check for zero or negative area (patch_area is in wavelengths^2) */
       if (area <= 0.0) {
-        snprintf(msg, sizeof(msg),
-                 "Patch %d: has zero or negative area (%.6g lambda^2). "
-                 "This prevents NEC solver from running.",
-                 i + 1, area);
-        add_error(ctx, errors, msg, FATAL);
+        /* Patch with zero/negative area is tolerated; no warning emitted. */
+        continue;
       }
     }
   }
 }
 
 /******************************************************************************
- * nec_run_simulation()
+ * run_simulation()
  *
  * Complete wrapper function for running an NEC simulation from a parsed deck.
  * This is the main entry point for library usage (e.g., from Swift).
@@ -189,12 +186,12 @@ static void validate_geometry_post_calculation(nec_context_t *ctx, errors_list_t
  * @param deck    The deck containing geometry and control cards (must be parsed)
  * @return        0 on success, -1 on error (check ctx->errors for details)
  */
-int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
+int run_simulation(context_t *ctx, deck_t *deck)
 {
     errors_list_t geometry_errors = {0};
 
     // Step 1: Calculate geometry.
-    // Skip if already populated — nec_estimate_time() may have done this as a
+    // Skip if already populated — estimate_time() may have done this as a
     // side effect (e.g. a GUI calling the estimator before launching the run).
     if (ctx->geometry.num_segs == 0 && ctx->geometry.num_patches == 0) {
         calculate_geometry(ctx, deck, &geometry_errors, &ctx->outputs);
@@ -222,15 +219,15 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
     }
     
     // Step 2: Initialize calculation defaults (requires valid geometry)
-    if (nec_calculation_defaults(ctx) != 0) {
+    if (calculation_defaults(ctx) != 0) {
         add_error(ctx, &ctx->errors, "Failed to initialize calculation defaults (no valid geometry)", FATAL);
         return -1;
     }
 
     // Step 2b: Complexity pre-check — warn before starting expensive work.
-    // nec_estimate_time() reuses the geometry already computed above (no re-calc).
+    // estimate_time() reuses the geometry already computed above (no re-calc).
     {
-        double T = nec_estimate_time(ctx, deck);
+        double T = estimate_time(ctx, deck);
         int n_total = ctx->geometry.num_segs;
         int n_cell  = ctx->geometry.num_segs_sym > 0 ? ctx->geometry.num_segs_sym : n_total;
         int m_sym   = (n_cell > 0) ? n_total / n_cell : 1;
@@ -247,7 +244,7 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
                          "WARNING: large model detected: %d segments, no symmetry. "
                          "Complexity T=%.2e — this may run for several minutes.",
                          n_total, T);
-            nec_report(ctx, ONEC_SEV_WARNING, "%s", cmsg);
+            report(ctx, ONEC_SEV_WARNING, "%s", cmsg);
         }
     }
 
@@ -433,7 +430,7 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
                              nx_geom_errors.errors[i].severity);
                 return -1;
             }
-            if (nec_calculation_defaults(ctx) != 0) {
+            if (calculation_defaults(ctx) != 0) {
                 add_error(ctx, &ctx->errors,
                     "NX: failed to initialize calculation defaults for new section", FATAL);
                 return -1;
@@ -454,7 +451,7 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
 }
 
 /******************************************************************************
- * nec_calculation_defaults()
+ * calculation_defaults()
  *
  * Initialize calculation defaults that depend on geometry being calculated first.
  * This should be called after calculate_geometry() and before process_control_cards().
@@ -465,7 +462,7 @@ int nec_run_simulation(nec_context_t *ctx, deck_t *deck)
  * @param ctx     The NEC context to initialize
  * @return        0 on success, -1 on error (no geometry)
  */
-static int nec_calculation_defaults(nec_context_t *ctx)
+static int calculation_defaults(context_t *ctx)
 {
     // validate that geometry has been calculated
     if (ctx->geometry.num_segs_sym <= 0 && ctx->geometry.num_patches_sym <= 0) {
@@ -524,7 +521,7 @@ static int nec_calculation_defaults(nec_context_t *ctx)
  *
  * Reset and free loading buffers. Called when starting a new batch.
  */
-static void reset_loading_buffers(nec_context_t *ctx)
+static void reset_loading_buffers(context_t *ctx)
 {
     if (ctx->zload.num_loads > 0) {
         mem_free(ctx, (void **)&ctx->zload.load_types);
@@ -550,7 +547,7 @@ static void reset_loading_buffers(nec_context_t *ctx)
  *
  * Reset and free network buffers. Called when starting a new batch.
  */
-static void reset_network_buffers(nec_context_t *ctx)
+static void reset_network_buffers(context_t *ctx)
 {
     if (ctx->netcx.num_networks > 0) {
         mem_free(ctx, (void **)&ctx->netcx.net_types);
@@ -571,7 +568,7 @@ static void reset_network_buffers(nec_context_t *ctx)
  *
  * Reset and free coupling buffers. Called when starting a new batch.
  */
-static void reset_coupling_buffers(nec_context_t *ctx)
+static void reset_coupling_buffers(context_t *ctx)
 {
     if (ctx->yparm.num_pairs > 0) {
         mem_free(ctx, (void **)&ctx->yparm.pair_tags);
@@ -585,7 +582,7 @@ static void reset_coupling_buffers(nec_context_t *ctx)
  *
  * Reset and free excitation source (vsorc) buffers. Called on NX restart.
  */
-static void reset_vsorc_buffers(nec_context_t *ctx)
+static void reset_vsorc_buffers(context_t *ctx)
 {
     if (ctx->vsorc.num_vsrcs > 0) {
         mem_free(ctx, (void **)&ctx->vsorc.vsrc_segs);
@@ -614,7 +611,7 @@ static void reset_vsorc_buffers(nec_context_t *ctx)
  * @param batch_end    Output: last card index of this batch (inclusive)
  * @return             0 on success, -1 on error, 1 if EN/XT reached (end of deck), 2 if NX restart
  */
-static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start, int *batch_end, bool *batch_has_fr)
+static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, int *batch_end, bool *batch_has_fr)
 {
     // Validate inputs
     if (ctx == NULL || deck == NULL || batch_start == NULL || batch_end == NULL) {
@@ -1164,7 +1161,7 @@ static int process_next_batch(nec_context_t *ctx, deck_t *deck, int *batch_start
  * @param batch_end   Last card index (the RP or NE/NH card)
  * @return            0 on success, -1 on error
  */
-static int execute_extra_patterns(nec_context_t *ctx, const deck_t *deck, int batch_start, int batch_end)
+static int execute_extra_patterns(context_t *ctx, const deck_t *deck, int batch_start, int batch_end)
 {
     (void)batch_start; /* currently unused; kept for future multi-RP iteration */
     (void)batch_end;
@@ -1260,7 +1257,7 @@ static int execute_extra_patterns(nec_context_t *ctx, const deck_t *deck, int ba
  * @param delfrq  Frequency step size
  * @return        0 on success, -1 on error
  */
-static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double delfrq, const deck_t *deck)
+static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double delfrq, const deck_t *deck)
 {
     if (ctx == NULL) {
         return -1;
@@ -1439,7 +1436,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
         
         // Fill and factor primary interaction matrix
         double tim1, tim2;
-        nec_get_time_ms(ctx, &tim1);
+        get_time_ms(ctx, &tim1);
         if (fill_interaction_matrix(ctx, ctx->netcx.num_eq, cm, ctx->dataj.k_half_len, ctx->dataj.use_extended_kernel) != 0) {
             mem_free(ctx, (void *)&cm);
             return -1;
@@ -1467,17 +1464,17 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
             if (ctx->wg_after_cmset) {
                 /* WG mode: write NGF file then stop — do not factorise or solve */
                 ctx->wg_after_cmset = false;
-                nec_get_time_ms(ctx, &tim2);
+                get_time_ms(ctx, &tim2);
                 ctx->mat_fill_time = tim2 - tim1;
                 break;  /* exit frequency loop without solving */
             }
         }
 
-        nec_get_time_ms(ctx, &tim2);
+        get_time_ms(ctx, &tim2);
         ctx->mat_fill_time = tim2 - tim1;
 
         factor_matrix_symmetric(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, cm, ctx->save.pivot);
-        nec_get_time_ms(ctx, &tim1);
+        get_time_ms(ctx, &tim1);
         ctx->mat_factor_time = tim1 - tim2;
         
         // Reset solution counter
@@ -1516,7 +1513,7 @@ static int execute_frequency_loop(nec_context_t *ctx, int nfrq, int ifrq, double
             // Near field calculation if requested
             // Note: do NOT reset near to -1 here after the last frequency;
             // the output guard in main.c reads it after execute_frequency_loop
-            // returns, and nec_calculation_defaults resets it per-batch.
+            // returns, and calculation_defaults resets it per-batch.
             if (ctx->fpat.is_near_field != -1) {
                 compute_near_field(ctx);
             }

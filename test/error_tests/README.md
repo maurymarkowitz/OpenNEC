@@ -1,4 +1,5 @@
-# Error Test Cases
+Error Test Cases
+================
 
 This directory contains test deck files that intentionally trigger various error conditions in OpenNEC to verify proper error handling.
 

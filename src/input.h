@@ -22,7 +22,7 @@
  * @param deck The deck structure to populate.
  * @param pfile Open file pointer to read from.
  */
-void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile);
+void read_deck(context_t *ctx, deck_t *deck, FILE *pfile);
 
 /**
  * @brief Performs structural analysis and field parsing on a deck.
@@ -34,7 +34,7 @@ void read_deck(nec_context_t *ctx, deck_t *deck, FILE *pfile);
  * @param deck The deck to parse.
  * @param errors List to populate with parsing errors or warnings.
  */
-void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors);
+void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors);
 
 /**
  * @brief Marks 4nec2-specific metadata cards to be ignored by the engine.
@@ -45,6 +45,6 @@ void parse_deck(nec_context_t *ctx, deck_t *deck, errors_list_t *errors);
  * @param ctx The simulation context.
  * @param deck The deck to filter.
  */
-void mark_4nec2_cards_invisible(nec_context_t *ctx, deck_t *deck);
+void mark_4nec2_cards_invisible(context_t *ctx, deck_t *deck);
 
 #endif /* INPUT_H */

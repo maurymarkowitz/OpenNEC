@@ -4,7 +4,7 @@
 #include "misc.h"
 
 int main(void) {
-    deck_t deck = {0};
+    deck_t deck; init_deck(&deck);
 
     /* Write a minimal Variant B .maa file to test both import and export */
     FILE *tmp = fopen("/tmp/mini.maa", "w");

@@ -69,7 +69,7 @@ static double point_to_segment_distance(double px, double py, double pz,
 // in which case the value should be rounded within [1,count]. The deck
 // validation phase must apply the same logic so range checks see the
 // canonical segment index.
-static int resolve_pct_segment_local(const nec_context_t *ctx, const card_t *card,
+static int resolve_pct_segment_local(const context_t *ctx, const card_t *card,
                                      int field_idx, int tag)
 {
     if (!card->int_form_inline[field_idx])
@@ -106,29 +106,29 @@ static int resolve_pct_segment_local(const nec_context_t *ctx, const card_t *car
     }
     return card->i[field_idx];
 }
-static void check_parallel_wire_segmentation(const nec_context_t *ctx, errors_list_t *errors,
+static void check_parallel_wire_segmentation(const context_t *ctx, errors_list_t *errors,
                                              const wire_info_t *wires, int wire_count,
                                              double freq_mhz);
-static void check_segment_length_and_radius(const nec_context_t *ctx, errors_list_t *errors,
+static void check_segment_length_and_radius(const context_t *ctx, errors_list_t *errors,
                                             const wire_info_t *wires, int wire_count,
                                             double freq_mhz, int ek_enabled);
-static void check_ge_low_height_hazard(const nec_context_t *ctx, errors_list_t *errors,
+static void check_ge_low_height_hazard(const context_t *ctx, errors_list_t *errors,
                                        const wire_info_t *wires, int wire_count,
                                        int GEType);
-static void check_junction_segmentation_consistency(const nec_context_t *ctx, errors_list_t *errors,
+static void check_junction_segmentation_consistency(const context_t *ctx, errors_list_t *errors,
                                                     const wire_info_t *wires, int wire_count);
-static void check_connected_wire_radius_consistency(const nec_context_t *ctx, errors_list_t *errors,
+static void check_connected_wire_radius_consistency(const context_t *ctx, errors_list_t *errors,
                                                     const wire_info_t *wires, int wire_count);
 /* 4nec2 patch-area sanity rule: A (in lambda^2) should not exceed 1/25 */
-static void check_patch_area(const nec_context_t *ctx, errors_list_t *errors);
-static void check_connected_wire_radius_consistency(const nec_context_t *ctx, errors_list_t *errors,
+static void check_patch_area(const context_t *ctx, errors_list_t *errors);
+static void check_connected_wire_radius_consistency(const context_t *ctx, errors_list_t *errors,
                                                     const wire_info_t *wires, int wire_count);
 static bool is_geometry_tag_ignored(const deck_t *deck, int tag);
 static double estimate_helix_length(double s, double hl, double a1, double b1, double a2, double b2);
-static void warn_segment_rules(const nec_context_t *ctx, errors_list_t *errors,
+static void warn_segment_rules(const context_t *ctx, errors_list_t *errors,
                                const char *code, int line, int segs,
                                double total_len, double radius, double wavelength);
-static void validate_geom_seg_info_list(const nec_context_t *ctx, errors_list_t *errors,
+static void validate_geom_seg_info_list(const context_t *ctx, errors_list_t *errors,
                                         const geom_seg_info_t *items, int item_count,
                                         const char *trigger_code, int trigger_line,
                                         double wavelength);
@@ -169,7 +169,7 @@ static bool is_geometry_tag_ignored(const deck_t *deck, int tag)
  * @param errors the errors_list_t to add new messages to
  *
  */
-void test_deck_structure(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
+void test_deck_structure(const context_t *ctx, const deck_t *deck, errors_list_t *errors)
 {
   // A short list of the minimum structure is found in the 4nec2 documentation:
   //
@@ -1457,7 +1457,7 @@ static double estimate_helix_length(double s, double hl, double a1, double b1, d
   }
 }
 
-static void warn_segment_rules(const nec_context_t *ctx, errors_list_t *errors,
+static void warn_segment_rules(const context_t *ctx, errors_list_t *errors,
                                const char *code, int line, int segs,
                                double total_len, double radius, double wavelength)
 {
@@ -1487,7 +1487,7 @@ static void warn_segment_rules(const nec_context_t *ctx, errors_list_t *errors,
   }
 }
 
-static void validate_geom_seg_info_list(const nec_context_t *ctx, errors_list_t *errors,
+static void validate_geom_seg_info_list(const context_t *ctx, errors_list_t *errors,
                                         const geom_seg_info_t *items, int item_count,
                                         const char *trigger_code, int trigger_line,
                                         double wavelength)
@@ -1540,7 +1540,7 @@ static double point_to_segment_distance(double px, double py, double pz,
 }
 
 // Helper: warn if parallel wires closer than 0.05 wavelengths have different segmentation
-static void check_parallel_wire_segmentation(const nec_context_t *ctx, errors_list_t *errors,
+static void check_parallel_wire_segmentation(const context_t *ctx, errors_list_t *errors,
                                              const wire_info_t *wires, int wire_count,
                                              double freq_mhz)
 {
@@ -1607,7 +1607,7 @@ static void check_parallel_wire_segmentation(const nec_context_t *ctx, errors_li
 }
 
 // Helper: junction segmentation consistency — connected wire endpoints should have similar segment lengths
-static void check_junction_segmentation_consistency(const nec_context_t *ctx, errors_list_t *errors,
+static void check_junction_segmentation_consistency(const context_t *ctx, errors_list_t *errors,
                                                     const wire_info_t *wires, int wire_count)
 {
   char msg[MAX_ERROR_LEN];
@@ -1654,7 +1654,7 @@ static void check_junction_segmentation_consistency(const nec_context_t *ctx, er
 }
 
 // Helper: connected wires should use the same radius at the junction
-static void check_connected_wire_radius_consistency(const nec_context_t *ctx, errors_list_t *errors,
+static void check_connected_wire_radius_consistency(const context_t *ctx, errors_list_t *errors,
                                                     const wire_info_t *wires, int wire_count)
 {
   char msg[MAX_ERROR_LEN];
@@ -1745,7 +1745,7 @@ static void check_connected_wire_radius_consistency(const nec_context_t *ctx, er
 }
 
 // Helper: GE I1=1 connects segment ends if wire height < 1e-3 * segment length; suggest GE -1
-static void check_ge_low_height_hazard(const nec_context_t *ctx, errors_list_t *errors,
+static void check_ge_low_height_hazard(const context_t *ctx, errors_list_t *errors,
                                        const wire_info_t *wires, int wire_count,
                                        int GEType)
 {
@@ -1770,7 +1770,7 @@ static void check_ge_low_height_hazard(const nec_context_t *ctx, errors_list_t *
 }
 
 // Helper: segment length vs wavelength and radius sanity
-static void check_segment_length_and_radius(const nec_context_t *ctx, errors_list_t *errors,
+static void check_segment_length_and_radius(const context_t *ctx, errors_list_t *errors,
                                             const wire_info_t *wires, int wire_count,
                                             double freq_mhz, int ek_enabled)
 {
@@ -1894,7 +1894,7 @@ static void check_segment_length_and_radius(const nec_context_t *ctx, errors_lis
 }
 
 // Helper: check patch area against 4nec2 limit (A > lambda^2/25)
-static void check_patch_area(const nec_context_t *ctx, errors_list_t *errors)
+static void check_patch_area(const context_t *ctx, errors_list_t *errors)
 {
   char msg[MAX_ERROR_LEN];
   for (int i = 0; i < ctx->geometry.num_patches; i++)
@@ -1921,7 +1921,7 @@ static void check_patch_area(const nec_context_t *ctx, errors_list_t *errors)
  * @param errors the errors_list_t to add new messages to
  *
  */
-void test_duplicate_tags(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
+void test_duplicate_tags(const context_t *ctx, const deck_t *deck, errors_list_t *errors)
 {
   // we will also check to see if there are duplicate tags
   char msg[MAX_ERROR_LEN];
@@ -1973,7 +1973,7 @@ void test_duplicate_tags(const nec_context_t *ctx, const deck_t *deck, errors_li
  * TODO: this needs to be greatly expanded!
  *
  */
-void test_card_inputs(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
+void test_card_inputs(const context_t *ctx, const deck_t *deck, errors_list_t *errors)
 {
   const char *code;
   char msg[MAX_ERROR_LEN];
@@ -2203,7 +2203,7 @@ void test_card_inputs(const nec_context_t *ctx, const deck_t *deck, errors_list_
  * @param errors the errors_list_t to add new messages to
  *
  */
-void test_bad_symbols(const nec_context_t *ctx, deck_t *deck, errors_list_t *errors)
+void test_bad_symbols(const context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   char msg[MAX_ERROR_LEN];
 
@@ -2286,11 +2286,11 @@ void test_bad_symbols(const nec_context_t *ctx, deck_t *deck, errors_list_t *err
  * it suggests the file was edited inconsistently and may cause problems
  * for any output code attempting to preserve the original formatting.
  *
- * @param ctx  the nec_context_t (used for error reporting)
+ * @param ctx  the context_t (used for error reporting)
  * @param deck the deck_t to test
  * @param errors the errors_list_t to append warnings to
  */
-void test_field_separators(const nec_context_t *ctx, const deck_t *deck, errors_list_t *errors)
+void test_field_separators(const context_t *ctx, const deck_t *deck, errors_list_t *errors)
 {
   char msg[MAX_ERROR_LEN];
 
