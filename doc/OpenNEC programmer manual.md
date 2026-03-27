@@ -1,5 +1,6 @@
 OpenNEC Programmer Manual
 ==========================
+
 Introduction
 ------------
 OpenNEC is an open-source implementation of the NEC (Numerical Electromagnetics Code) family of antenna simulation engines. It aims to be a lightweight, portable, and modern re‑implementation of the classic NEC‑2/NEC‑4 workflow, with support for recent extensions and improved deck validation.

@@ -176,8 +176,14 @@ SOURCES = src/main.c src/input.c src/output.c src/deck.c \
           src/import-export/nc-support.c src/import-export/nec2-support.c \
           src/import-export/nec4-support.c src/compat_time.c
 
-# If building with a MinGW cross-compiler, avoid compiling the compat_time.c
-# implementation because MinGW's CRT/pthreads already provides clock_gettime
+# compat_time.c is only needed on native Windows (MSVC/clang-cl).
+# MinGW CRT already provides clock_gettime, and POSIX platforms have it natively.
+# Exclude the file on any non-Windows host to avoid an empty object file.
+ifneq ($(OS),Windows_NT)
+    SOURCES := $(filter-out src/compat_time.c,$(SOURCES))
+endif
+
+# If building with a MinGW cross-compiler, also skip compat_time.c
 MINGW_CC := $(findstring mingw,$(CC))
 ifeq ($(MINGW_CC),mingw)
     SOURCES := $(filter-out src/compat_time.c,$(SOURCES))

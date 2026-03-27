@@ -1,3 +1,7 @@
+Version 1.3.1 - 2026 March 28
+- added support for EX6, which I thought we had done earlier but never implemented
+- minor fix to silence a warning about compat_time on non-Windows machines
+
 Version 1.3.0 - 2026 March 25
 - some API cleanup, on the way to a stable API
 - started fleshing out the user manual, with C example and comments for other languages

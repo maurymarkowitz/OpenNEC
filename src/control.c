@@ -32,6 +32,7 @@ static int execute_extra_patterns(context_t *ctx, const deck_t *deck, int batch_
 static int count_tag_segments(const context_t *ctx, int tag);
 static int resolve_pct_segment(const context_t *ctx, const card_t *card, int field_idx, int tag);
 static void validate_geometry_post_calculation(context_t *ctx, errors_list_t *errors);
+static int inject_current_source(context_t *ctx, int card_idx, int tag, int seg_idx, complex double I_desired);
 
 /******************************************************************************
  * count_tag_segments()
@@ -600,6 +601,231 @@ static void reset_vsorc_buffers(context_t *ctx)
 }
 
 /******************************************************************************
+ * inject_current_source()
+ *
+ * Implements EX type 6 (current source) by expanding it into an equivalent
+ * voltage source on a synthetic dummy wire segment coupled to the target
+ * segment via an NT two-port admittance network.
+ *
+ * The dummy wire is placed parallel to the target, offset by 4 wire radii in
+ * the most perpendicular direction, so it does not physically contact any
+ * existing segment.  A unit voltage (1+0j V) is applied to the dummy via a
+ * synthesised EX 0 entry.  The NT network uses Y12 = -I_desired (all other
+ * Y-params zero), which forces current I_desired from the network into the
+ * target segment (NEC port-current convention: positive into the network).
+ *
+ * This function appends the dummy segment to ctx->geometry without calling
+ * wire() to avoid resetting the geometry symmetry flags unnecessarily; it
+ * directly extends and populates all derived arrays (half_len, dir_cos_*,
+ * *_center, seg_end1/2_conn).  num_segs_sym is updated to match num_segs so
+ * the matrix solver covers the new segment.
+ *
+ * Must be called only after calculate_geometry() has completed.
+ *
+ * @param ctx        The NEC context
+ * @param card_idx   0-based index of the EX card (used in error messages)
+ * @param tag        Tag number of the target wire
+ * @param seg_idx    Segment index within the tag (1-based)
+ * @param I_desired  Desired injected current in Amperes (complex)
+ * @return           0 on success, -1 on fatal error
+ */
+static int inject_current_source(context_t *ctx, int card_idx,
+                                  int tag, int seg_idx,
+                                  complex double I_desired)
+{
+  geometry_t *geom = &ctx->geometry;
+  char msg[MAX_ERROR_LEN];
+  size_t mreq;
+
+  /* Resolve target segment number (1-based) */
+  int tgt_seg = segment_number(ctx, tag, seg_idx);
+  if (tgt_seg == 0 || tgt_seg > geom->num_segs) {
+    snprintf(msg, sizeof(msg),
+             "EX on line %d: type 6 references invalid tag %d, segment %d",
+             card_idx + 1, tag, seg_idx);
+    add_error(ctx, &ctx->errors, msg, FATAL);
+    return -1;
+  }
+  int tgt_idx = tgt_seg - 1;  /* 0-based index */
+
+  /* Find a unique dummy tag number above all existing tags */
+  int max_tag = 0;
+  for (int i = 0; i < geom->num_segs; i++) {
+    if (geom->tag_nums[i] > max_tag) {
+      max_tag = geom->tag_nums[i];
+    }
+  }
+  int dummy_tag = max_tag + 1;
+
+  /* --- Compute dummy wire endpoints ---
+   * Place the dummy parallel to the target, offset by 4*radius in the
+   * direction most perpendicular to the wire axis.                       */
+  double x1  = geom->end1_x[tgt_idx];
+  double y1  = geom->end1_y[tgt_idx];
+  double z1  = geom->end1_z[tgt_idx];
+  double x2  = geom->end2_x[tgt_idx];
+  double y2  = geom->end2_y[tgt_idx];
+  double z2  = geom->end2_z[tgt_idx];
+  double rad = geom->radius[tgt_idx];
+
+  /* Unit direction vector along the target segment */
+  double dx = x2 - x1, dy = y2 - y1, dz = z2 - z1;
+  double L = sqrt(dx*dx + dy*dy + dz*dz);
+  double ux = dx / L, uy = dy / L, uz = dz / L;
+
+  /* Choose perpendicular direction via cross product with the most
+   * orthogonal axis (avoids degeneracy when wire is axis-aligned).     */
+  double px, py, pz;
+  if (fabs(ux) <= fabs(uy) && fabs(ux) <= fabs(uz)) {
+    /* cross(u, x-hat) = (0, uz, -uy) */
+    px = 0.0; py = uz; pz = -uy;
+  } else if (fabs(uy) <= fabs(ux) && fabs(uy) <= fabs(uz)) {
+    /* cross(u, y-hat) = (-uz, 0, ux) */
+    px = -uz; py = 0.0; pz = ux;
+  } else {
+    /* cross(u, z-hat) = (uy, -ux, 0) */
+    px = uy; py = -ux; pz = 0.0;
+  }
+  double plen = sqrt(px*px + py*py + pz*pz);
+  px /= plen; py /= plen; pz /= plen;
+
+  double offset = 4.0 * rad;
+  double d1x = x1 + offset * px;
+  double d1y = y1 + offset * py;
+  double d1z = z1 + offset * pz;
+  double d2x = x2 + offset * px;
+  double d2y = y2 + offset * py;
+  double d2z = z2 + offset * pz;
+
+  /* --- Append dummy segment to the geometry arrays ---
+   * Done inline (not via wire()) to preserve existing symmetry flags.
+   * All arrays that finish_geometry() and connect_segments() fill are
+   * extended and populated for the new segment index.                    */
+  int new_idx = geom->num_segs;
+  int new_n   = geom->num_segs + 1;
+
+  mreq = (size_t)new_n * sizeof(double);
+  mem_realloc(ctx, (void **)&geom->end1_x,    mreq);
+  mem_realloc(ctx, (void **)&geom->end1_y,    mreq);
+  mem_realloc(ctx, (void **)&geom->end1_z,    mreq);
+  mem_realloc(ctx, (void **)&geom->end2_x,    mreq);
+  mem_realloc(ctx, (void **)&geom->end2_y,    mreq);
+  mem_realloc(ctx, (void **)&geom->end2_z,    mreq);
+  mem_realloc(ctx, (void **)&geom->radius,    mreq);
+  mem_realloc(ctx, (void **)&geom->half_len,  mreq);
+  mem_realloc(ctx, (void **)&geom->dir_cos_x, mreq);
+  mem_realloc(ctx, (void **)&geom->dir_cos_y, mreq);
+  mem_realloc(ctx, (void **)&geom->dir_cos_z, mreq);
+  mem_realloc(ctx, (void **)&geom->x_center,  mreq);
+  mem_realloc(ctx, (void **)&geom->y_center,  mreq);
+  mem_realloc(ctx, (void **)&geom->z_center,  mreq);
+
+  /* tag/card and connection arrays are sized to num_segs + num_patches */
+  mreq = (size_t)(new_n + geom->num_patches) * sizeof(int);
+  mem_realloc(ctx, (void **)&geom->card_nums,     mreq);
+  mem_realloc(ctx, (void **)&geom->tag_nums,      mreq);
+  mem_realloc(ctx, (void **)&geom->seg_end1_conn, mreq);
+  mem_realloc(ctx, (void **)&geom->seg_end2_conn, mreq);
+
+  /* Fill raw endpoint fields */
+  geom->end1_x[new_idx]  = d1x;
+  geom->end1_y[new_idx]  = d1y;
+  geom->end1_z[new_idx]  = d1z;
+  geom->end2_x[new_idx]  = d2x;
+  geom->end2_y[new_idx]  = d2y;
+  geom->end2_z[new_idx]  = d2z;
+  geom->radius[new_idx]  = rad;
+  geom->card_nums[new_idx] = card_idx;
+  geom->tag_nums[new_idx]  = dummy_tag;
+
+  /* Fill derived fields (mirrors finish_geometry() for the new segment).
+   * Note: half_len stores the full segment length (the formula is the same
+   * numerical computation used in finish_geometry).                        */
+  double ddx = d2x - d1x, ddy = d2y - d1y, ddz = d2z - d1z;
+  double L2   = ddx*ddx + ddy*ddy + ddz*ddz;
+  double Lmag = sqrt(L2);
+  geom->half_len[new_idx]  = (L2 / Lmag + Lmag) * 0.5;
+  geom->x_center[new_idx]  = (d1x + d2x) / 2.0;
+  geom->y_center[new_idx]  = (d1y + d2y) / 2.0;
+  geom->z_center[new_idx]  = (d1z + d2z) / 2.0;
+  geom->dir_cos_x[new_idx] = ddx / Lmag;
+  geom->dir_cos_y[new_idx] = ddy / Lmag;
+  {
+    double dcz = ddz / Lmag;
+    if (dcz >  1.0) { dcz =  1.0; }
+    if (dcz < -1.0) { dcz = -1.0; }
+    geom->dir_cos_z[new_idx] = dcz;
+  }
+
+  /* Dummy segment is isolated — no connections to neighbouring segments */
+  geom->seg_end1_conn[new_idx] = 0;
+  geom->seg_end2_conn[new_idx] = 0;
+
+  /* Update all geometry counters.  Reset num_segs_sym to the new total so
+   * the matrix covers the added segment; this disables any prior symmetry
+   * optimisation for this run.                                             */
+  geom->num_segs             = new_n;
+  geom->num_segs_sym         = new_n;
+  geom->num_segs_and_patches = new_n + geom->num_patches;
+  geom->num_segs_2xpatches   = new_n + 2 * geom->num_patches;
+  geom->num_segs_3xpatches   = new_n + 3 * geom->num_patches;
+
+  /* Update matrix equation dimension to include the added segment */
+  ctx->netcx.num_eq     = new_n + 2 * geom->num_patches;
+  ctx->netcx.num_eq_sym = new_n + 2 * geom->num_patches_sym;
+
+  int dummy_seg = new_n;  /* 1-based segment number of the dummy */
+
+  /* --- Add voltage source (EX 0) on the dummy segment --- */
+  ctx->vsorc.num_vsrcs++;
+  mreq = (size_t)ctx->vsorc.num_vsrcs * sizeof(int);
+  mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_segs, mreq);
+  mreq = (size_t)ctx->vsorc.num_vsrcs * sizeof(complex double);
+  mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_voltages, mreq);
+  {
+    int vsrc_idx = ctx->vsorc.num_vsrcs - 1;
+    ctx->vsorc.vsrc_segs[vsrc_idx]     = dummy_seg;
+    ctx->vsorc.vsrc_voltages[vsrc_idx] = CPLX_10;  /* 1+0j V reference */
+  }
+
+  /* --- Add NT network: dummy (port 1) → target (port 2) ---
+   * Two-port admittance: I_port2 = Y12*V1 + Y22*V2
+   * With V1=1 V, Y12=-I_desired, Y22=0 → I_port2 = -I_desired.
+   * NEC sign convention: I_port is current INTO the network from the segment,
+   * so current FROM network INTO target antenna = +I_desired.              */
+  if (ctx->iflow != 6 && ctx->netcx.num_networks == 0) {
+    reset_network_buffers(ctx);
+    ctx->iflow = 6;
+  }
+  ctx->netcx.num_networks++;
+  mreq = (size_t)ctx->netcx.num_networks * sizeof(int);
+  mem_realloc(ctx, (void **)&ctx->netcx.net_types, mreq);
+  mem_realloc(ctx, (void **)&ctx->netcx.net_seg1,  mreq);
+  mem_realloc(ctx, (void **)&ctx->netcx.net_seg2,  mreq);
+  mreq = (size_t)ctx->netcx.num_networks * sizeof(double);
+  mem_realloc(ctx, (void **)&ctx->netcx.y11_real, mreq);
+  mem_realloc(ctx, (void **)&ctx->netcx.y11_imag, mreq);
+  mem_realloc(ctx, (void **)&ctx->netcx.y12_real, mreq);
+  mem_realloc(ctx, (void **)&ctx->netcx.y12_imag, mreq);
+  mem_realloc(ctx, (void **)&ctx->netcx.y22_real, mreq);
+  mem_realloc(ctx, (void **)&ctx->netcx.y22_imag, mreq);
+  {
+    int nt_idx = ctx->netcx.num_networks - 1;
+    ctx->netcx.net_types[nt_idx] = 1;         /* NT admittance network */
+    ctx->netcx.net_seg1[nt_idx]  = dummy_seg; /* port 1 = dummy */
+    ctx->netcx.net_seg2[nt_idx]  = tgt_seg;   /* port 2 = target */
+    ctx->netcx.y11_real[nt_idx] = 0.0;
+    ctx->netcx.y11_imag[nt_idx] = 0.0;
+    ctx->netcx.y12_real[nt_idx] = -creal(I_desired);
+    ctx->netcx.y12_imag[nt_idx] = -cimag(I_desired);
+    ctx->netcx.y22_real[nt_idx] = 0.0;
+    ctx->netcx.y22_imag[nt_idx] = 0.0;
+  }
+
+  return 0;
+}
+
+/******************************************************************************
  * process_next_batch()
  *
  * Process control cards from current position up to next XQ, EN, XT, or NX
@@ -858,14 +1084,7 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
             // EX card - Excitation
             ctx->fpat.excitation_type = i1;
             ctx->netcx.check_asymmetry = i4 / 10;
-            
-            // warn about unsupported EX types
-            if (i1 == 6 || i1 == 7) {
-                char msg[MAX_ERROR_LEN];
-                snprintf(msg, sizeof(msg), "EX on line %d: type %d is not supported.", card_idx + 1, i1);
-                add_error(ctx, &ctx->errors, msg, WARNING);
-            }
-            
+
             // For voltage source types (0 and 5)
             if (i1 == 0 || i1 == 5) {
                 ctx->netcx.network_type = 0;
@@ -919,6 +1138,27 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
                         ctx->vsorc.vsrc_voltages[idx] = CPLX_10;
                     }
                 }
+            } else if (i1 == 6) {
+                // EX type 6: current source (4nec2 extension).
+                // Converted to a voltage source on a synthetic dummy segment
+                // connected to the target via an NT admittance network.
+                // Set excitation_type = 0 (voltage source) because the
+                // underlying mechanism is a synthesised EX 0 on the dummy.
+                ctx->fpat.excitation_type = 0;
+                ctx->netcx.network_type = 0;
+                int i3_resolved = resolve_pct_segment(ctx, card, 3, i2);
+                complex double I_desired = f1 + I * f2;
+                if (cabs(I_desired) < 1.e-20) {
+                    I_desired = CPLX_10;  /* default to 1 A if zero */
+                }
+                if (inject_current_source(ctx, card_idx, i2, i3_resolved, I_desired) != 0) {
+                    return -1;
+                }
+            } else if (i1 == 7) {
+                // EX type 7 is not supported
+                char msg[MAX_ERROR_LEN];
+                snprintf(msg, sizeof(msg), "EX on line %d: type 7 is not supported.", card_idx + 1);
+                add_error(ctx, &ctx->errors, msg, WARNING);
             } else {
                 // Far field pattern for receiving antenna
                 ctx->fpat.exc_param6 = f6;

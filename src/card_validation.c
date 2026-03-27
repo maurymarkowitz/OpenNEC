@@ -150,7 +150,7 @@ static field_validation_t validate_TL_field(const card_t *c, int is_int, int idx
 }
 
 /* EX — excitation (voltage/current source)
- *   I1: excitation type — types 6 and 7 are not supported by OpenNEC
+ *   I1: excitation type
  *   I2: tag number — must be positive
  *   I3: segment number — must be positive
  *   F1: amplitude — required, must be non-zero
@@ -159,7 +159,7 @@ static field_validation_t validate_EX_field(const card_t *c, int is_int, int idx
 {
   if (is_int && idx == 1)
   {
-    if (c->i[1] == 6 || c->i[1] == 7)
+    if (c->i[1] == 7)
       RESULT(WARNING, "EX on line %d: I1 excitation type %d is not supported by OpenNEC.", c->card_num, c->i[1]);
   }
   if (is_int && (idx == 2 || idx == 3))

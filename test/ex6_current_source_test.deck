@@ -1,0 +1,12 @@
+CM EX type 6 current source test
+CM Half-wave dipole at 300 MHz (lambda/2 = 0.5 m) driven by a 1 A current source.
+CM The EX 6 card should be converted internally to a voltage source on a
+CM synthetic dummy segment connected to the dipole centre via an NT network.
+CM Expected output: a valid impedance and radiation pattern — not a crash or warning.
+CE
+GW 1 11 0 0 -0.25 0 0 0.25 0.001
+GE 0
+FR 0 1 0 0 300.0
+EX 6 1 6 0 1.0 0.0
+RP 0 1 1 1000 90 0 0 0
+EN

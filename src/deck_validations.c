@@ -559,7 +559,7 @@ void test_deck_structure(const context_t *ctx, const deck_t *deck, errors_list_t
       if (deck->cards[i].ints_used >= 1)
       {
         int ex_type = deck->cards[i].i[1];
-        if (ex_type == 6 || ex_type == 7)
+        if (ex_type == 7)
         {
           snprintf(msg, sizeof(msg), "EX on line %d: type %d is not supported by OpenNEC.", i, ex_type);
           add_error(ctx, errors, msg, 0);
