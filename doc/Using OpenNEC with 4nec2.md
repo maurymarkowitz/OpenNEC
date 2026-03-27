@@ -7,7 +7,7 @@ OpenNEC (`onec`) can be used as a drop-in replacement for the traditional NEC-2 
 
 ## How 4nec2 Invokes NEC Engines
 
-The original Fortran code, which 4nec2 uses, is an interactive program which prompts the user for filenames for the input and output files. To drive these programs in an automated fashion, 4nec2 uses input redirection. It does this by producing a temporary file containing just the names of the input and output files on two lines in a text file, `nec2d.tmp`. It then calls `4nec2.bat`, which calls the user-selected engine program and passes in the temporary file. Ultimately, what's run is something like this:
+The original Fortran code, which ships with the 4nec2 install, is an interactive program which prompts the user for filenames for the input and output files. To drive these programs in an automated fashion, 4nec2 uses input redirection through a batch file. It does this by producing a temporary file containing just the names of the input and output files on two lines in a text file, `nec2d.tmp`. It then calls `4nec2.bat`, which calls the user-selected engine program and passes in the temporary file. Ultimately, what's run by the batch file is something like this:
 
 `nec2d.exe < nec2d.tmp`
 

@@ -3,6 +3,8 @@ Example antenna models
 
 This folder contains a number of example antenna model files found on the 'net, which have been used to drive development of the OpenNEC parser.
 
+You can run the script `examples/check_all_nec_files.sh` which will run onec with `-r --skip-large` on all of the sub-folders, which is useful for regression testing.
+
 ## DL5SAY collection
 
 An eclectic collection of NEC files gathered by Hartmut Hans Kreh (DL5SAY). Found on github, posted by PA3KJ here:

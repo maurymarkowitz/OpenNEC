@@ -1,11 +1,12 @@
-OpenNEC User Manual
-===================
-
+OpenNEC Programmer Manual
+==========================
 Introduction
 ------------
 OpenNEC is an open-source implementation of the NEC (Numerical Electromagnetics Code) family of antenna simulation engines. It aims to be a lightweight, portable, and modern re‑implementation of the classic NEC‑2/NEC‑4 workflow, with support for recent extensions and improved deck validation.
 
 This manual focuses on using OpenNEC as a library in other programs, and the internal structures and functions that you call from the library in your programs. It also includes guidance on generating and validating NEC decks, controlling simulations, import and export of other formats, and interpreting output.
+
+This manual is aimed at programmers intending to call OpenNEC from their own code. For those looking for instructions on how to use the program from the command line, see the main [README](../README.MD).
 
 Using OpenNEC as a plug-in engine
 ---------------------------------
@@ -320,27 +321,30 @@ OpenNEC supports multiple comment styles to annotate decks:
 The original NEC format uses dedicated comment cards:
 - `CM` — Comment card; text following the card code is a free-form comment.
 - `CE` — Comment End; marks the end of the comment section. CE cards can contain comment text, but most commonly do not so they provide whitespace.
-These must appear at the start of the file, before any geometry or control cards.
+These must appear at the start of the file, before any geometry or control cards, and at least the CE must be present.
 
-Although NEC-2 strictly requires comments only at the top of the file, most modern implementations including OpenNEC allow `CM` comments to be inserted anywhere in the deck. Most implementations also allow comment lines to be indicated with `!`, `'`, or `#` (at line start) anywhere in the deck:
+Although NEC-2 strictly requires comments only at the top of the file, most modern implementations including OpenNEC, allow `CM` comments to be inserted anywhere in the deck. Most implementations also allow comment lines to be indicated with `!`, `'`, or `#` anywhere in the deck:
 
 ```
 GE 0
 ! This is a full-line comment between sections
 FR 0 1 0 0 14.2
 ```
+`#` is used only by nec2c, and other engines use it to indicate AWG wire measurements. For this reason, `#` is allowed as a comment marker only for whole-line comments, not...
 
-**Inline Comments (OpenNEC and modern NEC)**
+
+**Inline comments in modern NEC engine and OpenNEC**
 
 OpenNEC supports end-of-line comments on any card using two markers:
 - `!` — End-of-line comment marker (most widely used in modern software).
 - `'` — Alternative comment marker (single quote).
+
 Note that `#` cannot be used end-of-line, a `#` anywhere but the start of the line is treated as the AWG symbol.
 
 End-of-line comments allow you to document data directly on the card, for example:
 
 ```
-GW 1 21 0 0 -5.02 0 0 5.02 0.001  ! Center element (14.2 MHz dipole)
+GW 1 21 0 0 -5.02 0 0 5.02 0.001     ! Center element (14.2 MHz dipole)
 GE 0                                 ! End of geometry
 FR 0 1 0 0 14.2                      ! Frequency 14.2 MHz
 EX 0 1 11 0 1 0                      ! Excite at segment 11
@@ -1154,61 +1158,549 @@ fclose(wgf_in);
 
 For detailed information on specific file formats, see the format documentation in [doc/](../doc/).
 
-Testing and Validation
-----------------------
-- Built-in deck validation logic
-- Running the test suite
-- Adding new regression tests
+Deck and card validation
+------------------------
+
+OpenNEC provides two tiers of validation: **deck-level validation**, which sweeps the entire deck looking for structural and cross-card problems, and **card-level validation**, which checks the fields of a single card independently of the rest of the deck. These tiers serve different use cases; deck validation is suited to a batch or pre-run check; card validation is designed for interactive GUI feedback as the user edits individual cards.
+
+### Deck-Level Validation
+
+Four functions perform deck-level validation checks. They are typically called after `parse_deck()` has been called on a successfully loaded deck.
+
+| Function | What it checks |
+|---|---|
+| `test_deck_structure()` | Structural completeness: presence of required cards (CE, GE, EN), cards in the wrong section, SM without a following SC, etc. |
+| `test_duplicate_tags()` | Geometry tag numbers: each tag should appear on exactly one geometry card. |
+| `test_card_inputs()` | Individual card field values: segment counts, coordinate ranges, referenced tags, wire radius rules, and other cross-card rules that require knowing the full geometry. |
+| `test_field_separators()` | Internal consistency of field separator style (spaces, tabs, commas) across cards in the deck. |
+
+All four functions share the same signature and append findings to a caller-supplied `errors_list_t`:
+
+```c
+void test_deck_structure  (const context_t *ctx, const deck_t *deck, errors_list_t *errors);
+void test_duplicate_tags  (const context_t *ctx, const deck_t *deck, errors_list_t *errors);
+void test_card_inputs     (const context_t *ctx, const deck_t *deck, errors_list_t *errors);
+void test_field_separators(const context_t *ctx, const deck_t *deck, errors_list_t *errors);
+```
+
+Each call appends to (not replaces) the list, so you can accumulate findings from all four passes in a single `errors_list_t`, or use separate lists if you want to present the stages independently.
+
+Each entry in the error list carries a severity drawn from the `error_level` enum:
+
+| Value | Constant | Meaning |
+|---|---|---|
+| 0 | `NONE` | No problem |
+| 1 | `WARNING` | Suspicious; simulation will likely proceed |
+| 2 | `PROBLEM` | Likely to cause incorrect results |
+| 3 | `FATAL` | Deck cannot be processed |
+
+**Example: validate a deck after loading and route findings to the log**
+
+```c
+#include "opennec.h"
+#include <string.h>
+#include <stdio.h>
+
+/* Log callback defined elsewhere; receives severity + message */
+static void my_logger(void *ud, int level, const char *msg)
+{
+    (void)ud;
+    static const char *labels[] = { "INFO", "WARNING", "ERROR", "FATAL" };
+    fprintf(stderr, "[%s] %s\n", labels[level < 4 ? level : 3], msg);
+}
+
+int load_and_validate(const char *path)
+{
+    context_t *ctx = create_context();
+    set_log_callback(ctx, my_logger, NULL);
+
+    deck_t deck;
+    init_deck(&deck);
+
+    errors_list_t parse_errors, test_errors;
+    memset(&parse_errors, 0, sizeof(parse_errors));
+    memset(&test_errors,  0, sizeof(test_errors));
+
+    FILE *fp = fopen(path, "r");
+    read_deck(ctx, &deck, fp);
+    fclose(fp);
+
+    parse_deck(ctx, &deck, &parse_errors);
+
+    /* Run all four deck-level checks into a single list */
+    test_deck_structure  (ctx, &deck, &test_errors);
+    test_duplicate_tags  (ctx, &deck, &test_errors);
+    test_card_inputs     (ctx, &deck, &test_errors);
+    test_field_separators(ctx, &deck, &test_errors);
+
+    /* Route every finding through the log callback */
+    for (int i = 0; i < test_errors.num_errors; i++) {
+        int sev = test_errors.errors[i].severity; /* maps to ONEC_SEV_* directly */
+        report(ctx, sev, "Validation [%d]: %s", i + 1, test_errors.errors[i].message);
+    }
+
+    int fatal_count = 0;
+    for (int i = 0; i < test_errors.num_errors; i++)
+        if (test_errors.errors[i].severity == FATAL)
+            fatal_count++;
+
+    destroy_deck(&deck);
+    destroy_context(ctx);
+    return fatal_count == 0 ? 0 : -1;
+}
+```
+
+The `severity` field on each `error_t` uses the same numeric values as `ONEC_SEV_INFO` / `ONEC_SEV_WARNING` / `ONEC_SEV_ERROR` / `ONEC_SEV_FATAL`, so it can be passed directly to `report()`.
+
+Parse errors (returned in `parse_errors`) and structural test errors (returned in `test_errors`) accumulate independently. If you want to present them together, you can iterate both lists in sequence, or call `transfer_errors()` to merge one list into the other:
+
+```c
+transfer_errors(&parse_errors, &test_errors); /* appends parse_errors into test_errors */
+```
+
+### Card-Level Validation
+
+Card-level validation checks one field at a time on a single `card_t`. It requires no `context_t` or `deck_t`, making it suitable for interactive feedback in GUI applications — it can be called on every keystroke as a user edits a field.
+
+Two functions are provided:
+
+```c
+/* Validate a single named field; returns result by value */
+field_validation_t validate_card_field(const card_t *card, const char *field_name);
+
+/* Validate all 11 fields of a card in one call */
+void validate_card_all_fields(const card_t *card, field_validation_t results[11]);
+```
+
+`validate_card_field` accepts `"I1"` through `"I4"` and `"F1"` through `"F7"` as field names and returns a `field_validation_t`:
+
+```c
+typedef struct {
+    error_level severity;        /* NONE=OK, WARNING, PROBLEM, FATAL */
+    char message[MAX_ERROR_LEN]; /* Human-readable description; empty when NONE */
+} field_validation_t;
+```
+
+`validate_card_all_fields` fills an 11-element array in the following order:
+
+```
+results[0..3]  → I1..I4   (index = fieldN - 1)
+results[4..10] → F1..F7   (index = fieldN + 3)
+```
+
+A severity of `NONE` means either the field is valid or no validation rule is defined for that field on that card type; the GUI treats both cases identically (no indicator shown).
+
+**Example: validate all fields on a card after the user edits it**
+
+This example sketches a GUI callback that fires whenever any field on a card changes. It calls `validate_card_all_fields`, maps each result to a colour, and updates the UI. After field-level feedback, it triggers a full deck re-check to catch cross-card issues (such as a referenced tag that no longer exists).
+
+```c
+#include "opennec.h"
+
+/* Application-defined display helper */
+extern void set_field_indicator(int field_idx, error_level severity, const char *msg);
+extern void show_deck_errors(const errors_list_t *errors);
+
+void on_card_edited(context_t *ctx, deck_t *deck, int card_index)
+{
+    card_t *card = &deck->cards[card_index];
+
+    /* --- Per-field validation (no context or deck needed) --- */
+    field_validation_t results[11];
+    validate_card_all_fields(card, results);
+
+    /* results[0..3] = I1..I4; results[4..10] = F1..F7 */
+    for (int n = 0; n < 4; n++)
+        set_field_indicator(n, results[n].severity, results[n].message);
+    for (int n = 0; n < 7; n++)
+        set_field_indicator(4 + n, results[4 + n].severity, results[4 + n].message);
+
+    /* --- Incremental deck-level re-check --- */
+    /* Mark the card dirty so re-parse knows to re-evaluate its formulas */
+    card->edited = true;
+
+    errors_list_t deck_errors;
+    memset(&deck_errors, 0, sizeof(deck_errors));
+
+    parse_deck(ctx, deck, &deck_errors);
+    test_deck_structure(ctx, deck, &deck_errors);
+    test_duplicate_tags(ctx, deck, &deck_errors);
+    test_card_inputs   (ctx, deck, &deck_errors);
+
+    show_deck_errors(&deck_errors);
+}
+```
+
+**Example: validate a single field only**
+
+When the user leaves a specific field (rather than a full card save), you can call `validate_card_field` directly for minimum overhead:
+
+```c
+void on_field_focus_lost(card_t *card, const char *field_name)
+{
+    field_validation_t result = validate_card_field(card, field_name);
+
+    if (result.severity == NONE) {
+        /* Clear any previous indicator for this field */
+        set_field_indicator_by_name(field_name, NONE, "");
+    } else {
+        set_field_indicator_by_name(field_name, result.severity, result.message);
+
+        if (result.severity == FATAL)
+            show_alert("This value will prevent the deck from running: %s", result.message);
+    }
+}
+```
+
+### Validation Severity Summary
+
+| Severity | Deck validation (`error_level`) | Card validation (`error_level`) | Recommended action |
+|---|---|---|---|
+| `NONE` = 0 | No problem found | Field is valid or no rule defined | No indicator |
+| `WARNING` = 1 | Suspicious but will likely run | Value is unusual but legal | Yellow indicator; advisory |
+| `PROBLEM` = 2 | Likely to produce wrong results | Value will probably cause failure | Orange indicator; block run unless overridden |
+| `FATAL` = 3 | Deck cannot be processed | Value will definitely fail | Red indicator; block simulation |
+
+Testing
+-------
+
+The OpenNEC repository contains several layers of tests, each aimed at a different concern. All tests assume that `onec` has been built in the repository root (`make`).
+
+### Test Suites Overview
+
+| Suite | Location | What it checks |
+|---|---|---|
+| Error tests | `test/error_tests/` | Engine error messages for deliberately broken decks |
+| Formula tests | `test/formula_tests/` | SY symbol evaluation and unit-suffix expansion |
+| Validation tests | `test/validation_tests/` | Deck-level structural warnings (via `onec -t -n`) |
+| Round-trip tests | `test/roundtrip_test.c` | Read → parse → write fidelity across any collection of decks |
+| Regression harness | `test/regression_tests/regression_harness.sh` | Numerical agreement across BLAS backends; timing |
+
+### Running the Test Suite
+
+**Error tests** — verify that specific broken decks produce the expected engine error message:
+
+```sh
+cd test/error_tests
+bash run_error_tests.sh
+```
+
+Each `.deck` file in `test/error_tests/` is designed to trigger a particular error path (wrong load type, geometry below ground, missing GE card, etc.). The script runs `onec` on each file, searches its stderr output for a known regex, and reports `PASS` or `FAIL`. Files with no configured regex are reported as `SKIP`.
+
+**Formula tests** — verify that symbol evaluation and unit conversion produce numerically identical output to the baseline:
+
+```sh
+cd test/formula_tests
+bash run_formula_tests.sh
+```
+
+The script runs `test/example5.deck` as the baseline and then runs each `*.deck` in `test/formula_tests/` (parametric variants of example5 written with SY cards, inline formulas, and unit suffixes). After normalising the `.out` files (stripping comments, timing lines, and signed-zero differences), each result is diffed against the baseline. A mismatch means a formula evaluated to a different value than the direct numeric baseline.
+
+**Validation tests** — for each deck in `test/validation_tests/`, run `onec -t -n` (test mode, no simulation) and display the structural diagnostics:
+
+```sh
+cd test/validation_tests
+bash run_tests.sh
+```
+
+The `-t` flag enables all four deck-level validation passes (`test_deck_structure`, `test_duplicate_tags`, `test_card_inputs`, `test_field_separators`). The `-n` flag suppresses the actual simulation so the check runs in near-zero time even for large decks. This is useful for interactively checking a deck before committing to a run:
+
+```sh
+./onec -t -n myantenna.deck
+```
+
+**Round-trip tests** — read a deck, parse it, write it back as `.onec` format, and check for expected content:
+
+```sh
+make roundtrip_test    # builds test/roundtrip_test binary
+find test -type f \( -iname '*.nec' -o -name '*.deck' \) ! -path '*cebik*' \
+  | sort | xargs ./roundtrip_test
+```
+
+The `roundtrip_test` binary writes each input file back alongside the original with a `.onec` extension (e.g. `test/example5.deck` → `test/example5.onec`). Examine the output with `diff` to confirm that field values, comments, formulas, and extensions round-trip cleanly. You should expect only cosmetic differences — normalised field spacing and canonical comment markers.
+
+**Regression harness** — compare numerical output across BLAS backends and record timing:
+
+```sh
+bash test/regression_tests/regression_harness.sh
+```
+
+The harness automatically detects which backends are available (Accelerate on macOS, OpenBLAS if installed via Homebrew or pkg-config, MKL if `MKL_ROOT` is set), builds `onec` against each one in turn, runs the deck set, and diffs every pair of `.out` files. Timing is written to `test/regression_tests/timing.csv` (columns: deck, backend, real, user, sys). A human-readable summary is written to `test/regression_tests/report.txt`. A clean run shows only `OK:` lines; any `DIFF:` line indicates a numerical mismatch between backends that needs investigation.
+
+To run the harness against a specific set of decks rather than the default collection, pass the paths as arguments:
+
+```sh
+bash test/regression_tests/regression_harness.sh test/example5.deck test/simple_yagi.nec
+```
+
+### The `onec -t` Flag
+
+Any deck can be validated without running a simulation using the `-t` and `-n` flags together:
+
+```sh
+./onec -t -n myantenna.deck
+```
+
+`-t` runs the four structural test passes and prints a diagnostic summary to stderr. `-n` (no-run) skips the simulation so the command returns immediately. The exit code is still 0 unless a fatal parse error occurred; check stderr for the diagnostic lines.
+
+This is the recommended first step before submitting a long simulation: catch structural problems quickly, fix them, then run.
+
+### Adding New Tests
+
+**Error test** — create a `.deck` in `test/error_tests/` that deliberately triggers one specific error condition, then add a `case` entry for it in `run_error_tests.sh` with the expected regex. Keep the deck as small as possible (only enough cards to trigger the error); the minimal deck shown in the error README files is a good model.
+
+**Formula test** — copy `test/example5.deck` and rewrite the numeric fields using SY cards, unit suffixes, or inline formulas. The simulation result must be numerically identical to the original. Add the new deck to `test/formula_tests/` with a descriptive name; the `run_formula_tests.sh` script picks it up automatically.
+
+**Validation test** — add a `.deck` to `test/validation_tests/` that contains a specific structural problem (or a known-good variant of one). The `run_tests.sh` script in that directory runs all `.deck` files automatically. Pair each problem deck with a corresponding `_ok` variant if you want to confirm that the correct form produces no diagnostic.
+
+**Round-trip test** — no new test file is needed; every `.deck` or `.nec` file in the test tree is automatically covered the next time `./roundtrip_test` is run. If you add a new feature that affects how cards are serialised, run the round-trip test against decks that exercise that feature and compare the `.onec` output manually.
+
+**Regression baseline** — after intentionally changing output format or numerical precision, re-run the regression harness and commit the updated `.diff` files in `test/regression_tests/` as the new accepted baseline.
 
 Troubleshooting
 ---------------
-- Common errors and their meaning
-- Debugging deck parsing problems
-- Working around numerical issues
+
+### Deck Parsing Problems
+
+**"The deck has no cards." / "A deck has to have at least five cards..."**
+
+The file is empty or contains only comments. A valid deck must have at minimum: one comment block (`CM`/`CE`), at least one geometry card (`GW` etc.), a `GE` card, a frequency card (`FR`), an excitation card (`EX`), and an end card (`EN`).
+
+**"GE on line N: no geometry cards were seen before it."**
+
+The deck contains a `GE` card but no preceding geometry (`GW`, `GA`, `GH`, `SP`, `SM`, `GF`, etc.). Either the geometry cards are missing, or a card code was misspelled so the parser did not recognize them as geometry.
+
+**"<CARD> on line N: appears before the GE; ... should follow geometry."**
+
+Control cards like `FR`, `EX`, `LD`, `TL`, `GN`, `GD`, `RP`, or `EK` were found before the `GE` card that ends the geometry section. Move all control cards after `GE`.
+
+**"Error evaluating formula '<expr>' on card N: <reason>"**
+
+A formula in an SY card or inline formula field could not be evaluated. Common causes:
+- Referencing a variable before it is defined (SY cards are evaluated top-to-bottom)
+- Typo in a variable name
+- Division by zero (e.g., `lambda = 300/freq` where `freq = 0`)
+- Unsupported function name (check the list in the [Operators and Functions](#operators-and-functions) section)
+
+To debug, run `./onec -t -n myantenna.deck` — it will print exactly which card and field triggered the evaluation error.
+
+**Unexpected parse of field values / wrong numbers in output**
+
+If numeric fields appear to be read as zero or shifted, the field separator may be ambiguous. NEC format traditionally uses fixed-width columns; OpenNEC also accepts comma, tab, and space separators. If two values are adjacent without a separator (e.g., `14.2-5.0`), OpenNEC may read this as a single value. Use commas or spaces between fields: `14.2, -5.0`.
+
+---
+
+### Geometry Errors
+
+**"GW on line N (tag T): crosses the ground plane (z=0)"**
+
+A wire passes through z=0 when a ground plane is enabled. All wire endpoints must be at z > 0 when using `GN 1`, `GN 2`, or `GN 3`. Wires below the ground plane are non-physical and cause incorrect results.
+
+**"Wire on line N (tag T) has L/R <value> < 2; 4nec2 treats this as an error."**
+
+The wire segment is nearly as thick as it is long (length/radius ratio < 2). NEC's thin-wire approximation breaks down for fat wires. Solutions:
+- Increase segment count to make individual segments longer relative to the radius
+- Use a more physically appropriate radius
+
+**"GW on line N (tag T): has radius R which gives L/R ≤ 8"**
+
+A wire segment's length-to-radius ratio is below 8. NEC's thin-wire approximation becomes less accurate below this ratio. Increase the number of segments (subdivision) or reduce the wire radius. This is a warning, not a fatal error; the simulation will still run.
+
+**"Connected wires (lines X and Y, tags T1 and T2) have a radius ratio >10:1"**
+
+Two wires that share an endpoint have very different radii. NEC's junction model expects similar radii at connection points. A ratio above 10:1 may produce inaccurate current distribution. Use a tapering geometry (GC card or intermediate GW wires) to transition between radii.
+
+**"GW on line N (tag T): radius ≥ 0.5 × len with extended kernel"**
+
+When the extended thin-wire kernel (`EK` card) is enabled, the wire radius must be less than half the segment length. Either increase the number of segments, reduce the radius, or disable the extended kernel if it is not needed.
+
+**Segment below ground / wire below ground**
+
+Any segment endpoint at z < 0 (below the ground plane) is illegal when ground is enabled:
+
+```
+error: segment 5 is below ground plane
+```
+
+Check all `GW` card end coordinates when using `GN 1`, `GN 2`, or `GN 3`. Flip the sign of negative z-coordinates or move the antenna above the ground plane.
+
+---
+
+### Control Card Errors
+
+**"EX on line N: references invalid tag T, segment S"**
+
+The excitation card references a wire tag and segment number that does not exist in the geometry. Common causes:
+- Tag number in `EX` does not match any `GW` tag
+- Segment index in `EX` exceeds the number of segments defined for that wire
+- Geometry was modified (segments added/removed) but `EX` was not updated
+
+**"LD on line N: references an invalid start/end segment"**
+
+The loading card references a segment index out of range for the specified wire tag. Check that the segment numbers in `LD` are within [1, Nseg] for that tag's wire.
+
+**"TL on line N: Z0 = 0 in F1, which is invalid."**
+
+The transmission line characteristic impedance is zero, which is physically impossible. Set F1 to the appropriate impedance (e.g., `50` for 50 Ω coaxial cable).
+
+**"TL on line N: connects the same tag and segment on both ends"**
+
+A transmission line that connects a segment to itself is a no-op and usually indicates a copy-paste error. Correct the endpoint tags and segment indices.
+
+**"GN on line N: radial wire ground screen cannot be used with Sommerfeld ground option."**
+
+`GN 2` with `nradl > 0` (radial wire screen) is incompatible with the Sommerfeld numerical integration mode. Use `GN 2` without a radial screen, or use a different ground model.
+
+**"FR on line N: I2 step count is > 1 but F2 (frequency step) is zero."**
+
+A frequency sweep was requested (step count > 1) but the step size is zero, so all steps would be at the same frequency. Either set I2 to 1 (single frequency) or set F2 to a non-zero frequency step.
+
+---
+
+### Numerical Issues
+
+**No output / simulation produces no results**
+
+If `onec` exits cleanly but the output file is empty or contains no radiation pattern or impedance data, check:
+1. Is there a `RP`, `NE`, or `NH` card? Without one of these, no data output is generated.
+2. Is there an `EX` card with a non-zero amplitude? A zero-amplitude excitation produces zero currents.
+3. Is the `GE` card present and in the correct position (after all geometry, before control cards)?
+
+**"No convergence in shanks_integration()"**
+
+The Sommerfeld integral did not converge during ground field computation. This can happen when:
+- The wire is very close to or touching the ground plane (z ≈ 0); add clearance (≥ 0.001λ)
+- Ground conductivity is extremely high (σ > 1000 S/m); for sea water use σ = 5.0
+- The geometry has segments spanning very different scales
+
+**Unrealistically high impedance or gain**
+
+Very high or very low impedance values at the feed point often indicate a modeling issue rather than a computational error:
+- **Feed point not at centre of element** — if tag/segment reference in `EX` lands on an end segment rather than the middle segment, drive-point impedance will be incorrect
+- **Missing ground plane** — an antenna modeled over perfect ground may show unexpected low impedance if half-wave geometry depends on the ground image
+- **Too few segments** — for a half-wave dipole, use at least 11 segments; for Yagi elements, 11–21 each
+
+**NaN / Inf in output**
+
+Not-a-Number or Infinity values in the output indicate a divide-by-zero or arithmetic overflow in the calculation. Typical causes:
+- `LD` type 4 (impedance) with L=0 or C=0 at a frequency where the reactance goes to zero or infinity (series resonance in a loading coil/capacitor)
+- A `TL` card with length = 0
+- A wire segment with computed zero length (both endpoints identical)
+
+Run `./onec -t -n myantenna.deck` first to catch structural errors before the simulation starts. Add `-v` for verbose parsing output to trace which card is being processed when the error occurs.
+
+---
+
+### Formula and Unit Suffix Problems
+
+**Unit suffix is ignored / wrong value used**
+
+Suffixes must be attached directly to the number with no space in SY card context: `14.2MHz` or as a separate argument `14.2 MHz`. In deck field context (on non-SY cards), values with suffixes must be part of a formula field (inline or out-of-band). Plain numeric fields on `GW`, `FR`, etc. are always treated as SI units (metres, Hz).
+
+**Variable defined but not substituted**
+
+SY variables are case-insensitive but must be referenced by exact name (allowing for case variation). Ensure the variable is defined *before* the card that uses it. Variables cannot be forward-referenced — SY evaluation is strictly top-to-bottom.
+
+**"Error evaluating formula: unknown variable 'X'"**
+
+The formula references a name that has not been defined in any preceding SY card. Check for typos and ensure the SY card defining the variable appears above the first card that references it.
+
+---
+
+### Import / Export Issues
+
+**"'file.nec' uses the cocoaNEC format which is not yet supported for import."**
+
+CocoaNEC's `.nec` files are XML, not NEC-2 card format. Export from cocoaNEC as a card deck (File → Export Card Deck) to get a file `onec` can process.
+
+**"onec: '-o' cannot be used with multiple input files"**
+
+When processing multiple input files, use a directory as the output target or let `onec` write alongside each input file. The `-o` flag only works with a single input file.
+
+**Round-trip differences in field spacing**
+
+When a deck is read and immediately written back, leading zeros, trailing zeros, scientific notation, and field spacing may change. This is cosmetic only and does not affect numerical results. To suppress the differences, normalise both files before diffing:
+
+```sh
+./onec input.nec -w /tmp/roundtripped.nec
+diff <(cat input.nec | grep -v '^CM') <(cat /tmp/roundtripped.nec | grep -v '^CM')
+```
+
+---
+
+### Getting More Diagnostic Information
+
+Run `onec` with the validation flags before committing to a full simulation:
+
+```sh
+# Structural check only (no simulation):
+./onec -t -n myantenna.deck
+
+# Verbose parsing + structural check:
+./onec -t -n -v myantenna.deck 2>&1 | less
+
+# Redirect errors to a file:
+./onec myantenna.deck -e errors.txt
+```
+
+The `-t` flag enables all four deck-level validation passes. The `-n` flag skips the actual simulation. The `-e` flag writes all diagnostic messages to a file instead of stderr, which is useful when the terminal truncates long output.
 
 Appendices
 ----------
-- Glossary of terms
-- NEC-2 card reference
--- comments
--- geometry
--- control
-- NEC-4 card reference (new cards only)
-- 4nec2 card reference
-- onec extension reference
-- AWG conversion table
-- Wire conductivity
-- typical insulation
 
-Aluminium-oxide 10
-Bakelite 3.5 - 4.5
-Copper-oxide 18.1
-Glass 5.0 - 9.0
-Glass (window) 7.6
-Mica 4.0 - 8.0
-Neoprene 4.0 - 6.7
-Oil 1.5 - 4.7
-Paper 1.6 - 2.6
-Parrafin 2.0 - 3.0
-Pertinax 4.3 - 5.5
-Plexiglas 2.6 - 3.5
-Polycarbonate 2.9 - 3.2
-Polyethylene 2.4
-Polyamide (nylon) 3.4 - 3.5
-Polystyrene 2.4 - 3.0
-Porcelain 5.0 - 6.5
-PVC (hard) 3.0 - 4.0
-PVC (soft) 4.0 - 5.0
-Rubber 2.7 - 3.2
-Shellac (Nat.) 2.9 - 3.9
-Styrofoam 1.03
-Teflon 2.1
-Water (destil) 34 - 78
-Wood (dry) 1.4 - 2.9
-Most plastics appear to have a dielectric constant (permittivity) between 2.0 and 3.5. The dielectric
-constant of air is around 1.0, so if we would specify a value of 1.0, no matter what radius we would get
-the performance of bare wire.
+## Glossary of Terms
 
-- Ground types
-- References and further reading
-- Change log / version history
+**BLAS** — Basic Linear Algebra Subroutines; a standard library for numerical linear algebra. OpenNEC supports three BLAS backends: Accelerate (macOS), OpenBLAS (Homebrew/pkg-config), and Intel MKL. The choice of BLAS backend typically does not affect numerical results but can significantly affect performance.
+
+**Card** — A single line in a NEC deck file. Each card begins with a two-letter mnemonic (e.g., `GW`, `FR`, `EX`) followed by numeric fields or parameters. The term originates from the era when NEC input was punched onto 80-column computer cards.
+
+**Complexity** — A dimensionless estimate of the computational work required to simulate a deck, computed by the `estimate_time()` function, and denoted as `T` in the original NEC documentation. Complexity grows roughly as O(N³) for matrix fill-and-factor and O(N²) for far-field calculations. Values below roughly 10⁷ run in under 0.1 seconds on contemporary hardware; values above 10¹¹ may take several minutes.
+
+**Deck** — A plain-text input file containing one or more NEC cards describing an antenna and its simulation parameters. Decks typically use file extensions `.nec`, `.deck`, or `.onec` (OpenNEC format). A complete deck must include geometry, frequency, excitation, and control cards, terminated by an `EN` card.
+
+**Frequency Sweep** — Running multiple simulations at different frequencies with a single deck (specified via `FR` card frequency stepping mode 0 or 1). Allows quickly building impedance curves or pattern data across a frequency range.
+
+**Green's Function** — The fundamental solution to the wave equation for electromagnetic fields in the presence of a ground plane or free space. NEC computes Green's functions via Sommerfeld integrals (for real ground) or method-of-images (for perfect ground). Numerical Green's Function (NGF) tables can be cached in files (GF/WG cards) for reuse.
+
+**Image Method** — A technique for computing radiation in the presence of a perfect conducting ground. Uses the principle of images: the ground is approximated by a mirror image current, eliminating the need for numerical integration. Very fast but only valid for perfectly conducting surfaces.
+
+**Kernel** — The mathematical function used to compute interactions between current-carrying segments. NEC-2 uses the thin-wire kernel by default; the `EK` card enables an extended kernel for more accurate computation of fields near small-radius wires.
+
+**Matrix Solver** — The numerical engine that solves the system of linear equations derived from the Method of Moments. Available methods include Gaussian elimination (LU decomposition) and iterative solvers. Performance depends on matrix size (number of segments) and BLAS backend.
+
+**Method of Moments** (MOM) — The fundamental numerical technique used by NEC. The antenna geometry is discretized into segments, and the integral equations for electromagnetic fields are converted into a matrix equation: **Z** · **I** = **V**, where **Z** is the impedance matrix, **I** is segment current, and **V** is excitation voltage. Solving for **I** gives the current distribution, from which radiation patterns and impedance are computed.
+
+**NEC** — Numerical Electromagnetics Code; the foundational antenna simulation software originally developed at Lawrence Livermore National Laboratory in the 1970s–1980s. Multiple implementations exist: NEC-2 (original Fortran release), NEC-4 (extensions), nec2c (C port), and OpenNEC (modern C re-implementation).
+
+**Numerical Integration** — Computational method for evaluating definite integrals with high accuracy. The Sommerfeld-Norton ground model uses numerical integration (Romberg method) to compute ground field contributions. More accurate than image method but slower.
+
+**Radiation Pattern** — A polar or Cartesian plot showing the antenna's radiated power intensity as a function of direction (theta θ and phi φ angles). Specified with the `RP` card; results are written to the `.out` file and can be visualized with external tools.
+
+**Segment** — A straight-line subdivision of a wire, used to discretize geometry for the Method of Moments. Each segment carries a piecewise-sinusoidal current distribution. More segments improve accuracy but increase computation time. Segment length should be roughly λ/10 to λ/20 for good results.
+
+**Sommerfeld-Norton Method** — The standard numerical technique for computing ground effects for a lossy (real) earth. Integrates contributions from an infinite lossy half-space, accounting for ground conductivity and permittivity. More accurate than perfect ground but slower. Used when `GN 2` or `GN 3` is specified.
+
+**SY Card** — Symbol card; defines a variable or constant for use in subsequent cards. Example: `SY freq=14.2, lambda=300/freq`. Variables are evaluated at parse time and substituted into all referenced fields. Extends the base NEC-2 format (originates in 4nec2 and nec2c variants).
+
+**Tag** — An integer identifier (1–9999 in standard NEC) assigned to each segment or patch to facilitate referencing in cards like `EX`, `LD`, `RP`, etc. Tags are user-assigned; multiple segments can share the same tag for convenience.
+
+**Unit Suffixes** — Shorthand notation for SI units and common engineering units. Length: `ft`, `in`, `mm`, `cm`, `m`. Frequency: `Hz`, `kHz`, `MHz`, `GHz`. Impedance: `Ohm`, `kOhm`, `MOhm`. Inductance: `H`, `mH`, `µH`, `nH`. Capacitance: `F`, `µF`, `nF`, `pF`. Wire gauge: `awg` (American Wire Gauge). Example: `14.2 MHz` instead of `14200000 Hz`.
+
+**Wire Gauge** (AWG, American Wire Gauge) — A standard system for specifying wire diameter. Finer gauges (higher numbers) are thinner; thus #10 AWG (2.588 mm) is thicker than #22 AWG (0.644 mm). OpenNEC recognizes `#NN` or `NN awg` format and converts to diameter in meters. See [AWG Conversion Table](#awg-conversion-table) for a complete lookup.
+
+### References and further reading
+
+- NEC-2 official documentation (Part I and III available):
+  - Part I: https://www.nec2.org/part_1/
+  - Part III: https://www.nec2.org/part_3/
+  - Part II is not available on nec2.org (not required for OpenNEC implementation)
+- ARRL antenna design books (Archive.org):
+  - https://archive.org/details/arrl_antennabook
+  - https://archive.org/details/arrl_antenna_compendium
+- Other NEC tools and resources:
+  - 4nec2 info: https://www.qsl.net/4nec2/
+  - nec2c/necpp reference material: various GitHub and archive repositories
+  - A. Cebik NEC insights: https://www.cebik.com/nec.html
+
+These references provide useful historical context and extended guidance for NEC-based antenna modeling.
+
