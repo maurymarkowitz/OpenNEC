@@ -1699,4 +1699,3 @@ Appendices
   - A. Cebik NEC insights: https://www.cebik.com/nec.html
 
 These references provide useful historical context and extended guidance for NEC-based antenna modeling.
-

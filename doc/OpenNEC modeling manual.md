@@ -42,19 +42,21 @@ The integral-equation approach avoids many simplifying assumptions required by s
 
 OpenNEC is a modern C re-implementation of NEC-2, designed to run on macOS, Linux, and Windows without a Fortran toolchain. It accepts the same input deck format as NEC-2, as well as the extensions found in nec2c and 4nec2, and produces the same `.out` output format, so existing models work directly. In addition to the standard card set, OpenNEC supports:
 
-- **inline comments** allow you to better document the deck and any special features
-- **SY (symbol) cards:** define named variables and formulas that are substituted into any subsequent numeric field
-- **Unit suffixes:** lengths may be given in `ft`, `in`, `mm`, `cm`; frequencies in `kHz`, `MHz`, `GHz`; wire sizes as AWG (`#14`, `22awg`); inductances and capacitances in standard SI prefixes
-- **EX 6 (current source),** a 4nec2 extension that treats the excitation as a specified current in Amperes rather than a voltage in Volts
-- **LD 6 (LC-trap)** and **LD 7 (insulated wire),** additional loading types from 4nec2
+- **Inline comments** allow you to better document the deck and any special features.
+- **SY (symbol) cards:** define named variables and formulas that are substituted into any subsequent numeric field.
+- **Unit suffixes:** lengths may be given in `ft`, `in`, `mm`, `cm`; frequencies in `kHz`, `MHz`, `GHz`; wire sizes as AWG (`#14`, `22awg`); inductances and capacitances in standard SI prefixes.
+- **Connection references:** you can refer to connections by percent-of-length, not just segment number.
+- **EX 6 (current source),** a 4nec2 extension that treats the excitation as a specified current in Amperes rather than a voltage in Volts.
+- **LD 6 (LC-trap)** and **LD 7 (insulated wire),** additional loading types from 4nec2.
 
 ### How a simulation works
 
-A simulation runs in three phases:
+A simulation runs in four phases:
 
 1. **Geometry calculation:** the wire segment endpoints, midpoints, half-lengths, and connection data are computed from the GW (and GA, GH, GM, GR, GX, GS) cards.
 2. **Matrix fill and factor:** the impedance matrix **Z** is assembled from contributions between all pairs of segments, then factored (LU decomposition). This is the most time-consuming step and scales as O(N³) in the number of segments N.
 3. **Frequency loop:** for each requested frequency, the excitation vector **V** is assembled from EX cards, **Z**·**I** = **V** is solved for **I**, and the requested output (currents, near fields, radiation pattern) is computed from **I**.
+4. **Output:** Unlike most NEC engines, which output values as they run, OpenNEC gathers up all data and outputs it in a single step.
 
 II. Units, symbols, and formulas
 --------------------------------
@@ -85,7 +87,7 @@ All numeric parameters in standard NEC-2 are in SI base units:
 | Power | Watts (W) |
 
 III. Structure modeling guidelines
---------------------------------
+----------------------------------
 
 The basic elements for modeling structures with NEC are short, straight wire *segments* and flat surface *patches*. An antenna, and any nearby conducting object that affects its performance, must be described with segments following its wire paths and patches covering its surfaces. Curved wires and wire arrays are included, which are turned into individual segments during calculation.
 
@@ -807,6 +809,8 @@ The program prints the source current under the current table column for the cor
 VII. Examples
 --------------
 
+The following examples are extracted from the many thousands of examples provided by the Cebik collection. They have been selected as representative of the most common antenna designs in the collection, and then modified to use the new features found in OpenNEC.
+
 ### Example 1: Half-wave dipole (free space)
 
 A classic half-wave dipole in free space at 14.2 MHz with 21 segments:
@@ -869,7 +873,7 @@ RP  0  37  73  1000  0  0  5  5
 EN
 ```
 
-### Example 4: Frequency sweep with formula variables
+### Example 4: Frequency sweep
 
 Sweeping a dipole over the 20m band to find the resonant frequency:
 
@@ -915,7 +919,7 @@ EN
 
 ### Example 6: Log-periodic dipole array (LPDA) for VHF
 
-A four-element log-periodic dipole array at 144 MHz (2m amateur band). LDPAs are broadband antennas with relatively constant gain and impedance across a wide frequency range. Each element is slightly shorter and closer-spaced than the previous:
+A four-element log-periodic dipole array at 144 MHz (2m amateur band). LPDAs are broadband antennas with relatively constant gain and impedance across a wide frequency range. Each element is slightly shorter and closer-spaced than the previous:
 
 ```
 CM  Four-element LDPA, 144 MHz center, VHF
@@ -967,7 +971,7 @@ OpenNEC reports errors at two stages:
 | LD on line N: type 6 requires both L and C | LD 6 trap is missing a component | Provide both F1 (L) and F2 (C) |
 | NT on line N: references invalid tag | Network connects to a nonexistent segment | Check NT tag parameters |
 | GF on line N: cannot open NGF file | File not found or path incorrect | Check NGF file location |
-| WARNING: large model detected | More than ~1000 segments | Reduce segment count or allow extra run time |\
+| WARNING: large model detected | More than ~1000 segments | Reduce segment count or allow extra run time |
 
 Glossary of Terms
 -----------------
