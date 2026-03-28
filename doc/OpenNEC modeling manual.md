@@ -84,33 +84,6 @@ All numeric parameters in standard NEC-2 are in SI base units:
 | Voltage | Volts (V) |
 | Power | Watts (W) |
 
-### Key formulas
-
-**Free-space wavelength:**
-
-$$\lambda = \frac{c}{f} = \frac{300}{f_\text{MHz}} \text{ metres}$$
-
-**Half-wave dipole length (approximate):**
-
-$$L_{1/2} \approx \frac{0.95 \lambda}{2} = \frac{142.5}{f_\text{MHz}} \text{ metres}$$
-
-*(The 0.95 shortening factor accounts for end effects; exact value depends on wire radius.)*
-
-**Segment length guideline:**
-
-$$\Delta \approx \frac{\lambda}{10} \text{ to } \frac{\lambda}{20}$$
-
-**Segment length to radius ratio:**
-
-$$\frac{\Delta}{a} > 8 \quad \text{(thin-wire kernel)}$$
-$$\frac{\Delta}{a} > 2 \quad \text{(extended thin-wire kernel, EK card)}$$
-
-**Skin depth (for LD 0 surface impedance loading):**
-
-$$\delta = \sqrt{\frac{2}{\omega \mu \sigma}} = \frac{1}{\sqrt{\pi f \mu \sigma}}$$
-
-where σ is conductivity (S/m), μ ≈ 4π×10⁻⁷ H/m (non-ferromagnetic wire), f is frequency in Hz.
-
 III. Structure modeling guidelines
 --------------------------------
 
@@ -187,6 +160,33 @@ A wire may connect to a surface only at a patch center, with the wire endpoint a
 
 Surface patches correctly model only the outer side of the surface (the side from which normals point outward). The modeled surface must be closed. Thin planar sheets are not correctly modeled with patches alone; a wire-grid approximation is more appropriate in that case.
 
+### Key formulas
+
+**Free-space wavelength:**
+
+$$\lambda = \frac{c}{f} = \frac{300}{f_\text{MHz}} \text{ metres}$$
+
+**Half-wave dipole length (approximate):**
+
+$$L_{1/2} \approx \frac{0.95 \lambda}{2} = \frac{142.5}{f_\text{MHz}} \text{ metres}$$
+
+*(The 0.95 shortening factor accounts for end effects; exact value depends on wire radius.)*
+
+**Segment length guideline:**
+
+$$\Delta \approx \frac{\lambda}{10} \text{ to } \frac{\lambda}{20}$$
+
+**Segment length to radius ratio:**
+
+$$\frac{\Delta}{a} > 8 \quad \text{(thin-wire kernel)}$$
+$$\frac{\Delta}{a} > 2 \quad \text{(extended thin-wire kernel, EK card)}$$
+
+**Skin depth (for LD 0 surface impedance loading):**
+
+$$\delta = \sqrt{\frac{2}{\omega \mu \sigma}} = \frac{1}{\sqrt{\pi f \mu \sigma}}$$
+
+where σ is conductivity (S/m), μ ≈ 4π×10⁻⁷ H/m (non-ferromagnetic wire), f is frequency in Hz.
+
 ### 3. Modeling structures over ground
 
 Several ground models are available. See [Section III, GN card](#gn--ground-parameters) and [Section III, GD card](#gd--additional-ground-parameters) for full card descriptions, and [Appendix C](#appendix-c-typical-ground-values) for typical earth parameter values.
@@ -248,6 +248,14 @@ CE [text]
 ```
 
 Marks the boundary between the comment block and the geometry section. An optional trailing comment is echoed to output. The geometry section begins on the next card. Classic NEC decks lacking a `CE` are considered ill-formed in OpenNEC.
+
+#### !, ' and #: alternative comment formats
+
+As NEC-2 became more common, various authors added new cards to allow comments to be inserted anywhere in the deck. These were simply dropped from the list of cards as they were fed into the various pre-existing NEC functions. There was no standard for these, so different authors added whatever was most familiar to them; the original LLNL team used `!` because that was what is normally used in Fortran, PC authors generally used `'`, the short-form marker for `REM` in MS BASIC, and nec2c used `#`. OpenNEC supports all of these markers.
+
+It is also common to allow these extended markers to be used at the end of a card, to document anything interesting on that card. However, nec2c's `#` is more commonly used in other engines to indicate an AWG wire gauge. For that reason, OpenNEC only treats a `#` as a comment marker if it is at the start of the line. `'` or `!` should generally be used instead, and judging by the decks found on the internet, `'` seems to be most common.
+
+OpenNEC does not treat these types of comment cards as part of the comment section, so at least a `CE` is still required for the deck to be considered valid.
 
 ### Structure geometry cards
 
@@ -678,8 +686,8 @@ EN
 
 Marks the end of the deck. Required. Any lines after `EN` are treated as comments.
 
-V. OpenNEC extensions: units and formulas
--------------------------------------------
+V. OpenNEC extensions: units, symbols and formulas
+--------------------------------------------------
 
 ### OpenNEC unit suffixes
 
@@ -745,6 +753,10 @@ Once defined, a symbol name may be used in any numeric field of any subsequent c
 ```
 GW 1 21  0 0 0  0 0 diplen/2  #14
 ```
+
+Symbols can be defined anywhere in the deck, as long as the definition is before its use. This also allows a symbol to be re-defined to a new value, which will then be used for subsequent lines. It is common to see wire radius defined in this fashion, with an initial value and then changing it as the antenna moves towards longer elements that have larger diameter conductors.
+
+Generally, it is considered good practice to define the symbols in their own block, between the `CE` and the first geometry card. 
 
 VI. Output
 ----------
