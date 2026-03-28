@@ -3,11 +3,9 @@ OpenNEC Programmer Manual
 
 Introduction
 ------------
-OpenNEC is an open-source implementation of the NEC (Numerical Electromagnetics Code) family of antenna simulation engines. It aims to be a lightweight, portable, and modern re‑implementation of the classic NEC‑2/NEC‑4 workflow, with support for recent extensions and improved deck validation.
-
 This manual focuses on using OpenNEC as a library in other programs, and the internal structures and functions that you call from the library in your programs. It also includes guidance on generating and validating NEC decks, controlling simulations, import and export of other formats, and interpreting output.
 
-This manual is aimed at programmers intending to call OpenNEC from their own code. For those looking for instructions on how to use the program from the command line, see the main [README](../README.MD).
+This manual is aimed at programmers intending to call OpenNEC from their own code. For those looking for instructions on how to use the program from the command line, see the main [README](../README.MD). For instructions on how to build models and decks, see the [OpenNEC modeling manual](OpenNEC%20modeling%20manual.md).
 
 Using OpenNEC as a plug-in engine
 ---------------------------------
@@ -1687,14 +1685,11 @@ Appendices
 
 **Unit Suffixes** — Shorthand notation for SI units and common engineering units. Length: `ft`, `in`, `mm`, `cm`, `m`. Frequency: `Hz`, `kHz`, `MHz`, `GHz`. Impedance: `Ohm`, `kOhm`, `MOhm`. Inductance: `H`, `mH`, `µH`, `nH`. Capacitance: `F`, `µF`, `nF`, `pF`. Wire gauge: `awg` (American Wire Gauge). Example: `14.2 MHz` instead of `14200000 Hz`.
 
-**Wire Gauge** (AWG, American Wire Gauge) — A standard system for specifying wire diameter. Finer gauges (higher numbers) are thinner; thus #10 AWG (2.588 mm) is thicker than #22 AWG (0.644 mm). OpenNEC recognizes `#NN` or `NN awg` format and converts to diameter in meters. See [AWG Conversion Table](#awg-conversion-table) for a complete lookup.
-
 ### References and further reading
 
 - NEC-2 official documentation (Part I and III available):
-  - Part I: https://www.nec2.org/part_1/
-  - Part III: https://www.nec2.org/part_3/
-  - Part II is not available on nec2.org (not required for OpenNEC implementation)
+  - Part I: https://www.nec2.org/part_1/toc.html
+  - Part III: https://www.nec2.org/part_3/toc.html
 - ARRL antenna design books (Archive.org):
   - https://archive.org/details/arrl_antennabook
   - https://archive.org/details/arrl_antenna_compendium
