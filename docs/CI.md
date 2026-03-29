@@ -16,7 +16,8 @@ Platform notes
   `-arch arm64` flags. This job runs successfully on an arm64 runner (native
   Apple Silicon); on x86 runners it may fail if cross-tooling or SDKs are
   unavailable. The job prints `uname -m` to help diagnose runner architecture.
-- Windows: the workflows build using MSYS2/MINGW64 and produce `onec.exe`.
+- Windows: the workflows build using MSYS2/MINGW64 and produce `onec.exe`, `libonec.a`, and headers.
+  Windows releases include a directory structure with binary, library, and development files.
 - Linux: x86_64 and aarch64 builds are produced; aarch64 uses a Docker
   container to build on `ubuntu:22.04`.
 
@@ -28,8 +29,35 @@ Triggering
 
 Artifacts
 ---------
-Each release job zips the executable(s) plus `README.MD` and an example deck
-and uploads the zip as a Release asset. Files are named `onec-<platform>-<arch>.zip`.
+All platform release zips contain a consistent directory structure with binaries,
+static library, development headers, documentation, and examples. Files are named
+`onec-<platform>-<arch>.zip` with a consistent internal structure.
+
+**Release artifact structure (all platforms):**
+Each release zip contains:
+```
+onec-<platform>-<arch>/
+  bin/
+    onec (Linux/macOS) or onec.exe (Windows)
+  lib/
+    libonec.a
+  include/
+    opennec.h (+ 14 other public headers)
+  doc/
+    (complete documentation suite)
+  examples/
+    (example antenna models)
+  README.MD
+  example5.deck
+```
+
+To use in your project:
+1. Extract the zip file
+2. Copy `bin/onec*` to your PATH or project
+3. Link against `lib/libonec.a` when building C programs
+4. Include headers from the `include/` directory
+5. Refer to documentation in `doc/` for usage and modeling guidelines
+6. Use models from `examples/` as templates for your own antenna designs
 
 If you want changes to the workflows (extra targets, static/musl builds,
 notarization/signing), tell me which targets and I will add them.

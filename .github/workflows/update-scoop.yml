@@ -16,21 +16,25 @@ jobs:
           token: ${{ secrets.SCOOP_TOKEN }}
           path: bucket
 
-      - name: Download release asset
+      - name: Download Windows release asset
         run: |
-          curl -L -o onec.zip ${{ github.event.release.assets[0].browser_download_url }}
+          VERSION=${{ github.event.release.tag_name }}
+          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${VERSION}/onec-windows-x86_64.zip"
+          curl -L -o onec-windows-x86_64.zip "$RELEASE_URL"
 
       - name: Compute SHA256
         run: |
-          HASH=$(sha256sum onec.zip | cut -d ' ' -f1)
+          HASH=$(sha256sum onec-windows-x86_64.zip | cut -d ' ' -f1)
           echo "HASH=$HASH" >> $GITHUB_ENV
 
       - name: Update manifest
         run: |
           VERSION=${{ github.event.release.tag_name }}
-          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" bucket/bucket/onec.json
-          sed -i "s/\"hash\": \".*\"/\"hash\": \"$HASH\"/" bucket/bucket/onec.json
-          sed -i "s|releases/download/.*/onec-windows-amd64.zip|releases/download/$VERSION/onec-windows-amd64.zip|" bucket/bucket/onec.json
+          # Remove leading 'v' from version if present
+          VERSION=${VERSION#v}
+          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" bucket/bucket/onec.json
+          sed -i "s/\"hash\": \".*\"/\"hash\": \"${HASH}\"/" bucket/bucket/onec.json
+          sed -i "s|releases/download/.*/onec-windows-x86_64.zip|releases/download/${{ github.event.release.tag_name }}/onec-windows-x86_64.zip|" bucket/bucket/onec.json
 
       - name: Commit changes
         run: |
@@ -38,5 +42,5 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .
-          git commit -m "Update scoop manifest for $VERSION"
+          git commit -m "Update scoop manifest for ${{ github.event.release.tag_name }}"
           git push

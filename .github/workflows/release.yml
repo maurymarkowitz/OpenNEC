@@ -27,8 +27,29 @@ jobs:
           make BACKEND=original
       - name: Package
         run: |
-          mkdir -p dist
-          zip -j dist/onec-linux-x86_64.zip onec README.MD test/example5.deck
+          mkdir -p dist/onec-linux-x86_64/lib dist/onec-linux-x86_64/include dist/onec-linux-x86_64/bin
+          cp onec dist/onec-linux-x86_64/bin/
+          cp README.MD dist/onec-linux-x86_64/
+          cp test/example5.deck dist/onec-linux-x86_64/
+          cp libonec.a dist/onec-linux-x86_64/lib/
+          cp src/opennec.h dist/onec-linux-x86_64/include/
+          cp src/types.h dist/onec-linux-x86_64/include/
+          cp src/deck.h dist/onec-linux-x86_64/include/
+          cp src/input.h dist/onec-linux-x86_64/include/
+          cp src/output.h dist/onec-linux-x86_64/include/
+          cp src/geometry.h dist/onec-linux-x86_64/include/
+          cp src/control.h dist/onec-linux-x86_64/include/
+          cp src/fields.h dist/onec-linux-x86_64/include/
+          cp src/ground.h dist/onec-linux-x86_64/include/
+          cp src/calculations.h dist/onec-linux-x86_64/include/
+          cp src/matrix.h dist/onec-linux-x86_64/include/
+          cp src/network.h dist/onec-linux-x86_64/include/
+          cp src/radiation.h dist/onec-linux-x86_64/include/
+          cp src/somnec.h dist/onec-linux-x86_64/include/
+          cp src/misc.h dist/onec-linux-x86_64/include/
+          cp -r doc dist/onec-linux-x86_64/
+          cp -r examples dist/onec-linux-x86_64/
+          cd dist && zip -r onec-linux-x86_64.zip onec-linux-x86_64/
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -47,8 +68,29 @@ jobs:
           make BACKEND=original
       - name: Package
         run: |
-          mkdir -p dist
-          zip -j dist/onec-linux-aarch64.zip onec README.MD test/example5.deck
+          mkdir -p dist/onec-linux-aarch64/lib dist/onec-linux-aarch64/include dist/onec-linux-aarch64/bin
+          cp onec dist/onec-linux-aarch64/bin/
+          cp README.MD dist/onec-linux-aarch64/
+          cp test/example5.deck dist/onec-linux-aarch64/
+          cp libonec.a dist/onec-linux-aarch64/lib/
+          cp src/opennec.h dist/onec-linux-aarch64/include/
+          cp src/types.h dist/onec-linux-aarch64/include/
+          cp src/deck.h dist/onec-linux-aarch64/include/
+          cp src/input.h dist/onec-linux-aarch64/include/
+          cp src/output.h dist/onec-linux-aarch64/include/
+          cp src/geometry.h dist/onec-linux-aarch64/include/
+          cp src/control.h dist/onec-linux-aarch64/include/
+          cp src/fields.h dist/onec-linux-aarch64/include/
+          cp src/ground.h dist/onec-linux-aarch64/include/
+          cp src/calculations.h dist/onec-linux-aarch64/include/
+          cp src/matrix.h dist/onec-linux-aarch64/include/
+          cp src/network.h dist/onec-linux-aarch64/include/
+          cp src/radiation.h dist/onec-linux-aarch64/include/
+          cp src/somnec.h dist/onec-linux-aarch64/include/
+          cp src/misc.h dist/onec-linux-aarch64/include/
+          cp -r doc dist/onec-linux-aarch64/
+          cp -r examples dist/onec-linux-aarch64/
+          cd dist && zip -r onec-linux-aarch64.zip onec-linux-aarch64/
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -65,8 +107,29 @@ jobs:
           make CC=clang CFLAGS="-I. -Isrc -g -O2 -Wall -Wno-unused-parameter -arch x86_64 -mmacosx-version-min=10.15" LDFLAGS="-arch x86_64 -mmacosx-version-min=10.15" BACKEND=original
       - name: Package
         run: |
-          mkdir -p dist
-          zip -j dist/onec-macos-x86.zip onec README.MD test/example5.deck
+          mkdir -p dist/onec-macos-x86/lib dist/onec-macos-x86/include dist/onec-macos-x86/bin
+          cp onec dist/onec-macos-x86/bin/
+          cp README.MD dist/onec-macos-x86/
+          cp test/example5.deck dist/onec-macos-x86/
+          cp libonec.a dist/onec-macos-x86/lib/
+          cp src/opennec.h dist/onec-macos-x86/include/
+          cp src/types.h dist/onec-macos-x86/include/
+          cp src/deck.h dist/onec-macos-x86/include/
+          cp src/input.h dist/onec-macos-x86/include/
+          cp src/output.h dist/onec-macos-x86/include/
+          cp src/geometry.h dist/onec-macos-x86/include/
+          cp src/control.h dist/onec-macos-x86/include/
+          cp src/fields.h dist/onec-macos-x86/include/
+          cp src/ground.h dist/onec-macos-x86/include/
+          cp src/calculations.h dist/onec-macos-x86/include/
+          cp src/matrix.h dist/onec-macos-x86/include/
+          cp src/network.h dist/onec-macos-x86/include/
+          cp src/radiation.h dist/onec-macos-x86/include/
+          cp src/somnec.h dist/onec-macos-x86/include/
+          cp src/misc.h dist/onec-macos-x86/include/
+          cp -r doc dist/onec-macos-x86/
+          cp -r examples dist/onec-macos-x86/
+          cd dist && zip -r onec-macos-x86.zip onec-macos-x86/
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -88,8 +151,29 @@ jobs:
           make CC=clang CFLAGS="-I. -Isrc -g -O2 -Wall -Wno-unused-parameter -arch arm64 -mmacosx-version-min=11.0" LDFLAGS="-arch arm64 -mmacosx-version-min=11.0" BACKEND=original
       - name: Package
         run: |
-          mkdir -p dist
-          zip -j dist/onec-macos-arm64.zip onec README.MD test/example5.deck
+          mkdir -p dist/onec-macos-arm64/lib dist/onec-macos-arm64/include dist/onec-macos-arm64/bin
+          cp onec dist/onec-macos-arm64/bin/
+          cp README.MD dist/onec-macos-arm64/
+          cp test/example5.deck dist/onec-macos-arm64/
+          cp libonec.a dist/onec-macos-arm64/lib/
+          cp src/opennec.h dist/onec-macos-arm64/include/
+          cp src/types.h dist/onec-macos-arm64/include/
+          cp src/deck.h dist/onec-macos-arm64/include/
+          cp src/input.h dist/onec-macos-arm64/include/
+          cp src/output.h dist/onec-macos-arm64/include/
+          cp src/geometry.h dist/onec-macos-arm64/include/
+          cp src/control.h dist/onec-macos-arm64/include/
+          cp src/fields.h dist/onec-macos-arm64/include/
+          cp src/ground.h dist/onec-macos-arm64/include/
+          cp src/calculations.h dist/onec-macos-arm64/include/
+          cp src/matrix.h dist/onec-macos-arm64/include/
+          cp src/network.h dist/onec-macos-arm64/include/
+          cp src/radiation.h dist/onec-macos-arm64/include/
+          cp src/somnec.h dist/onec-macos-arm64/include/
+          cp src/misc.h dist/onec-macos-arm64/include/
+          cp -r doc dist/onec-macos-arm64/
+          cp -r examples dist/onec-macos-arm64/
+          cd dist && zip -r onec-macos-arm64.zip onec-macos-arm64/
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -117,10 +201,31 @@ jobs:
           make clean
           make CC=x86_64-w64-mingw32-gcc BACKEND=original
       - name: Package
-        shell: pwsh
+        shell: bash -l {0}
         run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path onec.exe, README.MD, test/example5.deck -DestinationPath dist/onec-windows-x86_64.zip -Force
+          mkdir -p dist/onec-windows-x86_64/lib dist/onec-windows-x86_64/include dist/onec-windows-x86_64/bin
+          cp onec.exe dist/onec-windows-x86_64/bin/
+          cp README.MD dist/onec-windows-x86_64/
+          cp test/example5.deck dist/onec-windows-x86_64/
+          cp libonec.a dist/onec-windows-x86_64/lib/
+          cp src/opennec.h dist/onec-windows-x86_64/include/
+          cp src/types.h dist/onec-windows-x86_64/include/
+          cp src/deck.h dist/onec-windows-x86_64/include/
+          cp src/input.h dist/onec-windows-x86_64/include/
+          cp src/output.h dist/onec-windows-x86_64/include/
+          cp src/geometry.h dist/onec-windows-x86_64/include/
+          cp src/control.h dist/onec-windows-x86_64/include/
+          cp src/fields.h dist/onec-windows-x86_64/include/
+          cp src/ground.h dist/onec-windows-x86_64/include/
+          cp src/calculations.h dist/onec-windows-x86_64/include/
+          cp src/matrix.h dist/onec-windows-x86_64/include/
+          cp src/network.h dist/onec-windows-x86_64/include/
+          cp src/radiation.h dist/onec-windows-x86_64/include/
+          cp src/somnec.h dist/onec-windows-x86_64/include/
+          cp src/misc.h dist/onec-windows-x86_64/include/
+          cp -r doc dist/onec-windows-x86_64/
+          cp -r examples dist/onec-windows-x86_64/
+          cd dist && zip -r onec-windows-x86_64.zip onec-windows-x86_64/
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
