@@ -32,6 +32,8 @@ brew tap maurymarkowitz/tap https://github.com/maurymarkowitz/homebrew-tap
 brew install maurymarkowitz/tap/onec
 ```
 
+On Apple Silicon, the executable will be installed to `/opt/homebrew` instead of `/usr/local` in keeping with Homebrew standards.
+
 On Windows, you can use scoop:
 
 ```
@@ -44,7 +46,9 @@ Building OpenNEC
 
 You can also easily build the project from source. It is a makefile project that does not require `autoconfig` or other steps. A simple `make` in the root directory should produce a working executable on practically any unix-like system. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](doc/BUILD.md).
 
-Windows compatibility is provided using MinGW. The same makefile is used for both Unix and Windows, and the `make` utility supplied with MinGW works perfectly. See [BUILD-WINDOWS](doc/BUILD-WINDOWS.md) for details.
+Windows compatibility is provided using MinGW, which needs to be installed manually. The same makefile is used for both Unix and Windows, and the `make` utility supplied with MinGW works perfectly. See [BUILD-WINDOWS](doc/BUILD-WINDOWS.md) for details.
+
+Both platforms support `make install` which adds the manuals to the proper locations, and `make uninstall` to cleanly remove all the parts.
 
 Running OpenNEC
 ---------------

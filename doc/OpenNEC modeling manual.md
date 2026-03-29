@@ -3,7 +3,6 @@ OpenNEC Modeling Manual
 
 Introduction
 ------------
-
 This manual describes how to build and analyze antenna models with OpenNEC. The manual covers the full input language, geometry, control cards, and output interpretation, and includes practical guidelines for constructing accurate models. Most of the material here applies to any NEC-2 compatable engine, and the manual broadly follows the structure of the NEC-2 User's Manual (Part III).
 
 The manual also covers the modeling-related extensions found in OpenNEC: symbolic formulas, unit suffixes, wire-gauge notation, current source excitation, and additional loading types. The intent is that a user familiar with any NEC-2 simulator should find the card descriptions and modeling rules directly applicable, while OpenNEC-specific additions are clearly marked.
@@ -12,7 +11,6 @@ For a description of the OpenNEC program itself, refer to the [OpenNEC programme
 
 I. Key concepts
 ---------------
-
 ### Why model antennas?
 
 A computer model cannot replace building and measuring an antenna. It can, however, reveal important information that would otherwise be difficult to determine without extensive testing. This includes:
@@ -88,7 +86,6 @@ All numeric parameters in standard NEC-2 are in SI base units:
 
 III. Structure modeling guidelines
 ----------------------------------
-
 The basic elements for modeling structures with NEC are short, straight wire *segments* and flat surface *patches*. An antenna, and any nearby conducting object that affects its performance, must be described with segments following its wire paths and patches covering its surfaces. Curved wires and wire arrays are included, which are turned into individual segments during calculation.
 
 Choosing segments and patches correctly is the most important step in producing accurate results. The number of segments should be the minimum necessary for accuracy; computation time increases roughly as the cube of the number of segments, so unnecessary segments cost considerably more than they gain.
@@ -222,7 +219,6 @@ A linear or circular cliff may be defined using the GD card, specifying differen
 
 IV. Program input
 -----------------
-
 An NEC input file (deck) consists of cards arranged in three sections:
 
 1. **Comment section:** normally contains at least one or more `CM` ccomment ards and ends at a `CE`. May consist of a single `GE`.
@@ -452,7 +448,7 @@ Specifies the ground model below the antenna.
 
 | Field | Description |
 |-------|-------------|
-| type | Ground type: -1=free space, 0=image method auto, 1=perfect ground, 2=Sommerfeld-Norton, 3=NEC-4.2 Sommerfeld |
+| type | Ground type: -1=free space, 0=image method auto, 1=perfect ground, 2=Sommerfeld-Norton, 3=MiniNec (4nec2 extension) |
 | nradl | Number of radial ground-screen wires (0=none) |
 | epsr | Relative dielectric constant (permittivity) of earth |
 | sigma | Conductivity of earth (S/m) |
@@ -480,6 +476,15 @@ GN  2  0  0  0  13  0.005
 ```
 GN  2  8  0  0  13  0.005  0.25  0.5
 ```
+
+**GN 3 (MiniNec ground, 4nec2 extension):**
+The MiniNec ground model uses a perfect ground for impedance calculations but a real lossy ground for far-field radiation patterns and RCS. This approach provides accurate feed-point impedance while including ground effects on distant fields. `epsr` (F1) must be specified and must be positive; `sigma` (F2) is the earth conductivity.
+
+```
+GN  3  0  0  0  14  0.006
+```
+
+Internally, GN 3 is equivalent to `GN 1` (perfect ground) for the impedance matrix, with an implicit `GD 0 0 0 0 epsr sigma` providing the real ground parameters for far-field calculations.
 
 #### GD: Additional ground parameters
 ```
@@ -519,6 +524,28 @@ LD  5  1  0  0  58000000
 
 Wire conductivity values for common metals are tabulated in [Appendix D](#appendix-d-wire-conductivity-values).
 
+**LD 6 (LC trap, 4nec2 extension):**
+An LC trap is a parallel resonant circuit placed at a specific location on a wire. At the trap's resonant frequency, the impedance is purely resistive; off-resonance it presents a reactive impedance that can be used to modify antenna performance. LC traps are commonly used in multi-band antennas to decouple elements at certain frequencies.
+
+F1 is the inductance (H) and F2 is the capacitance (F). The trap impedance is computed as $Z = 1/(j\omega C - j/(\omega L))$.
+
+```
+LD  6  2  16  16  5.5e-6  45e-12
+```
+
+This example places a 5.5 µH / 45 pF LC trap on segment 16 of tag 2.
+
+**LD 7 (Insulated wire, 4nec2/Cebik extension):**
+Models an insulated wire (i.e., a conductor with a dielectric coating or insulation). This is useful for modeling wires wrapped in insulation, which can affect impedance due to the dielectric constant and thickness of the insulation.
+
+F1 is the relative dielectric constant (εr) of the insulation, and F2 is the outer radius of the insulated wire (metres). The actual conductor radius comes from the GW card; the insulation adds additional dielectric loading.
+
+```
+LD  7  2  1  16  3.5  0.003
+```
+
+This example applies PVC insulation (εr = 3.5) with an outer radius of 3 mm to segments 1–16 of tag 2. If the bare wire radius was 1 mm, the insulation thickness is 2 mm.
+
 #### EX: Excitation
 
 ```
@@ -553,19 +580,28 @@ OpenNEC supports the 4nec2 extension to `EX` that allows the position to be spec
 EX  0  1  50%  0  1  0
 ```
 
-**EX 6, current source:**
+**EX 6 (current source, 4nec2 extension):**
+A current source excites the antenna with a specified current (in Amperes) rather than a voltage. This is useful for modeling certain types of feed systems or for testing antenna performance under constant-current conditions.
+
 OpenNEC supports the 4nec2 extension for current sources of (re + j·im) Amperes at segment (tag, seg):
 
 ```
 EX  6  tag  seg  0  re  im
 ```
 
-OpenNEC implements this by internally generating a synthetic dummy wire segment with a 1 V voltage source and connecting it to the target segment through an NT admittance network with Y₁₂ = −I_desired. The result is that the target segment carries the specified current.
+OpenNEC implements this by internally generating a synthetic dummy wire segment with a 1 V voltage source and connecting it to the target segment through an NT admittance network chosen so that the target segment carries the specified current. This approach maintains the integrity of the impedance matrix and produces correct radiation patterns and near fields.
 
-**Example: 1 Amp current source at centre of 11-segment dipole (tag 1):**
+**Example: 1 Amp current source at centre of dipole (tag 1, segment 6):**
 ```
 EX  6  1  6  0  1.0  0.0
 ```
+
+**Example: Complex current source with phase:**
+```
+EX  6  1  6  0  0.707  0.707
+```
+
+This applies a current of $1 \angle 45°$ A (approximately 0.707 + j 0.707 A).
 
 #### NT: Two-port network
 

@@ -213,6 +213,26 @@ LIBRARY = libonec.a
 
 EXECUTABLE = onec
 
+# Installation paths (configurable via PREFIX variable)
+ifeq ($(OS),Windows_NT)
+    # Windows installation paths
+    PREFIX ?= $(PROGRAMFILES)\OpenNEC
+    INSTALL_DIR = $(PREFIX)
+    BIN_DIR = $(INSTALL_DIR)\bin
+    LIB_DIR = $(INSTALL_DIR)\lib
+    DOC_DIR = $(INSTALL_DIR)\doc
+    # Windows doesn't use man pages in the same way, but provide the path anyway
+    MAN_DIR = $(INSTALL_DIR)\man
+else
+    # Unix-like installation paths
+    PREFIX ?= /usr/local
+    INSTALL_DIR = $(PREFIX)
+    BIN_DIR = $(INSTALL_DIR)/bin
+    LIB_DIR = $(INSTALL_DIR)/lib
+    MAN_DIR = $(INSTALL_DIR)/share/man/man1
+    DOC_DIR = $(INSTALL_DIR)/share/doc/onec
+endif
+
 all: $(EXECUTABLE)
 
 $(LIBRARY): $(LIB_OBJECTS)
@@ -232,10 +252,13 @@ help:
 	@echo "OpenNEC Build System"
 	@echo "===================="
 	@echo ""
-	@echo "Usage: make [BACKEND=<backend>] [DEBUG=<0|1>] [target]"
+	@echo "Usage: make [BACKEND=<backend>] [DEBUG=<0|1>] [PREFIX=<path>] [target]"
 	@echo ""
 	@echo "Options:"
 	@echo "  DEBUG=1     - Enable AddressSanitizer for memory debugging"
+	@echo "  PREFIX      - Installation prefix"
+	@echo "                Unix/Linux/macOS: default /usr/local"
+	@echo "                Windows: default %%PROGRAMFILES%%\OpenNEC"
 	@echo ""
 	@echo "Backends:"
 	@echo "  auto        - Auto-detect best available library (default)"
@@ -246,18 +269,88 @@ help:
 	@echo "  blas        - Reference BLAS/LAPACK"
 	@echo "  original    - Original NEC-2 verson (no external dependencies)"
 	@echo ""
+	@echo "Targets:"
+	@echo "  all         - Build everything (default)"
+	@echo "  install     - Install binaries, library, docs, and man page"
+	@echo "  uninstall   - Remove installed files"
+	@echo "  clean       - Remove build artifacts"
+	@echo "  debug       - Same as make DEBUG=1"
+	@echo ""
 	@echo "Examples:"
 	@echo "  make                      # Build with auto-detection"
 	@echo "  make BACKEND=accelerate   # Require Accelerate (fails if unavailable)"
 	@echo "  make BACKEND=original     # Use original implementation"
 	@echo "  make DEBUG=1              # Build with AddressSanitizer"
 	@echo "  make debug                # Same as make DEBUG=1"
+	@echo "  make install              # Install to default location"
+	@echo "  make PREFIX=/opt install  # Install to /opt (Unix/Linux/macOS)"
+	@echo "  make PREFIX=D:\MyApps install  # Install to D:\MyApps (Windows)"
+	@echo "  make uninstall            # Remove installed files"
 	@echo "  make clean                # Remove build artifacts"
 	@echo ""
-	@echo "Current platform: $(UNAME_S)"
+	@echo "Current platform: $(UNAME_S) / OS: $(OS)"
 
 .PHONY: debug
 debug:
 	$(MAKE) DEBUG=1
 
-.PHONY: all clean help debug
+.PHONY: install
+ifeq ($(OS),Windows_NT)
+install: $(EXECUTABLE) $(LIBRARY)
+	@echo Installing OpenNEC to $(INSTALL_DIR)...
+	@if not exist "$(BIN_DIR)" mkdir "$(BIN_DIR)"
+	@if not exist "$(LIB_DIR)" mkdir "$(LIB_DIR)"
+	@if not exist "$(DOC_DIR)\examples" mkdir "$(DOC_DIR)\examples"
+	@if not exist "$(MAN_DIR)" mkdir "$(MAN_DIR)"
+	copy /Y "$(EXECUTABLE)" "$(BIN_DIR)\"
+	copy /Y "$(LIBRARY)" "$(LIB_DIR)\"
+	copy /Y "doc\onec.1" "$(MAN_DIR)\"
+	@echo.
+	@echo Copying documentation...
+	@robocopy doc "$(DOC_DIR)\doc" /S /E /Y 2>nul
+	@robocopy examples "$(DOC_DIR)\examples" /S /E /Y 2>nul
+	@echo.
+	@echo Installation complete!
+	@echo   Binary: $(BIN_DIR)\$(EXECUTABLE)
+	@echo   Library: $(LIB_DIR)\$(LIBRARY)
+	@echo   Documentation: $(DOC_DIR)\
+	@echo.
+	@echo To uninstall, run: make uninstall
+else
+install: $(EXECUTABLE) $(LIBRARY)
+	@echo "Installing OpenNEC to $(INSTALL_DIR)..."
+	mkdir -p $(BIN_DIR) $(LIB_DIR) $(MAN_DIR) $(DOC_DIR)/examples
+	install -m 755 $(EXECUTABLE) $(BIN_DIR)/
+	install -m 644 $(LIBRARY) $(LIB_DIR)/
+	install -m 644 doc/onec.1 $(MAN_DIR)/
+	cp -r doc $(DOC_DIR)/
+	cp -r examples $(DOC_DIR)/
+	@echo "Installation complete!"
+	@echo "  Binary: $(BIN_DIR)/$(EXECUTABLE)"
+	@echo "  Library: $(LIB_DIR)/$(LIBRARY)"
+	@echo "  Man page: $(MAN_DIR)/onec.1"
+	@echo "  Documentation: $(DOC_DIR)/"
+	@echo ""
+	@echo "To uninstall, run: make uninstall"
+endif
+
+.PHONY: uninstall
+ifeq ($(OS),Windows_NT)
+uninstall:
+	@echo Uninstalling OpenNEC from $(INSTALL_DIR)...
+	@if exist "$(BIN_DIR)\$(EXECUTABLE)" del /Q "$(BIN_DIR)\$(EXECUTABLE)"
+	@if exist "$(LIB_DIR)\$(LIBRARY)" del /Q "$(LIB_DIR)\$(LIBRARY)"
+	@if exist "$(MAN_DIR)\onec.1" del /Q "$(MAN_DIR)\onec.1"
+	@if exist "$(DOC_DIR)" rmdir /S /Q "$(DOC_DIR)"
+	@echo Uninstall complete!
+else
+uninstall:
+	@echo "Uninstalling OpenNEC from $(INSTALL_DIR)..."
+	rm -f $(BIN_DIR)/$(EXECUTABLE)
+	rm -f $(LIB_DIR)/$(LIBRARY)
+	rm -f $(MAN_DIR)/onec.1
+	rm -rf $(DOC_DIR)
+	@echo "Uninstall complete!"
+endif
+
+.PHONY: all clean help debug install uninstall

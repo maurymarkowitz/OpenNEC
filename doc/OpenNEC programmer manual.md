@@ -3,13 +3,13 @@ OpenNEC Programmer Manual
 
 Introduction
 ------------
-This manual focuses on using OpenNEC as a library in other programs, and the internal structures and functions that you call from the library in your programs. It also includes guidance on generating and validating NEC decks, controlling simulations, import and export of other formats, and interpreting output.
+This manual focuses on how to use the `libopennec.a` library in other programs, and the internal structures and functions that you call from the library in your programs. It also includes guidance on generating and validating NEC decks, controlling simulations, import and export of other formats, and interpreting output.
 
 This manual is aimed at programmers intending to call OpenNEC from their own code. For those looking for instructions on how to use the program from the command line, see the main [README](../README.MD). For instructions on how to build models and decks, see the [OpenNEC modeling manual](OpenNEC%20modeling%20manual.md).
 
 Using OpenNEC as a plug-in engine
 ---------------------------------
-The OpenNEC command-line shell, `onec`, has been designed to be able to work as a drop-in replacement for the original Fortran NEC-2 executables like `nec2d`, as well as programs that expect the slightly different parameter style found in the `nec2c` and `necpp` versions.
+The OpenNEC command-line shell program, `onec`, has been designed to be able to work as a drop-in replacement for the original Fortran NEC-2 executables like `nec2d`, as well as programs that expect the slightly different parameter style found in the `nec2c` and `necpp` versions.
 
 On Unixen, `onec` matches the nec2c interface, which used the `-i` parameter to define the input filename, and `-o` for the output filename. If no `-o` is provided, it uses the input name and changes the extension to `.out`. If no paramaters are provided, the original nec2c will exit with usage notes. OpenNEC changes this only slightly, allowing you to supply the file through redirection, so you can pipe in the file(s).
 
@@ -1657,8 +1657,6 @@ Appendices
 
 **Deck** — A plain-text input file containing one or more NEC cards describing an antenna and its simulation parameters. Decks typically use file extensions `.nec`, `.deck`, or `.onec` (OpenNEC format). A complete deck must include geometry, frequency, excitation, and control cards, terminated by an `EN` card.
 
-**Frequency Sweep** — Running multiple simulations at different frequencies with a single deck (specified via `FR` card frequency stepping mode 0 or 1). Allows quickly building impedance curves or pattern data across a frequency range.
-
 **Green's Function** — The fundamental solution to the wave equation for electromagnetic fields in the presence of a ground plane or free space. NEC computes Green's functions via Sommerfeld integrals (for real ground) or method-of-images (for perfect ground). Numerical Green's Function (NGF) tables can be cached in files (GF/WG cards) for reuse.
 
 **Image Method** — A technique for computing radiation in the presence of a perfect conducting ground. Uses the principle of images: the ground is approximated by a mirror image current, eliminating the need for numerical integration. Very fast but only valid for perfectly conducting surfaces.
@@ -1672,8 +1670,6 @@ Appendices
 **NEC** — Numerical Electromagnetics Code; the foundational antenna simulation software originally developed at Lawrence Livermore National Laboratory in the 1970s–1980s. Multiple implementations exist: NEC-2 (original Fortran release), NEC-4 (extensions), nec2c (C port), and OpenNEC (modern C re-implementation).
 
 **Numerical Integration** — Computational method for evaluating definite integrals with high accuracy. The Sommerfeld-Norton ground model uses numerical integration (Romberg method) to compute ground field contributions. More accurate than image method but slower.
-
-**Radiation Pattern** — A polar or Cartesian plot showing the antenna's radiated power intensity as a function of direction (theta θ and phi φ angles). Specified with the `RP` card; results are written to the `.out` file and can be visualized with external tools.
 
 **Segment** — A straight-line subdivision of a wire, used to discretize geometry for the Method of Moments. Each segment carries a piecewise-sinusoidal current distribution. More segments improve accuracy but increase computation time. Segment length should be roughly λ/10 to λ/20 for good results.
 

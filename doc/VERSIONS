@@ -1,4 +1,7 @@
-Version 1.3.1 - 2026 March 28
+Version 1.3.1 - 2026 March 29
+- modified makefile to include install, which installs the documentation and example files
+- updated the Homebrew formula to install the man, docs and examples to the right places
+- added a new modeling manual, moved some content from programming to that
 - added support for EX6, which I thought we had done earlier but never implemented
 - minor fix to silence a warning about compat_time on non-Windows machines
 
