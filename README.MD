@@ -44,9 +44,9 @@ scoop install onec
 Building OpenNEC
 ----------------
 
-You can also easily build the project from source. It is a makefile project that does not require `autoconfig` or other steps. A simple `make` in the root directory should produce a working executable on practically any unix-like system. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](doc/BUILD.md).
+You can also easily build the project from source. It is a makefile project that does not require `autoconfig` or other steps. A simple `make` in the root directory should produce a working executable on practically any unix-like system. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](docs/BUILD.md).
 
-Windows compatibility is provided using MinGW, which needs to be installed manually. The same makefile is used for both Unix and Windows, and the `make` utility supplied with MinGW works perfectly. See [BUILD-WINDOWS](doc/BUILD-WINDOWS.md) for details.
+Windows compatibility is provided using MinGW, which needs to be installed manually. The same makefile is used for both Unix and Windows, and the `make` utility supplied with MinGW works perfectly. See [BUILD-WINDOWS](docs/BUILD-WINDOWS.md) for details.
 
 Both platforms support `make install` which adds the manuals to the proper locations, and `make uninstall` to cleanly remove all the parts.
 
@@ -133,7 +133,7 @@ This will create a new NEC file, `example.nec`. This also works along with `-r` 
 
 In this case the `-n` was added so it does not try to calculate any results, it simply reads the file and writes the deck.
 
-There are a number of limitations in these importers as the various formats support different features and options. See the various "file format" documents in the [doc folder](doc/) for more details. The currently recognized formats and extensions are:
+There are a number of limitations in these importers as the various formats support different features and options. See the various "file format" documents in the [docs folder](docs/) for more details. The currently recognized formats and extensions are:
 
 | Extension(s) | Format | Read | Write |
 |---|---|---|---|
@@ -158,7 +158,7 @@ The primary difference between OpenNEC and nec2c is its form; nec2c is a command
 
 Programs that wish to use OpenNEC as their calculation engine can directly access the various structures like the segment list and radiation patterns. They can also change the deck by adding or modifying cards, or by changing the simulation parameters and re-running the calculations. Using the segment list is particularly useful during the antenna layout and design stage; programs can use the code to turn their geometry cards into a segments structure which can then be sent to a 3D library.
 
-OpenNEC also improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. On large files, OpenNEC can be 7 to 10 times as fast as the original code. See [OpenNEC, NEC-2 and nec2c](doc/OpenNEC,%20NEC-2%20and%20nec2c.md) for details.
+OpenNEC also improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. On large files, OpenNEC can be 7 to 10 times as fast as the original code. See [OpenNEC, NEC-2 and nec2c](docs/OpenNEC,%20NEC-2%20and%20nec2c.md) for details.
 
 OpenNEC also adds many of the features found in the popular 4nec2 program on Windows. In particular, it supports the symbols (variables), formulas and calculations that make it easier to design complex antennas. These features are widely used and found in many of the real-world `.nec` decks found on the 'net. It also supports new variants of the `LD` and `EX` cards and other 4nec2 additions.
 
