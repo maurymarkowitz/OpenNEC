@@ -113,27 +113,27 @@ This will produce a series of warnings or errors detailing issues (if any) in th
 File conversion
 ---------------
 
-onec has built-in readers for various 3rd party file formats. For instance:
+OpenNEC has built-in readers and writers for various 3rd party file formats. For instance:
 
-```./onec example.mma```
+```./onec example.maa```
 
 This will read the file `example.maa`, convert it to NEC format, and then run the simulations. When started with a path, or with the `-r` option, normally only NEC files will be processed. You can force it to read other files using a globbing expression:
 
-```./onec -r /example_files/*.mma```
+```./onec -r /example_files/*.maa```
 
-In this example it will ignore anything that is not an `.mma` file.
+In this example it will ignore anything that is *not* an `.mma` file.
 
 onec can also write files in different formats using the `-w` option. This is normally used with a "bare" extension like `.nec`, but you can also provide a complete filename if you wish to rename the converted deck. In most cases, you use something like:
 
-```./onec -w .nec example.mma```
+```./onec -w .nec example.maa```
 
 This will create a new NEC file, `example.nec`. This also works along with `-r` and globbing, so one can convert a folder of files to NEC format with something like:
 
-```./onec -r -n -w .nec /example_files/*.mma```
+```./onec -r -n -w .nec /example_files/*.maa```
 
 In this case the `-n` was added so it does not try to calculate any results, it simply reads the file and writes the deck.
 
-There are a number of limitations in these importers as the various formats support different features and options. See the "file format" documents in the [doc folder](doc/)for more details. The currently recognized formats and extensions are:
+There are a number of limitations in these importers as the various formats support different features and options. See the various "file format" documents in the [doc folder](doc/) for more details. The currently recognized formats and extensions are:
 
 | Extension(s) | Format | Read | Write |
 |---|---|---|---|
