@@ -3,23 +3,35 @@ name: Update Scoop Manifest
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag to use (e.g. v2.2.0)'
+        required: true
 
 jobs:
   update:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check HOMEBREW_AND_SCOOP_TOKEN secret
+        run: |
+          if [ -z "${{ secrets.HOMEBREW_AND_SCOOP_TOKEN }}" ]; then
+            echo "ERROR: HOMEBREW_AND_SCOOP_TOKEN secret is not set. Add it to repository secrets and rerun."
+            exit 1
+          fi
+
       - name: Checkout scoop bucket
         uses: actions/checkout@v4
         with:
           repository: maurymarkowitz/scoop-bucket
-          token: ${{ secrets.SCOOP_TOKEN }}
-          path: bucket
+          token: ${{ secrets.HOMEBREW_AND_SCOOP_TOKEN }}
+          path: scoop-bucket
 
       - name: Download Windows release asset
         run: |
-          VERSION=${{ github.event.release.tag_name }}
-          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${VERSION}/onec-windows-x86_64.zip"
+          TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
+          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${TAG}/onec-windows-x86_64.zip"
           curl -L -o onec-windows-x86_64.zip "$RELEASE_URL"
 
       - name: Compute SHA256
@@ -27,20 +39,38 @@ jobs:
           HASH=$(sha256sum onec-windows-x86_64.zip | cut -d ' ' -f1)
           echo "HASH=$HASH" >> $GITHUB_ENV
 
-      - name: Update manifest
+      - name: Update scoop manifest
         run: |
-          VERSION=${{ github.event.release.tag_name }}
-          # Remove leading 'v' from version if present
+          TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
+          VERSION=${TAG}
           VERSION=${VERSION#v}
-          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" bucket/bucket/onec.json
-          sed -i "s/\"hash\": \".*\"/\"hash\": \"${HASH}\"/" bucket/bucket/onec.json
-          sed -i "s|releases/download/.*/onec-windows-x86_64.zip|releases/download/${{ github.event.release.tag_name }}/onec-windows-x86_64.zip|" bucket/bucket/onec.json
+          HASH=$(sha256sum onec-windows-x86_64.zip | cut -d ' ' -f1)
+          MANIFEST="scoop-bucket/bucket/onec.json"
+          if [ ! -f "$MANIFEST" ]; then
+            echo "ERROR: Manifest not found at $MANIFEST"
+            find scoop-bucket -name "*.json" -type f
+            exit 1
+          fi
+          echo "Updating: $MANIFEST"
+          echo "VERSION: $VERSION"
+          echo "HASH: $HASH"
+          TAG_WITH_V="v${VERSION}"
+          if [ "$TAG" != "$TAG_WITH_V" ]; then
+            TAG_WITH_V="$TAG"
+          fi
+          echo "TAG (for URL): $TAG_WITH_V"
+          jq ".version = \"${VERSION}\" | .url = \"https://github.com/maurymarkowitz/OpenNEC/releases/download/${TAG_WITH_V}/onec-windows-x86_64.zip\" | .hash = \"${HASH}\"" "$MANIFEST" > "${MANIFEST}.tmp" && mv "${MANIFEST}.tmp" "$MANIFEST"
 
       - name: Commit changes
         run: |
-          cd bucket
+          cd scoop-bucket
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add .
-          git commit -m "Update scoop manifest for ${{ github.event.release.tag_name }}"
+          git remote set-url origin "https://x-access-token:${{ secrets.HOMEBREW_AND_SCOOP_TOKEN }}@github.com/maurymarkowitz/scoop-bucket.git"
+          git add bucket/onec.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit. Skipping push."
+            exit 0
+          fi
+          git commit -m "Update scoop manifest for ${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
           git push

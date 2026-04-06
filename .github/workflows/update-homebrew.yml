@@ -3,6 +3,11 @@ name: Update Homebrew Tap
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag to use (e.g. v2.2.0)'
+        required: true
 
 jobs:
   update:
@@ -12,25 +17,43 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v4
 
-      - name: Get release tarball
+      - name: Download release tarball
         run: |
-          curl -L -o source.tar.gz ${{ github.event.release.tarball_url }}
+          TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
+          if [ -n "${{ github.event.release.tarball_url }}" ]; then
+            URL="${{ github.event.release.tarball_url }}"
+          else
+            URL="https://github.com/maurymarkowitz/OpenNEC/archive/refs/tags/${TAG}.tar.gz"
+          fi
+          curl -L -o source.tar.gz "${URL}"
 
       - name: Compute SHA256
         id: sha
         run: |
           echo "sha=$(sha256sum source.tar.gz | cut -d ' ' -f1)" >> $GITHUB_OUTPUT
 
-      - name: Update tap
+      - name: Checkout homebrew tap
+        uses: actions/checkout@v4
+        with:
+          repository: maurymarkowitz/homebrew-tap
+          token: ${{ secrets.HOMEBREW_AND_SCOOP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update Homebrew formula
         run: |
-          git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/maurymarkowitz/homebrew-tap.git
           cd homebrew-tap
-          
-          sed -i "s|url \".*\"|url \"${{ github.event.release.tarball_url }}\"|" Formula/onec.rb
-          sed -i "s|sha256 \".*\"|sha256 \"${{ steps.sha.outputs.sha }}\"|" Formula/onec.rb
-          
+
+          TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
+          url="https://github.com/maurymarkowitz/OpenNEC/archive/refs/tags/${TAG}.tar.gz"
+          sha="${{ steps.sha.outputs.sha }}"
+
+          sed -i "s|^  url \".*\"|  url \"${url}\"|" Formula/onec.rb
+          sed -i "s|^  sha256 \".*\"|  sha256 \"${sha}\"|" Formula/onec.rb
+
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          
-          git commit -am "Update onec to ${{ github.event.release.tag_name }}"
+          git remote set-url origin "https://x-access-token:${{ secrets.HOMEBREW_AND_SCOOP_TOKEN }}@github.com/maurymarkowitz/homebrew-tap.git"
+
+          git add Formula/onec.rb
+          git commit -m "Update onec to ${TAG}"
           git push
