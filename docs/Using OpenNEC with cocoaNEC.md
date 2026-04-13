@@ -291,7 +291,7 @@ make clean
 make BACKEND=openblas
 
 # Verify it works
-./onec test/example5.deck > /tmp/test_output.txt
+./onec examples/example5.deck > /tmp/test_output.txt
 cat /tmp/test_output.txt | head -30
 ```
 

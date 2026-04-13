@@ -82,13 +82,13 @@ Testing
 After building you can run a smoke test on Windows natively:
 
 ```powershell
-.\onec.exe test\example5.deck
+.\onec.exe examples\example5.deck
 ```
 
 Or from a Unix-like shell in the toolchain environment:
 
 ```bash
-./onec.exe test/example5.deck
+./onec.exe examples/example5.deck
 ```
 
 Help and shell notes

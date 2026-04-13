@@ -30,7 +30,7 @@ jobs:
           mkdir -p dist/onec-linux-x86_64/lib dist/onec-linux-x86_64/include dist/onec-linux-x86_64/bin
           cp onec dist/onec-linux-x86_64/bin/
           cp README.MD dist/onec-linux-x86_64/
-          cp test/example5.deck dist/onec-linux-x86_64/
+          cp examples/example5.deck dist/onec-linux-x86_64/
           cp libonec.a dist/onec-linux-x86_64/lib/
           cp src/opennec.h dist/onec-linux-x86_64/include/
           cp src/types.h dist/onec-linux-x86_64/include/
@@ -71,7 +71,7 @@ jobs:
           mkdir -p dist/onec-linux-aarch64/lib dist/onec-linux-aarch64/include dist/onec-linux-aarch64/bin
           cp onec dist/onec-linux-aarch64/bin/
           cp README.MD dist/onec-linux-aarch64/
-          cp test/example5.deck dist/onec-linux-aarch64/
+          cp examples/example5.deck dist/onec-linux-aarch64/
           cp libonec.a dist/onec-linux-aarch64/lib/
           cp src/opennec.h dist/onec-linux-aarch64/include/
           cp src/types.h dist/onec-linux-aarch64/include/
@@ -110,7 +110,7 @@ jobs:
           mkdir -p dist/onec-macos-x86/lib dist/onec-macos-x86/include dist/onec-macos-x86/bin
           cp onec dist/onec-macos-x86/bin/
           cp README.MD dist/onec-macos-x86/
-          cp test/example5.deck dist/onec-macos-x86/
+          cp examples/example5.deck dist/onec-macos-x86/
           cp libonec.a dist/onec-macos-x86/lib/
           cp src/opennec.h dist/onec-macos-x86/include/
           cp src/types.h dist/onec-macos-x86/include/
@@ -154,7 +154,7 @@ jobs:
           mkdir -p dist/onec-macos-arm64/lib dist/onec-macos-arm64/include dist/onec-macos-arm64/bin
           cp onec dist/onec-macos-arm64/bin/
           cp README.MD dist/onec-macos-arm64/
-          cp test/example5.deck dist/onec-macos-arm64/
+          cp examples/example5.deck dist/onec-macos-arm64/
           cp libonec.a dist/onec-macos-arm64/lib/
           cp src/opennec.h dist/onec-macos-arm64/include/
           cp src/types.h dist/onec-macos-arm64/include/
@@ -206,7 +206,7 @@ jobs:
           mkdir -p dist/onec-windows-x86_64/lib dist/onec-windows-x86_64/include dist/onec-windows-x86_64/bin
           cp onec.exe dist/onec-windows-x86_64/bin/
           cp README.MD dist/onec-windows-x86_64/
-          cp test/example5.deck dist/onec-windows-x86_64/
+          cp examples/example5.deck dist/onec-windows-x86_64/
           cp libonec.a dist/onec-windows-x86_64/lib/
           cp src/opennec.h dist/onec-windows-x86_64/include/
           cp src/types.h dist/onec-windows-x86_64/include/

@@ -58,7 +58,7 @@ make BACKEND=blas
 Run a quick test:
 
 ```bash
-./onec test/example5.deck
+./onec examples/example5.deck
 ```
 
 ### Troubleshooting
@@ -83,7 +83,7 @@ On macOS, the default backend is Apple Accelerate. You can also use OpenBLAS on 
 ```bash
 make clean
 make BACKEND=accelerate
-./onec test/example5.deck
+./onec examples/example5.deck
 ```
 
 - As Accelerate is the default, this is equivalent to:
@@ -91,7 +91,7 @@ make BACKEND=accelerate
 ```bash
 make clean
 make
-./onec test/example5.deck
+./onec examples/example5.deck
 ```
 
 - OpenBLAS via Homebrew (Apple Silicon):
@@ -106,7 +106,7 @@ brew install openblas pkg-config
 # Build with OpenBLAS
 make clean
 make BACKEND=openblas
-./onec test/example5.deck
+./onec examples/example5.deck
 ```
 
 Important:
@@ -165,7 +165,7 @@ There are two practical ways to build and run OpenNEC on Windows:
   sudo apt install -y build-essential pkg-config libopenblas-dev
   make clean
   make BACKEND=openblas
-  ./onec test/example5.deck
+  ./onec examples/example5.deck
   ```
 
 - Native MSYS2 (OpenBLAS)
@@ -183,7 +183,7 @@ There are two practical ways to build and run OpenNEC on Windows:
   ```bash
   make clean
   make BACKEND=openblas
-  ./onec test/example5.deck
+  ./onec examples/example5.deck
   ```
 
 ### Intel MKL (Advanced)
@@ -198,7 +198,7 @@ OpenNEC can link against Intel MKL on Linux/WSL when `MKL_ROOT` points to the MK
 export MKL_ROOT="/opt/intel/oneapi/mkl/latest"
 make clean
 make BACKEND=mkl
-./onec test/example5.deck
+./onec examples/example5.deck
 ```
 
 Notes:

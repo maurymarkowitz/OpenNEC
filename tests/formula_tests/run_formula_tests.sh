@@ -5,8 +5,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT"
 
-BASE_DECK="test/example5.deck"
-BASE_OUT="test/example5.out"
+BASE_DECK="examples/example5.deck"
+BASE_OUT="examples/example5.out"
 
 echo "Running baseline: $BASE_DECK"
 ./onec "$BASE_DECK" >/dev/null 2>&1 || { echo "Baseline run failed"; exit 1; }
