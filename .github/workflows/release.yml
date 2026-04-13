@@ -225,7 +225,7 @@ jobs:
           cp src/misc.h dist/onec-windows-x86_64/include/
           cp -r docs dist/onec-windows-x86_64/
           cp -r examples dist/onec-windows-x86_64/
-          cd dist && zip -r onec-windows-x86_64.zip onec-windows-x86_64/
+          powershell.exe -NoProfile -Command "Compress-Archive -Path 'dist/onec-windows-x86_64/*' -DestinationPath 'dist/onec-windows-x86_64.zip' -Force"
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
