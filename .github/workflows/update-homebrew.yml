@@ -49,12 +49,15 @@ jobs:
           url="https://github.com/maurymarkowitz/OpenNEC/archive/refs/tags/${TAG}.tar.gz"
           sha="${{ steps.sha.outputs.sha }}"
 
+          TOKEN="${{ secrets.HOMEBREW_AND_SCOOP_TOKEN }}"
+          TOKEN="$(printf '%s' "${TOKEN}" | tr -d '\r\n')"
+
           sed -i "s|^  url \".*\"|  url \"${url}\"|" Formula/onec.rb
           sed -i "s|^  sha256 \".*\"|  sha256 \"${sha}\"|" Formula/onec.rb
 
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git remote set-url origin "https://x-access-token:${{ secrets.HOMEBREW_AND_SCOOP_TOKEN }}@github.com/maurymarkowitz/homebrew-tap.git"
+          git remote set-url origin "https://x-access-token:${TOKEN}@github.com/maurymarkowitz/homebrew-tap.git"
 
           git add Formula/onec.rb
           git commit -m "Update onec to ${TAG}"
