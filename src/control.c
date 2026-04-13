@@ -1593,6 +1593,9 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
 
     // Frequency loop
     for (int mhz = 1; mhz <= nfrq; mhz++) {
+        // Clear loading outputs from previous frequency iteration
+        ctx->loading_outputs.count = 0;
+        
         // Update frequency
         if (mhz > 1) {
             if (ifrq == 1) {

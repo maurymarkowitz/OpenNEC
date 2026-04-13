@@ -23,7 +23,7 @@ static void write_header(const context_t *ctx, const deck_t *deck, FILE *pfile);
 static int write_structure(context_t *ctx, const deck_t *deck, FILE *pfile);
 static int write_segments(context_t *ctx, const deck_t *deck, FILE *pfile);
 static void write_patches(const context_t *ctx, const deck_t *deck, FILE *pfile);
-static void write_input_cards_excluding_end(FILE *file, const deck_t *deck, int batch_start, int batch_end, int card_number_offset);
+static void write_input_cards_excluding_end(FILE *file, const context_t *ctx, const deck_t *deck, int batch_start, int batch_end, int card_number_offset);
 static void write_frequency_data(FILE *file, const context_t *ctx);
 static void write_loading_data(FILE *file, const context_t *ctx);
 static void write_environment_data(FILE *file, const context_t *ctx);
@@ -41,6 +41,65 @@ static void write_average_power_gain(FILE *file, const context_t *ctx);
 static void write_normalized_gain(FILE *file, const context_t *ctx);
 static void write_near_field_data(FILE *file, const context_t *ctx);
 static void write_near_field_plot(const context_t *ctx);
+
+/******************************************************************************
+ * Output Format Specification
+ *
+ * Centralized specification table for all formatting differences between
+ * nec2c format and original Fortran format.
+ */
+typedef struct {
+    const char *header_separator;      /* Section header separator string */
+    const char *frequency_label;       /* "FREQUENCY :" vs "FREQUENCY=" */
+    const char *wavelength_label;      /* "WAVELENGTH:" vs "WAVELENGTH=" */
+    const char *length_units;          /* "Mtr" vs "METERS" */
+    const char *freq_units;            /* "MHz" vs "MHZ" */
+    const char *matrix_sep;            /* "---------- MATRIX TIMING ----------" vs "--------- MATRIX TIMING ---------" */
+    const char *matrix_fill_format;    /* "FILL: %d msec" vs "FILL= %8.3f SEC." */
+    const char *matrix_factor_format;  /* "FACTOR: %d msec" vs "FACTOR= %8.3f SEC." */
+    int use_seconds_for_timing;        /* 1 for Fortran (seconds), 0 for nec2c (milliseconds) */
+    const char *loading_all_tag;       /* "ALL" vs "0" when consolidating universal loads */
+    int pre_freq_blank_lines;          /* Number of blank lines before frequency header */
+} output_format_spec_t;
+
+static const output_format_spec_t format_specs[] = {
+    /* NEC2C format (index 0 = OUTPUT_FORMAT_NEC2C) */
+    {
+        .header_separator = "--------- ",
+        .frequency_label = "FREQUENCY :",
+        .wavelength_label = "WAVELENGTH:",
+        .length_units = "Mtr",
+        .freq_units = "MHz",
+        .matrix_sep = "---------- MATRIX TIMING ----------",
+        .matrix_fill_format = "FILL: %d msec",
+        .matrix_factor_format = "FACTOR: %d msec",
+        .use_seconds_for_timing = 0,
+        .loading_all_tag = "0",
+        .pre_freq_blank_lines = 2
+    },
+    /* ORIGINAL Fortran format (index 1 = OUTPUT_FORMAT_ORIGINAL) */
+    {
+        .header_separator = "- - - - - - ",
+        .frequency_label = "FREQUENCY=",
+        .wavelength_label = "WAVELENGTH=",
+        .length_units = "METERS",
+        .freq_units = "MHZ",
+        .matrix_sep = "- - - MATRIX TIMING - - -",
+        .matrix_fill_format = "FILL=%8.3f SEC.",
+        .matrix_factor_format = "FACTOR=%8.3f SEC.",
+        .use_seconds_for_timing = 1,
+        .loading_all_tag = "ALL",
+        .pre_freq_blank_lines = 4
+    }
+};
+
+static inline const output_format_spec_t* get_format(const context_t *ctx)
+{
+    int fmt = ctx->output_format;
+    if (fmt < 0 || fmt >= (int)(sizeof(format_specs)/sizeof(format_specs[0])))
+        fmt = DEFAULT_OUTPUT_FORMAT;
+    return &format_specs[fmt];
+}
 
 /******************************************************************************
  * is_inline_formula
@@ -434,12 +493,16 @@ static void write_coupling_data(context_t *ctx)
  */
 void write_nec_preamble(context_t *ctx, const deck_t *deck, FILE *file)
 {
+  /* Original Fortran format starts with page control character '1' (form feed) */
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+    fprintf(file, "1\n");
+    
   write_header(ctx, deck, file);
   write_structure(ctx, deck, file);
   write_segments(ctx, deck, file);
   write_patches(ctx, deck, file);
   /* Write input cards excluding EN and NX cards (they're output separately at end) */
-  write_input_cards_excluding_end(file, deck, deck->geometry_end + 1, deck->deck_end, 0);
+  write_input_cards_excluding_end(file, ctx, deck, deck->geometry_end + 1, deck->deck_end, 0);
 }
 
 /******************************************************************************
@@ -1196,19 +1259,40 @@ err:
  */
 static void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
 {
-  fprintf(file, "\n\n\n"
-                "                              "
-                " __________________________________________\n"
-                "                              "
-                "|                                          |\n"
-                "                              "
-                "|  NUMERICAL ELECTROMAGNETICS CODE (onec)  |\n"
-                "                              "
-                "|__________________________________________|\n");
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(file, "\n\n\n"
+                  "                                 *********************************************\n"
+                  "\n"
+                  "                                    NUMERICAL ELECTROMAGNETICS CODE (NEC-2D)\n"
+                  "\n"
+                  "                                 *********************************************\n");
+  }
+  else
+  {
+    fprintf(file, "\n\n\n"
+                  "                              "
+                  " __________________________________________\n"
+                  "                              "
+                  "|                                          |\n"
+                  "                              "
+                  "|  NUMERICAL ELECTROMAGNETICS CODE (onec)  |\n"
+                  "                              "
+                  "|__________________________________________|\n");
+  }
 
-  fprintf(ctx->output_fp, "\n\n\n"
-                          "                               "
-                          "---------------- COMMENTS ----------------\n");
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(file, "\n\n\n\n"
+                  "                                     "
+                  "- - - - COMMENTS - - - -\n\n\n");
+  }
+  else
+  {
+    fprintf(file, "\n\n\n"
+                  "                               "
+                  "---------------- COMMENTS ----------------\n");
+  }
 
   // write header comments to output file (CM/CE cards in the comment section only)
   int cstart = (deck->comment_start >= 0) ? deck->comment_start : 0;
@@ -1219,8 +1303,35 @@ static void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
     if ((strcmp(card->card_code, "CM") == 0 || strcmp(card->card_code, "CE") == 0) &&
         card->comment)
     {
-      fprintf(ctx->output_fp, "                              %s\n", card->comment);
+      // Strip leading whitespace from comment (NEC format includes space after CM)
+      const char *comment_text = card->comment;
+      while (*comment_text && isspace((unsigned char)*comment_text))
+        comment_text++;
+      
+      // Skip if comment is empty after stripping whitespace
+      if (*comment_text == '\0')
+        continue;
+      
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+      {
+        // Fortran format: pad comments to 101 characters total (26 spaces + text + pad to 101)
+        char comment_line[102];
+        int comment_len = strlen(comment_text);
+        if (comment_len > 75) comment_len = 75;
+        snprintf(comment_line, sizeof(comment_line), "                          %-75s", comment_text);
+        fprintf(file, "%s\n", comment_line);
+      }
+      else
+      {
+        fprintf(file, "                              %s\n", card->comment);
+      }
     }
+  }
+
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    // Pad blank line to 101 characters
+    fprintf(file, "                                                                                                     \n");
   }
 }
 
@@ -1261,21 +1372,46 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
   // char ipt[4] = { 'P', 'R', 'T', 'Q' };
 
   // print the header
-  fprintf(file, "\n\n\n"
-                "                               "
-                "-------- STRUCTURE SPECIFICATION --------\n"
-                "                                     "
-                "COORDINATES MUST BE INPUT IN\n"
-                "                                     "
-                "METERS OR BE SCALED TO METERS\n"
-                "                                     "
-                "BEFORE STRUCTURE INPUT IS ENDED\n");
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(file, "\n\n\n"
+                  "                                 "
+                  "- - - STRUCTURE SPECIFICATION - - -\n"
+                  "\n"
+                  "                                     "
+                  "COORDINATES MUST BE INPUT IN\n"
+                  "                                     "
+                  "METERS OR BE SCALED TO METERS\n"
+                  "                                     "
+                  "BEFORE STRUCTURE INPUT IS ENDED\n");
+  }
+  else
+  {
+    fprintf(file, "\n\n\n"
+                  "                               "
+                  "-------- STRUCTURE SPECIFICATION --------\n"
+                  "                                     "
+                  "COORDINATES MUST BE INPUT IN\n"
+                  "                                     "
+                  "METERS OR BE SCALED TO METERS\n"
+                  "                                     "
+                  "BEFORE STRUCTURE INPUT IS ENDED\n");
+  }
 
-  fprintf(ctx->output_fp, "\n"
-                          "  WIRE                                           "
-                          "                                      SEG FIRST  LAST  TAG\n"
-                          "   NO.        X1         Y1         Z1         X2      "
-                          "   Y2         Z2       RADIUS   NO. SEG.   SEG.  NO.");
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(ctx->output_fp, "\n\n"
+                            "  WIRE                                                                               NO. OF    FIRST  LAST     TAG\n"
+                            "  NO.        X1         Y1         Z1          X2         Y2         Z2      RADIUS   SEG.     SEG.   SEG.     NO.");
+  }
+  else
+  {
+    fprintf(ctx->output_fp, "\n"
+                            "  WIRE                                           "
+                            "                                      SEG FIRST  LAST  TAG\n"
+                            "   NO.        X1         Y1         Z1         X2      "
+                            "   Y2         Z2       RADIUS   NO. SEG.   SEG.  NO.");
+  }
 
   for (int i = deck->geometry_start; i <= deck->geometry_end; i++)
   {
@@ -1305,11 +1441,21 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
 
     case 0: // GW card, a wire
       num_wires++;
-      fprintf(ctx->output_fp, "\n"
-                              " %5d  %10.5f %10.5f %10.5f %10.5f"
-                              " %10.5f %10.5f %10.5f %5d %5d %5d %4d",
-              num_wires, card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6], card.f[7],
-              card.num_segments, card.start_segment, card.end_segment, card.tag);
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+      {
+        fprintf(ctx->output_fp, "\n"
+                                " %5d%11.5f%11.5f%11.5f %11.5f%11.5f%11.5f%11.5f  %5d    %5d %5d   %5d",
+                num_wires, card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6], card.f[7],
+                card.num_segments, card.start_segment, card.end_segment, card.tag);
+      }
+      else
+      {
+        fprintf(ctx->output_fp, "\n"
+                                " %5d  %10.5f %10.5f %10.5f %10.5f"
+                                " %10.5f %10.5f %10.5f %5d %5d %5d %4d",
+                num_wires, card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6], card.f[7],
+                card.num_segments, card.start_segment, card.end_segment, card.tag);
+      }
       break;
 
     case 1: // GX card, reflection or rotation
@@ -1392,10 +1538,19 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
   } /* for loop over cards */
 
   // and now a final report on the cards
-  fprintf(ctx->output_fp, "\n\n"
-                          "     TOTAL SEGMENTS USED: %d   SEGMENTS IN A"
-                          " SYMMETRIC CELL: %d   SYMMETRY FLAG: %d",
-          ctx->geometry.num_segs, ctx->geometry.num_segs_sym, ctx->geometry.symmetry_flag);
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(ctx->output_fp, "\n\n"
+                            "   TOTAL SEGMENTS USED=   %d     NO. SEG. IN A SYMMETRIC CELL=   %d     SYMMETRY FLAG=  %d",
+            ctx->geometry.num_segs, ctx->geometry.num_segs_sym, ctx->geometry.symmetry_flag);
+  }
+  else
+  {
+    fprintf(ctx->output_fp, "\n\n"
+                            "     TOTAL SEGMENTS USED: %d   SEGMENTS IN A"
+                            " SYMMETRIC CELL: %d   SYMMETRY FLAG: %d",
+            ctx->geometry.num_segs, ctx->geometry.num_segs_sym, ctx->geometry.symmetry_flag);
+  }
 
   if (ctx->geometry.num_patches > 0)
     fprintf(ctx->output_fp, "\n"
@@ -1426,6 +1581,25 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
     } /* if(ctx->geometry.symmetry_flag < 0 ) */
   } /* if( iseg != 1) */
 
+  /* Output MULTIPLE WIRE JUNCTIONS section (always present when N > 0) */
+  if (ctx->geometry.num_segs > 0)
+  {
+    if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+    {
+      fprintf(ctx->output_fp, "\n\n\n"
+                              "         - MULTIPLE WIRE JUNCTIONS -\n"
+                              " JUNCTION    SEGMENTS  (- FOR END 1, + FOR END 2)\n"
+                              "  NONE\n");
+    }
+    else
+    {
+      fprintf(ctx->output_fp, "\n\n\n"
+                              "        -------- MULTIPLE WIRE JUNCTIONS --------\n"
+                              "  JUNCTION           SEGMENTS  (- FOR END 1, + FOR END 2)\n"
+                              "   NONE");
+    }
+  }
+
   // Output any informational messages collected during geometry processing
   for (int i = 0; i < ctx->outputs.num_messages; i++)
   {
@@ -1447,27 +1621,39 @@ static int write_segments(context_t *ctx, const deck_t *deck, FILE *file)
   if (ctx->geometry.num_segs == 0)
     return 0;
 
-  fprintf(ctx->output_fp, "\n\n\n"
-                          "                              "
-                          " ---------- SEGMENTATION DATA ----------\n"
-                          "                                       "
-                          " COORDINATES IN METERS\n"
-                          "                           "
-                          " I+ AND I- INDICATE THE SEGMENTS BEFORE AND AFTER I\n");
-
-  fprintf(ctx->output_fp, "\n"
-                          "   SEG    COORDINATES OF SEGM CENTER     SEGM    ORIENTATION"
-                          " ANGLES    WIRE    CONNECTION DATA   TAG\n"
-                          "   NO.       X         Y         Z      LENGTH     ALPHA     "
-                          " BETA    RADIUS    I-     I    I+   NO.");
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(ctx->output_fp, "\n\n\n\n"
+                            "                                 "
+                            "- - - - SEGMENTATION DATA - - - -\n"
+                            "\n"
+                            "                                        "
+                            "COORDINATES IN METERS\n"
+                            "\n"
+                            "                         "
+                            "I+ AND I- INDICATE THE SEGMENTS BEFORE AND AFTER I\n"
+                            "\n\n"
+                            "  SEG.   COORDINATES OF SEG. CENTER     SEG.     ORIENTATION ANGLES    WIRE    CONNECTION DATA   TAG\n"
+                            "  NO.       X         Y         Z       LENGTH     ALPHA     BETA      RADIUS    I-   I    I+    NO.");
+  }
+  else
+  {
+    fprintf(ctx->output_fp, "\n\n\n"
+                            "                              "
+                            " ---------- SEGMENTATION DATA ----------\n"
+                            "                                       "
+                            " COORDINATES IN METERS\n"
+                            "                           "
+                            " I+ AND I- INDICATE THE SEGMENTS BEFORE AND AFTER I\n");
+    fprintf(ctx->output_fp, "\n"
+                            "   SEG    COORDINATES OF SEGM CENTER     SEGM    ORIENTATION"
+                            " ANGLES    WIRE    CONNECTION DATA   TAG\n"
+                            "   NO.       X         Y         Z      LENGTH     ALPHA     "
+                            " BETA    RADIUS    I-     I    I+   NO.");
+  }
 
   double xw1, yw1, zw1;
   double xw2, yw2;
-
-  // Calculate frequency ratio to unscale geometry back to meters
-  // The geometry has been scaled by fr = fmhz / CVEL during frequency loop
-  // We need to divide by fr to get back to the original meter values
-  double fr = ctx->save.freq_mhz / CVEL;
 
   for (int i = 0; i < ctx->geometry.num_segs; i++)
   {
@@ -1494,11 +1680,21 @@ static int write_segments(context_t *ctx, const deck_t *deck, FILE *file)
     xw2 = asin(xw2) * TD;
     yw2 = atan2(yw1, xw1) * TD;
 
-    fprintf(ctx->output_fp, "\n"
-                            " %5d %9.4f %9.4f %9.4f %9.4f"
-                            " %9.4f %9.4f %9.4f %5d %5d %5d %5d",
-            i + 1, ctx->geometry.x_center[i], ctx->geometry.y_center[i], ctx->geometry.z_center[i], ctx->geometry.half_len[i], xw2, yw2,
-            ctx->geometry.radius[i] / fr, ctx->geometry.seg_end1_conn[i], i + 1, ctx->geometry.seg_end2_conn[i], ctx->geometry.tag_nums[i]);
+    if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+    {
+      fprintf(ctx->output_fp, "\n %5d%10.5f%10.5f%10.5f%10.5f %10.5f%10.5f%10.5f %5d%5d%5d  %5d",
+              i + 1, ctx->geometry.x_center[i], ctx->geometry.y_center[i], ctx->geometry.z_center[i], ctx->geometry.half_len[i],
+              xw2, yw2, ctx->geometry.radius[i],
+              ctx->geometry.seg_end1_conn[i], i + 1, ctx->geometry.seg_end2_conn[i], ctx->geometry.tag_nums[i]);
+    }
+    else
+    {
+      fprintf(ctx->output_fp, "\n"
+                              " %5d %9.4f %9.4f %9.4f %9.4f"
+                              " %9.4f %9.4f %9.4f %5d %5d %5d %5d",
+              i + 1, ctx->geometry.x_center[i], ctx->geometry.y_center[i], ctx->geometry.z_center[i], ctx->geometry.half_len[i], xw2, yw2,
+              ctx->geometry.radius[i], ctx->geometry.seg_end1_conn[i], i + 1, ctx->geometry.seg_end2_conn[i], ctx->geometry.tag_nums[i]);
+    }
 
     if (ctx->plot.plot_type == 1)
       fprintf(ctx->plot_fp, "%12.4E %12.4E %12.4E "
@@ -1572,9 +1768,9 @@ static void write_patches(const context_t *ctx, const deck_t *deck, FILE *file)
  *
  * Like write_input_cards but skips EN and NX cards (which are output separately).
  */
-static void write_input_cards_excluding_end(FILE *file, const deck_t *deck, int batch_start, int batch_end, int card_number_offset)
+static void write_input_cards_excluding_end(FILE *file, const context_t *ctx, const deck_t *deck, int batch_start, int batch_end, int card_number_offset)
 {
-  if (file == NULL || deck == NULL)
+  if (file == NULL || ctx == NULL || deck == NULL)
   {
     return;
   }
@@ -1635,7 +1831,14 @@ static void write_input_cards_excluding_end(FILE *file, const deck_t *deck, int 
       card_number++;
 
       /* Output in exact NEC format: card number, card code, 4 ints, 7 floats */
-      fprintf(file, "  DATA CARD No: %3d %s", card_number, card->card_code);
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+      {
+        fprintf(file, " ***** DATA CARD NO. %2d   %s", card_number, card->card_code);
+      }
+      else
+      {
+        fprintf(file, "  DATA CARD No: %3d %s", card_number, card->card_code);
+      }
 
       /* Output 4 integer fields */
       fprintf(file, " %3d", card->i[1]);
@@ -1753,22 +1956,48 @@ void write_end_cards(FILE *file, const deck_t *deck)
  */
 static void write_frequency_data(FILE *file, const context_t *ctx)
 {
-  fprintf(file, "\n\n"
-                "                               "
-                "--------- FREQUENCY --------\n"
-                "                                "
-                "FREQUENCY :%11.4E MHz\n"
-                "                                "
-                "WAVELENGTH:%11.4E Mtr",
-          ctx->save.freq_mhz,
-          ctx->geometry.wavelength);
+  const output_format_spec_t *fmt = get_format(ctx);
+  
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    /* Original Fortran format with spaces around FREQUENCY */
+    fprintf(file, "\n\n"
+                  "                                 "
+                  "- - - - - - FREQUENCY - - - - - -\n"
+                  "\n"
+                  "                                    "
+                  "%s%11.4E %s\n"
+                  "                                    "
+                  "%s%11.4E %s",
+            fmt->frequency_label, ctx->save.freq_mhz, fmt->freq_units,
+            fmt->wavelength_label, ctx->geometry.wavelength, fmt->length_units);
 
-  fprintf(file, "\n\n"
-                "                        "
-                "APPROXIMATE INTEGRATION EMPLOYED FOR SEGMENTS \n"
-                "                        "
-                "THAT ARE MORE THAN %.3f WAVELENGTHS APART",
-          ctx->dataj.k_half_len);
+    fprintf(file, "\n\n\n\n\n"
+                  "                    "
+                  "APPROXIMATE INTEGRATION EMPLOYED FOR SEGMENTS MORE THAN  %6.3f WAVELENGTHS APART",
+            ctx->dataj.k_half_len);
+  }
+  else
+  {
+    /* NEC2C format */
+    fprintf(file, "\n\n"
+                  "                               "
+                  "%s%s%s\n"
+                  "                                "
+                  "%s%11.4E %s\n"
+                  "                                "
+                  "%s%11.4E %s",
+            fmt->header_separator, "FREQUENCY", fmt->header_separator,
+            fmt->frequency_label, ctx->save.freq_mhz, fmt->freq_units,
+            fmt->wavelength_label, ctx->geometry.wavelength, fmt->length_units);
+
+    fprintf(file, "\n\n"
+                  "                        "
+                  "APPROXIMATE INTEGRATION EMPLOYED FOR SEGMENTS \n"
+                  "                        "
+                  "THAT ARE MORE THAN %.3f WAVELENGTHS APART",
+            ctx->dataj.k_half_len);
+  }
 
   if (ctx->dataj.use_extended_kernel == 1)
   {
@@ -1787,9 +2016,18 @@ static void write_frequency_data(FILE *file, const context_t *ctx)
  */
 static void write_loading_data(FILE *file, const context_t *ctx)
 {
-  fprintf(file, "\n\n\n"
-                "                          "
-                "------ STRUCTURE IMPEDANCE LOADING ------");
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(file, "\n\n\n"
+                  "                               "
+                  "- - - STRUCTURE IMPEDANCE LOADING - - -");
+  }
+  else
+  {
+    fprintf(file, "\n\n\n"
+                  "                          "
+                  "------ STRUCTURE IMPEDANCE LOADING ------");
+  }
 
   if (ctx->zload.num_loads == 0)
   {
@@ -1810,11 +2048,22 @@ static void write_loading_data(FILE *file, const context_t *ctx)
   for (int i = 0; i < ctx->loading_outputs.count; i++)
   {
     loading_output_t *entry = &ctx->loading_outputs.entries[i];
+    const output_format_spec_t *fmt = get_format(ctx);
+    
     if (strcmp(entry->type, "WIRE") == 0)
     {
       // Special format for WIRE entries to match prnt output exactly
-      fprintf(file, "\n%5d%72s%11.4E     WIRE  ",
-              entry->tag, "", entry->conductivity);
+      // Use "ALL" or "0" for tag 0 based on format
+      if (entry->tag == 0 && strcmp(fmt->loading_all_tag, "ALL") == 0)
+      {
+        fprintf(file, "\n  ALL%69s%11.4E     WIRE  ",
+                "", entry->conductivity);
+      }
+      else
+      {
+        fprintf(file, "\n%5d%72s%11.4E     WIRE  ",
+                entry->tag, "", entry->conductivity);
+      }
     }
     else if (strcmp(entry->type, "FIXED IMPEDANCE") == 0)
     {
@@ -1855,9 +2104,18 @@ static void write_loading_data(FILE *file, const context_t *ctx)
  */
 static void write_environment_data(FILE *file, const context_t *ctx)
 {
-  fprintf(file, "\n\n\n"
-                "                            "
-                "-------- ANTENNA ENVIRONMENT --------");
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(file, "\n\n\n"
+                  "                                  "
+                  "- - - ANTENNA ENVIRONMENT - - -");
+  }
+  else
+  {
+    fprintf(file, "\n\n\n"
+                  "                            "
+                  "-------- ANTENNA ENVIRONMENT --------");
+  }
 
   if (ctx->gnd.has_ground == 1)
   {
@@ -1929,13 +2187,26 @@ static void write_environment_data(FILE *file, const context_t *ctx)
  */
 static void write_matrix_timing(FILE *file, const context_t *ctx)
 {
+  const output_format_spec_t *fmt = get_format(ctx);
+  
   fprintf(file, "\n\n\n"
                 "                             "
-                "---------- MATRIX TIMING ----------\n"
-                "                               "
-                "FILL: %d msec  FACTOR: %d msec",
-          (int)(ctx->mat_fill_time * 1000.0),
-          (int)(ctx->mat_factor_time * 1000.0));
+                "%s\n"
+                "                               ",
+          fmt->matrix_sep);
+  
+  if (fmt->use_seconds_for_timing)
+  {
+    fprintf(file, fmt->matrix_fill_format, ctx->mat_fill_time);
+    fprintf(file, "  ");
+    fprintf(file, fmt->matrix_factor_format, ctx->mat_factor_time);
+  }
+  else
+  {
+    fprintf(file, fmt->matrix_fill_format, (int)(ctx->mat_fill_time * 1000.0));
+    fprintf(file, "  ");
+    fprintf(file, fmt->matrix_factor_format, (int)(ctx->mat_factor_time * 1000.0));
+  }
 }
 
 /******************************************************************************
@@ -2098,9 +2369,18 @@ static void write_antenna_input_parameters(FILE *file, const context_t *ctx)
     return; // No input data to write
   }
 
-  fprintf(file, "\n\n\n"
-                "                        "
-                "--------- ANTENNA INPUT PARAMETERS ---------");
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(file, "\n\n\n"
+                  "                                          "
+                  "- - - ANTENNA INPUT PARAMETERS - - -");
+  }
+  else
+  {
+    fprintf(file, "\n\n\n"
+                  "                        "
+                  "--------- ANTENNA INPUT PARAMETERS ---------");
+  }
 
   fprintf(file, "\n"
                 "  TAG   SEG       VOLTAGE (VOLTS)         "
@@ -2137,11 +2417,22 @@ static void write_currents(FILE *file, const context_t *ctx)
     return; // No segments to write
   }
 
-  fprintf(file, "\n\n\n"
-                "                           "
-                "-------- CURRENTS AND LOCATION --------\n"
-                "                                  "
-                "DISTANCES IN WAVELENGTHS");
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(file, "\n\n\n"
+                  "                             "
+                  "- - - CURRENTS AND LOCATION - - -\n"
+                  "                                  "
+                  "DISTANCES IN WAVELENGTHS");
+  }
+  else
+  {
+    fprintf(file, "\n\n\n"
+                  "                           "
+                  "-------- CURRENTS AND LOCATION --------\n"
+                  "                                  "
+                  "DISTANCES IN WAVELENGTHS");
+  }
 
   fprintf(file, "\n\n"
                 "   SEG  TAG    COORDINATES OF SEGM CENTER     SEGM"
@@ -2186,20 +2477,40 @@ static void write_power_budget(FILE *file, const context_t *ctx)
   double tmp1 = ctx->netcx.power_in - ctx->netcx.power_net_loss - ctx->fpat.ohmic_loss;
   double tmp2 = 100.0 * tmp1 / ctx->netcx.power_in;
 
-  fprintf(file, "\n\n\n"
-                "                               "
-                "---------- POWER BUDGET ---------\n"
-                "                               "
-                "INPUT POWER   = %11.4E Watts\n"
-                "                               "
-                "RADIATED POWER= %11.4E Watts\n"
-                "                               "
-                "STRUCTURE LOSS= %11.4E Watts\n"
-                "                               "
-                "NETWORK LOSS  = %11.4E Watts\n"
-                "                               "
-                "EFFICIENCY    = %7.2f Percent",
-          ctx->netcx.power_in, tmp1, ctx->fpat.ohmic_loss, ctx->netcx.power_net_loss, tmp2);
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(file, "\n\n\n"
+                  "                                        "
+                  "- - - POWER BUDGET - - -\n"
+                  "                               "
+                  "INPUT POWER   = %11.4E Watts\n"
+                  "                               "
+                  "RADIATED POWER= %11.4E Watts\n"
+                  "                               "
+                  "STRUCTURE LOSS= %11.4E Watts\n"
+                  "                               "
+                  "NETWORK LOSS  = %11.4E Watts\n"
+                  "                               "
+                  "EFFICIENCY    = %7.2f Percent",
+            ctx->netcx.power_in, tmp1, ctx->fpat.ohmic_loss, ctx->netcx.power_net_loss, tmp2);
+  }
+  else
+  {
+    fprintf(file, "\n\n\n"
+                  "                               "
+                  "---------- POWER BUDGET ---------\n"
+                  "                               "
+                  "INPUT POWER   = %11.4E Watts\n"
+                  "                               "
+                  "RADIATED POWER= %11.4E Watts\n"
+                  "                               "
+                  "STRUCTURE LOSS= %11.4E Watts\n"
+                  "                               "
+                  "NETWORK LOSS  = %11.4E Watts\n"
+                  "                               "
+                  "EFFICIENCY    = %7.2f Percent",
+            ctx->netcx.power_in, tmp1, ctx->fpat.ohmic_loss, ctx->netcx.power_net_loss, tmp2);
+  }
 }
 
 /******************************************************************************
@@ -2277,9 +2588,18 @@ static void write_radiation_pattern_header(FILE *file, const context_t *ctx)
     int itmp1 = 2 * ctx->fpat.pol_axis;
     int itmp2 = itmp1 + 1;
 
-    fprintf(file, "\n\n\n"
-                  "                             "
-                  "---------- RADIATION PATTERNS -----------\n");
+    if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+    {
+      fprintf(file, "\n\n\n"
+                    "                               "
+                    "- - - RADIATION PATTERNS - - -\n");
+    }
+    else
+    {
+      fprintf(file, "\n\n\n"
+                    "                             "
+                    "---------- RADIATION PATTERNS -----------\n");
+    }
 
     if (ctx->fpat.range >= 1.0e-20)
     {

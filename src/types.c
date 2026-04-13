@@ -128,6 +128,9 @@ void context_init(context_t *ctx)
     // Start timing for total runtime
     get_time_ms(ctx, &ctx->start_time);
     
+    // Initialize output format (set to default, may be overridden by main.c)
+    ctx->output_format = DEFAULT_OUTPUT_FORMAT;
+    
     // Initialize ground grid parameters for somnec (from old main.c lines 145-175)
     ctx->ggrid = (green_grid_t){
         .grid_nx = {11, 17, 9},

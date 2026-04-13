@@ -50,6 +50,7 @@ static char *error_file = "";
 static char *greens_file = "";
 static char *write_file = "";  /* -w / --write-file: convert deck to this format */
 static int jobs = 1; // number of parallel jobs (-j)
+static int output_format_choice = DEFAULT_OUTPUT_FORMAT;  /* Output format selection */
 
 /**
  * @brief Print the version string and terminate.
@@ -91,6 +92,7 @@ void print_usage(char *argv[])
   puts("  -w file, --write-file=file: write the deck to file in the format inferred from its extension");
   puts("    Supported: .nec/.deck (OpenNEC), .nec2 (NEC-2), .nec4 (NEC-4), .maa/.mma (MMANA-GAL), .yo/.ant/.yag (Yagi Optimizer), .nc (cocoaNEC)");
   puts("    Pass a bare extension (e.g. -w .maa) to convert multiple input files in place.");
+  puts("  -f, --format: output format for .out file: 'nec2c' (modern, default on Unix) or 'original' (Fortran, default on Windows)");
   puts("Multiple input files or folders can be specified; each file will generate a .out file.");
   puts("If no input_file is provided, input is read from stdin and output goes to stdout.");
   exit(0);
@@ -110,6 +112,7 @@ static struct option program_options[] =
         {"jobs", required_argument, NULL, 'j'},
         {"write-file", required_argument, NULL, 'w'},
         {"skip-large", no_argument, NULL, 'S'},
+        {"format", required_argument, NULL, 'f'},
         {0, 0, 0, 0}};
 
 /**
@@ -140,7 +143,7 @@ void parse_options(int argc, char *argv[])
   {
     // eat an option and exit if we're done
     /* portable short options: 'g' has an optional argument */
-    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:S", program_options, &option_index); // should match the items above
+    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:Sf:", program_options, &option_index); // should match the items above
     if (c == -1)
       break;
 
@@ -201,6 +204,17 @@ void parse_options(int argc, char *argv[])
 
     case 'w':
       write_file = optarg;
+      break;
+
+    case 'f':
+      if (strcasecmp(optarg, "nec2c") == 0) {
+        output_format_choice = OUTPUT_FORMAT_NEC2C;
+      } else if (strcasecmp(optarg, "original") == 0) {
+        output_format_choice = OUTPUT_FORMAT_ORIGINAL;
+      } else {
+        fprintf(stderr, "onec: invalid format '%s'. Use 'nec2c' or 'original'.\n", optarg);
+        exit(1);
+      }
       break;
 
     default:
@@ -440,6 +454,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
 
   ctx->error_fp = error_fp;
   ctx->source_filename = (strlen(input_filename) > 0) ? (char *)input_filename : NULL;
+  ctx->output_format = output_format_choice;
 
   // open input file or use stdin
   // empty string or "-" both mean stdin

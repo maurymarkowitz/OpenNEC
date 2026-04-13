@@ -700,6 +700,8 @@ void parse_comment_card(context_t *ctx, card_t *card, errors_list_t *errors)
   card->comment = (char *)calloc(comment_len + 1, sizeof(char));
   if (card->comment) {
     strcpy(card->comment, &card->card_str[code_end]);
+    // Trim trailing whitespace from comment field
+    trim_end(card->comment);
   }
 }
 

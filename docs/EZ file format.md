@@ -19,8 +19,6 @@ xx xx 00 00 52 ...
 
 where `xx xx` is a little-endian 16-bit wire count and `0x52` = `'R'` appears to be a constant version/format marker.
 
-A small number of files in the collection are actually FrontPage/SharePoint web-metadata sidecars (starting with `vti_encoding:SR|`) - these should be ignored.
-
 File sizes range from ~680 bytes for a file with 1 wire and no loads, to several hundred kilobytes for models with hundreds of wires.
 
 Top-Level Structure

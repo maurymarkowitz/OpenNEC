@@ -83,4 +83,19 @@
                                      numerical compatibility with nec2c reference outputs. */
 /** @} */
 
+/** @name Output Format Constants
+ *  Format selection for NEC output files.
+ *  @{
+ */
+#define OUTPUT_FORMAT_NEC2C     0  /**< Modern nec2c format (default on Unix/macOS) */
+#define OUTPUT_FORMAT_ORIGINAL  1  /**< Original Fortran NEC-2 format (default on Windows) */
+
+/* Platform-specific default output format */
+#if defined(_WIN32) || defined(__MINGW32__)
+  #define DEFAULT_OUTPUT_FORMAT OUTPUT_FORMAT_ORIGINAL
+#else
+  #define DEFAULT_OUTPUT_FORMAT OUTPUT_FORMAT_NEC2C
+#endif
+/** @} */
+
 #endif

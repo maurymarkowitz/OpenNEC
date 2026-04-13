@@ -676,6 +676,9 @@ struct context_t
 	double mat_factor_time; /* Matrix factor time in seconds */
 	double start_time;      /* Start time for total runtime calculation */
 	
+	/* Output format selection */
+	int output_format;      /* OUTPUT_FORMAT_NEC2C or OUTPUT_FORMAT_ORIGINAL */
+	
 	/* Batch processing state for XQ command support */
 	int current_card_idx;   /* Current position in deck for batch processing */
 	int batch_start_card;   /* Start of current batch (inclusive) */
