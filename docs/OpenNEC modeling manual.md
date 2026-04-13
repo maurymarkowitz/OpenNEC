@@ -28,7 +28,7 @@ A model is only as good as its description. A wire diameter that differs from th
 
 The Numerical Electromagnetics Code (NEC) is a computational modeler developed at Lawrence Livermore National Laboratory (LLNL) in the 1970s. The Fortran source code to the NEC-2 version was released in the 1980s and now forms the basis for many permissive adaptations, including OpenNEC. Later versions, NEC-3 through NEC-5, are available from LLNL but only under a restrictive license. This makes NEC-2 the most widely used version, by far.
 
-NEC describes the antenna as a collection of thin wire segments and optional surface patches. These basic objects are known as *elements*. During calculations, the wire elements are broken up into smaller pieces known as *segements*. Using the segments and patches, NEC assembles an impedance matrix **Z** whose entries encode the electromagnetic interaction between every pair of segments, and then solves the matrix equation:
+NEC describes the antenna as a collection of thin wire segments and optional surface patches. These basic objects are known as *elements*. During calculations, the wire elements are broken up into smaller pieces known as *segments*. Using the segments and patches, NEC assembles an impedance matrix **Z** whose entries encode the electromagnetic interaction between every pair of segments, and then solves the matrix equation:
 
 $$\mathbf{Z}\,\mathbf{I} = \mathbf{V}$$
 
