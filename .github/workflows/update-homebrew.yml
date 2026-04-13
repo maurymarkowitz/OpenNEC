@@ -40,6 +40,8 @@ jobs:
           path: homebrew-tap
 
       - name: Update Homebrew formula
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_AND_SCOOP_TOKEN }}
         run: |
           cd homebrew-tap
 
