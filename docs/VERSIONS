@@ -1,3 +1,5 @@
+Version 1.3.2 - 2026 April 13
+
 Version 1.3.1 - 2026 March 29
 - modified the release CI system to include full documentation, headers and examples
 - modified makefile to include install, which installs the documentation and example files
