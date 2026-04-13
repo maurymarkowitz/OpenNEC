@@ -48,7 +48,7 @@ onec-<platform>-<arch>/
   examples/
     (example antenna models)
   README.MD
-  example5.deck
+  example5.nec
 ```
 
 To use in your project:

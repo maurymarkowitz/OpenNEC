@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/onec",
-            "args": ["${workspaceFolder}/examples/example5.deck"],
+            "args": ["${workspaceFolder}/examples/example5.nec"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

@@ -1393,7 +1393,7 @@ cd test/formula_tests
 bash run_formula_tests.sh
 ```
 
-The script runs `examples/example5.deck` as the baseline and then runs each `*.deck` in `test/formula_tests/` (parametric variants of example5 written with SY cards, inline formulas, and unit suffixes). After normalising the `.out` files (stripping comments, timing lines, and signed-zero differences), each result is diffed against the baseline. A mismatch means a formula evaluated to a different value than the direct numeric baseline.
+The script runs `examples/example5.nec` as the baseline and then runs each `*.deck` in `test/formula_tests/` (parametric variants of example5 written with SY cards, inline formulas, and unit suffixes). After normalising the `.out` files (stripping comments, timing lines, and signed-zero differences), each result is diffed against the baseline. A mismatch means a formula evaluated to a different value than the direct numeric baseline.
 
 **Validation tests** — for each deck in `test/validation_tests/`, run `onec -t -n` (test mode, no simulation) and display the structural diagnostics:
 
@@ -1416,7 +1416,7 @@ find test -type f \( -iname '*.nec' -o -name '*.deck' \) ! -path '*cebik*' \
   | sort | xargs ./roundtrip_test
 ```
 
-The `roundtrip_test` binary writes each input file back alongside the original with a `.onec` extension (e.g. `examples/example5.deck` → `examples/example5.onec`). Examine the output with `diff` to confirm that field values, comments, formulas, and extensions round-trip cleanly. You should expect only cosmetic differences — normalised field spacing and canonical comment markers.
+The `roundtrip_test` binary writes each input file back alongside the original with a `.onec` extension (e.g. `examples/example5.nec` → `examples/example5.onec`). Examine the output with `diff` to confirm that field values, comments, formulas, and extensions round-trip cleanly. You should expect only cosmetic differences — normalised field spacing and canonical comment markers.
 
 **Regression harness** — compare numerical output across BLAS backends and record timing:
 
@@ -1429,7 +1429,7 @@ The harness automatically detects which backends are available (Accelerate on ma
 To run the harness against a specific set of decks rather than the default collection, pass the paths as arguments:
 
 ```sh
-bash test/regression_tests/regression_harness.sh examples/example5.deck test/simple_yagi.nec
+bash test/regression_tests/regression_harness.sh examples/example5.nec test/simple_yagi.nec
 ```
 
 ### The `onec -t` Flag
@@ -1448,7 +1448,7 @@ This is the recommended first step before submitting a long simulation: catch st
 
 **Error test** — create a `.deck` in `test/error_tests/` that deliberately triggers one specific error condition, then add a `case` entry for it in `run_error_tests.sh` with the expected regex. Keep the deck as small as possible (only enough cards to trigger the error); the minimal deck shown in the error README files is a good model.
 
-**Formula test** — copy `examples/example5.deck` and rewrite the numeric fields using SY cards, unit suffixes, or inline formulas. The simulation result must be numerically identical to the original. Add the new deck to `test/formula_tests/` with a descriptive name; the `run_formula_tests.sh` script picks it up automatically.
+**Formula test** — copy `examples/example5.nec` and rewrite the numeric fields using SY cards, unit suffixes, or inline formulas. The simulation result must be numerically identical to the original. Add the new deck to `test/formula_tests/` with a descriptive name; the `run_formula_tests.sh` script picks it up automatically.
 
 **Validation test** — add a `.deck` to `test/validation_tests/` that contains a specific structural problem (or a known-good variant of one). The `run_tests.sh` script in that directory runs all `.deck` files automatically. Pair each problem deck with a corresponding `_ok` variant if you want to confirm that the correct form produces no diagnostic.
 

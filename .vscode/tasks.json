@@ -27,50 +27,50 @@
 		{
 			"label": "Build and Test",
 			"type": "shell",
-			"command": "make && ./onec examples/example5.deck 2>&1 | tail -15",
+			"command": "make && ./onec examples/example5.nec 2>&1 | tail -15",
 			"problemMatcher": []
 		},
 		{
 			"label": "Test OpenNEC",
 			"type": "shell",
-			"command": "./onec examples/example5.deck 2>&1 | tail -15",
+			"command": "./onec examples/example5.nec 2>&1 | tail -15",
 			"problemMatcher": []
 		},
 		{
 			"label": "Test with file",
 			"type": "shell",
-			"command": "./onec examples/example5.deck > /tmp/test_output.txt 2>&1 && cat /tmp/test_output.txt | tail -15",
+			"command": "./onec examples/example5.nec > /tmp/test_output.txt 2>&1 && cat /tmp/test_output.txt | tail -15",
 			"problemMatcher": []
 		},
 		{
 			"label": "Build and Test",
 			"type": "shell",
-			"command": "make && ./onec examples/example5.deck 2>&1 | tail -15"
+			"command": "make && ./onec examples/example5.nec 2>&1 | tail -15"
 		},
 		{
 			"label": "Build and Test",
 			"type": "shell",
-			"command": "make && ./onec examples/example5.deck 2>&1 | tail -15"
+			"command": "make && ./onec examples/example5.nec 2>&1 | tail -15"
 		},
 		{
 			"label": "Build and Test",
 			"type": "shell",
-			"command": "make && ./onec examples/example5.deck 2>&1 | tail -15"
+			"command": "make && ./onec examples/example5.nec 2>&1 | tail -15"
 		},
 		{
 			"label": "Build and Test",
 			"type": "shell",
-			"command": "make && ./onec examples/example5.deck 2>&1 | tail -15"
+			"command": "make && ./onec examples/example5.nec 2>&1 | tail -15"
 		},
 		{
 			"label": "Build and Test",
 			"type": "shell",
-			"command": "make && ./onec examples/example5.deck 2>&1 | tail -15"
+			"command": "make && ./onec examples/example5.nec 2>&1 | tail -15"
 		},
 		{
 			"label": "Build and Test",
 			"type": "shell",
-			"command": "make && ./onec examples/example5.deck 2>&1 | tail -15"
+			"command": "make && ./onec examples/example5.nec 2>&1 | tail -15"
 		},
 		{
 			"label": "Build OpenNEC",

@@ -21,7 +21,7 @@ jobs:
           make BACKEND=openblas
       - name: Smoke test
         run: |
-          ./onec examples/example5.deck
+          ./onec examples/example5.nec
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -38,7 +38,7 @@ jobs:
           make
       - name: Smoke test
         run: |
-          ./onec examples/example5.deck
+          ./onec examples/example5.nec
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -68,7 +68,7 @@ jobs:
       - name: Smoke test (MINGW64)
         shell: bash -l {0}
         run: |
-          ./onec.exe examples/example5.deck
+          ./onec.exe examples/example5.nec
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

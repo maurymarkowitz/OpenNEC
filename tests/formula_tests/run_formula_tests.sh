@@ -5,7 +5,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT"
 
-BASE_DECK="examples/example5.deck"
+BASE_DECK="examples/example5.nec"
 BASE_OUT="examples/example5.out"
 
 echo "Running baseline: $BASE_DECK"
