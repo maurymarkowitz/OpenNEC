@@ -304,10 +304,10 @@ install: $(EXECUTABLE) $(LIBRARY)
 	@if not exist "$(MAN_DIR)" mkdir "$(MAN_DIR)"
 	copy /Y "$(EXECUTABLE)" "$(BIN_DIR)\"
 	copy /Y "$(LIBRARY)" "$(LIB_DIR)\"
-	copy /Y "doc\onec.1" "$(MAN_DIR)\"
+	copy /Y "docs\onec.1" "$(MAN_DIR)\"
 	@echo.
 	@echo Copying documentation...
-	@robocopy doc "$(DOC_DIR)\doc" /S /E /Y 2>nul
+	@robocopy docs "$(DOC_DIR)\doc" /S /E /Y 2>nul
 	@robocopy examples "$(DOC_DIR)\examples" /S /E /Y 2>nul
 	@echo.
 	@echo Installation complete!
@@ -322,8 +322,8 @@ install: $(EXECUTABLE) $(LIBRARY)
 	mkdir -p $(BIN_DIR) $(LIB_DIR) $(MAN_DIR) $(DOC_DIR)/examples
 	install -m 755 $(EXECUTABLE) $(BIN_DIR)/
 	install -m 644 $(LIBRARY) $(LIB_DIR)/
-	install -m 644 doc/onec.1 $(MAN_DIR)/
-	cp -r doc $(DOC_DIR)/
+	install -m 644 docs/onec.1 $(MAN_DIR)/
+	cp -r docs $(DOC_DIR)/
 	cp -r examples $(DOC_DIR)/
 	@echo "Installation complete!"
 	@echo "  Binary: $(BIN_DIR)/$(EXECUTABLE)"

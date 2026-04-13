@@ -47,7 +47,7 @@ jobs:
           cp src/radiation.h dist/onec-linux-x86_64/include/
           cp src/somnec.h dist/onec-linux-x86_64/include/
           cp src/misc.h dist/onec-linux-x86_64/include/
-          cp -r doc dist/onec-linux-x86_64/
+          cp -r docs dist/onec-linux-x86_64/
           cp -r examples dist/onec-linux-x86_64/
           cd dist && zip -r onec-linux-x86_64.zip onec-linux-x86_64/
       - name: Upload to release
@@ -88,7 +88,7 @@ jobs:
           cp src/radiation.h dist/onec-linux-aarch64/include/
           cp src/somnec.h dist/onec-linux-aarch64/include/
           cp src/misc.h dist/onec-linux-aarch64/include/
-          cp -r doc dist/onec-linux-aarch64/
+          cp -r docs dist/onec-linux-aarch64/
           cp -r examples dist/onec-linux-aarch64/
           cd dist && zip -r onec-linux-aarch64.zip onec-linux-aarch64/
       - name: Upload to release
@@ -127,7 +127,7 @@ jobs:
           cp src/radiation.h dist/onec-macos-x86/include/
           cp src/somnec.h dist/onec-macos-x86/include/
           cp src/misc.h dist/onec-macos-x86/include/
-          cp -r doc dist/onec-macos-x86/
+          cp -r docs dist/onec-macos-x86/
           cp -r examples dist/onec-macos-x86/
           cd dist && zip -r onec-macos-x86.zip onec-macos-x86/
       - name: Upload to release
@@ -171,7 +171,7 @@ jobs:
           cp src/radiation.h dist/onec-macos-arm64/include/
           cp src/somnec.h dist/onec-macos-arm64/include/
           cp src/misc.h dist/onec-macos-arm64/include/
-          cp -r doc dist/onec-macos-arm64/
+          cp -r docs dist/onec-macos-arm64/
           cp -r examples dist/onec-macos-arm64/
           cd dist && zip -r onec-macos-arm64.zip onec-macos-arm64/
       - name: Upload to release
@@ -223,7 +223,7 @@ jobs:
           cp src/radiation.h dist/onec-windows-x86_64/include/
           cp src/somnec.h dist/onec-windows-x86_64/include/
           cp src/misc.h dist/onec-windows-x86_64/include/
-          cp -r doc dist/onec-windows-x86_64/
+          cp -r docs dist/onec-windows-x86_64/
           cp -r examples dist/onec-windows-x86_64/
           cd dist && zip -r onec-windows-x86_64.zip onec-windows-x86_64/
       - name: Upload to release
