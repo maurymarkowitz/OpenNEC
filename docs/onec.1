@@ -124,6 +124,20 @@ to its corresponding input file).
 Supported output formats: see
 .B FILE FORMATS
 below.
+.TP
+.BR \-f ", " \-\-format
+Select the output format for generated
+.IR .out
+files.  Valid values are
+.B nec2c
+for the modern Unix-style output layout, and
+.B original
+for the classic Fortran-style layout.
+The default is
+.B nec2c
+on Unix and
+.B original
+on Windows.
 .PP
 Single-letter flags that take no argument may be combined:
 .B \-nt

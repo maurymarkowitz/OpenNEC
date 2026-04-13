@@ -71,6 +71,7 @@ Command-line options include:
 `-e`, `--error-file` <path>: write errors/logs to a file instead of `stderr`  
 `-g`, `--greens` <file>: write Greens function output to the given file (or default .ngf)  
 `-w`, `--write-file` <file>: writes the deck out to the named file type (see below)  
+`-f`, `--format`: select the format for the generated `.out` file. Valid values are `nec2c` (modern default on Unix) or `original` (classic Fortran-style output).  
 `--skip-large`: when running multiple decks, skip those with estimated complexity T >= 1e11  
 
 Short options with no parameters can be ganged, for instance, `-nt`.
@@ -97,6 +98,10 @@ To run against the same file and send the results to a file with the default nam
 Or you can change the output name:
 
 ```./onec -o example_output.out example.nec```
+
+To select the output layout format for the generated `.out` file:
+
+```./onec -f original example.nec```
 
 To run against a folder full of files, even in subdirectories:
 

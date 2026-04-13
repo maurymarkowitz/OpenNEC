@@ -13,6 +13,8 @@ The OpenNEC command-line shell program, `onec`, has been designed to be able to 
 
 On Unixen, `onec` matches the nec2c interface, which used the `-i` parameter to define the input filename, and `-o` for the output filename. If no `-o` is provided, it uses the input name and changes the extension to `.out`. If no paramaters are provided, the original nec2c will exit with usage notes. OpenNEC changes this only slightly, allowing you to supply the file through redirection, so you can pipe in the file(s).
 
+OpenNEC also supports `-f`, `--format` to select the output format for the generated `.out` file. Valid values are `nec2c` for the modern Unix-style output and `original` for the legacy Fortran-style layout.
+
 The Windows version supports the same switches for input and output, but changes the behaviour in the no-parameter case to match nec2d. In that case, it interactively asks for the input and output filenames, and exits if the former is blank. Most programs used redirection in this case, passing in the two filenames from a file. The key difference is that the Unix version expects a deck as the input, whereas the Windows version expects two filenames.
 
 The exact calling proceedure varies among programs, so separate document have been created for each commonly used program. For now, these include:
