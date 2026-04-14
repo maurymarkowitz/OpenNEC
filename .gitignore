@@ -45,10 +45,17 @@ src/types.h
 #  these are simply too large to check in, and they are not needed for anyone else to run the code
 examples/cebik collection/
 
+# ARRL example files
+examples/ARRL examples/
+
+# nec2++ example files
+examples/nec2++\ examples/
+
 # cocoaNEC example NEC files
-#  these are the conversion artifaces and shouldn't be checked in
-examples/cocoaNEC examples/**/*.nec
-examples/cocoaNEC examples/**/*.NEC
+#  these are the conversion artifacts and shouldn't be checked in
+examples/cocoaNEC/
+examples/cocoaNEC/**/*.nec
+examples/cocoaNEC/**/*.NEC
 
 # and similiarily...
 examples/DF9CY EZNEC files/**/*.nec
