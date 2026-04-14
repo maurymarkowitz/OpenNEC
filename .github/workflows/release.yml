@@ -24,7 +24,7 @@ jobs:
       - name: Build (x86_64)
         run: |
           make clean
-          make BACKEND=original
+          make RELEASE=1 BACKEND=original
       - name: Package
         run: |
           mkdir -p dist/onec-linux-x86_64/lib dist/onec-linux-x86_64/include dist/onec-linux-x86_64/bin
@@ -65,7 +65,7 @@ jobs:
       - name: Build (aarch64)
         run: |
           make clean
-          make BACKEND=original
+          make RELEASE=1 BACKEND=original
       - name: Package
         run: |
           mkdir -p dist/onec-linux-aarch64/lib dist/onec-linux-aarch64/include dist/onec-linux-aarch64/bin
@@ -104,7 +104,7 @@ jobs:
       - name: Build (macOS x86_64)
         run: |
           make clean
-          make CC=clang CFLAGS="-I. -Isrc -g -O2 -Wall -Wno-unused-parameter -arch x86_64 -mmacosx-version-min=10.15" LDFLAGS="-arch x86_64 -mmacosx-version-min=10.15" BACKEND=original
+          make RELEASE=1 CC=clang CFLAGS="-I. -Isrc -O2 -Wall -Wno-unused-parameter -arch x86_64 -mmacosx-version-min=11.0" LDFLAGS="-arch x86_64 -mmacosx-version-min=11.0" BACKEND=original
       - name: Package
         run: |
           mkdir -p dist/onec-macos-x86/lib dist/onec-macos-x86/include dist/onec-macos-x86/bin
@@ -148,7 +148,7 @@ jobs:
       - name: Build (macOS arm64)
         run: |
           make clean
-          make CC=clang CFLAGS="-I. -Isrc -g -O2 -Wall -Wno-unused-parameter -arch arm64 -mmacosx-version-min=11.0" LDFLAGS="-arch arm64 -mmacosx-version-min=11.0" BACKEND=original
+          make RELEASE=1 CC=clang CFLAGS="-I. -Isrc -O2 -Wall -Wno-unused-parameter -arch arm64 -mmacosx-version-min=11.0" LDFLAGS="-arch arm64 -mmacosx-version-min=11.0" BACKEND=original
       - name: Package
         run: |
           mkdir -p dist/onec-macos-arm64/lib dist/onec-macos-arm64/include dist/onec-macos-arm64/bin
@@ -199,7 +199,7 @@ jobs:
         run: |
           export PATH="/c/msys64/mingw64/bin:$PATH"
           make clean
-          make CC=x86_64-w64-mingw32-gcc BACKEND=original
+          make RELEASE=1 LDFLAGS="-static" CC=x86_64-w64-mingw32-gcc BACKEND=original
       - name: Package
         shell: bash -l {0}
         run: |

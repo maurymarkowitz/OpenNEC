@@ -18,6 +18,10 @@ RANLIB ?= ranlib
 # Usage: make DEBUG=1
 DEBUG ?= 0
 
+# Release build (production binary, smaller size, no debug symbols)
+# Usage: make RELEASE=1
+RELEASE ?= 0
+
 ifeq ($(DEBUG),1)
     # Debug builds use -O0 to preserve source-level debugging
     # while still enabling sanitizers.
@@ -25,6 +29,10 @@ ifeq ($(DEBUG),1)
     CFLAGS += -fsanitize=address -fno-omit-frame-pointer
     LDFLAGS += -fsanitize=address
     $(info Building with AddressSanitizer (DEBUG=1); optimization set to -O0)
+else ifeq ($(RELEASE),1)
+    # Release builds omit debug symbols at compile time without using -s (which can be problematic)
+    CFLAGS := -I. -Isrc -O2 -Wall -Wno-unused-parameter
+    $(info Building release binary (RELEASE=1); debug symbols omitted)
 endif
 
 # Detect platform
@@ -241,6 +249,15 @@ $(LIBRARY): $(LIB_OBJECTS)
 
 $(EXECUTABLE): src/main.o $(LIBRARY)
 	$(CC) src/main.o $(LIBRARY) $(LDFLAGS) -o $@ -lm
+	@if [ "$(RELEASE)" = "1" ]; then \
+		ACTUAL_EXE="$@"; \
+		if [ ! -f "$$ACTUAL_EXE" ] && [ -f "$${ACTUAL_EXE}.exe" ]; then \
+			ACTUAL_EXE="$${ACTUAL_EXE}.exe"; \
+		fi; \
+		if [ -f "$$ACTUAL_EXE" ]; then \
+			echo "Release binary size: $$(du -h "$$ACTUAL_EXE" | cut -f1)"; \
+		fi; \
+	fi
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -252,10 +269,11 @@ help:
 	@echo "OpenNEC Build System"
 	@echo "===================="
 	@echo ""
-	@echo "Usage: make [BACKEND=<backend>] [DEBUG=<0|1>] [PREFIX=<path>] [target]"
+	@echo "Usage: make [BACKEND=<backend>] [DEBUG=<0|1>] [RELEASE=<0|1>] [PREFIX=<path>] [target]"
 	@echo ""
 	@echo "Options:"
 	@echo "  DEBUG=1     - Enable AddressSanitizer for memory debugging"
+	@echo "  RELEASE=1   - Build smaller release binary (strips debug symbols)"
 	@echo "  PREFIX      - Installation prefix"
 	@echo "                Unix/Linux/macOS: default /usr/local"
 	@echo "                Windows: default %%PROGRAMFILES%%\OpenNEC"

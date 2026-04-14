@@ -18,7 +18,7 @@ jobs:
       - name: Build
         run: |
           make clean
-          make BACKEND=openblas
+          make RELEASE=1 BACKEND=openblas
       - name: Smoke test
         run: |
           ./onec examples/example5.nec
@@ -35,7 +35,7 @@ jobs:
       - name: Build
         run: |
           make clean
-          make
+          make RELEASE=1
       - name: Smoke test
         run: |
           ./onec examples/example5.nec
@@ -64,7 +64,7 @@ jobs:
         run: |
           export PATH="/c/msys64/mingw64/bin:$PATH"
           make clean
-          make CC=x86_64-w64-mingw32-gcc BACKEND=original
+          make RELEASE=1 LDFLAGS="-static" CC=x86_64-w64-mingw32-gcc BACKEND=original
       - name: Smoke test (MINGW64)
         shell: bash -l {0}
         run: |

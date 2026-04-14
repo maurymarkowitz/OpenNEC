@@ -65,6 +65,12 @@ cd OpenNEC
 make CC=x86_64-w64-mingw32-gcc BACKEND=original
 ```
 
+For a self-contained, smaller release binary (no runtime DLL dependencies):
+
+```bash
+make CC=x86_64-w64-mingw32-gcc RELEASE=1 LDFLAGS="-static" BACKEND=original
+```
+
 Notes
 -----
 - The project includes a small `clock_gettime` shim; on MinGW-w64 this is
@@ -75,6 +81,9 @@ Notes
   or other numeric libraries. If you need high-performance BLAS on Windows,
   install a native Windows build of OpenBLAS and make sure `pkg-config` and
   the library are available.
+- **RELEASE=1** flag removes debug symbols for smaller binaries (~50% reduction)
+- **LDFLAGS="-static"** embeds all runtime libraries (pthreads, CRT) for a fully
+  portable executable with no DLL dependencies
 
 Testing
 -------

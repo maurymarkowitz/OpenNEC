@@ -55,6 +55,13 @@ make clean
 make BACKEND=blas
 ```
 
+For production/release builds (smaller binary, no debug symbols):
+
+```bash
+make clean
+make RELEASE=1 BACKEND=original
+```
+
 Run a quick test:
 
 ```bash
@@ -91,6 +98,14 @@ make BACKEND=accelerate
 ```bash
 make clean
 make
+./onec examples/example5.nec
+```
+
+For production/release builds (smaller binary, no debug symbols):
+
+```bash
+make clean
+make RELEASE=1
 ./onec examples/example5.nec
 ```
 
