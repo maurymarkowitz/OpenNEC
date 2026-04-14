@@ -29,7 +29,11 @@ struct timespec {
 #endif
 
 /* Declare shim implementation in compat_time.c */
+/* Note: MinGW provides clock_gettime via pthreads; only needed for MSVC */
+#if defined(_MSC_VER)
 int clock_gettime(int clk_id, struct timespec *tp);
+int __cdecl clock_gettime64(int clk_id, struct timespec *tp);
+#endif
 
 /* String function mappings for MSVC/Windows CRT */
 #if defined(_MSC_VER)

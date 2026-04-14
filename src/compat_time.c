@@ -27,4 +27,9 @@ int clock_gettime(int clk_id, struct timespec *tp) {
     return 0;
 }
 
+/* UCRT 64-bit time variant: simply delegates to our clock_gettime */
+int __cdecl clock_gettime64(int clk_id, struct timespec *tp) {
+    return clock_gettime(clk_id, tp);
+}
+
 #endif
