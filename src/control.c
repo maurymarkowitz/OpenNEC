@@ -271,6 +271,12 @@ int run_simulation(context_t *ctx, deck_t *deck)
             return -1;
         }
         
+        // Check if we're done before processing the batch
+        if (batch_result == 1) {
+            deck_complete = true;
+            break;
+        }
+        
         // Save batch boundaries in context for output
         ctx->batch_start_card = batch_start;
         ctx->batch_end_card = batch_end;
@@ -306,6 +312,7 @@ int run_simulation(context_t *ctx, deck_t *deck)
         // full solve): XQ alone with no new FR is a no-op / already handled.
         bool extra_patterns_only = (!batch_has_fr &&
                                     ctx->frequency_loop_ran &&
+                                    !ctx->patterns_output_for_freq &&
                                     (ctx->gnd.far_field_type != -1 || ctx->fpat.is_near_field != -1 ||
                                      has_xq) &&
                                     !ctx->wg_after_cmset);
@@ -440,11 +447,6 @@ int run_simulation(context_t *ctx, deck_t *deck)
             ctx->current_card_idx = new_geom_end + 1;
             ctx->iflow = 0;
             continue;
-        }
-
-        // Check if we're done
-        if (batch_result == 1) {
-            deck_complete = true;
         }
     }
     
@@ -970,6 +972,8 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
             ctx->save.freq_step = f2;
             if (ctx->save.first_fr_mhz == 0.0)
                 ctx->save.first_fr_mhz = f1;
+            // Reset pattern output flag for new frequency specification
+            ctx->patterns_output_for_freq = false;
         }
         else if (strcmp(code, "LD") == 0) {
             // LD card - Loading
@@ -1773,6 +1777,7 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
         if (ctx->output_fp != NULL) {
             write_frequency_step_output(ctx->output_fp, ctx);
             ctx->freq_step_output_written = true;
+            ctx->patterns_output_for_freq = true;  // Mark that RP/NE/NH output has been written
         }
     }
     
