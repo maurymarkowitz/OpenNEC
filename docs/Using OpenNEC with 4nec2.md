@@ -7,11 +7,13 @@ OpenNEC (`onec`) can be used as a drop-in replacement for the traditional NEC-2 
 
 ## How 4nec2 Invokes NEC Engines
 
-The original Fortran code, which ships with the 4nec2 install, is an interactive program which prompts the user for filenames for the input and output files. To drive these programs in an automated fashion, 4nec2 uses input redirection through a batch file. It does this by producing a temporary file containing just the names of the input and output files on two lines in a text file, `nec2d.tmp`. It then calls `4nec2.bat`, which calls the user-selected engine program and passes in the temporary file. Ultimately, what's run by the batch file is something like this:
+The original Fortran code, which ships with the 4nec2 install, is an interactive program which prompts the user for filenames for the input and output files. To drive these programs in an automated fashion, 4nec2 writes the input file to disk with the `.inp` extension and has the Fortran code write the results to a file with the `.out` extension. It then reads the `.out` file and parses it to get the results.
+
+To do this, 4nec2 uses "redirection" through a batch file. First it writes another file, `nec2d.tmp`, which contains the name of the input and output files. It then runs `4nec2.bat`, which feeds that file into the Fortran program. Ultimately, what's run by the batch file is something like this:
 
 `nec2d.exe < nec2d.tmp`
 
-This invokes the `nec2d.exe` program with the filenames passed into it using redirection. The deck data is read from the named input file, and the result is sent to the named output file.
+This invokes the `nec2d.exe` program with the filenames in `nec2d.tmp` passed into it using redirection, `<`. The deck data is read from the named input file, and the result is sent to the named output file.
 
 If the Sommerfeld-Norton ground is selected, a second text file is prepared, `som2d.tmp`. The same batch file first calls `somnec2d.exe` using the same method, passing in the file names in the temporary folder. This is called before calling `nec2d.exe`, and results in a file being written to the same directory, `som2d.gnd`. The nec2d program looks for this file when it runs and the Sommerfeld ground is encountered in the deck.
 
@@ -27,7 +29,7 @@ So the overall control flow is:
    somnec2d.exe < som2d.tmp
    ```
 
-3. **Output Handling**: The engine writes results to stdout, which 4nec2 captures for display
+3. **Output Handling**: The engine writes results to the `.out` file, which 4nec2 captures for display
 
 ### OpenNEC Compatibility
 
@@ -45,24 +47,15 @@ This ensures complete compatibility with systems that might expect these prompts
 - **nec2dXS.exe** - Extended-segment variant (up to ~20,000 segments)
 - **somnec2d.exe** - Ground parameter generation engine
 
-## Setting Up OpenNEC with 4nec2
-
 A major difference between the original Fortran code and OpenNEC is that onec can calculate the Sommerfeld-Norton ground internally and does so automatically. No file needs to be generated for decks that use this feature. However, as 4nec2 users might expect to find the `.gnd` file, the batch file can still call `somnec2d.exe` without any issues for onec.
+
+## Setting Up OpenNEC with 4nec2
 
 ### Option 1: GUI Engine Selection (Windows)
 
-The simplest approach is to copy the OpenNEC executable into 4nec2's engine directory, then select it as your engine in the 4nec2 GUI. **No somnec2d replacement needed** — OpenNEC handles ground calculations internally:
+The simplest approach is to copy the OpenNEC executable, `onec.exe`, into 4nec2's engine directory, then select it as your engine in the 4nec2 GUI.
 
-#### Step 1: Build OpenNEC for Windows
-
-```bash
-# On Windows with MSYS2/MinGW64 or WSL
-make BACKEND=original
-```
-
-This produces `onec.exe` (or `onec` on Unix-like systems).
-
-#### Step 2: Copy the Executable
+#### Step 1: Copy the Executable
 
 1. Locate your 4nec2 installation directory (typically `C:\4nec2\exe`)
 2. Copy `onec.exe` to the 4nec2 `exe` directory (keep the original `nec2d.exe` in place)
@@ -74,7 +67,7 @@ copy C:\path\to\onec.exe onec.exe
 
 This preserves the original `nec2d.exe` as your fallback engine.
 
-#### Step 3: Configure 4nec2 to Use OpenNEC
+#### Step 2: Configure 4nec2 to Use OpenNEC
 
 1. Open 4nec2
 2. Go to **Settings → NEC engine**
@@ -190,7 +183,7 @@ This allows 4nec2 to work with complex antenna arrays beyond the original NEC-2 
 
 ### Ground Calculations
 
-**Important architectural difference**: OpenNEC performs Sommerfeld-Norton ground calculations **internally** as part of the main calculation engine, unlike the traditional NEC-2 approach which requires a separate `somnec2d.exe` invocation.
+**Important difference**: OpenNEC performs Sommerfeld-Norton ground calculations **internally** as part of the main calculation engine, unlike the traditional NEC-2 approach which requires a separate `somnec2d.exe` invocation.
 
 4nec2's ground handling with traditional NEC-2:
 
@@ -276,33 +269,6 @@ To return to the original Fortran-based engines:
 4. Close Settings to save your selection
 
 The original engines remain intact and can be selected anytime. You can also simply delete `onec.exe` from the `exe` folder if you no longer need it.
-
-## Building OpenNEC for Windows
-
-For the most recent OpenNEC build optimized for your system:
-
-### Option A: Using MSYS2/MinGW64
-
-```bash
-# Install dependencies
-pacman -S base-devel mingw-w64-x86_64-gcc mingw-w64-x86_64-pkg-config
-
-# Build
-git clone https://github.com/maurymarkowitz/OpenNEC.git
-cd OpenNEC
-make BACKEND=original
-strip onec.exe  # Optional: reduce executable size
-```
-
-### Option B: Using WSL (Windows Subsystem for Linux)
-
-```bash
-# Build in Ubuntu/Debian
-sudo apt install build-essential
-make BACKEND=openblas
-```
-
-Then copy the resulting `onec` binary to `C:\4nec2\exe\nec2d.exe` via Windows explorer.
 
 ## References
 

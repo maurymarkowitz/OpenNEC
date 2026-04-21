@@ -11,7 +11,7 @@ Using OpenNEC as a plug-in engine
 ---------------------------------
 The OpenNEC command-line shell program, `onec`, has been designed to be able to work as a drop-in replacement for the original Fortran NEC-2 executables like `nec2d`, as well as programs that expect the slightly different parameter style found in the `nec2c` and `necpp` versions.
 
-On Unixen, `onec` matches the nec2c interface, which used the `-i` parameter to define the input filename, and `-o` for the output filename. If no `-o` is provided, it uses the input name and changes the extension to `.out`. If no paramaters are provided, the original nec2c will exit with usage notes. OpenNEC changes this only slightly, allowing you to supply the file through redirection, so you can pipe in the file(s).
+On Unix systems, `onec` matches the nec2c interface, which used the `-i` parameter to define the input filename, and `-o` for the output filename. If no `-o` is provided, it uses the input name and changes the extension to `.out`. If no paramaters are provided, the original nec2c will exit with usage notes. OpenNEC changes this only slightly, allowing you to supply the file through redirection, so you can pipe in the file(s).
 
 OpenNEC also supports `-f`, `--format` to select the output format for the generated `.out` file. Valid values are `nec2c` for the modern Unix-style output and `original` for the legacy Fortran-style layout. The default is `nec2c` on macOS and Linux, and `original` on Windows.
 

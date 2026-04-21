@@ -1330,8 +1330,8 @@ static void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    // Pad blank line to 101 characters
-    fprintf(file, "                                                                                                     \n");
+    // Blank line with no padding
+    fprintf(file, "\n");
   }
 }
 
@@ -2374,33 +2374,53 @@ static void write_antenna_input_parameters(FILE *file, const context_t *ctx)
     fprintf(file, "\n\n\n"
                   "                                          "
                   "- - - ANTENNA INPUT PARAMETERS - - -");
+
+    fprintf(file, "\n"
+                  "   TAG   SEG.    VOLTAGE (VOLTS)         "
+                  "CURRENT (AMPS)         IMPEDANCE (OHMS)        "
+                  "ADMITTANCE (MHOS)      POWER\n"
+                  "   NO.   NO.    REAL        IMAG.       "
+                  "REAL        IMAG.       REAL        IMAG.       "
+                  "REAL        IMAG.     (WATTS)");
+
+    for (int i = 0; i < ctx->netcx.ninp; i++)
+    {
+      fprintf(file, "\n"
+                    " %5d %5d %11.5E %11.5E %11.5E%11.5E %11.5E %11.5E %11.5E%11.5E %11.5E",
+              ctx->netcx.inp_tag[i], ctx->netcx.inp_seg[i],
+              creal(ctx->netcx.inp_v[i]), cimag(ctx->netcx.inp_v[i]),
+              creal(ctx->netcx.inp_i[i]), cimag(ctx->netcx.inp_i[i]),
+              creal(ctx->netcx.inp_z[i]), cimag(ctx->netcx.inp_z[i]),
+              creal(ctx->netcx.inp_y[i]), cimag(ctx->netcx.inp_y[i]),
+              ctx->netcx.inp_pwr[i]);
+    }
   }
   else
   {
     fprintf(file, "\n\n\n"
                   "                        "
                   "--------- ANTENNA INPUT PARAMETERS ---------");
-  }
 
-  fprintf(file, "\n"
-                "  TAG   SEG       VOLTAGE (VOLTS)         "
-                "CURRENT (AMPS)         IMPEDANCE (OHMS)    "
-                "    ADMITTANCE (MHOS)     POWER\n"
-                "  No:   No:     REAL      IMAGINARY"
-                "     REAL      IMAGINARY     REAL      "
-                "IMAGINARY    REAL       IMAGINARY   (WATTS)");
-
-  for (int i = 0; i < ctx->netcx.ninp; i++)
-  {
     fprintf(file, "\n"
-                  " %4d %5d %11.4E %11.4E %11.4E %11.4E"
-                  " %11.4E %11.4E %11.4E %11.4E %11.4E",
-            ctx->netcx.inp_tag[i], ctx->netcx.inp_seg[i],
-            creal(ctx->netcx.inp_v[i]), cimag(ctx->netcx.inp_v[i]),
-            creal(ctx->netcx.inp_i[i]), cimag(ctx->netcx.inp_i[i]),
-            creal(ctx->netcx.inp_z[i]), cimag(ctx->netcx.inp_z[i]),
-            creal(ctx->netcx.inp_y[i]), cimag(ctx->netcx.inp_y[i]),
-            ctx->netcx.inp_pwr[i]);
+                  "  TAG   SEG       VOLTAGE (VOLTS)         "
+                  "CURRENT (AMPS)         IMPEDANCE (OHMS)    "
+                  "    ADMITTANCE (MHOS)     POWER\n"
+                  "  No:   No:     REAL      IMAGINARY"
+                  "     REAL      IMAGINARY     REAL      "
+                  "IMAGINARY    REAL       IMAGINARY   (WATTS)");
+
+    for (int i = 0; i < ctx->netcx.ninp; i++)
+    {
+      fprintf(file, "\n"
+                    " %4d %5d %11.4E %11.4E %11.4E %11.4E"
+                    " %11.4E %11.4E %11.4E %11.4E %11.4E",
+              ctx->netcx.inp_tag[i], ctx->netcx.inp_seg[i],
+              creal(ctx->netcx.inp_v[i]), cimag(ctx->netcx.inp_v[i]),
+              creal(ctx->netcx.inp_i[i]), cimag(ctx->netcx.inp_i[i]),
+              creal(ctx->netcx.inp_z[i]), cimag(ctx->netcx.inp_z[i]),
+              creal(ctx->netcx.inp_y[i]), cimag(ctx->netcx.inp_y[i]),
+              ctx->netcx.inp_pwr[i]);
+    }
   }
 }
 
@@ -2422,8 +2442,28 @@ static void write_currents(FILE *file, const context_t *ctx)
     fprintf(file, "\n\n\n"
                   "                             "
                   "- - - CURRENTS AND LOCATION - - -\n"
-                  "                                  "
+                  "                                 "
                   "DISTANCES IN WAVELENGTHS");
+
+    fprintf(file, "\n\n"
+                  "  SEG.  TAG    COORD. OF SEG. CENTER     SEG.            - - - CURRENT (AMPS) - - -\n"
+                  "  NO.   NO.     X        Y        Z      LENGTH     REAL        IMAG.       MAG.        PHASE");
+
+    for (int i = 0; i < ctx->geometry.num_segs; i++)
+    {
+      complex double curi = ctx->crnt.surface_cur[i] * ctx->geometry.wavelength;
+      double cmag = cabs(curi);
+      double ph = carg(curi) * TD; // Convert to degrees (TD = 57.29577951)
+
+      fprintf(file, "\n"
+                    " %5d %4d %8.4f %8.4f %8.4f %8.5f  %11.4E %11.4E %11.4E %8.3f",
+              i + 1, ctx->geometry.tag_nums[i],
+              ctx->geometry.x_center[i],
+              ctx->geometry.y_center[i],
+              ctx->geometry.z_center[i],
+              ctx->geometry.half_len[i],
+              creal(curi), cimag(curi), cmag, ph);
+    }
   }
   else
   {
@@ -2432,31 +2472,28 @@ static void write_currents(FILE *file, const context_t *ctx)
                   "-------- CURRENTS AND LOCATION --------\n"
                   "                                  "
                   "DISTANCES IN WAVELENGTHS");
-  }
 
-  fprintf(file, "\n\n"
-                "   SEG  TAG    COORDINATES OF SEGM CENTER     SEGM"
-                "    ------------- CURRENT (AMPS) -------------\n"
-                "   No:  No:       X         Y         Z      LENGTH"
-                "     REAL      IMAGINARY    MAGN        PHASE");
+    fprintf(file, "\n\n"
+                  "   SEG  TAG    COORDINATES OF SEGM CENTER     SEGM"
+                  "    ------------- CURRENT (AMPS) -------------\n"
+                  "   No:  No:       X         Y         Z      LENGTH"
+                  "     REAL      IMAGINARY    MAGN        PHASE");
 
-  // During the frequency loop, x_center/y_center/z_center/half_len have
-  // already been scaled by fr = fmhz/CVEL, so they are in wavelength units.
-  // Print them directly — no further conversion needed.
-  for (int i = 0; i < ctx->geometry.num_segs; i++)
-  {
-    complex double curi = ctx->crnt.surface_cur[i] * ctx->geometry.wavelength;
-    double cmag = cabs(curi);
-    double ph = carg(curi) * TD; // Convert to degrees (TD = 57.29577951)
+    for (int i = 0; i < ctx->geometry.num_segs; i++)
+    {
+      complex double curi = ctx->crnt.surface_cur[i] * ctx->geometry.wavelength;
+      double cmag = cabs(curi);
+      double ph = carg(curi) * TD; // Convert to degrees (TD = 57.29577951)
 
-    fprintf(file, "\n"
-                  " %5d %4d %9.4f %9.4f %9.4f %8.5f %11.4E %11.4E %11.4E %9.3f",
-            i + 1, ctx->geometry.tag_nums[i],
-            ctx->geometry.x_center[i],
-            ctx->geometry.y_center[i],
-            ctx->geometry.z_center[i],
-            ctx->geometry.half_len[i],
-            creal(curi), cimag(curi), cmag, ph);
+      fprintf(file, "\n"
+                    " %5d %4d %9.4f %9.4f %9.4f %8.5f %11.4E %11.4E %11.4E %9.3f",
+              i + 1, ctx->geometry.tag_nums[i],
+              ctx->geometry.x_center[i],
+              ctx->geometry.y_center[i],
+              ctx->geometry.z_center[i],
+              ctx->geometry.half_len[i],
+              creal(curi), cimag(curi), cmag, ph);
+    }
   }
 }
 
