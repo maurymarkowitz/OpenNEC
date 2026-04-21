@@ -538,7 +538,12 @@ void write_nec_preamble(context_t *ctx, const deck_t *deck, FILE *file)
   write_segments(ctx, deck, file);
   write_patches(ctx, deck, file);
   /* Write input cards excluding EN and NX cards (they're output separately at end) */
-  write_input_cards_excluding_end(file, ctx, deck, deck->geometry_end + 1, deck->deck_end, 0);
+  /* Use the last card index if deck_end is invalid or before geometry end */
+  int batch_end = deck->deck_end;
+  if (batch_end < 0 || batch_end >= deck->num_cards || batch_end <= deck->geometry_end) {
+    batch_end = deck->num_cards - 1;
+  }
+  write_input_cards_excluding_end(file, ctx, deck, deck->geometry_end + 1, batch_end, 0);
 }
 
 /******************************************************************************
