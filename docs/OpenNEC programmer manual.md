@@ -15,6 +15,8 @@ On Unix systems, `onec` matches the nec2c interface, which used the `-i` paramet
 
 OpenNEC also supports `-f`, `--format` to select the output format for the generated `.out` file. Valid values are `nec2c` for the modern Unix-style output and `original` for the legacy Fortran-style layout. The default is `nec2c` on macOS and Linux, and `original` on Windows.
 
+You can use `--line-ending` to select the line ending style for output files. Valid values are `lf` (default on Unix/macOS) or `crlf` (default on Windows).
+
 The Windows version supports the same switches for input and output, but changes the behaviour in the no-parameter case to match nec2d. In that case, it interactively asks for the input and output filenames, and exits if the former is blank. Most programs used redirection in this case, passing in the two filenames from a file. The key difference is that the Unix version expects a deck as the input, whereas the Windows version expects two filenames.
 
 The exact calling proceedure varies among programs, so separate document have been created for each commonly used program. For now, these include:

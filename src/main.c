@@ -51,7 +51,7 @@ static char *greens_file = "";
 static char *write_file = "";  /* -w / --write-file: convert deck to this format */
 static int jobs = 1; // number of parallel jobs (-j)
 static int output_format_choice = DEFAULT_OUTPUT_FORMAT;  /* Output format selection */
-static int line_ending_choice = 1;  /* 0=LF (Unix), 1=CRLF (Windows); default 1 */
+static int line_ending_choice = DEFAULT_LINE_ENDING;  /* 0=LF (Unix), 1=CRLF (Windows) */
 
 /**
  * @brief Print the version string and terminate.
@@ -94,7 +94,11 @@ void print_usage(char *argv[])
   puts("    Supported: .nec/.deck (OpenNEC), .nec2 (NEC-2), .nec4 (NEC-4), .maa/.mma (MMANA-GAL), .yo/.ant/.yag (Yagi Optimizer), .nc (cocoaNEC)");
   puts("    Pass a bare extension (e.g. -w .maa) to convert multiple input files in place.");
   puts("  -f, --format: output format for .out file: 'nec2c' (modern, default on Unix) or 'original' (Fortran, default on Windows)");
-  puts("  --line-ending: line ending style: 'crlf' (Windows, default) or 'lf' (Unix)");
+#if defined(_WIN32) || defined(__MINGW32__)
+  puts("  --line-ending: line ending style: 'crlf' (default on Windows) or 'lf' (Unix/macOS)");
+#else
+  puts("  --line-ending: line ending style: 'lf' (default on Unix/macOS) or 'crlf' (Windows)");
+#endif
   puts("Multiple input files or folders can be specified; each file will generate a .out file.");
   puts("If no input_file is provided, input is read from stdin and output goes to stdout.");
   exit(0);
@@ -424,6 +428,45 @@ static int file_matches_ext_filter(const char *entry_name, const char *ext_filte
 }
 
 /**
+ * @brief Copy a stream while converting Unix LF line endings to CRLF.
+ *
+ * When `src` contains LF line endings, this helper writes CRLF pairs to
+ * `dst`. If a CR character is already present before a newline, it is left
+ * intact so that existing CRLF sequences are preserved.
+ *
+ * @param src Source stream opened for reading.
+ * @param dst Destination stream opened for writing.
+ * @return 0 on success, -1 on write failure.
+ */
+static int copy_stream_crlf(FILE *src, FILE *dst)
+{
+  int ch;
+  int prev = 0;
+
+  while ((ch = fgetc(src)) != EOF)
+  {
+    if (ch == '\n')
+    {
+      if (prev != '\r')
+      {
+        if (fputc('\r', dst) == EOF)
+          return -1;
+      }
+      if (fputc('\n', dst) == EOF)
+        return -1;
+    }
+    else
+    {
+      if (fputc(ch, dst) == EOF)
+        return -1;
+    }
+    prev = ch;
+  }
+
+  return 0;
+}
+
+/**
  * @brief Compute destination filename for a converted deck.
  *
  * If `wf` is a bare extension (".nec", ".maa", etc.) the output file
@@ -465,6 +508,8 @@ static int process_single_file(const char *input_filename, const char *output_fi
 
   FILE *input_fp = NULL;
   FILE *output_fp = NULL;
+  FILE *temp_output_fp = NULL;
+  bool using_temp_output = false;
 
   ctx->error_fp = error_fp;
   ctx->source_filename = (strlen(input_filename) > 0) ? (char *)input_filename : NULL;
@@ -495,22 +540,52 @@ static int process_single_file(const char *input_filename, const char *output_fi
   // empty string or "-" both mean stdout
   if (strlen(output_filename) > 0 && strcmp(output_filename, "-") != 0)
   {
-    if ((output_fp = fopen(output_filename, "w")) == NULL)
+    if (ctx->line_ending == LINE_ENDING_CRLF)
     {
-      char mesg[88] = "onec: ";
-      strcat(mesg, output_filename);
-      perror(mesg);
-      if (input_fp != stdin)
-        fclose(input_fp);
-      destroy_context(ctx);
-      return -1;
+      temp_output_fp = tmpfile();
+      if (temp_output_fp != NULL)
+      {
+        output_fp = temp_output_fp;
+        using_temp_output = true;
+      }
     }
+
+    if (output_fp == NULL)
+    {
+      if ((output_fp = fopen(output_filename, "w")) == NULL)
+      {
+        char mesg[88] = "onec: ";
+        strcat(mesg, output_filename);
+        perror(mesg);
+        if (input_fp != stdin)
+          fclose(input_fp);
+        destroy_context(ctx);
+        return -1;
+      }
+    }
+
     ctx->output_fp = output_fp;
   }
   else
   {
-    output_fp = stdout;
-    ctx->output_fp = stdout;
+    if (ctx->line_ending == LINE_ENDING_CRLF)
+    {
+      temp_output_fp = tmpfile();
+      if (temp_output_fp != NULL)
+      {
+        output_fp = temp_output_fp;
+        using_temp_output = true;
+      }
+      else
+      {
+        output_fp = stdout;
+      }
+    }
+    else
+    {
+      output_fp = stdout;
+    }
+    ctx->output_fp = output_fp;
   }
 
   // open greens output file if requested
@@ -737,6 +812,49 @@ static int process_single_file(const char *input_filename, const char *output_fi
   {
     fclose(ctx->green_fp);
     ctx->green_fp = NULL;
+  }
+
+  if (using_temp_output)
+  {
+    int conv_error = 0;
+    fflush(output_fp);
+    rewind(output_fp);
+
+    if (strlen(output_filename) > 0 && strcmp(output_filename, "-") != 0)
+    {
+      FILE *final_fp = fopen(output_filename, "wb");
+      if (final_fp == NULL)
+      {
+        char mesg[88] = "onec: ";
+        strcat(mesg, output_filename);
+        perror(mesg);
+        conv_error = 1;
+      }
+      else
+      {
+        if (copy_stream_crlf(output_fp, final_fp) != 0)
+          conv_error = 1;
+        fclose(final_fp);
+      }
+    }
+    else
+    {
+      if (copy_stream_crlf(output_fp, stdout) != 0)
+        conv_error = 1;
+      fflush(stdout);
+    }
+
+    fclose(output_fp);
+    output_fp = stdout;
+
+    if (conv_error)
+    {
+      if (input_fp != stdin)
+        fclose(input_fp);
+      destroy_deck(&deck);
+      destroy_context(ctx);
+      return -1;
+    }
   }
 
   destroy_deck(&deck);

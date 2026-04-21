@@ -98,4 +98,19 @@
 #endif
 /** @} */
 
+/** @name Line Ending Constants
+ *  Line ending style for output files.
+ *  @{
+ */
+#define LINE_ENDING_LF   0  /**< Unix line ending (LF) */
+#define LINE_ENDING_CRLF 1  /**< Windows line ending (CRLF) */
+
+/* Platform-specific default line ending */
+#if defined(_WIN32) || defined(__MINGW32__)
+  #define DEFAULT_LINE_ENDING LINE_ENDING_CRLF
+#else
+  #define DEFAULT_LINE_ENDING LINE_ENDING_LF
+#endif
+/** @} */
+
 #endif

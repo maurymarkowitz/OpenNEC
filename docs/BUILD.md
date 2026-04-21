@@ -9,7 +9,7 @@ The following sections describe the backends that OpenNEC supports on different 
 
 Linux Setup
 -----------
-On Linux, you can use OpenBLAS for best performance, MKL, or the reference BLAS/LAPACK libraries. Auto-detection (a bare `make`) on Linux prefers OpenBLAS, then MKL (if `MKL_ROOT` is set), then reference BLAS/LAPACK via pkg-config, and finally the original built-in backend.
+On Linux, you can use OpenBLAS for best performance, MKL, or the reference BLAS/LAPACK libraries. Auto-detection (a bare `make`) on Linux prefers OpenBLAS, then MKL (detected via pkg-config or `MKL_ROOT` environment variable), then reference BLAS/LAPACK via pkg-config, and finally the original built-in backend.
 
 - OpenBLAS (Debian/Ubuntu):
 
@@ -203,10 +203,14 @@ There are two practical ways to build and run OpenNEC on Windows:
 
 ### Intel MKL (Advanced)
 
-OpenNEC can link against Intel MKL on Linux/WSL when `MKL_ROOT` points to the MKL install. MKL setup varies by platform; prefer OpenBLAS unless you specifically need MKL.
+OpenNEC can link against Intel MKL on Linux/WSL. The build system automatically detects MKL via pkg-config (if available), or falls back to checking `MKL_ROOT` environment variable. MKL setup varies by platform; prefer OpenBLAS unless you specifically need MKL.
 
-- Install Intel oneAPI Base Toolkit (includes MKL) and set `MKL_ROOT`.
-- Example (Linux/WSL):
+**Automatic detection (recommended):**
+- Install Intel oneAPI Base Toolkit (includes MKL)
+- The build will automatically find MKL via pkg-config
+
+**Manual configuration:**
+- If pkg-config detection fails, explicitly set `MKL_ROOT`:
 
 ```bash
 # After installing oneAPI (adjust path to your installation)
@@ -215,6 +219,8 @@ make clean
 make BACKEND=mkl
 ./onec examples/example5.nec
 ```
+
+The Makefile will try to detect MKL using `pkgconf --libs-only-L mkl-sdl` first; if pkg-config is not available or the package is not found, it falls back to the hardcoded `/opt/intel/mkl` path or the `MKL_ROOT` environment variable.
 
 Notes:
 - MKL linking flags and library names differ on native Windows with MSVC; this Makefile targets GCC/Unix-like environments. For native Visual Studio builds, a separate project configuration is required.

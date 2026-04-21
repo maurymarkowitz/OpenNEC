@@ -138,6 +138,20 @@ The default is
 on Unix and
 .B original
 on Windows.
+.TP
+.BR \-\-line\-ending
+Select the line ending style for generated
+.IR .out
+files (and other output files).  Valid values are
+.B lf
+for Unix/macOS line endings (LF, 0x0A), and
+.B crlf
+for Windows line endings (CRLF, 0x0D 0x0A).
+The default is
+.B lf
+on Unix and macOS, and
+.B crlf
+on Windows.
 .PP
 Single-letter flags that take no argument may be combined:
 .B \-nt

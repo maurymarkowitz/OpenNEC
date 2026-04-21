@@ -72,6 +72,7 @@ Command-line options include:
 `-g`, `--greens` <file>: write Greens function output to the given file (or default .ngf)  
 `-w`, `--write-file` <file>: writes the deck out to the named file type (see below)  
 `-f`, `--format`: select the format for the generated `.out` file. Valid values are `nec2c` (modern default on macOS/Linux) or `original` (classic Fortran-style output, default on Windows).  
+`--line-ending`: select the line ending style for output files. Valid values are `lf` (default on Unix/macOS) or `crlf` (default on Windows).  
 `--skip-large`: when running multiple decks, skip those with estimated complexity T >= 1e11  
 
 Short options with no parameters can be ganged, for instance, `-nt`.

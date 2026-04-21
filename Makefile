@@ -99,8 +99,13 @@ else ifeq ($(BACKEND),openblas)
     $(info OpenBLAS backend: LDFLAGS=$(LDFLAGS))
 
 else ifeq ($(BACKEND),mkl)
-    # Intel MKL - check for installation
-    MKL_ROOT ?= /opt/intel/mkl
+    # Intel MKL - check for installation via pkg-config or fallback to default path
+    MKL_PKG_CHECK := $(shell pkgconf --exists mkl-sdl 2>/dev/null && echo yes)
+    ifeq ($(MKL_PKG_CHECK),yes)
+        MKL_ROOT ?= $(shell pkgconf --libs-only-L mkl-sdl | cut -c3- | xargs dirname)
+    else
+        MKL_ROOT ?= /opt/intel/mkl
+    endif
     ifneq ($(wildcard $(MKL_ROOT)/lib),)
         LDFLAGS += -L$(MKL_ROOT)/lib -lmkl_rt -lpthread -lm -ldl
         CFLAGS += -I$(MKL_ROOT)/include -DHAVE_MKL
@@ -149,8 +154,13 @@ else ifeq ($(BACKEND),auto)
             CFLAGS += $(shell pkg-config --cflags openblas) -DHAVE_OPENBLAS
             $(info Auto-detected: OpenBLAS)
         else
-            # Try Intel MKL
-            MKL_ROOT ?= /opt/intel/mkl
+            # Try Intel MKL via pkg-config or fallback to default path
+            MKL_PKG_CHECK := $(shell pkgconf --exists mkl-sdl 2>/dev/null && echo yes)
+            ifeq ($(MKL_PKG_CHECK),yes)
+                MKL_ROOT ?= $(shell pkgconf --libs-only-L mkl-sdl | cut -c3- | xargs dirname)
+            else
+                MKL_ROOT ?= /opt/intel/mkl
+            endif
             ifneq ($(wildcard $(MKL_ROOT)/lib),)
                 LDFLAGS += -L$(MKL_ROOT)/lib -lmkl_rt -lpthread -lm -ldl
                 CFLAGS += -I$(MKL_ROOT)/include -DHAVE_MKL

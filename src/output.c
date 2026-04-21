@@ -1305,7 +1305,7 @@ static void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
     fprintf(file, "\n\n\n"
                   "                                 *********************************************\n"
                   "\n"
-                  "                                    NUMERICAL ELECTROMAGNETICS CODE (NEC-2D)\n"
+                  "                                    NUMERICAL ELECTROMAGNETICS CODE (onec)\n"
                   "\n"
                   "                                 *********************************************\n");
   }
@@ -1371,8 +1371,9 @@ static void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    // Blank line with no padding
-    fprintf(file, "\n");
+    /* Original Fortran format: 2 padded blank lines (101 spaces each) */
+    fprintf(file, "                                                                                                     \n"
+                  "                                                                                                     \n");
   }
 }
 
@@ -1415,7 +1416,7 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
   // print the header
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    fprintf(file, "\n\n\n"
+    fprintf(file, "\n\n\n\n"
                   "                                 "
                   "- - - STRUCTURE SPECIFICATION - - -\n"
                   "\n"
@@ -1841,7 +1842,7 @@ static void write_input_cards_excluding_end(FILE *file, const context_t *ctx, co
     return;
   }
 
-  fprintf(file, "\n\n\n");
+  fprintf(file, "\n\n\n\n\n\n");
 
   /* Iterate through cards in this batch only, skipping EN and NX cards. */
   int card_number = card_number_offset;
@@ -1947,26 +1948,38 @@ void write_end_cards(FILE *file, const deck_t *deck)
     return;
   }
 
+  int en_card_found = 0;
+  card_t last_rp_card = {0};
+  int found_rp = 0;
   int card_number = 0;
   
-  /* Count all control cards that were output (excluding EN and NX) */
+  /* Count control cards to number the EN card correctly, and find the last RP card */
   for (int i = 0; i < deck->num_cards; i++)
   {
     card_t *card = &deck->cards[i];
     
-    /* Skip EN and NX */
-    if (strncmp(card->card_code, "EN", 2) == 0 || strncmp(card->card_code, "NX", 2) == 0)
+    /* Check if EN card exists */
+    if (strncmp(card->card_code, "EN", 2) == 0)
     {
-      continue;
+      en_card_found = 1;
     }
     
-    /* Count control cards that were output */
+    /* Track last RP card for implicit EN parameters */
+    if (strncmp(card->card_code, "RP", 2) == 0)
+    {
+      found_rp = 1;
+      last_rp_card = *card;
+    }
+    
+    /* Count all control cards (including EN/NX) */
     if (strncmp(card->card_code, "FR", 2) == 0 ||
         strncmp(card->card_code, "EX", 2) == 0 ||
         strncmp(card->card_code, "LD", 2) == 0 ||
         strncmp(card->card_code, "TL", 2) == 0 ||
         strncmp(card->card_code, "NT", 2) == 0 ||
         strncmp(card->card_code, "RP", 2) == 0 ||
+        strncmp(card->card_code, "EN", 2) == 0 ||
+        strncmp(card->card_code, "NX", 2) == 0 ||
         strncmp(card->card_code, "GN", 2) == 0 ||
         strncmp(card->card_code, "EK", 2) == 0 ||
         strncmp(card->card_code, "KH", 2) == 0 ||
@@ -1984,32 +1997,30 @@ void write_end_cards(FILE *file, const deck_t *deck)
     }
   }
   
-  /* Output each EN and NX card as a separate batch */
-  for (int i = 0; i < deck->num_cards; i++)
+  /* If no explicit EN card was found, output an implicit EN card */
+  if (!en_card_found)
   {
-    card_t *card = &deck->cards[i];
+    card_number++;  /* Increment to get the correct EN card number */
+    fprintf(file, "\n\n\n");
     
-    if (strncmp(card->card_code, "EN", 2) == 0 ||
-        strncmp(card->card_code, "NX", 2) == 0)
+    if (found_rp)
     {
-      card_number++;
-      fprintf(file, "\n\n\n");
-      fprintf(file, "  DATA CARD No: %3d %s", card_number, card->card_code);
+      /* Use parameters from the last RP card */
+      fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d    %d  %d", card_number, 
+              last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
       
-      /* Output 4 integer fields */
-      fprintf(file, " %3d", card->i[1]);
-      for (int j = 2; j <= 4; j++)
-      {
-        fprintf(file, " %5d", card->i[j]);
-      }
-      
-      /* Output 7 float fields in scientific notation */
+      /* Output float fields from the last RP card */
       for (int j = 1; j <= 6; j++)
       {
-        fprintf(file, " %12.5E", card->f[j]);
+        fprintf(file, " %12.5E", last_rp_card.f[j]);
       }
       
       fprintf(file, "\n");
+    }
+    else
+    {
+      /* Default EN card with all zeros */
+      fprintf(file, " ***** DATA CARD NO. %2d   EN   0     0     0     0  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00\n", card_number);
     }
   }
 }
@@ -2750,14 +2761,26 @@ static void write_radiation_pattern_header(FILE *file, const context_t *ctx)
               ctx->fpat.range, ctx->rpat.exrm, ctx->rpat.exra);
     }
 
-    fprintf(file, "\n"
-                  " ---- ANGLES -----     %23s      ---- POLARIZATION ----  "
-                  " ---- E(THETA) ----    ----- E(PHI) ------\n"
-                  "  THETA      PHI      %6s   %6s    TOTAL       AXIAL    "
-                  "  TILT  SENSE   MAGNITUDE    PHASE    MAGNITUDE     PHASE\n"
-                  " DEGREES   DEGREES        DB       DB       DB       RATIO  "
-                  " DEGREES            VOLTS/M   DEGREES     VOLTS/M   DEGREES",
-            igtp[ctx->fpat.gain_type], igax[itmp1], igax[itmp2]);
+    if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+    {
+      /* Original Fortran format headers */
+      fprintf(file, "\n"
+                    "  - - ANGLES - -           - POWER GAINS -       - - - POLARIZATION - - -    - - - E(THETA) - - -    - - - E(PHI) - - -\n"
+                    "  THETA     PHI        VERT.   HOR.    TOTAL      AXIAL     TILT   SENSE     MAGNITUDE    PHASE      MAGNITUDE    PHASE \n"
+                    " DEGREES  DEGREES       DB      DB      DB        RATIO     DEG.              VOLTS/M    DEGREES      VOLTS/M    DEGREES");
+    }
+    else
+    {
+      /* nec2c format headers */
+      fprintf(file, "\n"
+                    " ---- ANGLES -----     %23s      ---- POLARIZATION ----  "
+                    " ---- E(THETA) ----    ----- E(PHI) ------\n"
+                    "  THETA      PHI      %6s   %6s    TOTAL       AXIAL    "
+                    "  TILT  SENSE   MAGNITUDE    PHASE    MAGNITUDE     PHASE\n"
+                    " DEGREES   DEGREES        DB       DB       DB       RATIO  "
+                    " DEGREES            VOLTS/M   DEGREES     VOLTS/M   DEGREES",
+              igtp[ctx->fpat.gain_type], igax[itmp1], igax[itmp2]);
+    }
   }
 }
 
@@ -2804,12 +2827,26 @@ static void write_radiation_pattern_data(FILE *file, const context_t *ctx)
         tmp6 = pt->gnh;
       }
 
-      fprintf(file, "\n"
-                    " %7.2f %9.2f  %8.2f %8.2f %8.2f %11.4f"
-                    " %9.2f %6s %11.4E %9.2f %11.4E %9.2f",
-              pt->theta, pt->phi, tmp5, tmp6, pt->gtot, pt->axrat,
-              pt->tilta, hpol[pt->pol_sense >= 0 && pt->pol_sense <= 2 ? pt->pol_sense : 0],
-              pt->ethm, pt->etha, pt->ephm, pt->epha);
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+      {
+        /* Original Fortran NEC-2 format (from FORMAT statement #42) */
+        /* FORMAT(1X,F7.2,F9.2,3X,3F8.2,F11.5,F9.2,2X,A6,2(1P,E15.5,0P,F9.2)) */
+        fprintf(file, "\n"
+                      " %7.2f%9.2f   %8.2f%8.2f%8.2f%11.5f%9.2f  %6s%15.5E%9.2f%15.5E%9.2f",
+                pt->theta, pt->phi, tmp5, tmp6, pt->gtot, pt->axrat,
+                pt->tilta, hpol[pt->pol_sense >= 0 && pt->pol_sense <= 2 ? pt->pol_sense : 0],
+                pt->ethm, pt->etha, pt->ephm, pt->epha);
+      }
+      else
+      {
+        /* Modern nec2c format */
+        fprintf(file, "\n"
+                      " %7.2f %9.2f  %8.2f %8.2f %8.2f %11.4f"
+                      " %9.2f %6s %11.4E %9.2f %11.4E %9.2f",
+                pt->theta, pt->phi, tmp5, tmp6, pt->gtot, pt->axrat,
+                pt->tilta, hpol[pt->pol_sense >= 0 && pt->pol_sense <= 2 ? pt->pol_sense : 0],
+                pt->ethm, pt->etha, pt->ephm, pt->epha);
+      }
     }
   }
 }
@@ -3120,7 +3157,8 @@ static void write_near_field_plot(const context_t *ctx)
  */
 void write_footer(FILE *file, const context_t *ctx, const deck_t *deck)
 {
-  (void)deck; // unused — EN is echoed by write_input_cards in sequence
+  /* Output end cards (EN/NX) and implicit EN if needed */
+  write_end_cards(file, deck);
 
   // Output blank lines before footer
   fprintf(file, "\n\n\n");
@@ -3131,7 +3169,17 @@ void write_footer(FILE *file, const context_t *ctx, const deck_t *deck)
     double current_time;
     get_time_ms(ctx, &current_time);
     double elapsed_ms = current_time - ctx->start_time;
-    fprintf(file, "\n  TOTAL RUN TIME: %.0f msec", elapsed_ms);
+    
+    if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+    {
+      /* Original Fortran format: " RUN TIME = XXX.XXX" (in seconds) */
+      fprintf(file, "\n RUN TIME = %9.3f", elapsed_ms / 1000.0);
+    }
+    else
+    {
+      /* nec2c format: "  TOTAL RUN TIME: X msec" */
+      fprintf(file, "\n  TOTAL RUN TIME: %.0f msec", elapsed_ms);
+    }
   }
 }
 

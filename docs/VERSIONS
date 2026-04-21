@@ -2,7 +2,10 @@ OpenNEC version history
 
 Version 1.3.4 - 2026 April 21
 - lots of work getting the "original" --format to exactly match the Fortran code from the PC
-- as part of that, a --line-endings switch has been added to produce CR/LF or just LF
+- as part of that, a --line-ending switch has been added to produce "crlf" or just "lf"
+--line-ending now defaults to 'lf' on Unix/macOS and 'crlf' on Windows
+- updated man page and help text to document the new platform-specific defaults
+- changed the way the MKL_ROOT is set in the makefile
 
 Version 1.3.2 - 2026 April 13
 
