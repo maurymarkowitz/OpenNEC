@@ -17,6 +17,7 @@
 #include "internals.h"
 #include "output.h"
 #include <stdint.h>
+#include <math.h>
 
 /* Forward declarations for internal write functions */
 static void write_header(const context_t *ctx, const deck_t *deck, FILE *pfile);
@@ -99,6 +100,41 @@ static inline const output_format_spec_t* get_format(const context_t *ctx)
     if (fmt < 0 || fmt >= (int)(sizeof(format_specs)/sizeof(format_specs[0])))
         fmt = DEFAULT_OUTPUT_FORMAT;
     return &format_specs[fmt];
+}
+
+/******************************************************************************
+ * format_coord
+ *
+ * Formats a coordinate value, converting negative zero to positive zero.
+ * Uses sprintf to detect and fix -0.00000 format issues.
+ */
+static void format_coord(char *buf, int len, double value, const char *fmt)
+{
+    snprintf(buf, len, fmt, value);
+    // Find the position of the first non-space character
+    int i = 0;
+    while (i < len && buf[i] == ' ')
+        i++;
+    
+    // If we found "-0." at position i, check if all digits after are zeros
+    if (i < len - 2 && buf[i] == '-' && buf[i+1] == '0' && buf[i+2] == '.')
+    {
+        // Check if all remaining digits are zero
+        int all_zero = 1;
+        int j;
+        for (j = i + 3; j < len && buf[j]; j++)
+        {
+            if (buf[j] != '0')
+            {
+                all_zero = 0;
+                break;
+            }
+        }
+        if (all_zero)
+        {
+            buf[i] = ' ';  // Replace minus with space for proper alignment
+        }
+    }
 }
 
 /******************************************************************************
@@ -1443,17 +1479,33 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
       num_wires++;
       if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
       {
+        char sf1[12], sf2[12], sf3[12], sf4[12], sf5[12], sf6[12], sf7[12];
+        format_coord(sf1, sizeof(sf1), card.f[1], "%11.5f");
+        format_coord(sf2, sizeof(sf2), card.f[2], "%11.5f");
+        format_coord(sf3, sizeof(sf3), card.f[3], "%11.5f");
+        format_coord(sf4, sizeof(sf4), card.f[4], "%11.5f");
+        format_coord(sf5, sizeof(sf5), card.f[5], "%11.5f");
+        format_coord(sf6, sizeof(sf6), card.f[6], "%11.5f");
+        format_coord(sf7, sizeof(sf7), card.f[7], "%11.5f");
         fprintf(ctx->output_fp, "\n"
-                                " %5d%11.5f%11.5f%11.5f %11.5f%11.5f%11.5f%11.5f  %5d    %5d %5d   %5d",
-                num_wires, card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6], card.f[7],
+                                " %5d%s%s%s %s%s%s%s  %5d    %5d %5d   %5d",
+                num_wires, sf1, sf2, sf3, sf4, sf5, sf6, sf7,
                 card.num_segments, card.start_segment, card.end_segment, card.tag);
       }
       else
       {
+        char sf1[12], sf2[12], sf3[12], sf4[12], sf5[12], sf6[12], sf7[12];
+        format_coord(sf1, sizeof(sf1), card.f[1], "%10.5f");
+        format_coord(sf2, sizeof(sf2), card.f[2], "%10.5f");
+        format_coord(sf3, sizeof(sf3), card.f[3], "%10.5f");
+        format_coord(sf4, sizeof(sf4), card.f[4], "%10.5f");
+        format_coord(sf5, sizeof(sf5), card.f[5], "%10.5f");
+        format_coord(sf6, sizeof(sf6), card.f[6], "%10.5f");
+        format_coord(sf7, sizeof(sf7), card.f[7], "%10.5f");
         fprintf(ctx->output_fp, "\n"
-                                " %5d  %10.5f %10.5f %10.5f %10.5f"
-                                " %10.5f %10.5f %10.5f %5d %5d %5d %4d",
-                num_wires, card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6], card.f[7],
+                                " %5d %s %s %s %s"
+                                " %s %s %s %5d %5d %5d %4d",
+                num_wires, sf1, sf2, sf3, sf4, sf5, sf6, sf7,
                 card.num_segments, card.start_segment, card.end_segment, card.tag);
       }
       break;
@@ -1682,17 +1734,26 @@ static int write_segments(context_t *ctx, const deck_t *deck, FILE *file)
 
     if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
     {
-      fprintf(ctx->output_fp, "\n %5d%10.5f%10.5f%10.5f%10.5f %10.5f%10.5f%10.5f %5d%5d%5d  %5d",
-              i + 1, ctx->geometry.x_center[i], ctx->geometry.y_center[i], ctx->geometry.z_center[i], ctx->geometry.half_len[i],
+      char sx[12], sy[12], sz[12];
+      format_coord(sx, sizeof(sx), ctx->geometry.x_center[i], "%10.5f");
+      format_coord(sy, sizeof(sy), ctx->geometry.y_center[i], "%10.5f");
+      format_coord(sz, sizeof(sz), ctx->geometry.z_center[i], "%10.5f");
+      fprintf(ctx->output_fp, "\n %5d%s%s%s%10.5f %10.5f%10.5f%10.5f %5d%5d%5d  %5d",
+              i + 1, sx, sy, sz, ctx->geometry.half_len[i],
               xw2, yw2, ctx->geometry.radius[i],
               ctx->geometry.seg_end1_conn[i], i + 1, ctx->geometry.seg_end2_conn[i], ctx->geometry.tag_nums[i]);
     }
     else
     {
+      char sx[12], sy[12], sz[12];
+      format_coord(sx, sizeof(sx), ctx->geometry.x_center[i], "%9.4f");
+      format_coord(sy, sizeof(sy), ctx->geometry.y_center[i], "%9.4f");
+      format_coord(sz, sizeof(sz), ctx->geometry.z_center[i], "%9.4f");
       fprintf(ctx->output_fp, "\n"
-                              " %5d %9.4f %9.4f %9.4f %9.4f"
+                              " %5d %s %s %s %9.4f"
                               " %9.4f %9.4f %9.4f %5d %5d %5d %5d",
-              i + 1, ctx->geometry.x_center[i], ctx->geometry.y_center[i], ctx->geometry.z_center[i], ctx->geometry.half_len[i], xw2, yw2,
+              i + 1, sx, sy, sz, ctx->geometry.half_len[i], 
+              xw2, yw2,
               ctx->geometry.radius[i], ctx->geometry.seg_end1_conn[i], i + 1, ctx->geometry.seg_end2_conn[i], ctx->geometry.tag_nums[i]);
     }
 
@@ -2038,11 +2099,22 @@ static void write_loading_data(FILE *file, const context_t *ctx)
   }
 
   // Print the loading data header (from apply_impedance_loading() function)
-  fprintf(file, "\n"
-                "  LOCATION        RESISTANCE  INDUCTANCE  CAPACITANCE   "
-                "  IMPEDANCE (OHMS)   CONDUCTIVITY  CIRCUIT\n"
-                "  ITAG FROM THRU     OHMS       HENRYS      FARADS     "
-                "  REAL     IMAGINARY   MHOS/METER      TYPE");
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(file, "\n"
+                  "       LOCATION          RESISTANCE   INDUCTANCE  CAPACITANCE   "
+                  "    IMPEDANCE (OHMS)     CONDUCTIVITY    TYPE\n"
+                  "    ITAG FROM THRU          OHMS        HENRYS       FARADS      "
+                  "  REAL      IMAGINARY    MHOS/METER");
+  }
+  else
+  {
+    fprintf(file, "\n"
+                  "  LOCATION        RESISTANCE  INDUCTANCE  CAPACITANCE   "
+                  "  IMPEDANCE (OHMS)   CONDUCTIVITY  CIRCUIT\n"
+                  "  ITAG FROM THRU     OHMS       HENRYS      FARADS     "
+                  "  REAL     IMAGINARY   MHOS/METER      TYPE");
+  }
 
   // Print the stored loading entries
   for (int i = 0; i < ctx->loading_outputs.count; i++)
@@ -2054,15 +2126,34 @@ static void write_loading_data(FILE *file, const context_t *ctx)
     {
       // Special format for WIRE entries to match prnt output exactly
       // Use "ALL" or "0" for tag 0 based on format
-      if (entry->tag == 0 && strcmp(fmt->loading_all_tag, "ALL") == 0)
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
       {
-        fprintf(file, "\n  ALL%69s%11.4E     WIRE  ",
-                "", entry->conductivity);
+        // Fortran format: original NEC-2D
+        // Format:      ALL<84 spaces>3.6900E+07     WIRE
+        if (entry->tag == 0 && strcmp(fmt->loading_all_tag, "ALL") == 0)
+        {
+          fprintf(file, "\n     ALL%80s%11.4E     WIRE",
+                  "", entry->conductivity);
+        }
+        else
+        {
+          fprintf(file, "\n%5d%77s%11.4E     WIRE",
+                  entry->tag, "", entry->conductivity);
+        }
       }
       else
       {
-        fprintf(file, "\n%5d%72s%11.4E     WIRE  ",
-                entry->tag, "", entry->conductivity);
+        // nec2c format
+        if (entry->tag == 0 && strcmp(fmt->loading_all_tag, "ALL") == 0)
+        {
+          fprintf(file, "\n  ALL%69s%11.4E     WIRE  ",
+                  "", entry->conductivity);
+        }
+        else
+        {
+          fprintf(file, "\n%5d%72s%11.4E     WIRE  ",
+                  entry->tag, "", entry->conductivity);
+        }
       }
     }
     else if (strcmp(entry->type, "FIXED IMPEDANCE") == 0)
@@ -2376,10 +2467,10 @@ static void write_antenna_input_parameters(FILE *file, const context_t *ctx)
                   "- - - ANTENNA INPUT PARAMETERS - - -");
 
     fprintf(file, "\n"
-                  "   TAG   SEG.    VOLTAGE (VOLTS)         "
+                  "  TAG   SEG.    VOLTAGE (VOLTS)         "
                   "CURRENT (AMPS)         IMPEDANCE (OHMS)        "
                   "ADMITTANCE (MHOS)      POWER\n"
-                  "   NO.   NO.    REAL        IMAG.       "
+                  "  NO.   NO.    REAL        IMAG.       "
                   "REAL        IMAG.       REAL        IMAG.       "
                   "REAL        IMAG.     (WATTS)");
 
@@ -2455,12 +2546,15 @@ static void write_currents(FILE *file, const context_t *ctx)
       double cmag = cabs(curi);
       double ph = carg(curi) * TD; // Convert to degrees (TD = 57.29577951)
 
+      char sx[12], sy[12], sz[12];
+      format_coord(sx, sizeof(sx), ctx->geometry.x_center[i], "%8.4f");
+      format_coord(sy, sizeof(sy), ctx->geometry.y_center[i], "%8.4f");
+      format_coord(sz, sizeof(sz), ctx->geometry.z_center[i], "%8.4f");
+
       fprintf(file, "\n"
-                    " %5d %4d %8.4f %8.4f %8.4f %8.5f  %11.4E %11.4E %11.4E %8.3f",
+                    " %5d %4d %s %s %s %8.5f  %11.4E %11.4E %11.4E %8.3f",
               i + 1, ctx->geometry.tag_nums[i],
-              ctx->geometry.x_center[i],
-              ctx->geometry.y_center[i],
-              ctx->geometry.z_center[i],
+              sx, sy, sz,
               ctx->geometry.half_len[i],
               creal(curi), cimag(curi), cmag, ph);
     }
@@ -2485,12 +2579,15 @@ static void write_currents(FILE *file, const context_t *ctx)
       double cmag = cabs(curi);
       double ph = carg(curi) * TD; // Convert to degrees (TD = 57.29577951)
 
+      char sx[12], sy[12], sz[12];
+      format_coord(sx, sizeof(sx), ctx->geometry.x_center[i], "%9.4f");
+      format_coord(sy, sizeof(sy), ctx->geometry.y_center[i], "%9.4f");
+      format_coord(sz, sizeof(sz), ctx->geometry.z_center[i], "%9.4f");
+
       fprintf(file, "\n"
-                    " %5d %4d %9.4f %9.4f %9.4f %8.5f %11.4E %11.4E %11.4E %9.3f",
+                    " %5d %4d %s %s %s %8.5f %11.4E %11.4E %11.4E %9.3f",
               i + 1, ctx->geometry.tag_nums[i],
-              ctx->geometry.x_center[i],
-              ctx->geometry.y_center[i],
-              ctx->geometry.z_center[i],
+              sx, sy, sz,
               ctx->geometry.half_len[i],
               creal(curi), cimag(curi), cmag, ph);
     }

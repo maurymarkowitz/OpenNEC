@@ -51,6 +51,7 @@ static char *greens_file = "";
 static char *write_file = "";  /* -w / --write-file: convert deck to this format */
 static int jobs = 1; // number of parallel jobs (-j)
 static int output_format_choice = DEFAULT_OUTPUT_FORMAT;  /* Output format selection */
+static int line_ending_choice = 1;  /* 0=LF (Unix), 1=CRLF (Windows); default 1 */
 
 /**
  * @brief Print the version string and terminate.
@@ -93,6 +94,7 @@ void print_usage(char *argv[])
   puts("    Supported: .nec/.deck (OpenNEC), .nec2 (NEC-2), .nec4 (NEC-4), .maa/.mma (MMANA-GAL), .yo/.ant/.yag (Yagi Optimizer), .nc (cocoaNEC)");
   puts("    Pass a bare extension (e.g. -w .maa) to convert multiple input files in place.");
   puts("  -f, --format: output format for .out file: 'nec2c' (modern, default on Unix) or 'original' (Fortran, default on Windows)");
+  puts("  --line-ending: line ending style: 'crlf' (Windows, default) or 'lf' (Unix)");
   puts("Multiple input files or folders can be specified; each file will generate a .out file.");
   puts("If no input_file is provided, input is read from stdin and output goes to stdout.");
   exit(0);
@@ -113,6 +115,7 @@ static struct option program_options[] =
         {"write-file", required_argument, NULL, 'w'},
         {"skip-large", no_argument, NULL, 'S'},
         {"format", required_argument, NULL, 'f'},
+        {"line-ending", required_argument, NULL, 'L'},
         {0, 0, 0, 0}};
 
 /**
@@ -213,6 +216,17 @@ void parse_options(int argc, char *argv[])
         output_format_choice = OUTPUT_FORMAT_ORIGINAL;
       } else {
         fprintf(stderr, "onec: invalid format '%s'. Use 'nec2c' or 'original'.\n", optarg);
+        exit(1);
+      }
+      break;
+
+    case 'L':
+      if (strcasecmp(optarg, "lf") == 0) {
+        line_ending_choice = 0;  /* Unix LF */
+      } else if (strcasecmp(optarg, "crlf") == 0) {
+        line_ending_choice = 1;  /* Windows CRLF */
+      } else {
+        fprintf(stderr, "onec: invalid line-ending '%s'. Use 'lf' or 'crlf'.\n", optarg);
         exit(1);
       }
       break;
@@ -455,6 +469,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
   ctx->error_fp = error_fp;
   ctx->source_filename = (strlen(input_filename) > 0) ? (char *)input_filename : NULL;
   ctx->output_format = output_format_choice;
+  ctx->line_ending = line_ending_choice;  /* Use command-line choice, default is 1 (Windows CRLF) */
 
   // open input file or use stdin
   // empty string or "-" both mean stdin

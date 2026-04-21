@@ -41,11 +41,11 @@ The integral-equation approach avoids many simplifying assumptions required by s
 OpenNEC is a modern C re-implementation of NEC-2, designed to run on macOS, Linux, and Windows without a Fortran toolchain. It accepts the same input deck format as NEC-2, as well as the extensions found in nec2c and 4nec2, and produces the same `.out` output format, so existing models work directly. In addition to the standard card set, OpenNEC supports:
 
 - **Inline comments** allow you to better document the deck and any special features.
-- **SY (symbol) cards:** define named variables and formulas that are substituted into any subsequent numeric field.
-- **Unit suffixes:** lengths may be given in `ft`, `in`, `mm`, `cm`; frequencies in `kHz`, `MHz`, `GHz`; wire sizes as AWG (`#14`, `22awg`); inductances and capacitances in standard SI prefixes.
-- **Connection references:** you can refer to connections by percent-of-length, not just segment number.
-- **EX 6 (current source),** a 4nec2 extension that treats the excitation as a specified current in Amperes rather than a voltage in Volts.
-- **LD 6 (LC-trap)** and **LD 7 (insulated wire),** additional loading types from 4nec2.
+- **SY (symbol) cards** define named variables and formulas that are substituted into any subsequent numeric field.
+- **Unit suffixes** lengths may be given in `ft`, `in`, `mm`, `cm`; frequencies in `kHz`, `MHz`, `GHz`; wire sizes as AWG (`#14`, `22awg`); inductances and capacitances in standard SI prefixes.
+- **Connection references** you can refer to connections by percent-of-length, not just segment number.
+- **EX 6 (current source)** a 4nec2 extension that treats the excitation as a specified current in Amperes rather than a voltage in Volts.
+- **LD 6 (LC-trap)** and **LD 7 (insulated wire)** additional loading types from 4nec2.
 
 ### How a simulation works
 
@@ -55,6 +55,8 @@ A simulation runs in four phases:
 2. **Matrix fill and factor:** the impedance matrix **Z** is assembled from contributions between all pairs of segments, then factored (LU decomposition). This is the most time-consuming step and scales as O(N³) in the number of segments N.
 3. **Frequency loop:** for each requested frequency, the excitation vector **V** is assembled from EX cards, **Z**·**I** = **V** is solved for **I**, and the requested output (currents, near fields, radiation pattern) is computed from **I**.
 4. **Output:** Unlike most NEC engines, which output values as they run, OpenNEC gathers up all data and outputs it in a single step.
+
+A key difference between OpenNEC and other engines is that step 4 can be skipped if it is being used as an embedded library. Instead, the wrapper program can simply read the numeric data directly, elimintaing the need to parse the output back into numeric format.
 
 II. Units, symbols, and formulas
 --------------------------------
