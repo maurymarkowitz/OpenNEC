@@ -655,6 +655,18 @@ void compute_radiation_pattern(context_t *ctx)
         pt->pol_sense = 0;
       }
       
+      /* Normalize linear polarization to match NEC-2D convention:
+         when one field component is negligibly small, its phase is
+         undefined floating-point noise; set it to 0. */
+      if (pt->pol_sense == 0 /* LINEAR */) {
+        double ethm2_adj = ethm * ethm;
+        double ephm2_adj = ephm * ephm;
+        if (ethm2_adj <= 1.0e-10 * (ephm2_adj + 1.0e-30))
+          etha = 0.0;
+        if (ephm2_adj <= 1.0e-10 * (ethm2_adj + 1.0e-30))
+          epha = 0.0;
+      }
+
       pt->ethm = ethm;
       pt->etha = etha;
       pt->ephm = ephm;

@@ -799,10 +799,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
         write_frequency_step_output(output_fp, ctx);
       }
       
-      // Write EN and NX cards as separate batches before footer
-      write_end_cards(output_fp, &deck);
-      
-      // Write footer
+      // Write footer (which emits EN/NX cards and runtime summary)
       write_footer(output_fp, ctx, &deck);
     }
   }

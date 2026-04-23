@@ -86,7 +86,7 @@ static const output_format_spec_t format_specs[] = {
         .length_units = "METERS",
         .freq_units = "MHZ",
         .matrix_sep = "- - - MATRIX TIMING - - -",
-        .matrix_fill_format = "FILL=%8.3f SEC.",
+        .matrix_fill_format = "FILL=%8.3f SEC.,",
         .matrix_factor_format = "FACTOR=%8.3f SEC.",
         .use_seconds_for_timing = 1,
         .loading_all_tag = "ALL",
@@ -1932,7 +1932,7 @@ static void write_input_cards_excluding_end(FILE *file, const context_t *ctx, co
     }
   }
 
-  fprintf(file, "\n");
+  fprintf(file, "\n\n");
 }
 
 /******************************************************************************
@@ -2001,7 +2001,7 @@ void write_end_cards(FILE *file, const deck_t *deck)
   if (!en_card_found)
   {
     card_number++;  /* Increment to get the correct EN card number */
-    fprintf(file, "\n\n\n");
+    fprintf(file, "\n");
     
     if (found_rp)
     {
@@ -2078,9 +2078,9 @@ static void write_frequency_data(FILE *file, const context_t *ctx)
 
   if (ctx->dataj.use_extended_kernel == 1)
   {
-    fprintf(file, "\n"
-                  "                        "
-                  "THE EXTENDED THIN WIRE KERNEL WILL BE USED");
+    fprintf(file, "\n\n"
+                  "                    "
+                  "THE EXTENDED THIN WIRE KERNEL WILL BE USED\n");
   }
 }
 
@@ -2097,13 +2097,13 @@ static void write_loading_data(FILE *file, const context_t *ctx)
   {
     fprintf(file, "\n\n\n"
                   "                               "
-                  "- - - STRUCTURE IMPEDANCE LOADING - - -");
+                  "- - - STRUCTURE IMPEDANCE LOADING - - -\n\n");
   }
   else
   {
     fprintf(file, "\n\n\n"
                   "                          "
-                  "------ STRUCTURE IMPEDANCE LOADING ------");
+                  "------ STRUCTURE IMPEDANCE LOADING ------\n\n");
   }
 
   if (ctx->zload.num_loads == 0)
@@ -2121,7 +2121,7 @@ static void write_loading_data(FILE *file, const context_t *ctx)
                   "       LOCATION          RESISTANCE   INDUCTANCE  CAPACITANCE   "
                   "    IMPEDANCE (OHMS)     CONDUCTIVITY    TYPE\n"
                   "    ITAG FROM THRU          OHMS        HENRYS       FARADS      "
-                  "  REAL      IMAGINARY    MHOS/METER");
+                  "  REAL      IMAGINARY    MHOS/METER\n");
   }
   else
   {
@@ -2129,7 +2129,7 @@ static void write_loading_data(FILE *file, const context_t *ctx)
                   "  LOCATION        RESISTANCE  INDUCTANCE  CAPACITANCE   "
                   "  IMPEDANCE (OHMS)   CONDUCTIVITY  CIRCUIT\n"
                   "  ITAG FROM THRU     OHMS       HENRYS      FARADS     "
-                  "  REAL     IMAGINARY   MHOS/METER      TYPE");
+                  "  REAL     IMAGINARY   MHOS/METER      TYPE\n");
   }
 
   // Print the stored loading entries
@@ -2145,15 +2145,15 @@ static void write_loading_data(FILE *file, const context_t *ctx)
       if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
       {
         // Fortran format: original NEC-2D
-        // Format:      ALL<84 spaces>3.6900E+07     WIRE
+        // Format:      ALL<84 spaces>3.6900E+07     WIRE  (with 2 trailing spaces)
         if (entry->tag == 0 && strcmp(fmt->loading_all_tag, "ALL") == 0)
         {
-          fprintf(file, "\n     ALL%80s%11.4E     WIRE",
+          fprintf(file, "\n     ALL%80s%11.4E     WIRE  ",
                   "", entry->conductivity);
         }
         else
         {
-          fprintf(file, "\n%5d%77s%11.4E     WIRE",
+          fprintf(file, "\n%5d%77s%11.4E     WIRE  ",
                   entry->tag, "", entry->conductivity);
         }
       }
@@ -2196,7 +2196,7 @@ static void write_loading_data(FILE *file, const context_t *ctx)
     else
     {
       // General format for other loading types (SERIES, PARALLEL, etc.)
-      fprintf(file, "\n%6d%6d%6d%44.4E%12s",
+      fprintf(file, "\n%6d%6d%6d%44.4E%-6s",
               entry->tag, entry->tagf, entry->tagt,
               entry->conductivity, entry->type);
     }
@@ -2226,16 +2226,16 @@ static void write_environment_data(FILE *file, const context_t *ctx)
 
   if (ctx->gnd.has_ground == 1)
   {
-    fprintf(file, "\n"
-                  "                            "
+    fprintf(file, "\n\n"
+                  "                                            "
                   "FREE SPACE");
   }
   else
   {
     if (ctx->gnd.is_perfect == 1)
     {
-      fprintf(file, "\n"
-                    "                            "
+      fprintf(file, "\n\n"
+                    "                                            "
                     "PERFECT GROUND");
     }
     else
@@ -2243,10 +2243,10 @@ static void write_environment_data(FILE *file, const context_t *ctx)
       // Radial wire ground screen
       if (ctx->gnd.num_radials != 0)
       {
-        fprintf(file, "\n"
-                      "                            "
+        fprintf(file, "\n\n"
+                      "                                            "
                       "RADIAL WIRE GROUND SCREEN\n"
-                      "                            "
+                      "                                            "
                       "%d WIRES\n"
                       "                            "
                       "WIRE LENGTH: %8.2f METERS\n"
@@ -2297,9 +2297,10 @@ static void write_matrix_timing(FILE *file, const context_t *ctx)
   const output_format_spec_t *fmt = get_format(ctx);
   
   fprintf(file, "\n\n\n"
-                "                             "
+                "                                "
                 "%s\n"
-                "                               ",
+                "\n"
+                "                        ",
           fmt->matrix_sep);
   
   if (fmt->use_seconds_for_timing)
@@ -2483,10 +2484,10 @@ static void write_antenna_input_parameters(FILE *file, const context_t *ctx)
                   "- - - ANTENNA INPUT PARAMETERS - - -");
 
     fprintf(file, "\n"
-                  "  TAG   SEG.    VOLTAGE (VOLTS)         "
+                  "   TAG   SEG.    VOLTAGE (VOLTS)         "
                   "CURRENT (AMPS)         IMPEDANCE (OHMS)        "
                   "ADMITTANCE (MHOS)      POWER\n"
-                  "  NO.   NO.    REAL        IMAG.       "
+                  "   NO.   NO.    REAL        IMAG.       "
                   "REAL        IMAG.       REAL        IMAG.       "
                   "REAL        IMAG.     (WATTS)");
 
@@ -2549,6 +2550,7 @@ static void write_currents(FILE *file, const context_t *ctx)
     fprintf(file, "\n\n\n"
                   "                             "
                   "- - - CURRENTS AND LOCATION - - -\n"
+                  "\n"
                   "                                 "
                   "DISTANCES IN WAVELENGTHS");
 
@@ -3160,9 +3162,6 @@ void write_footer(FILE *file, const context_t *ctx, const deck_t *deck)
   /* Output end cards (EN/NX) and implicit EN if needed */
   write_end_cards(file, deck);
 
-  // Output blank lines before footer
-  fprintf(file, "\n\n\n");
-
   // Calculate and output total runtime
   if (ctx != NULL)
   {
@@ -3173,12 +3172,12 @@ void write_footer(FILE *file, const context_t *ctx, const deck_t *deck)
     if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
     {
       /* Original Fortran format: " RUN TIME = XXX.XXX" (in seconds) */
-      fprintf(file, "\n RUN TIME = %9.3f", elapsed_ms / 1000.0);
+      fprintf(file, "\n RUN TIME = %9.3f\n", elapsed_ms / 1000.0);
     }
     else
     {
       /* nec2c format: "  TOTAL RUN TIME: X msec" */
-      fprintf(file, "\n  TOTAL RUN TIME: %.0f msec", elapsed_ms);
+      fprintf(file, "\n  TOTAL RUN TIME: %.0f msec\n", elapsed_ms);
     }
   }
 }

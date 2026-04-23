@@ -1712,17 +1712,17 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
                 /* WG mode: write NGF file then stop — do not factorise or solve */
                 ctx->wg_after_cmset = false;
                 get_time_ms(ctx, &tim2);
-                ctx->mat_fill_time = tim2 - tim1;
+                ctx->mat_fill_time = (tim2 - tim1) / 1000.0;
                 break;  /* exit frequency loop without solving */
             }
         }
 
         get_time_ms(ctx, &tim2);
-        ctx->mat_fill_time = tim2 - tim1;
+        ctx->mat_fill_time = (tim2 - tim1) / 1000.0;
 
         factor_matrix_symmetric(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, cm, ctx->save.pivot);
         get_time_ms(ctx, &tim1);
-        ctx->mat_factor_time = tim1 - tim2;
+        ctx->mat_factor_time = (tim1 - tim2) / 1000.0;
         
         // Reset solution counter
         ctx->netcx.network_type = 0;
