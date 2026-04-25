@@ -2001,7 +2001,6 @@ void write_end_cards(FILE *file, const deck_t *deck)
   if (!en_card_found)
   {
     card_number++;  /* Increment to get the correct EN card number */
-    fprintf(file, "\n");
     
     if (found_rp)
     {
@@ -2068,7 +2067,7 @@ static void write_frequency_data(FILE *file, const context_t *ctx)
             fmt->frequency_label, ctx->save.freq_mhz, fmt->freq_units,
             fmt->wavelength_label, ctx->geometry.wavelength, fmt->length_units);
 
-    fprintf(file, "\n\n"
+    fprintf(file, "\n\n\n"
                   "                        "
                   "APPROXIMATE INTEGRATION EMPLOYED FOR SEGMENTS \n"
                   "                        "
@@ -2201,6 +2200,7 @@ static void write_loading_data(FILE *file, const context_t *ctx)
               entry->conductivity, entry->type);
     }
   }
+  fprintf(file, "\n");
 }
 
 /******************************************************************************
@@ -2228,7 +2228,7 @@ static void write_environment_data(FILE *file, const context_t *ctx)
   {
     fprintf(file, "\n\n"
                   "                                            "
-                  "FREE SPACE");
+                  "FREE SPACE\n");
   }
   else
   {
@@ -2236,7 +2236,7 @@ static void write_environment_data(FILE *file, const context_t *ctx)
     {
       fprintf(file, "\n\n"
                     "                                            "
-                    "PERFECT GROUND");
+                    "PERFECT GROUND\n");
     }
     else
     {
@@ -2251,37 +2251,33 @@ static void write_environment_data(FILE *file, const context_t *ctx)
                       "                            "
                       "WIRE LENGTH: %8.2f METERS\n"
                       "                            "
-                      "WIRE RADIUS: %10.3E METERS",
+                      "WIRE RADIUS: %10.3E METERS\n",
                 ctx->gnd.num_radials, ctx->save.screen_wire_len, ctx->save.screen_wire_radius);
 
-        fprintf(file, "\n"
-                      "                            "
-                      "MEDIUM UNDER SCREEN -");
+        fprintf(file, "                            "
+                      "MEDIUM UNDER SCREEN -\n");
       }
 
       // Ground type
       if (ctx->gnd.is_perfect != 2)
       {
-        fprintf(file, "\n"
-                      "                            "
-                      "FINITE GROUND - REFLECTION COEFFICIENT APPROXIMATION");
+        fprintf(file, "                            "
+                      "FINITE GROUND - REFLECTION COEFFICIENT APPROXIMATION\n");
       }
       else
       {
-        fprintf(file, "\n"
-                      "                            "
-                      "FINITE GROUND - SOMMERFELD SOLUTION");
+        fprintf(file, "                            "
+                      "FINITE GROUND - SOMMERFELD SOLUTION\n");
       }
 
       // Ground parameters
       complex double epsc = cmplx(ctx->save.ground_epsr, -ctx->save.ground_sigma * ctx->geometry.wavelength * 59.96);
-      fprintf(file, "\n"
-                    "                            "
+      fprintf(file, "                            "
                     "RELATIVE DIELECTRIC CONST: %.3f\n"
                     "                            "
                     "CONDUCTIVITY: %10.3E MHOS/METER\n"
                     "                            "
-                    "COMPLEX DIELECTRIC CONSTANT: %11.4E%+11.4Ej",
+                    "COMPLEX DIELECTRIC CONSTANT: %11.4E%+11.4Ej\n",
               ctx->save.ground_epsr, ctx->save.ground_sigma, creal(epsc), cimag(epsc));
     }
   }
@@ -2479,9 +2475,9 @@ static void write_antenna_input_parameters(FILE *file, const context_t *ctx)
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    fprintf(file, "\n\n\n"
+    fprintf(file, "\n\n\n\n"
                   "                                          "
-                  "- - - ANTENNA INPUT PARAMETERS - - -");
+                  "- - - ANTENNA INPUT PARAMETERS - - -\n");
 
     fprintf(file, "\n"
                   "   TAG   SEG.    VOLTAGE (VOLTS)         "
@@ -2547,14 +2543,14 @@ static void write_currents(FILE *file, const context_t *ctx)
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    fprintf(file, "\n\n\n"
+    fprintf(file, "\n\n\n\n"
                   "                             "
                   "- - - CURRENTS AND LOCATION - - -\n"
                   "\n"
                   "                                 "
                   "DISTANCES IN WAVELENGTHS");
 
-    fprintf(file, "\n\n"
+    fprintf(file, "\n\n\n"
                   "  SEG.  TAG    COORD. OF SEG. CENTER     SEG.            - - - CURRENT (AMPS) - - -\n"
                   "  NO.   NO.     X        Y        Z      LENGTH     REAL        IMAG.       MAG.        PHASE");
 
@@ -2576,6 +2572,7 @@ static void write_currents(FILE *file, const context_t *ctx)
               ctx->geometry.half_len[i],
               creal(curi), cimag(curi), cmag, ph);
     }
+    fprintf(file, "\n");
   }
   else
   {
@@ -2634,16 +2631,17 @@ static void write_power_budget(FILE *file, const context_t *ctx)
     fprintf(file, "\n\n\n"
                   "                                        "
                   "- - - POWER BUDGET - - -\n"
-                  "                               "
-                  "INPUT POWER   = %11.4E Watts\n"
-                  "                               "
-                  "RADIATED POWER= %11.4E Watts\n"
-                  "                               "
-                  "STRUCTURE LOSS= %11.4E Watts\n"
-                  "                               "
-                  "NETWORK LOSS  = %11.4E Watts\n"
-                  "                               "
-                  "EFFICIENCY    = %7.2f Percent",
+                  "\n"
+                  "                                           "
+                  "INPUT POWER   = %10.4E WATTS\n"
+                  "                                           "
+                  "RADIATED POWER= %10.4E WATTS\n"
+                  "                                           "
+                  "STRUCTURE LOSS= %10.4E WATTS\n"
+                  "                                           "
+                  "NETWORK LOSS  = %10.4E WATTS\n"
+                  "                                           "
+                  "EFFICIENCY    = %6.2f PERCENT",
             ctx->netcx.power_in, tmp1, ctx->fpat.ohmic_loss, ctx->netcx.power_net_loss, tmp2);
   }
   else
@@ -2742,8 +2740,8 @@ static void write_radiation_pattern_header(FILE *file, const context_t *ctx)
 
     if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
     {
-      fprintf(file, "\n\n\n"
-                    "                               "
+      fprintf(file, "\n\n\n\n"
+                    "                                                "
                     "- - - RADIATION PATTERNS - - -\n");
     }
     else
@@ -2851,6 +2849,7 @@ static void write_radiation_pattern_data(FILE *file, const context_t *ctx)
       }
     }
   }
+  fprintf(file, "\n\n");
 }
 
 /******************************************************************************
