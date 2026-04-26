@@ -200,7 +200,7 @@ typedef struct
 	double gtot;      /* total gain (dB) */
 	double axrat;     /* axial ratio */
 	double tilta;     /* tilt angle */
-	int    pol_sense; /* 0=LINEAR, 1=RIGHT, 2=LEFT */
+	int    pol_sense; /* 0=LINEAR, 1=RIGHT, 2=LEFT, 3=BLANK (no radiation) */
 	double ethm;      /* E-theta magnitude */
 	double etha;      /* E-theta phase */
 	double ephm;      /* E-phi magnitude */

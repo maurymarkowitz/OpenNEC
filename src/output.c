@@ -2800,7 +2800,7 @@ static void write_radiation_pattern_header(FILE *file, const context_t *ctx)
  */
 static void write_radiation_pattern_data(FILE *file, const context_t *ctx)
 {
-  char *hpol[3] = {"LINEAR", "RIGHT ", "LEFT  "};
+  char *hpol[4] = {"LINEAR", "RIGHT ", "LEFT  ", "      "}; /* 4th entry is blank for no radiation */
   double tmp5, tmp6;
 
   if (ctx->rpat.num_points == 0 || ctx->rpat.points == NULL)
@@ -2842,7 +2842,7 @@ static void write_radiation_pattern_data(FILE *file, const context_t *ctx)
         fprintf(file, "\n"
                       " %7.2f%9.2f   %8.2f%8.2f%8.2f%11.5f%9.2f  %6s%15.5E%9.2f%15.5E%9.2f",
                 pt->theta, pt->phi, tmp5, tmp6, pt->gtot, pt->axrat,
-                pt->tilta, hpol[pt->pol_sense >= 0 && pt->pol_sense <= 2 ? pt->pol_sense : 0],
+                pt->tilta, hpol[pt->pol_sense >= 0 && pt->pol_sense <= 3 ? pt->pol_sense : 0],
                 pt->ethm, pt->etha, pt->ephm, pt->epha);
       }
       else
@@ -2852,7 +2852,7 @@ static void write_radiation_pattern_data(FILE *file, const context_t *ctx)
                       " %7.2f %9.2f  %8.2f %8.2f %8.2f %11.4f"
                       " %9.2f %6s %11.4E %9.2f %11.4E %9.2f",
                 pt->theta, pt->phi, tmp5, tmp6, pt->gtot, pt->axrat,
-                pt->tilta, hpol[pt->pol_sense >= 0 && pt->pol_sense <= 2 ? pt->pol_sense : 0],
+                pt->tilta, hpol[pt->pol_sense >= 0 && pt->pol_sense <= 3 ? pt->pol_sense : 0],
                 pt->ethm, pt->etha, pt->ephm, pt->epha);
       }
     }

@@ -1,5 +1,8 @@
 OpenNEC version history
 
+Version 1.3.7 - 2026 April 26
+- more work on fortran formatting
+
 Version 1.3.4 - 2026 April 21
 - lots of work getting the "original" --format to exactly match the Fortran code from the PC
 - as part of that, a --line-ending switch has been added to produce "crlf" or just "lf"

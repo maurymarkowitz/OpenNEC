@@ -548,7 +548,7 @@ void compute_radiation_pattern(context_t *ctx)
           emajr2 = 0.0;
           eminr2 = 0.0;
           axrat = 0.0;
-          pt->pol_sense = 0; /* LINEAR */
+          pt->pol_sense = 3; /* BLANK (no radiation) */
         }
         else {
           dfaz = epha - etha;
