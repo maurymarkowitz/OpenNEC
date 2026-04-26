@@ -2543,8 +2543,16 @@ static void write_currents(FILE *file, const context_t *ctx)
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    fprintf(file, "\n\n\n\n"
-                  "                             "
+    /* For Freq 2+, add one extra newline to shift down by 1 line */
+    if (ctx->freq_step_output_written)
+    {
+      fprintf(file, "\n\n\n\n\n");
+    }
+    else
+    {
+      fprintf(file, "\n\n\n\n");
+    }
+    fprintf(file, "                             "
                   "- - - CURRENTS AND LOCATION - - -\n"
                   "\n"
                   "                                 "
@@ -2849,7 +2857,15 @@ static void write_radiation_pattern_data(FILE *file, const context_t *ctx)
       }
     }
   }
-  fprintf(file, "\n\n");
+  /* Fewer trailing newlines for Freq 2+ to balance extra newline in write_currents */
+  if (ctx->freq_step_output_written)
+  {
+    fprintf(file, "\n");
+  }
+  else
+  {
+    fprintf(file, "\n\n");
+  }
 }
 
 /******************************************************************************
@@ -2864,8 +2880,16 @@ static void write_average_power_gain(FILE *file, const context_t *ctx)
     return;
   }
 
-  fprintf(file, "\n\n\n"
-                "  AVERAGE POWER GAIN: %11.4E - SOLID ANGLE"
+  /* Fewer leading newlines for Freq 2+ to balance extra newline in write_currents */
+  if (ctx->freq_step_output_written)
+  {
+    fprintf(file, "\n\n");
+  }
+  else
+  {
+    fprintf(file, "\n\n\n");
+  }
+  fprintf(file, "  AVERAGE POWER GAIN: %11.4E - SOLID ANGLE"
                 " USED IN AVERAGING: (%+7.4f)*PI STERADIANS",
           ctx->rpat.pint, ctx->rpat.solid_angle);
 }
