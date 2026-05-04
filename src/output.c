@@ -1584,12 +1584,24 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
 
     case 10: // GH card, generate helix
       num_wires++;
-      fprintf(ctx->output_fp, "\n"
-                              " %5d HELIX STRUCTURE - SPACING OF TURNS: %8.3f AXIAL"
-                              " LENGTH: %8.3f  %8.3f %5d %5d %5d %4d\n      "
-                              " RADIUS X1:%8.3f Y1:%8.3f X2:%8.3f Y2:%8.3f ",
-              num_wires, card.f[1], card.f[2], card.f[7], card.tag, card.start_segment, card.end_segment,
-              card.i[1], card.f[3], card.f[4], card.f[5], card.f[6]);
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+      {
+        fprintf(ctx->output_fp, "\n"
+                                " %5d HELIX STRUCTURE-   AXIAL SPACING BETWEEN TURNS = %8.3f"
+                                " TOTAL AXIAL LENGTH = %8.3f  %8.3f %5d %5d %5d %4d\n      "
+                                " RADIUS OF HELIX =%8.3f X1:%8.3f Y1:%8.3f X2:%8.3f ",
+                num_wires, card.f[1], card.f[2], card.f[7], card.tag, card.start_segment, card.end_segment,
+                card.i[1], card.f[3], card.f[4], card.f[5], card.f[6]);
+      }
+      else
+      {
+        fprintf(ctx->output_fp, "\n"
+                                " %5d HELIX STRUCTURE - SPACING OF TURNS: %8.3f AXIAL"
+                                " LENGTH: %8.3f  %8.3f %5d %5d %5d %4d\n      "
+                                " RADIUS X1:%8.3f Y1:%8.3f X2:%8.3f Y2:%8.3f ",
+                num_wires, card.f[1], card.f[2], card.f[7], card.tag, card.start_segment, card.end_segment,
+                card.i[1], card.f[3], card.f[4], card.f[5], card.f[6]);
+      }
       break;
 
     } /* switch on the card type */
@@ -1598,6 +1610,14 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
   // and now a final report on the cards
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
+    for (int i = 0; i < ctx->outputs.num_messages; i++)
+    {
+      fprintf(ctx->output_fp, "%s", ctx->outputs.messages[i]);
+      size_t msg_len = strlen(ctx->outputs.messages[i]);
+      if (msg_len == 0 || ctx->outputs.messages[i][msg_len - 1] != '\n')
+        fprintf(ctx->output_fp, "\n");
+    }
+
     fprintf(ctx->output_fp, "\n\n"
                             "   TOTAL SEGMENTS USED=   %d     NO. SEG. IN A SYMMETRIC CELL=   %d     SYMMETRY FLAG=  %d",
             ctx->geometry.num_segs, ctx->geometry.num_segs_sym, ctx->geometry.symmetry_flag);
@@ -1659,9 +1679,15 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
   }
 
   // Output any informational messages collected during geometry processing
-  for (int i = 0; i < ctx->outputs.num_messages; i++)
+  if (ctx->output_format != OUTPUT_FORMAT_ORIGINAL)
   {
-    fprintf(ctx->output_fp, "%s\n", ctx->outputs.messages[i]);
+    for (int i = 0; i < ctx->outputs.num_messages; i++)
+    {
+      fprintf(ctx->output_fp, "%s", ctx->outputs.messages[i]);
+      size_t msg_len = strlen(ctx->outputs.messages[i]);
+      if (msg_len == 0 || ctx->outputs.messages[i][msg_len - 1] != '\n')
+        fprintf(ctx->output_fp, "\n");
+    }
   }
 
   return 0;
@@ -1793,15 +1819,31 @@ static void write_patches(const context_t *ctx, const deck_t *deck, FILE *file)
   if (ctx->geometry.num_patches == 0)
     return;
 
-  fprintf(ctx->output_fp, "\n\n\n"
-                          "                                   "
-                          " --------- SURFACE PATCH DATA ---------\n"
-                          "                                            "
-                          " COORDINATES IN METERS\n\n"
-                          " PATCH      COORD. OF PATCH CENTER           UNIT NORMAL VECTOR      "
-                          " PATCH           COMPONENTS OF UNIT TANGENT VECTORS\n"
-                          "  No:       X          Y          Z          X        Y        Z      "
-                          " AREA         X1       Y1       Z1        X2       Y2      Z2");
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(ctx->output_fp, "\n\n\n\n"
+                            "                                            "
+                            "- - - SURFACE PATCH DATA - - -\n"
+                            "\n\n"
+                            "                                                 "
+                            "COORDINATES IN METERS\n\n"
+                            " PATCH      COORD. OF PATCH CENTER           UNIT NORMAL VECTOR      "
+                            " PATCH           COMPONENTS OF UNIT TANGENT VECTORS\n"
+                            "  No:       X          Y          Z          X        Y        Z      "
+                            " AREA         X1       Y1       Z1        X2       Y2      Z2");
+  }
+  else
+  {
+    fprintf(ctx->output_fp, "\n\n\n"
+                            "                                   "
+                            " --------- SURFACE PATCH DATA ---------\n"
+                            "                                            "
+                            " COORDINATES IN METERS\n\n"
+                            " PATCH      COORD. OF PATCH CENTER           UNIT NORMAL VECTOR      "
+                            " PATCH           COMPONENTS OF UNIT TANGENT VECTORS\n"
+                            "  No:       X          Y          Z          X        Y        Z      "
+                            " AREA         X1       Y1       Z1        X2       Y2      Z2");
+  }
 
   double xw1, yw1, zw1;
   for (int i = 0; i < ctx->geometry.num_patches; i++)
@@ -1951,27 +1993,23 @@ void write_end_cards(FILE *file, const deck_t *deck)
   int en_card_found = 0;
   card_t last_rp_card = {0};
   int found_rp = 0;
-  int card_number = 0;
-  
-  /* Count control cards to number the EN card correctly, and find the last RP card */
+
+  /* Count control cards to number the EN/NX cards correctly, and find the last RP card. */
   for (int i = 0; i < deck->num_cards; i++)
   {
     card_t *card = &deck->cards[i];
-    
-    /* Check if EN card exists */
+
     if (strncmp(card->card_code, "EN", 2) == 0)
     {
       en_card_found = 1;
     }
-    
-    /* Track last RP card for implicit EN parameters */
+
     if (strncmp(card->card_code, "RP", 2) == 0)
     {
       found_rp = 1;
       last_rp_card = *card;
     }
-    
-    /* Count all control cards (including EN/NX) */
+
     if (strncmp(card->card_code, "FR", 2) == 0 ||
         strncmp(card->card_code, "EX", 2) == 0 ||
         strncmp(card->card_code, "LD", 2) == 0 ||
@@ -1993,33 +2031,100 @@ void write_end_cards(FILE *file, const deck_t *deck)
         strncmp(card->card_code, "XQ", 2) == 0 ||
         strncmp(card->card_code, "XT", 2) == 0)
     {
-      card_number++;
+      /* Nothing to do; this loop only finds the last RP card and determines whether EN exists. */
     }
   }
-  
-  /* If no explicit EN card was found, output an implicit EN card */
+
+  int current_card_number = 0;
+
+  for (int i = 0; i < deck->num_cards; i++)
+  {
+    card_t *card = &deck->cards[i];
+    bool is_control_card =
+        strncmp(card->card_code, "FR", 2) == 0 ||
+        strncmp(card->card_code, "EX", 2) == 0 ||
+        strncmp(card->card_code, "LD", 2) == 0 ||
+        strncmp(card->card_code, "TL", 2) == 0 ||
+        strncmp(card->card_code, "NT", 2) == 0 ||
+        strncmp(card->card_code, "RP", 2) == 0 ||
+        strncmp(card->card_code, "EN", 2) == 0 ||
+        strncmp(card->card_code, "NX", 2) == 0 ||
+        strncmp(card->card_code, "GN", 2) == 0 ||
+        strncmp(card->card_code, "EK", 2) == 0 ||
+        strncmp(card->card_code, "KH", 2) == 0 ||
+        strncmp(card->card_code, "NE", 2) == 0 ||
+        strncmp(card->card_code, "NH", 2) == 0 ||
+        strncmp(card->card_code, "PT", 2) == 0 ||
+        strncmp(card->card_code, "PQ", 2) == 0 ||
+        strncmp(card->card_code, "CP", 2) == 0 ||
+        strncmp(card->card_code, "GD", 2) == 0 ||
+        strncmp(card->card_code, "WG", 2) == 0 ||
+        strncmp(card->card_code, "XQ", 2) == 0 ||
+        strncmp(card->card_code, "XT", 2) == 0;
+
+    if (!is_control_card)
+    {
+      continue;
+    }
+
+    current_card_number++;
+
+    if (strncmp(card->card_code, "EN", 2) == 0)
+    {
+      if (found_rp && card->ints_used == 0 && card->flts_used == 0)
+      {
+        fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d    %d  %d",
+                current_card_number,
+                last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
+        for (int j = 1; j <= 6; j++)
+        {
+          fprintf(file, " %12.5E", last_rp_card.f[j]);
+        }
+        fprintf(file, "\n");
+      }
+      else
+      {
+        fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d    %d  %d",
+                current_card_number,
+                card->i[1], card->i[2], card->i[3], card->i[4]);
+        for (int j = 1; j <= 6; j++)
+        {
+          fprintf(file, " %12.5E", card->f[j]);
+        }
+        fprintf(file, "\n");
+      }
+    }
+    else if (strncmp(card->card_code, "NX", 2) == 0)
+    {
+      fprintf(file, " ***** DATA CARD NO. %2d   NX   %d   %d    %d  %d",
+              current_card_number,
+              card->i[1], card->i[2], card->i[3], card->i[4]);
+      for (int j = 1; j <= 6; j++)
+      {
+        fprintf(file, " %12.5E", card->f[j]);
+      }
+      fprintf(file, "\n");
+    }
+  }
+
   if (!en_card_found)
   {
-    card_number++;  /* Increment to get the correct EN card number */
-    
+    current_card_number++;
     if (found_rp)
     {
-      /* Use parameters from the last RP card */
-      fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d    %d  %d", card_number, 
+      fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d    %d  %d",
+              current_card_number,
               last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
-      
-      /* Output float fields from the last RP card */
       for (int j = 1; j <= 6; j++)
       {
         fprintf(file, " %12.5E", last_rp_card.f[j]);
       }
-      
       fprintf(file, "\n");
     }
-    else
+    else // there is an EN card
     {
-      /* Default EN card with all zeros */
-      fprintf(file, " ***** DATA CARD NO. %2d   EN   0     0     0     0  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00\n", card_number);
+      fprintf(file, " ***** DATA CARD NO. %2d   EN   0     0     0     0  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00\n",
+              current_card_number);
     }
   }
 }
@@ -2033,11 +2138,12 @@ void write_end_cards(FILE *file, const deck_t *deck)
 static void write_frequency_data(FILE *file, const context_t *ctx)
 {
   const output_format_spec_t *fmt = get_format(ctx);
+  const char *frequency_header_prefix = ctx->freq_step_output_written ? "\n\n\n" : "\n\n";
   
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
     /* Original Fortran format with spaces around FREQUENCY */
-    fprintf(file, "\n\n"
+    fprintf(file, "%s"
                   "                                 "
                   "- - - - - - FREQUENCY - - - - - -\n"
                   "\n"
@@ -2045,6 +2151,7 @@ static void write_frequency_data(FILE *file, const context_t *ctx)
                   "%s%11.4E %s\n"
                   "                                    "
                   "%s%11.4E %s",
+            frequency_header_prefix,
             fmt->frequency_label, ctx->save.freq_mhz, fmt->freq_units,
             fmt->wavelength_label, ctx->geometry.wavelength, fmt->length_units);
 
@@ -2056,13 +2163,14 @@ static void write_frequency_data(FILE *file, const context_t *ctx)
   else
   {
     /* NEC2C format */
-    fprintf(file, "\n\n"
+    fprintf(file, "%s"
                   "                               "
                   "%s%s%s\n"
                   "                                "
                   "%s%11.4E %s\n"
                   "                                "
                   "%s%11.4E %s",
+            frequency_header_prefix,
             fmt->header_separator, "FREQUENCY", fmt->header_separator,
             fmt->frequency_label, ctx->save.freq_mhz, fmt->freq_units,
             fmt->wavelength_label, ctx->geometry.wavelength, fmt->length_units);
@@ -2215,13 +2323,13 @@ static void write_environment_data(FILE *file, const context_t *ctx)
   {
     fprintf(file, "\n\n\n"
                   "                                  "
-                  "- - - ANTENNA ENVIRONMENT - - -");
+                  "- - - ANTENNA ENVIRONMENT - - -\n\n");
   }
   else
   {
     fprintf(file, "\n\n\n"
                   "                            "
-                  "-------- ANTENNA ENVIRONMENT --------");
+                  "-------- ANTENNA ENVIRONMENT --------\n\n");
   }
 
   if (ctx->gnd.has_ground == 1)
@@ -2243,16 +2351,32 @@ static void write_environment_data(FILE *file, const context_t *ctx)
       // Radial wire ground screen
       if (ctx->gnd.num_radials != 0)
       {
-        fprintf(file, "\n\n"
-                      "                                            "
-                      "RADIAL WIRE GROUND SCREEN\n"
-                      "                                            "
-                      "%d WIRES\n"
-                      "                            "
-                      "WIRE LENGTH: %8.2f METERS\n"
-                      "                            "
-                      "WIRE RADIUS: %10.3E METERS\n",
-                ctx->gnd.num_radials, ctx->save.screen_wire_len, ctx->save.screen_wire_radius);
+        if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+        {
+          fprintf(file, "\n\n"
+                        "                                            "
+                        "RADIAL WIRE GROUND SCREEN\n"
+                        "                                            "
+                        "%d WIRES\n"
+                        "                            "
+                        "WIRE LENGTH= %8.2f METERS\n"
+                        "                            "
+                        "WIRE RADIUS= %10.3E METERS\n",
+                  ctx->gnd.num_radials, ctx->save.screen_wire_len, ctx->save.screen_wire_radius);
+        }
+        else
+        {
+          fprintf(file, "\n\n"
+                        "                                            "
+                        "RADIAL WIRE GROUND SCREEN\n"
+                        "                                            "
+                        "%d WIRES\n"
+                        "                            "
+                        "WIRE LENGTH: %8.2f METERS\n"
+                        "                            "
+                        "WIRE RADIUS: %10.3E METERS\n",
+                  ctx->gnd.num_radials, ctx->save.screen_wire_len, ctx->save.screen_wire_radius);
+        }
 
         fprintf(file, "                            "
                       "MEDIUM UNDER SCREEN -\n");
@@ -2261,24 +2385,53 @@ static void write_environment_data(FILE *file, const context_t *ctx)
       // Ground type
       if (ctx->gnd.is_perfect != 2)
       {
-        fprintf(file, "                            "
-                      "FINITE GROUND - REFLECTION COEFFICIENT APPROXIMATION\n");
+        if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+        {
+          fprintf(file, "                                        "
+                        "FINITE GROUND.  REFLECTION COEFFICIENT APPROXIMATION\n");
+        }
+        else
+        {
+          fprintf(file, "                            "
+                        "FINITE GROUND - REFLECTION COEFFICIENT APPROXIMATION\n");
+        }
       }
       else
       {
-        fprintf(file, "                            "
-                      "FINITE GROUND - SOMMERFELD SOLUTION\n");
+        if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+        {
+          fprintf(file, "                                        "
+                        "FINITE GROUND.  SOMMERFELD SOLUTION\n");
+        }
+        else
+        {
+          fprintf(file, "                            "
+                        "FINITE GROUND - SOMMERFELD SOLUTION\n");
+        }
       }
 
       // Ground parameters
       complex double epsc = cmplx(ctx->save.ground_epsr, -ctx->save.ground_sigma * ctx->geometry.wavelength * 59.96);
-      fprintf(file, "                            "
-                    "RELATIVE DIELECTRIC CONST: %.3f\n"
-                    "                            "
-                    "CONDUCTIVITY: %10.3E MHOS/METER\n"
-                    "                            "
-                    "COMPLEX DIELECTRIC CONSTANT: %11.4E%+11.4Ej\n",
-              ctx->save.ground_epsr, ctx->save.ground_sigma, creal(epsc), cimag(epsc));
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+      {
+        fprintf(file, "                                        "
+                      "RELATIVE DIELECTRIC CONST.= %.3f\n"
+                      "                                        "
+                      "CONDUCTIVITY=%10.3E MHOS/METER\n"
+                      "                                        "
+                      "COMPLEX DIELECTRIC CONSTANT= %11.5E%+11.5E\n",
+                ctx->save.ground_epsr, ctx->save.ground_sigma, creal(epsc), cimag(epsc));
+      }
+      else
+      {
+        fprintf(file, "                            "
+                      "RELATIVE DIELECTRIC CONST: %.3f\n"
+                      "                            "
+                      "CONDUCTIVITY: %10.3E MHOS/METER\n"
+                      "                            "
+                      "COMPLEX DIELECTRIC CONSTANT: %11.4E%+11.4Ej\n",
+                ctx->save.ground_epsr, ctx->save.ground_sigma, creal(epsc), cimag(epsc));
+      }
     }
   }
 }
@@ -2326,9 +2479,18 @@ static void write_network_data(FILE *file, const context_t *ctx)
     return; // No network data to write
   }
 
-  fprintf(file, "\n\n\n"
-                "                                            "
-                "---------- NETWORK DATA ----------");
+  fprintf(file, "\n\n\n");
+
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(file, "                                            "
+                  "- - - NETWORK DATA - - -");
+  }
+  else
+  {
+    fprintf(file, "                                            "
+                  "---------- NETWORK DATA ----------");
+  }
 
   int itmp1 = ctx->netcx.net_types[0];
   int itmp3 = 0;
@@ -2341,23 +2503,49 @@ static void write_network_data(FILE *file, const context_t *ctx)
 
     if (itmp1 == 2)
     {
-      fprintf(file, "\n"
-                    "  -- FROM -  --- TO --      TRANSMISSION LINE       "
-                    " --------- SHUNT ADMITTANCES (MHOS) ---------   LINE\n"
-                    "  TAG   SEG  TAG   SEG    IMPEDANCE      LENGTH    "
-                    " ----- END ONE -----      ----- END TWO -----   TYPE\n"
-                    "  No:   No:  No:   No:         OHMS      METERS     "
-                    " REAL      IMAGINARY      REAL      IMAGINARY");
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+      {
+        fprintf(file, "\n"
+                      "      - FROM -    - TO -           TRANSMISSION LINE               "
+                      "-  -  SHUNT ADMITTANCES (MHOS)  -  -              LINE\n"
+                      "      TAG  SEG.   TAG  SEG.      IMPEDANCE      LENGTH           "
+                      "- END ONE -               - END TWO -            TYPE\n"
+                      "      NO.   NO.   NO.   NO.         OHM'S      METERS         "
+                      "REAL      IMAG.      REAL      IMAG.");
+      }
+      else
+      {
+        fprintf(file, "\n"
+                      "  -- FROM -  --- TO --      TRANSMISSION LINE       "
+                      " --------- SHUNT ADMITTANCES (MHOS) ---------   LINE\n"
+                      "  TAG   SEG  TAG   SEG    IMPEDANCE      LENGTH    "
+                      " ----- END ONE -----      ----- END TWO -----   TYPE\n"
+                      "  No:   No:  No:   No:         OHMS      METERS     "
+                      " REAL      IMAGINARY      REAL      IMAGINARY");
+      }
     }
     else if (itmp1 == 1)
     {
-      fprintf(file, "\n"
-                    "  -- FROM -  --- TO --            --------"
-                    " ADMITTANCE MATRIX ELEMENTS (MHOS) ---------\n"
-                    "  TAG   SEG  TAG   SEG   ----- (ONE,ONE) ------  "
-                    " ----- (ONE,TWO) -----   ----- (TWO,TWO) -------\n"
-                    "  No:   No:  No:   No:      REAL      IMAGINARY     "
-                    " REAL     IMAGINARY       REAL      IMAGINARY");
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+      {
+        fprintf(file, "\n"
+                      "      - FROM -    - TO -           -  -  ADMITTANCE MATRIX ELEMENTS "
+                      "(MHOS)  -  -\n"
+                      "      TAG  SEG.   TAG  SEG.         (ONE,ONE)                 "
+                      "(ONE,TWO)                 (TWO,TWO)\n"
+                      "      NO.   NO.   NO.   NO.        REAL      IMAG.      REAL      "
+                      "IMAG.      REAL      IMAG.");
+      }
+      else
+      {
+        fprintf(file, "\n"
+                      "  -- FROM -  --- TO --            --------"
+                      " ADMITTANCE MATRIX ELEMENTS (MHOS) ---------\n"
+                      "  TAG   SEG  TAG   SEG   ----- (ONE,ONE) ------  "
+                      " ----- (ONE,TWO) -----   ----- (TWO,TWO) -------\n"
+                      "  No:   No:  No:   No:      REAL      IMAGINARY     "
+                      " REAL     IMAGINARY       REAL      IMAGINARY");
+      }
     }
 
     for (int j = 0; j < ctx->netcx.num_networks; j++)
@@ -2436,27 +2624,49 @@ static void write_network_excitation(FILE *file, const context_t *ctx)
     return; // No excitation data or printing suppressed
   }
 
-  fprintf(file, "\n\n\n"
-                "                          "
-                "--------- STRUCTURE EXCITATION DATA AT NETWORK CONNECTION POINTS --------");
-
-  fprintf(file, "\n"
-                "  TAG   SEG       VOLTAGE (VOLTS)          CURRENT (AMPS)        "
-                " IMPEDANCE (OHMS)       ADMITTANCE (MHOS)     POWER\n"
-                "  No:   No:     REAL      IMAGINARY     REAL      IMAGINARY    "
-                " REAL      IMAGINARY     REAL      IMAGINARY   (WATTS)");
-
-  for (int i = 0; i < ctx->netcx.nexc; i++)
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
+    fprintf(file, "\n\n\n"
+                  "                          "
+                  "- - - STRUCTURE EXCITATION DATA AT NETWORK CONNECTION POINTS - - -");
+
+    for (int i = 0; i < ctx->netcx.nexc; i++)
+    {
+      fprintf(file, "\n"
+                    " %5d %5d %12.5E %12.5E %12.5E %12.5E"
+                    " %12.5E %12.5E %12.5E %12.5E %12.5E",
+              ctx->netcx.exc_tag[i], ctx->netcx.exc_seg[i],
+              creal(ctx->netcx.exc_v[i]), cimag(ctx->netcx.exc_v[i]),
+              creal(ctx->netcx.exc_i[i]), cimag(ctx->netcx.exc_i[i]),
+              creal(ctx->netcx.exc_z[i]), cimag(ctx->netcx.exc_z[i]),
+              creal(ctx->netcx.exc_y[i]), cimag(ctx->netcx.exc_y[i]),
+              ctx->netcx.exc_pwr[i]);
+    }
+  }
+  else
+  {
+    fprintf(file, "\n\n\n"
+                  "                          "
+                  "--------- STRUCTURE EXCITATION DATA AT NETWORK CONNECTION POINTS --------");
+
     fprintf(file, "\n"
-                  " %4d %5d %11.4E %11.4E %11.4E %11.4E"
-                  " %11.4E %11.4E %11.4E %11.4E %11.4E",
-            ctx->netcx.exc_tag[i], ctx->netcx.exc_seg[i],
-            creal(ctx->netcx.exc_v[i]), cimag(ctx->netcx.exc_v[i]),
-            creal(ctx->netcx.exc_i[i]), cimag(ctx->netcx.exc_i[i]),
-            creal(ctx->netcx.exc_z[i]), cimag(ctx->netcx.exc_z[i]),
-            creal(ctx->netcx.exc_y[i]), cimag(ctx->netcx.exc_y[i]),
-            ctx->netcx.exc_pwr[i]);
+                  "  TAG   SEG       VOLTAGE (VOLTS)          CURRENT (AMPS)        "
+                  " IMPEDANCE (OHMS)       ADMITTANCE (MHOS)     POWER\n"
+                  "  No:   No:     REAL      IMAGINARY     REAL      IMAGINARY    "
+                  " REAL      IMAGINARY     REAL      IMAGINARY   (WATTS)");
+
+    for (int i = 0; i < ctx->netcx.nexc; i++)
+    {
+      fprintf(file, "\n"
+                    " %4d %5d %11.4E %11.4E %11.4E %11.4E"
+                    " %11.4E %11.4E %11.4E %11.4E %11.4E",
+              ctx->netcx.exc_tag[i], ctx->netcx.exc_seg[i],
+              creal(ctx->netcx.exc_v[i]), cimag(ctx->netcx.exc_v[i]),
+              creal(ctx->netcx.exc_i[i]), cimag(ctx->netcx.exc_i[i]),
+              creal(ctx->netcx.exc_z[i]), cimag(ctx->netcx.exc_z[i]),
+              creal(ctx->netcx.exc_y[i]), cimag(ctx->netcx.exc_y[i]),
+              ctx->netcx.exc_pwr[i]);
+    }
   }
 }
 
@@ -2546,7 +2756,7 @@ static void write_currents(FILE *file, const context_t *ctx)
     /* For Freq 2+, add one extra newline to shift down by 1 line */
     if (ctx->freq_step_output_written)
     {
-      fprintf(file, "\n\n\n\n\n");
+      fprintf(file, "\n\n\n\n");
     }
     else
     {
@@ -2860,7 +3070,7 @@ static void write_radiation_pattern_data(FILE *file, const context_t *ctx)
   /* Fewer trailing newlines for Freq 2+ to balance extra newline in write_currents */
   if (ctx->freq_step_output_written)
   {
-    fprintf(file, "\n");
+    fprintf(file, "\n\n");
   }
   else
   {
@@ -2911,19 +3121,35 @@ static void write_normalized_gain(FILE *file, const context_t *ctx)
 
   int itmp1 = ctx->fpat.normalize_gain - 1;
 
-  fprintf(file, "\n\n\n"
-                "                             "
-                " ---------- NORMALIZED GAIN ----------\n"
-                "                                      %6s GAIN\n"
-                "                                  "
-                " NORMALIZATION FACTOR: %.2f db\n\n"
-                "    ---- ANGLES ----                ---- ANGLES ----"
-                "                ---- ANGLES ----\n"
-                "    THETA      PHI        GAIN      THETA      PHI  "
-                "      GAIN      THETA      PHI       GAIN\n"
-                "   DEGREES   DEGREES        DB     DEGREES   DEGREES "
-                "       DB     DEGREES   DEGREES       DB",
-          igntp[itmp1], ctx->rpat.gmax);
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(file, "\n\n\n"
+                  "                                   "
+                  "- - - - NORMALIZED GAIN - - - -\n"
+                  "                                      %6s GAIN\n"
+                  "                                   "
+                  "NORMALIZATION FACTOR = %.2f DB\n\n"
+                  "    - - ANGLES' - -      GAIN      - - ANGLES' - -      GAIN      - - ANGLES' - -      GAIN\n"
+                  "    THETA     PHI        DB     THETA     PHI        DB     THETA     PHI        DB\n"
+                  "   DEGREES   DEGREES       DEGREES   DEGREES       DEGREES   DEGREES",
+            igntp[itmp1], ctx->rpat.gmax);
+  }
+  else
+  {
+    fprintf(file, "\n\n\n"
+                  "                             "
+                  " ---------- NORMALIZED GAIN ----------\n"
+                  "                                      %6s GAIN\n"
+                  "                                  "
+                  " NORMALIZATION FACTOR: %.2f db\n\n"
+                  "    ---- ANGLES ----                ---- ANGLES ----"
+                  "                ---- ANGLES ----\n"
+                  "    THETA      PHI        GAIN      THETA      PHI  "
+                  "      GAIN      THETA      PHI       GAIN\n"
+                  "   DEGREES   DEGREES        DB     DEGREES   DEGREES "
+                  "       DB     DEGREES   DEGREES       DB",
+            igntp[itmp1], ctx->rpat.gmax);
+  }
 
   /* Print normalized gain in three columns */
   int itmp2 = ctx->rpat.num_points;
@@ -3065,23 +3291,57 @@ static void write_near_field_data(FILE *file, const context_t *ctx)
   if (ctx->nfr.num_points == 0 || ctx->nfr.points == NULL)
     return;
 
-  if (ctx->nfr.nfeh != 1)
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    fprintf(file, "\n\n\n"
-            "                             "
-            "-------- NEAR ELECTRIC FIELDS --------\n"
-            "     ------- LOCATION -------     ------- EX ------    ------- EY ------    ------- EZ ------\n"
-            "      X         Y         Z       MAGNITUDE   PHASE    MAGNITUDE   PHASE    MAGNITUDE   PHASE\n"
-            "    METERS    METERS    METERS     VOLTS/M  DEGREES    VOLTS/M   DEGREES     VOLTS/M  DEGREES");
+    if (ctx->nfr.nfeh != 1)
+    {
+      fprintf(file, "\n\n\n"
+              "                                   "
+              "- - - NEAR ELECTRIC FIELDS - - -\n\n"
+              "            "
+              "-  LOCATION  -"              "                     "
+              "-  EX  -"                    "               "
+              "-  EY  -"                    "               "
+              "-  EZ  -\n"
+              "        "
+              "        X"                  "          Y"    "          Z"    "          MAGNITUDE"    "   PHASE"    "      MAGNITUDE"    "   PHASE"    "      MAGNITUDE"    "   PHASE\n"
+              "      METERS"              "     METERS"    "     METERS"    "        VOLTS/M"    "   DEGREES"    "      VOLTS/M"    "   DEGREES"    "      VOLTS/M"    "   DEGREES");
+    }
+    else
+    {
+      fprintf(file, "\n\n\n"
+              "                                   "
+              "- - - NEAR MAGNETIC FIELDS - - -\n\n"
+              "            "
+              "-  LOCATION  -"              "                     "
+              "-  HX  -"                    "               "
+              "-  HY  -"                    "               "
+              "-  HZ  -\n"
+              "        "
+              "        X"                  "          Y"    "          Z"    "          MAGNITUDE"    "   PHASE"    "      MAGNITUDE"    "   PHASE"    "      MAGNITUDE"    "   PHASE\n"
+              "      METERS"              "     METERS"    "     METERS"    "         AMPS/M"    "   DEGREES"    "       AMPS/M"    "   DEGREES"    "       AMPS/M"    "   DEGREES");
+    }
   }
   else
   {
-    fprintf(file, "\n\n\n"
-            "                                   "
-            "-------- NEAR MAGNETIC FIELDS ---------\n\n"
-            "     ------- LOCATION -------     ------- HX ------    ------- HY ------    ------- HZ ------\n"
-            "      X         Y         Z       MAGNITUDE   PHASE    MAGNITUDE   PHASE    MAGNITUDE   PHASE\n"
-            "    METERS    METERS    METERS      AMPS/M  DEGREES      AMPS/M  DEGREES      AMPS/M  DEGREES");
+    if (ctx->nfr.nfeh != 1)
+    {
+      fprintf(file, "\n\n\n"
+              "                             "
+              "-------- NEAR ELECTRIC FIELDS --------\n"
+              "     ------- LOCATION -------     ------- EX ------    ------- EY ------    ------- EZ ------\n"
+              "      X         Y         Z       MAGNITUDE   PHASE    MAGNITUDE   PHASE    MAGNITUDE   PHASE\n"
+              "    METERS    METERS    METERS     VOLTS/M  DEGREES    VOLTS/M   DEGREES     VOLTS/M  DEGREES");
+    }
+    else
+    {
+      fprintf(file, "\n\n\n"
+              "                                   "
+              "-------- NEAR MAGNETIC FIELDS ---------\n\n"
+              "     ------- LOCATION -------     ------- HX ------    ------- HY ------    ------- HZ ------\n"
+              "      X         Y         Z       MAGNITUDE   PHASE    MAGNITUDE   PHASE    MAGNITUDE   PHASE\n"
+              "    METERS    METERS    METERS      AMPS/M  DEGREES      AMPS/M  DEGREES      AMPS/M  DEGREES");
+    }
   }
 
   for (int i = 0; i < ctx->nfr.num_points; i++)
@@ -3093,9 +3353,18 @@ static void write_near_field_data(FILE *file, const context_t *ctx)
     double tmp4 = complex_angle_deg(ctx, pt->ey);
     double tmp5 = cabs(pt->ez);
     double tmp6 = complex_angle_deg(ctx, pt->ez);
-    fprintf(file, "\n"
-            " %9.4f %9.4f %9.4f  %11.4E %7.2f  %11.4E %7.2f  %11.4E %7.2f",
-            pt->xob, pt->yob, pt->zob, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6);
+    if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+    {
+      fprintf(file, "\n"
+              "  %9.4f  %9.4f  %9.4f    %11.4E  %7.2f   %11.4E  %7.2f   %11.4E  %7.2f",
+              pt->xob, pt->yob, pt->zob, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6);
+    }
+    else
+    {
+      fprintf(file, "\n"
+              " %9.4f %9.4f %9.4f  %11.4E %7.2f  %11.4E %7.2f  %11.4E %7.2f",
+              pt->xob, pt->yob, pt->zob, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6);
+    }
   }
 }
 

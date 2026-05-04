@@ -646,11 +646,11 @@ int connect_segments(context_t *ctx, int ignd, outputs_list_t *outputs)
   ctx->segj.max_connections = 1;
   
   if(ignd != 0) {
-    add_message(ctx, outputs, "\n\n     GROUND PLANE SPECIFIED.");
+    add_message(ctx, outputs, "\n\n   GROUND PLANE SPECIFIED.");
 
     if( ignd > 0)
       add_message(ctx, outputs,
-              "\n     WHERE WIRE ENDS TOUCH GROUND, CURRENT WILL"
+              "\n   WHERE WIRE ENDS TOUCH GROUND, CURRENT WILL"
               " BE INTERPOLATED TO IMAGE IN GROUND PLANE.\n" );
 
     if(ctx->geometry.symmetry_flag == 2) {

@@ -65,7 +65,7 @@ Other NEC engines
 
 ### xnec2c
 
-A further development of nec2c by Neoklis Kyriazis to add an X Windows-based GUI. This version of the system was extended to include multi-threaded capabilities and support for math libraries. While OpenNEC also adds these capabilties, it did not use the code from xnec2c to do so. The project appears to be moribund.
+A further development of nec2c by Neoklis Kyriazis to add an X Windows-based GUI. This version of the system was extended to include multi-threaded capabilities and support for math libraries. While OpenNEC also adds these capabilties, it did not use the code from xnec2c to do so. The xnec2c project appears to be moribund.
 
 The xnec2c code can be found here:
 

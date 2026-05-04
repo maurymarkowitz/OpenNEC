@@ -1,0 +1,2222 @@
+--- LINE 140 ---
+  136: C***
+  137:       CALL STR0PC( AIN, AIN)
+  138: 
+  139:       if (KCOM .le. 0) then
+  140:           WRITE (2,126) 
+  141:           WRITE (2,127) 
+  142:           WRITE (2,128) 
+  143:       endif
+  144: 
+
+--- LINE 141 ---
+  137:       CALL STR0PC( AIN, AIN)
+  138: 
+  139:       if (KCOM .le. 0) then
+  140:           WRITE (2,126) 
+  141:           WRITE (2,127) 
+  142:           WRITE (2,128) 
+  143:       endif
+  144: 
+  145:       WRITE (2,129) ( COM( I, KCOM), I=1,19)
+
+--- LINE 142 ---
+  138: 
+  139:       if (KCOM .le. 0) then
+  140:           WRITE (2,126) 
+  141:           WRITE (2,127) 
+  142:           WRITE (2,128) 
+  143:       endif
+  144: 
+  145:       WRITE (2,129) ( COM( I, KCOM), I=1,19)
+  146: 
+
+--- LINE 145 ---
+  141:           WRITE (2,127) 
+  142:           WRITE (2,128) 
+  143:       endif
+  144: 
+  145:       WRITE (2,129) ( COM( I, KCOM), I=1,19)
+  146: 
+  147:       IF( AIN.EQ. ATST(11)) GOTO 2
+  148: 
+  149:       if (AIN .ne. ATST(1)) then
+
+--- LINE 150 ---
+  146: 
+  147:       IF( AIN.EQ. ATST(11)) GOTO 2
+  148: 
+  149:       if (AIN .ne. ATST(1)) then
+  150:           WRITE (2,130) 
+  151:           STOP
+  152:       endif
+  153: 
+  154: C    4 CONTINUE
+
+--- LINE 185 ---
+  181: C                                                                       
+  182: C     DEFAULT VALUES FOR INPUT PARAMETERS AND FLAGS                     
+  183: C                                                                       
+  184: C***
+  185:       WRITE (2,135) 
+  186:       IPLP1=0
+  187:       IPLP2=0
+  188:       IPLP3=0
+  189: C***
+
+--- LINE 225 ---
+  221: C***
+  222:    14 CALL READMN( AIN, ITMP1, ITMP2, ITMP3, ITMP4, TMP1, TMP2, TMP3, 
+  223:      &TMP4, TMP5, TMP6)
+  224:       MPCNT= MPCNT+1
+  225:       WRITE (2,137)  MPCNT, AIN, ITMP1, ITMP2, ITMP3, ITMP4, TMP1, TMP2
+  226:      &, TMP3, TMP4, TMP5, TMP6
+  227:       IF( AIN.EQ. ATST(2)) GOTO 16
+  228:       IF( AIN.EQ. ATST(3)) GOTO 17
+  229:       IF( AIN.EQ. ATST(4)) GOTO 21
+
+--- LINE 251 ---
+  247:       IF( AIN.EQ. ATST(22)) GOTO 330
+  248:       IF( AIN.NE. ATST(13)) GOTO 15
+  249:       CALL SECNDS( TMP1)
+  250:       TMP1= TMP1- EXTIM
+  251:       WRITE (2,201)  TMP1
+  252:       STOP
+  253:    15 WRITE (2,138) 
+  254: C                                                                       
+  255: C     FREQUENCY PARAMETERS                                              
+
+--- LINE 253 ---
+  249:       CALL SECNDS( TMP1)
+  250:       TMP1= TMP1- EXTIM
+  251:       WRITE (2,201)  TMP1
+  252:       STOP
+  253:    15 WRITE (2,138) 
+  254: C                                                                       
+  255: C     FREQUENCY PARAMETERS                                              
+  256: C                                                                       
+  257:       STOP
+
+--- LINE 260 ---
+  256: C                                                                       
+  257:       STOP
+  258:    16 IFRQ= ITMP1
+  259:       IF( ICASX.EQ.0) GOTO 8
+  260:       WRITE (2,303)  AIN
+  261:       STOP
+  262:     8 NFRQ= ITMP2
+  263:       IF( NFRQ.EQ.0) NFRQ=1
+  264:       FMHZ= TMP1
+
+--- LINE 302 ---
+  298:       IF( NCOUP.GT.5) GOTO 312
+  299:       NCTAG( NCOUP)= ITMP3
+  300:       NCSEG( NCOUP)= ITMP4
+  301:       GOTO 14
+  302:   312 WRITE (2,313) 
+  303: C                                                                       
+  304: C     LOADING PARAMETERS                                                
+  305: C                                                                       
+  306:       STOP
+
+--- LINE 314 ---
+  310:       IF( IGO.GT.2) IGO=2
+  311:       IF( ITMP1.EQ.(-1)) GOTO 14
+  312:    18 NLOAD= NLOAD+1
+  313:       IF( NLOAD.LE. LOADMX) GOTO 19
+  314:       WRITE (2,139) 
+  315:       STOP
+  316:    19 LDTYP( NLOAD)= ITMP1
+  317:       LDTAG( NLOAD)= ITMP2
+  318:       IF( ITMP4.EQ.0) ITMP4= ITMP3
+
+--- LINE 322 ---
+  318:       IF( ITMP4.EQ.0) ITMP4= ITMP3
+  319:       LDTAGF( NLOAD)= ITMP3
+  320:       LDTAGT( NLOAD)= ITMP4
+  321:       IF( ITMP4.GE. ITMP3) GOTO 20
+  322:       WRITE (2,140)  NLOAD, ITMP3, ITMP4
+  323:       STOP
+  324:    20 ZLR( NLOAD)= TMP1
+  325:       ZLI( NLOAD)= TMP2
+  326:       ZLC( NLOAD)= TMP3
+
+--- LINE 333 ---
+  329: C                                                                       
+  330:       GOTO 14
+  331:    21 IFLOW=4
+  332:       IF( ICASX.EQ.0) GOTO 10
+  333:       WRITE (2,303)  AIN
+  334:       STOP
+  335:    10 IF( IGO.GT.2) IGO=2
+  336:       IF( ITMP1.NE.(-1)) GOTO 22
+  337:       KSYMP=1
+
+--- LINE 348 ---
+  344:       EPSR= TMP1
+  345:       SIG= TMP2
+  346:       IF( NRADL.EQ.0) GOTO 23
+  347:       IF( IPERF.NE.2) GOTO 314
+  348:       WRITE (2,390) 
+  349:       STOP
+  350:   314 SCRWLT= TMP3
+  351:       SCRWRT= TMP4
+  352:       GOTO 14
+
+--- LINE 380 ---
+  376:       IF( ABS( VQD( NVQD)).LT.1.D-20) VQD( NVQD)=(1.,0.)
+  377:       GOTO 207
+  378:   205 NSANT= NSANT+1
+  379:       IF( NSANT.LE. NSMAX) GOTO 26
+  380:   206 WRITE (2,141) 
+  381:       STOP
+  382:    26 ISANT( NSANT)= ISEGNO( ITMP2, ITMP3)
+  383:       VSANT( NSANT)= CMPLX( TMP1, TMP2)
+  384:       IF( ABS( VSANT( NSANT)).LT.1.D-20) VSANT( NSANT)=(1.,0.)
+
+--- LINE 415 ---
+  411:       IF( IGO.GT.3) IGO=3
+  412:       IF( ITMP2.EQ.(-1)) GOTO 14
+  413:    29 NONET= NONET+1
+  414:       IF( NONET.LE. NETMX) GOTO 30
+  415:       WRITE (2,142) 
+  416:       STOP
+  417:    30 NTYP( NONET)=2
+  418:       IF( AIN.EQ. ATST(6)) NTYP( NONET)=1
+  419:       ISEG1( NONET)= ISEGNO( ITMP1, ITMP2)
+
+--- LINE 467 ---
+  463:   208 NFEH=1
+  464:       GOTO 209
+  465:    32 NFEH=0
+  466:   209 IF(.NOT.( IFLOW.EQ.8.AND. NFRQ.NE.1)) GOTO 33
+  467:       WRITE (2,143) 
+  468:    33 NEAR= ITMP1
+  469:       NRX= ITMP2
+  470:       NRY= ITMP3
+  471:       NRZ= ITMP4
+
+--- LINE 521 ---
+  517: C                                                                       
+  518:       GOTO (41,46,53,71,78), IGO
+  519:   322 IFLOW=12
+  520:       IF( ICASX.EQ.0) GOTO 301
+  521:       WRITE (2,302) 
+  522:       STOP
+  523:   301 IRNGF= IRESRV/2
+  524: C                                                                       
+  525: C     EXECUTE CARD  -  CALC. INCLUDING RADIATED FIELDS                  
+
+--- LINE 594 ---
+  590:    43 FMHZ= FMHZ* DELFRQ
+  591: C***
+  592:    44 FR= FMHZ/ CVEL
+  593:       WLAM= CVEL/ FMHZ
+  594:       WRITE (2,145)  FMHZ, WLAM
+  595:       WRITE (2,196)  RKH
+  596: C     FREQUENCY SCALING OF GEOMETRIC PARAMETERS                         
+  597: C***      FMHZS=FMHZ                                                    
+  598:       IF( IEXK.EQ.1) WRITE (2,321) 
+
+--- LINE 595 ---
+  591: C***
+  592:    44 FR= FMHZ/ CVEL
+  593:       WLAM= CVEL/ FMHZ
+  594:       WRITE (2,145)  FMHZ, WLAM
+  595:       WRITE (2,196)  RKH
+  596: C     FREQUENCY SCALING OF GEOMETRIC PARAMETERS                         
+  597: C***      FMHZS=FMHZ                                                    
+  598:       IF( IEXK.EQ.1) WRITE (2,321) 
+  599:       IF( N.EQ.0) GOTO 306
+
+--- LINE 598 ---
+  594:       WRITE (2,145)  FMHZ, WLAM
+  595:       WRITE (2,196)  RKH
+  596: C     FREQUENCY SCALING OF GEOMETRIC PARAMETERS                         
+  597: C***      FMHZS=FMHZ                                                    
+  598:       IF( IEXK.EQ.1) WRITE (2,321) 
+  599:       IF( N.EQ.0) GOTO 306
+  600: C***
+  601:       DO 45  I=1, N
+  602:       X( I)= XTEMP( I)* FR
+
+--- LINE 621 ---
+  617: C***
+  618:   245 BI( J)= BITEMP( J)* FR2
+  619: C     STRUCTURE SEGMENT LOADING                                         
+  620:   307 IGO=2
+  621:    46 WRITE (2,146) 
+  622:       IF( NLOAD.NE.0) CALL LOAD( LDTYP, LDTAG, LDTAGF, LDTAGT, ZLR, ZLI
+  623:      &, ZLC)
+  624:       IF( NLOAD.EQ.0.AND. NLODF.EQ.0) WRITE (2,147) 
+  625: C     GROUND PARAMETER                                                  
+
+--- LINE 624 ---
+  620:   307 IGO=2
+  621:    46 WRITE (2,146) 
+  622:       IF( NLOAD.NE.0) CALL LOAD( LDTYP, LDTAG, LDTAGF, LDTAGT, ZLR, ZLI
+  623:      &, ZLC)
+  624:       IF( NLOAD.EQ.0.AND. NLODF.EQ.0) WRITE (2,147) 
+  625: C     GROUND PARAMETER                                                  
+  626:       IF( NLOAD.EQ.0.AND. NLODF.NE.0) WRITE (2,327) 
+  627:       WRITE (2,148) 
+  628:       IF( KSYMP.EQ.1) GOTO 49
+
+--- LINE 626 ---
+  622:       IF( NLOAD.NE.0) CALL LOAD( LDTYP, LDTAG, LDTAGF, LDTAGT, ZLR, ZLI
+  623:      &, ZLC)
+  624:       IF( NLOAD.EQ.0.AND. NLODF.EQ.0) WRITE (2,147) 
+  625: C     GROUND PARAMETER                                                  
+  626:       IF( NLOAD.EQ.0.AND. NLODF.NE.0) WRITE (2,327) 
+  627:       WRITE (2,148) 
+  628:       IF( KSYMP.EQ.1) GOTO 49
+  629:       FRATI=(1.,0.)
+  630:       IF( IPERF.EQ.1) GOTO 48
+
+--- LINE 627 ---
+  623:      &, ZLC)
+  624:       IF( NLOAD.EQ.0.AND. NLODF.EQ.0) WRITE (2,147) 
+  625: C     GROUND PARAMETER                                                  
+  626:       IF( NLOAD.EQ.0.AND. NLODF.NE.0) WRITE (2,327) 
+  627:       WRITE (2,148) 
+  628:       IF( KSYMP.EQ.1) GOTO 49
+  629:       FRATI=(1.,0.)
+  630:       IF( IPERF.EQ.1) GOTO 48
+  631:       IF( SIG.LT.0.) SIG=- SIG/(59.96* WLAM)
+
+--- LINE 641 ---
+  637:       SCRWL= SCRWLT/ WLAM
+  638:       SCRWR= SCRWRT/ WLAM
+  639:       T1= FJ*2367.067D+0/ DFLOAT( NRADL)
+  640:       T2= SCRWR* DFLOAT( NRADL)
+  641:       WRITE (2,170)  NRADL, SCRWLT, SCRWRT
+  642:       WRITE (2,149) 
+  643:    47 IF( IPERF.EQ.2) GOTO 328
+  644:       WRITE (2,391) 
+  645:       GOTO 329
+
+--- LINE 642 ---
+  638:       SCRWR= SCRWRT/ WLAM
+  639:       T1= FJ*2367.067D+0/ DFLOAT( NRADL)
+  640:       T2= SCRWR* DFLOAT( NRADL)
+  641:       WRITE (2,170)  NRADL, SCRWLT, SCRWRT
+  642:       WRITE (2,149) 
+  643:    47 IF( IPERF.EQ.2) GOTO 328
+  644:       WRITE (2,391) 
+  645:       GOTO 329
+  646:   328 IF( NXA(1).EQ.0) READ( 21)  AR1, AR2, AR3, EPSCF, DXA, DYA, XSA, 
+
+--- LINE 644 ---
+  640:       T2= SCRWR* DFLOAT( NRADL)
+  641:       WRITE (2,170)  NRADL, SCRWLT, SCRWRT
+  642:       WRITE (2,149) 
+  643:    47 IF( IPERF.EQ.2) GOTO 328
+  644:       WRITE (2,391) 
+  645:       GOTO 329
+  646:   328 IF( NXA(1).EQ.0) READ( 21)  AR1, AR2, AR3, EPSCF, DXA, DYA, XSA, 
+  647:      &YSA, NXA, NYA
+  648:       FRATI=( EPSC-1.)/( EPSC+1.)
+
+--- LINE 650 ---
+  646:   328 IF( NXA(1).EQ.0) READ( 21)  AR1, AR2, AR3, EPSCF, DXA, DYA, XSA, 
+  647:      &YSA, NXA, NYA
+  648:       FRATI=( EPSC-1.)/( EPSC+1.)
+  649:       IF( ABS(( EPSCF- EPSC)/ EPSC).LT.1.D-3) GOTO 400
+  650:       WRITE (2,393)  EPSCF, EPSC
+  651:       STOP
+  652:   400 WRITE (2,392) 
+  653:   329 WRITE (2,150)  EPSR, SIG, EPSC
+  654:       GOTO 50
+
+--- LINE 652 ---
+  648:       FRATI=( EPSC-1.)/( EPSC+1.)
+  649:       IF( ABS(( EPSCF- EPSC)/ EPSC).LT.1.D-3) GOTO 400
+  650:       WRITE (2,393)  EPSCF, EPSC
+  651:       STOP
+  652:   400 WRITE (2,392) 
+  653:   329 WRITE (2,150)  EPSR, SIG, EPSC
+  654:       GOTO 50
+  655:    48 WRITE (2,151) 
+  656:       GOTO 50
+
+--- LINE 653 ---
+  649:       IF( ABS(( EPSCF- EPSC)/ EPSC).LT.1.D-3) GOTO 400
+  650:       WRITE (2,393)  EPSCF, EPSC
+  651:       STOP
+  652:   400 WRITE (2,392) 
+  653:   329 WRITE (2,150)  EPSR, SIG, EPSC
+  654:       GOTO 50
+  655:    48 WRITE (2,151) 
+  656:       GOTO 50
+  657:    49 WRITE (2,152) 
+
+--- LINE 655 ---
+  651:       STOP
+  652:   400 WRITE (2,392) 
+  653:   329 WRITE (2,150)  EPSR, SIG, EPSC
+  654:       GOTO 50
+  655:    48 WRITE (2,151) 
+  656:       GOTO 50
+  657:    49 WRITE (2,152) 
+  658: C * * *                                                                 
+  659: C     FILL AND FACTOR PRIMARY INTERACTION MATRIX                        
+
+--- LINE 657 ---
+  653:   329 WRITE (2,150)  EPSR, SIG, EPSC
+  654:       GOTO 50
+  655:    48 WRITE (2,151) 
+  656:       GOTO 50
+  657:    49 WRITE (2,152) 
+  658: C * * *                                                                 
+  659: C     FILL AND FACTOR PRIMARY INTERACTION MATRIX                        
+  660: C                                                                       
+  661:    50 CONTINUE
+
+--- LINE 683 ---
+  679:       CALL FACGF( CM, CM( IB11), CM( IC11), CM( ID11), CM( IX11), IP, 
+  680:      &IX, NP, N1, MP, M1, NEQ, NEQ2)
+  681:   323 CALL SECNDS( TIM1)
+  682:       TIM2= TIM1- TIM2
+  683:       WRITE (2,153)  TIM, TIM2
+  684:   333 IGO=3
+  685:       NTSOL=0
+  686: C     WRITE N.G.F. FILE                                                 
+  687:       IF( IFLOW.NE.12) GOTO 53
+
+--- LINE 698 ---
+  694:       NPHIC=1
+  695:       INC=1
+  696:       NPRINT=0
+  697:    54 IF( IXTYP.EQ.0.OR. IXTYP.EQ.5) GOTO 56
+  698:       IF( IPTFLG.LE.0.OR. IXTYP.EQ.4) WRITE (2,154) 
+  699:       TMP5= TA* XPR5
+  700:       TMP4= TA* XPR4
+  701:       IF( IXTYP.NE.4) GOTO 55
+  702:       TMP1= XPR1/ WLAM
+
+--- LINE 706 ---
+  702:       TMP1= XPR1/ WLAM
+  703:       TMP2= XPR2/ WLAM
+  704:       TMP3= XPR3/ WLAM
+  705:       TMP6= XPR6/( WLAM* WLAM)
+  706:       WRITE (2,156)  XPR1, XPR2, XPR3, XPR4, XPR5, XPR6
+  707:       GOTO 56
+  708:    55 TMP1= TA* XPR1
+  709:       TMP2= TA* XPR2
+  710:       TMP3= TA* XPR3
+
+--- LINE 712 ---
+  708:    55 TMP1= TA* XPR1
+  709:       TMP2= TA* XPR2
+  710:       TMP3= TA* XPR3
+  711:       TMP6= XPR6
+  712:       IF( IPTFLG.LE.0) WRITE (2,155)  XPR1, XPR2, XPR3, HPOL( IXTYP), 
+  713:      &XPR6
+  714: C                                                                       
+  715: C     MATRIX SOLVING  (NETWK CALLS SOLVES)                              
+  716: C                                                                       
+
+--- LINE 719 ---
+  715: C     MATRIX SOLVING  (NETWK CALLS SOLVES)                              
+  716: C                                                                       
+  717:    56 CALL ETMNS( TMP1, TMP2, TMP3, TMP4, TMP5, TMP6, IXTYP, CUR)
+  718:       IF( NONET.EQ.0.OR. INC.GT.1) GOTO 60
+  719:       WRITE (2,158) 
+  720:       ITMP3=0
+  721:       ITMP1= NTYP(1)
+  722:       DO 59  I=1,2
+  723:       IF( ITMP1.EQ.3) ITMP1=2
+
+--- LINE 724 ---
+  720:       ITMP3=0
+  721:       ITMP1= NTYP(1)
+  722:       DO 59  I=1,2
+  723:       IF( ITMP1.EQ.3) ITMP1=2
+  724:       IF( ITMP1.EQ.2) WRITE (2,159) 
+  725:       IF( ITMP1.EQ.1) WRITE (2,160) 
+  726:       DO 58  J=1, NONET
+  727:       ITMP2= NTYP( J)
+  728:       IF(( ITMP2/ ITMP1).EQ.1) GOTO 57
+
+--- LINE 725 ---
+  721:       ITMP1= NTYP(1)
+  722:       DO 59  I=1,2
+  723:       IF( ITMP1.EQ.3) ITMP1=2
+  724:       IF( ITMP1.EQ.2) WRITE (2,159) 
+  725:       IF( ITMP1.EQ.1) WRITE (2,160) 
+  726:       DO 58  J=1, NONET
+  727:       ITMP2= NTYP( J)
+  728:       IF(( ITMP2/ ITMP1).EQ.1) GOTO 57
+  729:       ITMP3= ITMP2
+
+--- LINE 736 ---
+  732:       ITMP5= ISEG2( J)
+  733:       IF( ITMP2.GE.2.AND. X11I( J).LE.0.) X11I( J)= WLAM* SQRT(( X( 
+  734:      &ITMP5)- X( ITMP4))**2+( Y( ITMP5)- Y( ITMP4))**2+( Z( ITMP5)- Z( 
+  735:      &ITMP4))**2)
+  736:       WRITE (2,157)  ITAG( ITMP4), ITMP4, ITAG( ITMP5), ITMP5, X11R( J)
+  737:      &, X11I( J), X12R( J), X12I( J), X22R( J), X22I( J), PNET(2* ITMP2
+  738:      &-1), PNET(2* ITMP2)
+  739:    58 CONTINUE
+  740:       IF( ITMP3.EQ.0) GOTO 60
+
+--- LINE 763 ---
+  759:    61 CONTINUE
+  760:       IF( N.EQ.0) GOTO 308
+  761:       IF( IPTFLG.EQ.(-1)) GOTO 63
+  762:       IF( IPTFLG.GT.0) GOTO 62
+  763:       WRITE (2,161) 
+  764:       WRITE (2,162) 
+  765:       GOTO 63
+  766:    62 IF( IPTFLG.EQ.3.OR. INC.GT.1) GOTO 63
+  767:       WRITE (2,163)  XPR3, HPOL( IXTYP), XPR6
+
+--- LINE 764 ---
+  760:       IF( N.EQ.0) GOTO 308
+  761:       IF( IPTFLG.EQ.(-1)) GOTO 63
+  762:       IF( IPTFLG.GT.0) GOTO 62
+  763:       WRITE (2,161) 
+  764:       WRITE (2,162) 
+  765:       GOTO 63
+  766:    62 IF( IPTFLG.EQ.3.OR. INC.GT.1) GOTO 63
+  767:       WRITE (2,163)  XPR3, HPOL( IXTYP), XPR6
+  768:    63 PLOSS=0.
+
+--- LINE 767 ---
+  763:       WRITE (2,161) 
+  764:       WRITE (2,162) 
+  765:       GOTO 63
+  766:    62 IF( IPTFLG.EQ.3.OR. INC.GT.1) GOTO 63
+  767:       WRITE (2,163)  XPR3, HPOL( IXTYP), XPR6
+  768:    63 PLOSS=0.
+  769:       ITMP1=0
+  770:       JUMP= IPTFLG+1
+  771:       DO 69  I=1, N
+
+--- LINE 787 ---
+  783:       IF( IPTFLG.EQ.0) GOTO 68
+  784:       IF( IPTFLG.LT.2.OR. INC.GT. NORMF) GOTO 67
+  785:       FNORM( INC)= CMAG
+  786:       ISAVE= I
+  787:    67 IF( IPTFLG.NE.3) WRITE (2,164)  XPR1, XPR2, CMAG, PH, I
+  788:       GOTO 69
+  789: C***
+  790:    68 WRITE (2,165)  I, ITAG( I), X( I), Y( I), Z( I), SI( I), CURI, 
+  791:      &CMAG, PH
+
+--- LINE 790 ---
+  786:       ISAVE= I
+  787:    67 IF( IPTFLG.NE.3) WRITE (2,164)  XPR1, XPR2, CMAG, PH, I
+  788:       GOTO 69
+  789: C***
+  790:    68 WRITE (2,165)  I, ITAG( I), X( I), Y( I), Z( I), SI( I), CURI, 
+  791:      &CMAG, PH
+  792:       IF( IPLP1.NE.1) GOTO 69
+  793:       IF( IPLP2.EQ.1) WRITE( 8,*)  CURI
+  794: C***
+
+--- LINE 798 ---
+  794: C***
+  795:       IF( IPLP2.EQ.2) WRITE( 8,*)  CMAG, PH
+  796:    69 CONTINUE
+  797:       IF( IPTFLQ.EQ.(-1)) GOTO 308
+  798:       WRITE (2,315) 
+  799:       ITMP1=0
+  800:       FR=1.D-6/ FMHZ
+  801:       DO 316  I=1, N
+  802:       IF( IPTFLQ.EQ.(-2)) GOTO 318
+
+--- LINE 810 ---
+  806:       IF( ITMP1.LT. IPTAQF.OR. ITMP1.GT. IPTAQT) GOTO 316
+  807:   318 CURI= FR* CMPLX(- BII( I), BIR( I))
+  808:       CMAG= ABS( CURI)
+  809:       PH= CANG( CURI)
+  810:       WRITE (2,165)  I, ITAG( I), X( I), Y( I), Z( I), SI( I), CURI, 
+  811:      &CMAG, PH
+  812:   316 CONTINUE
+  813:   308 IF( M.EQ.0) GOTO 310
+  814:       WRITE (2,197) 
+
+--- LINE 814 ---
+  810:       WRITE (2,165)  I, ITAG( I), X( I), Y( I), Z( I), SI( I), CURI, 
+  811:      &CMAG, PH
+  812:   316 CONTINUE
+  813:   308 IF( M.EQ.0) GOTO 310
+  814:       WRITE (2,197) 
+  815:       J= N-2
+  816:       ITMP1= LD+1
+  817:       DO 309  I=1, M
+  818:       J= J+3
+
+--- LINE 832 ---
+  828: C309   WRITE(6,198) I,X(ITMP1),Y(ITMP1),Z(ITMP1),ETHM,ETHA,EPHM,EPHA,E  
+  829: C     1X,EY, EZ                                                         
+  830: C***
+  831:       EPHA= CANG( EPH)
+  832:       WRITE (2,198)  I, X( ITMP1), Y( ITMP1), Z( ITMP1), ETHM, ETHA, 
+  833:      &EPHM, EPHA, EX, EY, EZ
+  834:       IF( IPLP1.NE.1) GOTO 309
+  835:       IF( IPLP3.EQ.1) WRITE( 8,*)  EX
+  836:       IF( IPLP3.EQ.2) WRITE( 8,*)  EY
+
+--- LINE 844 ---
+  840:   309 CONTINUE
+  841:   310 IF( IXTYP.NE.0.AND. IXTYP.NE.5) GOTO 70
+  842:       TMP1= PIN- PNLS- PLOSS
+  843:       TMP2=100.* TMP1/ PIN
+  844:       WRITE (2,166)  PIN, TMP1, PLOSS, PNLS, TMP2
+  845:    70 CONTINUE
+  846:       IGO=4
+  847:       IF( NCOUP.GT.0) CALL COUPLE( CUR, WLAM)
+  848:       IF( IFLOW.NE.7) GOTO 71
+
+--- LINE 851 ---
+  847:       IF( NCOUP.GT.0) CALL COUPLE( CUR, WLAM)
+  848:       IF( IFLOW.NE.7) GOTO 71
+  849:       IF( IXTYP.GT.0.AND. IXTYP.LT.4) GOTO 113
+  850:       IF( NFRQ.NE.1) GOTO 120
+  851:       WRITE (2,135) 
+  852:       GOTO 14
+  853: C                                                                       
+  854: C     NEAR FIELD CALCULATION                                            
+  855: C                                                                       
+
+--- LINE 861 ---
+  857:    72 IF( NEAR.EQ.(-1)) GOTO 78
+  858:       CALL NFPAT
+  859:       IF( MHZ.EQ. NFRQ) NEAR=-1
+  860:       IF( NFRQ.NE.1) GOTO 78
+  861:       WRITE (2,135) 
+  862: C                                                                       
+  863: C     STANDARD FAR FIELD CALCULATION                                    
+  864: C                                                                       
+  865:       GOTO 14
+
+--- LINE 887 ---
+  883:       IF( IPTFLG.LT.2) GOTO 119
+  884:       ITMP1= NTHI* NPHI
+  885:       IF( ITMP1.LE. NORMF) GOTO 114
+  886:       ITMP1= NORMF
+  887:       WRITE (2,181) 
+  888:   114 TMP1= FNORM(1)
+  889:       DO 115  J=2, ITMP1
+  890:       IF( FNORM( J).GT. TMP1) TMP1= FNORM( J)
+  891:   115 CONTINUE
+
+--- LINE 892 ---
+  888:   114 TMP1= FNORM(1)
+  889:       DO 115  J=2, ITMP1
+  890:       IF( FNORM( J).GT. TMP1) TMP1= FNORM( J)
+  891:   115 CONTINUE
+  892:       WRITE (2,182)  TMP1, XPR3, HPOL( IXTYP), XPR6, ISAVE
+  893:       DO 118  J=1, NPHI
+  894:       ITMP2= NTHI*( J-1)
+  895:       DO 116  I=1, NTHI
+  896:       ITMP3= I+ ITMP2
+
+--- LINE 900 ---
+  896:       ITMP3= I+ ITMP2
+  897:       IF( ITMP3.GT. ITMP1) GOTO 117
+  898:       TMP2= FNORM( ITMP3)/ TMP1
+  899:       TMP3= DB20( TMP2)
+  900:       WRITE (2,183)  XPR1, XPR2, TMP3, TMP2
+  901:       XPR1= XPR1+ XPR4
+  902:   116 CONTINUE
+  903:   117 XPR1= THETIS
+  904:       XPR2= XPR2+ XPR5
+
+--- LINE 909 ---
+  905:   118 CONTINUE
+  906:       XPR2= PHISS
+  907:   119 IF( MHZ.EQ. NFRQ) IFAR=-1
+  908:       IF( NFRQ.NE.1) GOTO 120
+  909:       WRITE (2,135) 
+  910:       GOTO 14
+  911:   120 MHZ= MHZ+1
+  912:       IF( MHZ.LE. NFRQ) GOTO 42
+  913:       IF( IPED.EQ.0) GOTO 123
+
+--- LINE 915 ---
+  911:   120 MHZ= MHZ+1
+  912:       IF( MHZ.LE. NFRQ) GOTO 42
+  913:       IF( IPED.EQ.0) GOTO 123
+  914:       IF( NVQD.LT.1) GOTO 199
+  915:       WRITE (2,184)  IVQD( NVQD), ZPNORM
+  916:       GOTO 204
+  917:   199 WRITE (2,184)  ISANT( NSANT), ZPNORM
+  918:   204 ITMP1= NFRQ
+  919:       IF( ITMP1.LE.( NORMF/4)) GOTO 121
+
+--- LINE 917 ---
+  913:       IF( IPED.EQ.0) GOTO 123
+  914:       IF( NVQD.LT.1) GOTO 199
+  915:       WRITE (2,184)  IVQD( NVQD), ZPNORM
+  916:       GOTO 204
+  917:   199 WRITE (2,184)  ISANT( NSANT), ZPNORM
+  918:   204 ITMP1= NFRQ
+  919:       IF( ITMP1.LE.( NORMF/4)) GOTO 121
+  920:       ITMP1= NORMF/4
+  921:       WRITE (2,185) 
+
+--- LINE 921 ---
+  917:   199 WRITE (2,184)  ISANT( NSANT), ZPNORM
+  918:   204 ITMP1= NFRQ
+  919:       IF( ITMP1.LE.( NORMF/4)) GOTO 121
+  920:       ITMP1= NORMF/4
+  921:       WRITE (2,185) 
+  922:   121 IF( IFRQ.EQ.0) TMP1= FMHZ-( NFRQ-1)* DELFRQ
+  923:       IF( IFRQ.EQ.1) TMP1= FMHZ/( DELFRQ**( NFRQ-1))
+  924:       DO 122  I=1, ITMP1
+  925:       ITMP2= I+4*( I-1)
+
+--- LINE 930 ---
+  926:       TMP2= FNORM( ITMP2)/ ZPNORM
+  927:       TMP3= FNORM( ITMP2+1)/ ZPNORM
+  928:       TMP4= FNORM( ITMP2+2)/ ZPNORM
+  929:       TMP5= FNORM( ITMP2+3)
+  930:       WRITE (2,186)  TMP1, FNORM( ITMP2), FNORM( ITMP2+1), FNORM( ITMP2
+  931:      &+2), FNORM( ITMP2+3), TMP2, TMP3, TMP4, TMP5
+  932:       IF( IFRQ.EQ.0) TMP1= TMP1+ DELFRQ
+  933:       IF( IFRQ.EQ.1) TMP1= TMP1* DELFRQ
+  934:   122 CONTINUE
+
+--- LINE 935 ---
+  931:      &+2), FNORM( ITMP2+3), TMP2, TMP3, TMP4, TMP5
+  932:       IF( IFRQ.EQ.0) TMP1= TMP1+ DELFRQ
+  933:       IF( IFRQ.EQ.1) TMP1= TMP1* DELFRQ
+  934:   122 CONTINUE
+  935:       WRITE (2,135) 
+  936:   123 CONTINUE
+  937:       NFRQ=1
+  938:       MHZ=1
+  939:       GOTO 14
+
+--- LINE 1088 ---
+ 1084:       MP= M
+ 1085:       IPSYM=0
+ 1086:       IF( NS.LT.1) RETURN
+ 1087:       IF( ABS( ANG2- ANG1).LT.360.00001D+0) GOTO 1
+ 1088:       WRITE (2,3) 
+ 1089:       STOP
+ 1090:     1 ANG= ANG1* TA
+ 1091:       DANG=( ANG2- ANG1)* TA/ NS
+ 1092:       XS1= RADA* COS( ANG)
+
+--- LINE 1153 ---
+ 1149: C     IF (ENF(NUNIT)) GO TO 3                                           
+ 1150:       READ( NUNIT,END=3) ( AR( J), J= I1, I2)
+ 1151:     2 CONTINUE
+ 1152:       RETURN
+ 1153:     3 WRITE (2,4)  NUNIT, NBLKS, NEOF
+ 1154:       IF( NEOF.NE.777) STOP
+ 1155:       NEOF=0
+ 1156: C                                                                       
+ 1157:       RETURN
+
+--- LINE 2127 ---
+ 2123:       DATA   JMAX/30/, SMIN/1.D-3/, NSMAX/50/, NPMAX/10/
+ 2124:       NSCON=0
+ 2125:       NPCON=0
+ 2126:       IF( IGND.EQ.0) GOTO 3
+ 2127:       WRITE (2,54) 
+ 2128:       IF( IGND.GT.0) WRITE (2,55) 
+ 2129:       IF( IPSYM.NE.2) GOTO 1
+ 2130:       NP=2* NP
+ 2131:       MP=2* MP
+
+--- LINE 2128 ---
+ 2124:       NSCON=0
+ 2125:       NPCON=0
+ 2126:       IF( IGND.EQ.0) GOTO 3
+ 2127:       WRITE (2,54) 
+ 2128:       IF( IGND.GT.0) WRITE (2,55) 
+ 2129:       IF( IPSYM.NE.2) GOTO 1
+ 2130:       NP=2* NP
+ 2131:       MP=2* MP
+ 2132:     1 IF( IABS( IPSYM).LE.2) GOTO 2
+
+--- LINE 2152 ---
+ 2148: C                                                                       
+ 2149:       SLEN= SQRT(( XI2- XI1)**2+( YI2- YI1)**2+( ZI2- ZI1)**2)* SMIN
+ 2150:       IF( IGND.LT.1) GOTO 5
+ 2151:       IF( ZI1.GT.- SLEN) GOTO 4
+ 2152:       WRITE (2,56)  I
+ 2153:       STOP
+ 2154:     4 IF( ZI1.GT. SLEN) GOTO 5
+ 2155:       ICON1( I)= I
+ 2156:       Z( I)=0.
+
+--- LINE 2178 ---
+ 2174: C                                                                       
+ 2175:       ICON1( I)=0
+ 2176:     8 IF( IGND.LT.1) GOTO 12
+ 2177:     9 IF( ZI2.GT.- SLEN) GOTO 10
+ 2178:       WRITE (2,56)  I
+ 2179:       STOP
+ 2180:    10 IF( ZI2.GT. SLEN) GOTO 12
+ 2181:       IF( ICON1( I).NE. I) GOTO 11
+ 2182:       WRITE (2,57)  I
+
+--- LINE 2182 ---
+ 2178:       WRITE (2,56)  I
+ 2179:       STOP
+ 2180:    10 IF( ZI2.GT. SLEN) GOTO 12
+ 2181:       IF( ICON1( I).NE. I) GOTO 11
+ 2182:       WRITE (2,57)  I
+ 2183:       STOP
+ 2184:    11 ICON2( I)= I
+ 2185:       Z2( I)=0.
+ 2186:       GOTO 15
+
+--- LINE 2278 ---
+ 2274:    23 CONTINUE
+ 2275:    24 I= I+1
+ 2276:       GOTO 21
+ 2277:    25 IF( NPCON.LE. NPMAX) GOTO 26
+ 2278:       WRITE (2,62)  NPMAX
+ 2279:       STOP
+ 2280:    26 WRITE (2,58)  N, NP, IPSYM
+ 2281:       IF( M.GT.0) WRITE (2,61)  M, MP
+ 2282:       ISEG=( N+ M)/( NP+ MP)
+
+--- LINE 2280 ---
+ 2276:       GOTO 21
+ 2277:    25 IF( NPCON.LE. NPMAX) GOTO 26
+ 2278:       WRITE (2,62)  NPMAX
+ 2279:       STOP
+ 2280:    26 WRITE (2,58)  N, NP, IPSYM
+ 2281:       IF( M.GT.0) WRITE (2,61)  M, MP
+ 2282:       ISEG=( N+ M)/( NP+ MP)
+ 2283:       IF( ISEG.EQ.1) GOTO 30
+ 2284:       IF( IPSYM) 28,27,29
+
+--- LINE 2281 ---
+ 2277:    25 IF( NPCON.LE. NPMAX) GOTO 26
+ 2278:       WRITE (2,62)  NPMAX
+ 2279:       STOP
+ 2280:    26 WRITE (2,58)  N, NP, IPSYM
+ 2281:       IF( M.GT.0) WRITE (2,61)  M, MP
+ 2282:       ISEG=( N+ M)/( NP+ MP)
+ 2283:       IF( ISEG.EQ.1) GOTO 30
+ 2284:       IF( IPSYM) 28,27,29
+ 2285:    27 STOP
+
+--- LINE 2286 ---
+ 2282:       ISEG=( N+ M)/( NP+ MP)
+ 2283:       IF( ISEG.EQ.1) GOTO 30
+ 2284:       IF( IPSYM) 28,27,29
+ 2285:    27 STOP
+ 2286:    28 WRITE (2,59)  ISEG
+ 2287:       GOTO 30
+ 2288:    29 IC= ISEG/2
+ 2289:       IF( ISEG.EQ.8) IC=3
+ 2290:       WRITE (2,60)  IC
+
+--- LINE 2290 ---
+ 2286:    28 WRITE (2,59)  ISEG
+ 2287:       GOTO 30
+ 2288:    29 IC= ISEG/2
+ 2289:       IF( ISEG.EQ.8) IC=3
+ 2290:       WRITE (2,60)  IC
+ 2291:    30 IF( N.EQ.0) GOTO 48
+ 2292:       WRITE (2,50) 
+ 2293: C     ADJUST CONNECTED SEG. ENDS TO EXACTLY COINCIDE.  PRINT JUNCTIONS  
+ 2294: C     OF 3 OR MORE SEG.  ALSO FIND OLD SEG. CONNECTING TO NEW SEG.      
+
+--- LINE 2292 ---
+ 2288:    29 IC= ISEG/2
+ 2289:       IF( ISEG.EQ.8) IC=3
+ 2290:       WRITE (2,60)  IC
+ 2291:    30 IF( N.EQ.0) GOTO 48
+ 2292:       WRITE (2,50) 
+ 2293: C     ADJUST CONNECTED SEG. ENDS TO EXACTLY COINCIDE.  PRINT JUNCTIONS  
+ 2294: C     OF 3 OR MORE SEG.  ALSO FIND OLD SEG. CONNECTING TO NEW SEG.      
+ 2295:       ISEG=0
+ 2296:       DO 44  J=1, N
+
+--- LINE 2354 ---
+ 2350:       IF( IX.GT. N1) GOTO 41
+ 2351:       IF( ICONX( IX).NE.0) GOTO 41
+ 2352:       NSCON= NSCON+1
+ 2353:       IF( NSCON.LE. NSMAX) GOTO 40
+ 2354:       WRITE (2,62)  NSMAX
+ 2355:       STOP
+ 2356:    40 ISCON( NSCON)= IX
+ 2357:       ICONX( IX)= NSCON
+ 2358:    41 CONTINUE
+
+--- LINE 2361 ---
+ 2357:       ICONX( IX)= NSCON
+ 2358:    41 CONTINUE
+ 2359:    42 IF( IC.LT.3) GOTO 43
+ 2360:       ISEG= ISEG+1
+ 2361:       WRITE (2,51)  ISEG,( JCO( I), I=1, IC)
+ 2362:    43 IF( IEND.EQ.1) GOTO 44
+ 2363:       IEND=1
+ 2364:       JEND=1
+ 2365:       IX= ICON2( J)
+
+--- LINE 2373 ---
+ 2369:       YA= Y2( J)
+ 2370:       ZA= Z2( J)
+ 2371:       GOTO 31
+ 2372:    44 CONTINUE
+ 2373:       IF( ISEG.EQ.0) WRITE (2,52) 
+ 2374: C     FIND OLD SEGMENTS THAT CONNECT TO NEW PATCHES                     
+ 2375:       IF( N1.EQ.0.OR. M1.EQ. M) GOTO 48
+ 2376:       DO 47  J=1, N1
+ 2377:       IX= ICON1( J)
+
+--- LINE 2392 ---
+ 2388:       ICONX( J)= NSCON
+ 2389:    47 CONTINUE
+ 2390:    48 CONTINUE
+ 2391:       RETURN
+ 2392:    49 WRITE (2,53)  IX
+ 2393: C                                                                       
+ 2394:       STOP
+ 2395:    50 FORMAT(//,9X,'- MULTIPLE WIRE JUNCTIONS -',/,1X,'JUNCTION',4X,
+ 2396:      &'SEGMENTS  (- FOR END 1, + FOR END 2)')
+
+--- LINE 2447 ---
+ 2443:       L1= L1+1
+ 2444:       Y12A( L1)= CUR( K)* WLAM/ ZIN
+ 2445:     1 CONTINUE
+ 2446:       IF( ICOUP.LT. NCOUP) RETURN
+ 2447:       WRITE (2,6) 
+ 2448:       NPM1= NCOUP-1
+ 2449:       DO 5  I=1, NPM1
+ 2450:       ITT1= NCTAG( I)
+ 2451:       ITS1= NCSEG( I)
+
+--- LINE 2477 ---
+ 2473:       ZL=1./ YL
+ 2474:       YIN= Y11- YIN/( Y22+ YL)
+ 2475:       ZIN=1./ YIN
+ 2476:       DBC= DB10( GMAX)
+ 2477:       WRITE (2,7)  ITT1, ITS1, ISG1, ITT2, ITS2, ISG2, DBC, ZL, ZIN
+ 2478:       GOTO 5
+ 2479:     4 WRITE (2,8)  ITT1, ITS1, ISG1, ITT2, ITS2, ISG2, C
+ 2480:     5 CONTINUE
+ 2481: C                                                                       
+
+--- LINE 2479 ---
+ 2475:       ZIN=1./ YIN
+ 2476:       DBC= DB10( GMAX)
+ 2477:       WRITE (2,7)  ITT1, ITS1, ISG1, ITT2, ITS2, ISG2, DBC, ZL, ZIN
+ 2478:       GOTO 5
+ 2479:     4 WRITE (2,8)  ITT1, ITS1, ISG1, ITT2, ITS2, ISG2, C
+ 2480:     5 CONTINUE
+ 2481: C                                                                       
+ 2482:       RETURN
+ 2483:     6 FORMAT(///,36X,'- - - ISOLATION DATA - - -',//,6X,'- - COUPLIN',
+
+--- LINE 2553 ---
+ 2549:     1 CALL READGM( GM, ITG, NS, XW1, YW1, ZW1, XW2, YW2, ZW2, RAD)
+ 2550:       IF( N+ M.GT. LD) GOTO 37
+ 2551:       IF( GM.EQ. ATST(9)) GOTO 27
+ 2552:       IF( IPHD.EQ.1) GOTO 2
+ 2553:       WRITE (2,40) 
+ 2554:       WRITE (2,41) 
+ 2555:       IPHD=1
+ 2556:     2 IF( GM.EQ. ATST(11)) GOTO 10
+ 2557:       ISCT=0
+
+--- LINE 2554 ---
+ 2550:       IF( N+ M.GT. LD) GOTO 37
+ 2551:       IF( GM.EQ. ATST(9)) GOTO 27
+ 2552:       IF( IPHD.EQ.1) GOTO 2
+ 2553:       WRITE (2,40) 
+ 2554:       WRITE (2,41) 
+ 2555:       IPHD=1
+ 2556:     2 IF( GM.EQ. ATST(11)) GOTO 10
+ 2557:       ISCT=0
+ 2558:       IF( GM.EQ. ATST(1)) GOTO 3
+
+--- LINE 2578 ---
+ 2574: 
+ 2575:     3 NWIRE= NWIRE+1
+ 2576:       I1= N+1
+ 2577:       I2= N+ NS
+ 2578:       WRITE (2,43)  NWIRE, XW1, YW1, ZW1, XW2, YW2, ZW2, RAD, NS, I1, 
+ 2579:      &I2, ITG
+ 2580:       IF( RAD.EQ.0) GOTO 4
+ 2581:       XS1=1.
+ 2582:       YS1=1.
+
+--- LINE 2590 ---
+ 2586: C***
+ 2587:     4 CALL READGM( GM, IX, IY, XS1, YS1, ZS1, DUMMY, DUMMY, DUMMY, 
+ 2588:      &DUMMY)
+ 2589:       IF( GM.EQ. ATST(12)) GOTO 6
+ 2590:     5 WRITE (2,48) 
+ 2591:       STOP
+ 2592:     6 WRITE (2,61)  XS1, YS1, ZS1
+ 2593:       IF( YS1.EQ.0.OR. ZS1.EQ.0) GOTO 5
+ 2594:       RAD= YS1
+
+--- LINE 2592 ---
+ 2588:      &DUMMY)
+ 2589:       IF( GM.EQ. ATST(12)) GOTO 6
+ 2590:     5 WRITE (2,48) 
+ 2591:       STOP
+ 2592:     6 WRITE (2,61)  XS1, YS1, ZS1
+ 2593:       IF( YS1.EQ.0.OR. ZS1.EQ.0) GOTO 5
+ 2594:       RAD= YS1
+ 2595:       YS1=( ZS1/ YS1)**(1./( NS-1.))
+ 2596:     7 CALL WIRE( XW1, YW1, ZW1, XW2, YW2, ZW2, RAD, XS1, YS1, NS, ITG)
+
+--- LINE 2604 ---
+ 2600:       GOTO 1
+ 2601:     8 NWIRE= NWIRE+1
+ 2602:       I1= N+1
+ 2603:       I2= N+ NS
+ 2604:       WRITE (2,38)  NWIRE, XW1, YW1, ZW1, XW2, NS, I1, I2, ITG
+ 2605:       CALL ARC( ITG, NS, XW1, YW1, ZW1, XW2)
+ 2606: C***
+ 2607: C
+ 2608: C     GENERATE HELIX
+
+--- LINE 2614 ---
+ 2610:       GOTO 1
+ 2611:   123 NWIRE= NWIRE+1
+ 2612:       I1= N+1
+ 2613:       I2= N+ NS
+ 2614:       WRITE (2,124)  XW1, YW1, NWIRE, ZW1, XW2, YW2, ZW2, RAD, NS, I1, 
+ 2615:      &I2, ITG
+ 2616:       CALL HELIX( XW1, YW1, ZW1, XW2, YW2, ZW2, RAD, NS, ITG)
+ 2617: C
+ 2618:       GOTO 1
+
+--- LINE 2629 ---
+ 2625:      &8.3),7X,F11.5,I8,4X,I5,1X,I5,3X,I5)
+ 2626:     9 I1= M+1
+ 2627:       NS= NS+1
+ 2628:       IF( ITG.NE.0) GOTO 17
+ 2629:       WRITE (2,51)  I1, IPT( NS), XW1, YW1, ZW1, XW2, YW2, ZW2
+ 2630:       IF( NS.EQ.2.OR. NS.EQ.4) ISCT=1
+ 2631:       IF( NS.GT.1) GOTO 14
+ 2632:       XW2= XW2* TA
+ 2633:       YW2= YW2* TA
+
+--- LINE 2663 ---
+ 2659:       IF( NS.EQ.4) GOTO 12
+ 2660:       X4= XW1+ X3- XW2
+ 2661:       Y4= YW1+ Y3- YW2
+ 2662:       Z4= ZW1+ Z3- ZW2
+ 2663:    12 WRITE (2,51)  I1, IPT( NS), XW1, YW1, ZW1, XW2, YW2, ZW2
+ 2664:       WRITE (2,39)  X3, Y3, Z3, X4, Y4, Z4
+ 2665: C                                                                       
+ 2666: C     GENERATE MULTIPLE-PATCH SURFACE                                   
+ 2667: C                                                                       
+
+--- LINE 2664 ---
+ 2660:       X4= XW1+ X3- XW2
+ 2661:       Y4= YW1+ Y3- YW2
+ 2662:       Z4= ZW1+ Z3- ZW2
+ 2663:    12 WRITE (2,51)  I1, IPT( NS), XW1, YW1, ZW1, XW2, YW2, ZW2
+ 2664:       WRITE (2,39)  X3, Y3, Z3, X4, Y4, Z4
+ 2665: C                                                                       
+ 2666: C     GENERATE MULTIPLE-PATCH SURFACE                                   
+ 2667: C                                                                       
+ 2668:       GOTO 16
+
+--- LINE 2670 ---
+ 2666: C     GENERATE MULTIPLE-PATCH SURFACE                                   
+ 2667: C                                                                       
+ 2668:       GOTO 16
+ 2669:    13 I1= M+1
+ 2670:       WRITE (2,59)  I1, IPT(2), XW1, YW1, ZW1, XW2, YW2, ZW2, ITG, NS
+ 2671: C***
+ 2672:       IF( ITG.LT.1.OR. NS.LT.1) GOTO 17
+ 2673: C 14    READ (5,42) GM,IX,IY,X3,Y3,Z3,X4,Y4,Z4                           
+ 2674: C***
+
+--- LINE 2680 ---
+ 2676:       IF( NS.NE.2.AND. ITG.LT.1) GOTO 15
+ 2677:       X4= XW1+ X3- XW2
+ 2678:       Y4= YW1+ Y3- YW2
+ 2679:       Z4= ZW1+ Z3- ZW2
+ 2680:    15 WRITE (2,39)  X3, Y3, Z3, X4, Y4, Z4
+ 2681:       IF( GM.NE. ATST(11)) GOTO 17
+ 2682:    16 CALL PATCH( ITG, NS, XW1, YW1, ZW1, XW2, YW2, ZW2, X3, Y3, Z3, X4
+ 2683:      &, Y4, Z4)
+ 2684:       GOTO 1
+
+--- LINE 2685 ---
+ 2681:       IF( GM.NE. ATST(11)) GOTO 17
+ 2682:    16 CALL PATCH( ITG, NS, XW1, YW1, ZW1, XW2, YW2, ZW2, X3, Y3, Z3, X4
+ 2683:      &, Y4, Z4)
+ 2684:       GOTO 1
+ 2685:    17 WRITE (2,60) 
+ 2686: C                                                                       
+ 2687: C     REFLECT STRUCTURE ALONG X,Y, OR Z AXES OR ROTATE TO FORM CYLINDER.
+ 2688: C                                                                       
+ 2689:       STOP
+
+--- LINE 2697 ---
+ 2693:       IY= IY- IX*10
+ 2694:       IF( IX.NE.0) IX=1
+ 2695:       IF( IY.NE.0) IY=1
+ 2696:       IF( IZ.NE.0) IZ=1
+ 2697:       WRITE (2,44)  IFX( IX+1), IFY( IY+1), IFZ( IZ+1), ITG
+ 2698:       GOTO 20
+ 2699:    19 WRITE (2,45)  NS, ITG
+ 2700:       IX=-1
+ 2701:    20 CALL REFLC( IX, IY, IZ, ITG, NS)
+
+--- LINE 2699 ---
+ 2695:       IF( IY.NE.0) IY=1
+ 2696:       IF( IZ.NE.0) IZ=1
+ 2697:       WRITE (2,44)  IFX( IX+1), IFY( IY+1), IFZ( IZ+1), ITG
+ 2698:       GOTO 20
+ 2699:    19 WRITE (2,45)  NS, ITG
+ 2700:       IX=-1
+ 2701:    20 CALL REFLC( IX, IY, IZ, ITG, NS)
+ 2702: C                                                                       
+ 2703: C     SCALE STRUCTURE DIMENSIONS BY FACTOR XW1.                         
+
+--- LINE 2724 ---
+ 2720:       X( I)= X( I)* XW1
+ 2721:       Y( I)= Y( I)* XW1
+ 2722:       Z( I)= Z( I)* XW1
+ 2723:    24 BI( I)= BI( I)* YW1
+ 2724:    25 WRITE (2,46)  XW1
+ 2725: C                                                                       
+ 2726: C     MOVE STRUCTURE OR REPRODUCE ORIGINAL STRUCTURE IN NEW POSITIONS.  
+ 2727: C                                                                       
+ 2728:       GOTO 1
+
+--- LINE 2729 ---
+ 2725: C                                                                       
+ 2726: C     MOVE STRUCTURE OR REPRODUCE ORIGINAL STRUCTURE IN NEW POSITIONS.  
+ 2727: C                                                                       
+ 2728:       GOTO 1
+ 2729:    26 WRITE (2,47)  ITG, NS, XW1, YW1, ZW1, XW2, YW2, ZW2, RAD
+ 2730:       XW1= XW1* TA
+ 2731:       YW1= YW1* TA
+ 2732:       ZW1= ZW1* TA
+ 2733:       CALL MOVE( XW1, YW1, ZW1, XW2, YW2, ZW2, INT( RAD+.5), NS, ITG)
+
+--- LINE 2739 ---
+ 2735: C     READ NUMERICAL GREEN'S FUNCTION TAPE                              
+ 2736: C                                                                       
+ 2737:       GOTO 1
+ 2738:    27 IF( N+ M.EQ.0) GOTO 28
+ 2739:       WRITE (2,52) 
+ 2740:       STOP
+ 2741:    28 CALL GFIL( ITG)
+ 2742:       NPSAV= NP
+ 2743:       MPSAV= MP
+
+--- LINE 2766 ---
+ 2762:       MP= MPSAV
+ 2763:       IPSYM= IPSAV
+ 2764:    31 IF( N+ M.GT. LD) GOTO 37
+ 2765:       IF( N.EQ.0) GOTO 33
+ 2766:       WRITE (2,53) 
+ 2767:       WRITE (2,54) 
+ 2768:       DO 32  I=1, N
+ 2769:       XW1= X2( I)- X( I)
+ 2770:       YW1= Y2( I)- Y( I)
+
+--- LINE 2767 ---
+ 2763:       IPSYM= IPSAV
+ 2764:    31 IF( N+ M.GT. LD) GOTO 37
+ 2765:       IF( N.EQ.0) GOTO 33
+ 2766:       WRITE (2,53) 
+ 2767:       WRITE (2,54) 
+ 2768:       DO 32  I=1, N
+ 2769:       XW1= X2( I)- X( I)
+ 2770:       YW1= Y2( I)- Y( I)
+ 2771:       ZW1= Z2( I)- Z( I)
+
+--- LINE 2788 ---
+ 2784:       SALP( I)= XW2
+ 2785:       XW2= ASIN( XW2)* TD
+ 2786:       YW2= ATGN2( YW1, XW1)* TD
+ 2787: C***
+ 2788:       WRITE (2,55)  I, X( I), Y( I), Z( I), SI( I), XW2, YW2, BI( I), 
+ 2789:      &ICON1( I), I, ICON2( I), ITAG( I)
+ 2790:       IF( IPLP1.NE.1) GOTO 320
+ 2791:       WRITE( 8,*)  X( I), Y( I), Z( I), SI( I), XW2, YW2, BI( I), ICON1
+ 2792:      &( I), I, ICON2( I)
+
+--- LINE 2796 ---
+ 2792:      &( I), I, ICON2( I)
+ 2793: C***
+ 2794:   320 CONTINUE
+ 2795:       IF( SI( I).GT.1.D-20.AND. BI( I).GT.0.) GOTO 32
+ 2796:       WRITE (2,56) 
+ 2797:       STOP
+ 2798:    32 CONTINUE
+ 2799:    33 IF( M.EQ.0) GOTO 35
+ 2800:       WRITE (2,57) 
+
+--- LINE 2800 ---
+ 2796:       WRITE (2,56) 
+ 2797:       STOP
+ 2798:    32 CONTINUE
+ 2799:    33 IF( M.EQ.0) GOTO 35
+ 2800:       WRITE (2,57) 
+ 2801:       J= LD+1
+ 2802:       DO 34  I=1, M
+ 2803:       J= J-1
+ 2804:       XW1=( T1Y( J)* T2Z( J)- T1Z( J)* T2Y( J))* SALP( J)
+
+--- LINE 2807 ---
+ 2803:       J= J-1
+ 2804:       XW1=( T1Y( J)* T2Z( J)- T1Z( J)* T2Y( J))* SALP( J)
+ 2805:       YW1=( T1Z( J)* T2X( J)- T1X( J)* T2Z( J))* SALP( J)
+ 2806:       ZW1=( T1X( J)* T2Y( J)- T1Y( J)* T2X( J))* SALP( J)
+ 2807:       WRITE (2,58)  I, X( J), Y( J), Z( J), XW1, YW1, ZW1, BI( J), T1X(
+ 2808:      & J), T1Y( J), T1Z( J), T2X( J), T2Y( J), T2Z( J)
+ 2809:    34 CONTINUE
+ 2810:    35 RETURN
+ 2811:    36 WRITE (2,48) 
+
+--- LINE 2811 ---
+ 2807:       WRITE (2,58)  I, X( J), Y( J), Z( J), XW1, YW1, ZW1, BI( J), T1X(
+ 2808:      & J), T1Y( J), T1Z( J), T2X( J), T2Y( J), T2Z( J)
+ 2809:    34 CONTINUE
+ 2810:    35 RETURN
+ 2811:    36 WRITE (2,48) 
+ 2812:       WRITE (2,49)  GM, ITG, NS, XW1, YW1, ZW1, XW2, YW2, ZW2, RAD
+ 2813:       STOP
+ 2814:    37 WRITE (2,50) 
+ 2815: C                                                                       
+
+--- LINE 2812 ---
+ 2808:      & J), T1Y( J), T1Z( J), T2X( J), T2Y( J), T2Z( J)
+ 2809:    34 CONTINUE
+ 2810:    35 RETURN
+ 2811:    36 WRITE (2,48) 
+ 2812:       WRITE (2,49)  GM, ITG, NS, XW1, YW1, ZW1, XW2, YW2, ZW2, RAD
+ 2813:       STOP
+ 2814:    37 WRITE (2,50) 
+ 2815: C                                                                       
+ 2816:       STOP
+
+--- LINE 2814 ---
+ 2810:    35 RETURN
+ 2811:    36 WRITE (2,48) 
+ 2812:       WRITE (2,49)  GM, ITG, NS, XW1, YW1, ZW1, XW2, YW2, ZW2, RAD
+ 2813:       STOP
+ 2814:    37 WRITE (2,50) 
+ 2815: C                                                                       
+ 2816:       STOP
+ 2817:    38 FORMAT(1X,I5,2X,'ARC RADIUS =',F9.5,2X,'FROM',F8.3,' TO',F8.3,
+ 2818:      &' DEGREES',11X,F11.5,2X,I5,4X,I5,1X,I5,3X,I5)
+
+--- LINE 3649 ---
+ 3645:       REWIND IU1
+ 3646:       REWIND IU2
+ 3647:       REWIND IU3
+ 3648:       REWIND IU4
+ 3649:       WRITE (2,4)  TIME
+ 3650: C                                                                       
+ 3651:       RETURN
+ 3652:     4 FORMAT(' CP TIME TAKEN FOR FACTORIZATION = ',1P,E12.5)
+ 3653:       END
+
+--- LINE 3724 ---
+ 3720:       A( R, I)= D( I)* ARJ
+ 3721:     7 CONTINUE
+ 3722:     8 CONTINUE
+ 3723:       IF( IFLG.EQ.0) GOTO 9
+ 3724:       WRITE (2,10)  R, DMAX
+ 3725:       IFLG=0
+ 3726:     9 CONTINUE
+ 3727: C                                                                       
+ 3728:       RETURN
+
+--- LINE 3906 ---
+ 3902:       NBLSYM= NBLOKS
+ 3903:       NPSYM= NPBLK
+ 3904:       NLSYM= NLAST
+ 3905:       IMAT= NPBLK* NCOL
+ 3906:       WRITE (2,14)  NBLOKS, NPBLK, NLAST
+ 3907:       GOTO 11
+ 3908:     3 NPBLK= IMAX/ NCOL
+ 3909:       IF( NPBLK.LT.1) GOTO 12
+ 3910:       IF( NPBLK.GT. NROW) NPBLK= NROW
+
+--- LINE 3914 ---
+ 3910:       IF( NPBLK.GT. NROW) NPBLK= NROW
+ 3911:       NBLOKS=( NROW-1)/ NPBLK
+ 3912:       NLAST= NROW- NBLOKS* NPBLK
+ 3913:       NBLOKS= NBLOKS+1
+ 3914:       WRITE (2,14)  NBLOKS, NPBLK, NLAST
+ 3915:       IF( NROW* NROW.GT. IMX1) GOTO 4
+ 3916:       ICASE=4
+ 3917:       NBLSYM=1
+ 3918:       NPSYM= NROW
+
+--- LINE 3921 ---
+ 3917:       NBLSYM=1
+ 3918:       NPSYM= NROW
+ 3919:       NLSYM= NROW
+ 3920:       IMAT= NROW* NROW
+ 3921:       WRITE (2,15) 
+ 3922:       GOTO 5
+ 3923:     4 ICASE=5
+ 3924:       NPSYM= IMAX/(2* NROW)
+ 3925:       NBLSYM= IMX1/ NROW
+
+--- LINE 3931 ---
+ 3927:       IF( NPSYM.LT.1) GOTO 12
+ 3928:       NBLSYM=( NROW-1)/ NPSYM
+ 3929:       NLSYM= NROW- NBLSYM* NPSYM
+ 3930:       NBLSYM= NBLSYM+1
+ 3931:       WRITE (2,16)  NBLSYM, NPSYM, NLSYM
+ 3932:       IMAT= NPSYM* NROW
+ 3933:     5 NOP= NCOL/ NROW
+ 3934:       IF( NOP* NROW.NE. NCOL) GOTO 13
+ 3935: C                                                                       
+
+--- LINE 3964 ---
+ 3960:       SSX( I+ KK, J+ KK)=- DETER
+ 3961:     9 SSX( I+ KK, J)= DETER
+ 3962:    10 KK= KK*2
+ 3963:    11 RETURN
+ 3964:    12 WRITE (2,17)  NROW, NCOL
+ 3965:       STOP
+ 3966:    13 WRITE (2,18)  NROW, NCOL
+ 3967: C                                                                       
+ 3968:       STOP
+
+--- LINE 3966 ---
+ 3962:    10 KK= KK*2
+ 3963:    11 RETURN
+ 3964:    12 WRITE (2,17)  NROW, NCOL
+ 3965:       STOP
+ 3966:    13 WRITE (2,18)  NROW, NCOL
+ 3967: C                                                                       
+ 3968:       STOP
+ 3969:    14 FORMAT(//' MATRIX FILE STORAGE -  NO. BLOCKS=',I5,' COLUMNS PE',
+ 3970:      &'R BLOCK=',I5,' COLUMNS IN LAST BLOCK=',I5)
+
+--- LINE 4034 ---
+ 4030:       IF( ICASE.LT.3) IB11= IMAT+1
+ 4031:     5 IC11= IB11+ NBLN
+ 4032:       ID11= IC11+ NBLN
+ 4033:       IX11= IMAT+1
+ 4034:       WRITE (2,11)  NEQ2
+ 4035:       IF( ICASX.EQ.1) RETURN
+ 4036:       WRITE (2,8)  ICASX
+ 4037:       WRITE (2,9)  NBBX, NPBX, NLBX
+ 4038:       WRITE (2,10)  NBBL, NPBL, NLBL
+
+--- LINE 4036 ---
+ 4032:       ID11= IC11+ NBLN
+ 4033:       IX11= IMAT+1
+ 4034:       WRITE (2,11)  NEQ2
+ 4035:       IF( ICASX.EQ.1) RETURN
+ 4036:       WRITE (2,8)  ICASX
+ 4037:       WRITE (2,9)  NBBX, NPBX, NLBX
+ 4038:       WRITE (2,10)  NBBL, NPBL, NLBL
+ 4039:       RETURN
+ 4040:     6 WRITE (2,7)  IRESRV, IMAT, NEQ, NEQ2
+
+--- LINE 4037 ---
+ 4033:       IX11= IMAT+1
+ 4034:       WRITE (2,11)  NEQ2
+ 4035:       IF( ICASX.EQ.1) RETURN
+ 4036:       WRITE (2,8)  ICASX
+ 4037:       WRITE (2,9)  NBBX, NPBX, NLBX
+ 4038:       WRITE (2,10)  NBBL, NPBL, NLBL
+ 4039:       RETURN
+ 4040:     6 WRITE (2,7)  IRESRV, IMAT, NEQ, NEQ2
+ 4041: C                                                                       
+
+--- LINE 4038 ---
+ 4034:       WRITE (2,11)  NEQ2
+ 4035:       IF( ICASX.EQ.1) RETURN
+ 4036:       WRITE (2,8)  ICASX
+ 4037:       WRITE (2,9)  NBBX, NPBX, NLBX
+ 4038:       WRITE (2,10)  NBBL, NPBL, NLBL
+ 4039:       RETURN
+ 4040:     6 WRITE (2,7)  IRESRV, IMAT, NEQ, NEQ2
+ 4041: C                                                                       
+ 4042:       STOP
+
+--- LINE 4040 ---
+ 4036:       WRITE (2,8)  ICASX
+ 4037:       WRITE (2,9)  NBBX, NPBX, NLBX
+ 4038:       WRITE (2,10)  NBBL, NPBL, NLBL
+ 4039:       RETURN
+ 4040:     6 WRITE (2,7)  IRESRV, IMAT, NEQ, NEQ2
+ 4041: C                                                                       
+ 4042:       STOP
+ 4043:     7 FORMAT(55H ERROR - INSUFFICIENT STORAGE FOR INTERACTION MATRICIES
+ 4044:      &,'  IRESRV,IMAT,NEQ,NEQ2 =',4I5)
+
+--- LINE 4433 ---
+ 4429:     8 CALL BLCKOT( CM,13,1, IOUT,1,205)
+ 4430:     9 REWIND 13
+ 4431: C     WRITE(6,N) G.F. HEADING                                           
+ 4432:    10 REWIND IGFL
+ 4433:       WRITE (2,16) 
+ 4434:       WRITE (2,14) 
+ 4435:       WRITE (2,14) 
+ 4436:       WRITE (2,17) 
+ 4437:       WRITE (2,18)  N1, M1
+
+--- LINE 4434 ---
+ 4430:     9 REWIND 13
+ 4431: C     WRITE(6,N) G.F. HEADING                                           
+ 4432:    10 REWIND IGFL
+ 4433:       WRITE (2,16) 
+ 4434:       WRITE (2,14) 
+ 4435:       WRITE (2,14) 
+ 4436:       WRITE (2,17) 
+ 4437:       WRITE (2,18)  N1, M1
+ 4438:       IF( NOP.GT.1) WRITE (2,19)  NOP
+
+--- LINE 4435 ---
+ 4431: C     WRITE(6,N) G.F. HEADING                                           
+ 4432:    10 REWIND IGFL
+ 4433:       WRITE (2,16) 
+ 4434:       WRITE (2,14) 
+ 4435:       WRITE (2,14) 
+ 4436:       WRITE (2,17) 
+ 4437:       WRITE (2,18)  N1, M1
+ 4438:       IF( NOP.GT.1) WRITE (2,19)  NOP
+ 4439:       WRITE (2,20)  IMAT, ICASE
+
+--- LINE 4436 ---
+ 4432:    10 REWIND IGFL
+ 4433:       WRITE (2,16) 
+ 4434:       WRITE (2,14) 
+ 4435:       WRITE (2,14) 
+ 4436:       WRITE (2,17) 
+ 4437:       WRITE (2,18)  N1, M1
+ 4438:       IF( NOP.GT.1) WRITE (2,19)  NOP
+ 4439:       WRITE (2,20)  IMAT, ICASE
+ 4440:       IF( ICASE.LT.3) GOTO 11
+
+--- LINE 4437 ---
+ 4433:       WRITE (2,16) 
+ 4434:       WRITE (2,14) 
+ 4435:       WRITE (2,14) 
+ 4436:       WRITE (2,17) 
+ 4437:       WRITE (2,18)  N1, M1
+ 4438:       IF( NOP.GT.1) WRITE (2,19)  NOP
+ 4439:       WRITE (2,20)  IMAT, ICASE
+ 4440:       IF( ICASE.LT.3) GOTO 11
+ 4441:       NBL2= NEQ* NPEQ
+
+--- LINE 4438 ---
+ 4434:       WRITE (2,14) 
+ 4435:       WRITE (2,14) 
+ 4436:       WRITE (2,17) 
+ 4437:       WRITE (2,18)  N1, M1
+ 4438:       IF( NOP.GT.1) WRITE (2,19)  NOP
+ 4439:       WRITE (2,20)  IMAT, ICASE
+ 4440:       IF( ICASE.LT.3) GOTO 11
+ 4441:       NBL2= NEQ* NPEQ
+ 4442:       WRITE (2,21)  NBL2
+
+--- LINE 4439 ---
+ 4435:       WRITE (2,14) 
+ 4436:       WRITE (2,17) 
+ 4437:       WRITE (2,18)  N1, M1
+ 4438:       IF( NOP.GT.1) WRITE (2,19)  NOP
+ 4439:       WRITE (2,20)  IMAT, ICASE
+ 4440:       IF( ICASE.LT.3) GOTO 11
+ 4441:       NBL2= NEQ* NPEQ
+ 4442:       WRITE (2,21)  NBL2
+ 4443:    11 WRITE (2,22)  FMHZ
+
+--- LINE 4442 ---
+ 4438:       IF( NOP.GT.1) WRITE (2,19)  NOP
+ 4439:       WRITE (2,20)  IMAT, ICASE
+ 4440:       IF( ICASE.LT.3) GOTO 11
+ 4441:       NBL2= NEQ* NPEQ
+ 4442:       WRITE (2,21)  NBL2
+ 4443:    11 WRITE (2,22)  FMHZ
+ 4444:       IF( KSYMP.EQ.2.AND. IPERF.EQ.1) WRITE (2,23) 
+ 4445:       IF( KSYMP.EQ.2.AND. IPERF.EQ.0) WRITE (2,27) 
+ 4446:       IF( KSYMP.EQ.2.AND. IPERF.EQ.2) WRITE (2,28) 
+
+--- LINE 4443 ---
+ 4439:       WRITE (2,20)  IMAT, ICASE
+ 4440:       IF( ICASE.LT.3) GOTO 11
+ 4441:       NBL2= NEQ* NPEQ
+ 4442:       WRITE (2,21)  NBL2
+ 4443:    11 WRITE (2,22)  FMHZ
+ 4444:       IF( KSYMP.EQ.2.AND. IPERF.EQ.1) WRITE (2,23) 
+ 4445:       IF( KSYMP.EQ.2.AND. IPERF.EQ.0) WRITE (2,27) 
+ 4446:       IF( KSYMP.EQ.2.AND. IPERF.EQ.2) WRITE (2,28) 
+ 4447:       IF( KSYMP.EQ.2.AND. IPERF.NE.1) WRITE (2,24)  EPSR, SIG
+
+--- LINE 4444 ---
+ 4440:       IF( ICASE.LT.3) GOTO 11
+ 4441:       NBL2= NEQ* NPEQ
+ 4442:       WRITE (2,21)  NBL2
+ 4443:    11 WRITE (2,22)  FMHZ
+ 4444:       IF( KSYMP.EQ.2.AND. IPERF.EQ.1) WRITE (2,23) 
+ 4445:       IF( KSYMP.EQ.2.AND. IPERF.EQ.0) WRITE (2,27) 
+ 4446:       IF( KSYMP.EQ.2.AND. IPERF.EQ.2) WRITE (2,28) 
+ 4447:       IF( KSYMP.EQ.2.AND. IPERF.NE.1) WRITE (2,24)  EPSR, SIG
+ 4448:       WRITE (2,17) 
+
+--- LINE 4445 ---
+ 4441:       NBL2= NEQ* NPEQ
+ 4442:       WRITE (2,21)  NBL2
+ 4443:    11 WRITE (2,22)  FMHZ
+ 4444:       IF( KSYMP.EQ.2.AND. IPERF.EQ.1) WRITE (2,23) 
+ 4445:       IF( KSYMP.EQ.2.AND. IPERF.EQ.0) WRITE (2,27) 
+ 4446:       IF( KSYMP.EQ.2.AND. IPERF.EQ.2) WRITE (2,28) 
+ 4447:       IF( KSYMP.EQ.2.AND. IPERF.NE.1) WRITE (2,24)  EPSR, SIG
+ 4448:       WRITE (2,17) 
+ 4449:       DO 12  J=1, KCOM
+
+--- LINE 4446 ---
+ 4442:       WRITE (2,21)  NBL2
+ 4443:    11 WRITE (2,22)  FMHZ
+ 4444:       IF( KSYMP.EQ.2.AND. IPERF.EQ.1) WRITE (2,23) 
+ 4445:       IF( KSYMP.EQ.2.AND. IPERF.EQ.0) WRITE (2,27) 
+ 4446:       IF( KSYMP.EQ.2.AND. IPERF.EQ.2) WRITE (2,28) 
+ 4447:       IF( KSYMP.EQ.2.AND. IPERF.NE.1) WRITE (2,24)  EPSR, SIG
+ 4448:       WRITE (2,17) 
+ 4449:       DO 12  J=1, KCOM
+ 4450:    12 WRITE (2,15) ( COM( I, J), I=1,19)
+
+--- LINE 4447 ---
+ 4443:    11 WRITE (2,22)  FMHZ
+ 4444:       IF( KSYMP.EQ.2.AND. IPERF.EQ.1) WRITE (2,23) 
+ 4445:       IF( KSYMP.EQ.2.AND. IPERF.EQ.0) WRITE (2,27) 
+ 4446:       IF( KSYMP.EQ.2.AND. IPERF.EQ.2) WRITE (2,28) 
+ 4447:       IF( KSYMP.EQ.2.AND. IPERF.NE.1) WRITE (2,24)  EPSR, SIG
+ 4448:       WRITE (2,17) 
+ 4449:       DO 12  J=1, KCOM
+ 4450:    12 WRITE (2,15) ( COM( I, J), I=1,19)
+ 4451:       WRITE (2,17) 
+
+--- LINE 4448 ---
+ 4444:       IF( KSYMP.EQ.2.AND. IPERF.EQ.1) WRITE (2,23) 
+ 4445:       IF( KSYMP.EQ.2.AND. IPERF.EQ.0) WRITE (2,27) 
+ 4446:       IF( KSYMP.EQ.2.AND. IPERF.EQ.2) WRITE (2,28) 
+ 4447:       IF( KSYMP.EQ.2.AND. IPERF.NE.1) WRITE (2,24)  EPSR, SIG
+ 4448:       WRITE (2,17) 
+ 4449:       DO 12  J=1, KCOM
+ 4450:    12 WRITE (2,15) ( COM( I, J), I=1,19)
+ 4451:       WRITE (2,17) 
+ 4452:       WRITE (2,14) 
+
+--- LINE 4450 ---
+ 4446:       IF( KSYMP.EQ.2.AND. IPERF.EQ.2) WRITE (2,28) 
+ 4447:       IF( KSYMP.EQ.2.AND. IPERF.NE.1) WRITE (2,24)  EPSR, SIG
+ 4448:       WRITE (2,17) 
+ 4449:       DO 12  J=1, KCOM
+ 4450:    12 WRITE (2,15) ( COM( I, J), I=1,19)
+ 4451:       WRITE (2,17) 
+ 4452:       WRITE (2,14) 
+ 4453:       WRITE (2,14) 
+ 4454:       WRITE (2,16) 
+
+--- LINE 4451 ---
+ 4447:       IF( KSYMP.EQ.2.AND. IPERF.NE.1) WRITE (2,24)  EPSR, SIG
+ 4448:       WRITE (2,17) 
+ 4449:       DO 12  J=1, KCOM
+ 4450:    12 WRITE (2,15) ( COM( I, J), I=1,19)
+ 4451:       WRITE (2,17) 
+ 4452:       WRITE (2,14) 
+ 4453:       WRITE (2,14) 
+ 4454:       WRITE (2,16) 
+ 4455:       IF( IPRT.EQ.0) RETURN
+
+--- LINE 4452 ---
+ 4448:       WRITE (2,17) 
+ 4449:       DO 12  J=1, KCOM
+ 4450:    12 WRITE (2,15) ( COM( I, J), I=1,19)
+ 4451:       WRITE (2,17) 
+ 4452:       WRITE (2,14) 
+ 4453:       WRITE (2,14) 
+ 4454:       WRITE (2,16) 
+ 4455:       IF( IPRT.EQ.0) RETURN
+ 4456:       WRITE (2,25) 
+
+--- LINE 4453 ---
+ 4449:       DO 12  J=1, KCOM
+ 4450:    12 WRITE (2,15) ( COM( I, J), I=1,19)
+ 4451:       WRITE (2,17) 
+ 4452:       WRITE (2,14) 
+ 4453:       WRITE (2,14) 
+ 4454:       WRITE (2,16) 
+ 4455:       IF( IPRT.EQ.0) RETURN
+ 4456:       WRITE (2,25) 
+ 4457:       DO 13  I=1, N1
+
+--- LINE 4454 ---
+ 4450:    12 WRITE (2,15) ( COM( I, J), I=1,19)
+ 4451:       WRITE (2,17) 
+ 4452:       WRITE (2,14) 
+ 4453:       WRITE (2,14) 
+ 4454:       WRITE (2,16) 
+ 4455:       IF( IPRT.EQ.0) RETURN
+ 4456:       WRITE (2,25) 
+ 4457:       DO 13  I=1, N1
+ 4458:    13 WRITE (2,26)  I, X( I), Y( I), Z( I), SI( I), ALP( I), BET( I)
+
+--- LINE 4456 ---
+ 4452:       WRITE (2,14) 
+ 4453:       WRITE (2,14) 
+ 4454:       WRITE (2,16) 
+ 4455:       IF( IPRT.EQ.0) RETURN
+ 4456:       WRITE (2,25) 
+ 4457:       DO 13  I=1, N1
+ 4458:    13 WRITE (2,26)  I, X( I), Y( I), Z( I), SI( I), ALP( I), BET( I)
+ 4459: C                                                                       
+ 4460:       RETURN
+
+--- LINE 4458 ---
+ 4454:       WRITE (2,16) 
+ 4455:       IF( IPRT.EQ.0) RETURN
+ 4456:       WRITE (2,25) 
+ 4457:       DO 13  I=1, N1
+ 4458:    13 WRITE (2,26)  I, X( I), Y( I), Z( I), SI( I), ALP( I), BET( I)
+ 4459: C                                                                       
+ 4460:       RETURN
+ 4461:    14 FORMAT(5X,'**************************************************',
+ 4462:      &'**********************************')
+
+--- LINE 4731 ---
+ 4727:    11 CONTINUE
+ 4728:       REWIND 13
+ 4729:       REWIND 14
+ 4730:    12 REWIND IGFL
+ 4731:       WRITE (2,13)  IGFL, IMAT
+ 4732: C                                                                       
+ 4733:       RETURN
+ 4734:    13 FORMAT(///,' ****NUMERICAL GREEN S FUNCTION FILE ON TAPE',I3,
+ 4735:      &'****',/,5X,'MATRIX STORAGE -',I7,' COMPLEX NUMBERS',///)
+
+--- LINE 4951 ---
+ 4947:       Y2( I)= COPY
+ 4948:    25 CONTINUE
+ 4949:       IF( A2.EQ. A1) GOTO 21
+ 4950:       SANGLE= ATAN( A2/( ABS( HL)+( ABS( HL)* A1)/( A2- A1)))
+ 4951:       WRITE (2,104)  SANGLE
+ 4952:   104 FORMAT(5X,'THE CONE ANGLE OF THE SPIRAL IS',F10.4)
+ 4953:       RETURN
+ 4954:    21 IF( A1.NE. B1) GOTO 30
+ 4955:       HDIA=2.* A1
+
+--- LINE 4970 ---
+ 4966:       HMIN=2.* A1
+ 4967:    35 HDIA= SQRT(( HMAJ**2+ HMIN**2)/2* HMAJ)
+ 4968:       TURN=2.* PI* HDIA
+ 4969:       PITCH=(180./ PI)* ATAN( S/( PI* HDIA))
+ 4970:    40 WRITE (2,105)  PITCH, TURN
+ 4971:   105 FORMAT(5X,'THE PITCH ANGLE IS',F10.4/5X,
+ 4972:      &'THE LENGTH OF WIRE/TURN ''IS',F10.4)
+ 4973:       RETURN
+ 4974:       END
+
+--- LINE 5047 ---
+ 5043:       NT=1
+ 5044:       GOTO 1
+ 5045:    14 NT=0
+ 5046:       IF( NS- NM) 16,15,15
+ 5047:    15 WRITE (2,18)  Z
+ 5048:       GOTO 9
+ 5049:    16 NS= NS*2
+ 5050:       DZ= S/ NS
+ 5051:       DZOT= DZ*0.5
+
+--- LINE 5569 ---
+ 5565:       NT=1
+ 5566:       GOTO 1
+ 5567:    14 NT=0
+ 5568:       IF( NS- NM) 16,15,15
+ 5569:    15 WRITE (2,20)  Z
+ 5570: C                                                                       
+ 5571: C     HALVE STEP SIZE                                                   
+ 5572: C                                                                       
+ 5573:       GOTO 9
+
+--- LINE 5610 ---
+ 5606:       COMMON  /DATA/ LD, N1, N2, N, NP, M1, M2, M, MP, X( NM), Y( NM), 
+ 5607:      &Z( NM), SI( NM), BI( NM), ALP( NM), BET( NM), ICON1( N2M), ICON2(
+ 5608:      & N2M), ITAG( N2M), ICONX( NM), WLAM, IPSYM
+ 5609:       IF( MX.GT.0) GOTO 1
+ 5610:       WRITE (2,6) 
+ 5611:       STOP
+ 5612:     1 ICNT=0
+ 5613:       IF( ITAGI.NE.0) GOTO 2
+ 5614:       ISEGNO= MX
+
+--- LINE 5622 ---
+ 5618:       IF( ITAG( I).NE. ITAGI) GOTO 3
+ 5619:       ICNT= ICNT+1
+ 5620:       IF( ICNT.EQ. MX) GOTO 5
+ 5621:     3 CONTINUE
+ 5622:     4 WRITE (2,7)  ITAGI
+ 5623:       STOP
+ 5624:     5 ISEGNO= I
+ 5625: C                                                                       
+ 5626:       RETURN
+
+--- LINE 5735 ---
+ 5731:       A( I, R)= D( I)* AJR
+ 5732:    14 CONTINUE
+ 5733:    15 CONTINUE
+ 5734:       IF( IFLG.EQ.0) GOTO 16
+ 5735:       WRITE (2,17)  J2, DMAX
+ 5736:       IFLG=0
+ 5737:    16 CONTINUE
+ 5738: C                                                                       
+ 5739:       RETURN
+
+--- LINE 5769 ---
+ 5765: C                                                                       
+ 5766: C     INITIALIZE D ARRAY, USED FOR TEMPORARY STORAGE OF LOADING         
+ 5767: C     INFORMATION.                                                      
+ 5768: C                                                                       
+ 5769:       WRITE (2,25) 
+ 5770:       DO 1  I= N2, N
+ 5771:     1 ZARRAY( I)=(0.,0.)
+ 5772: C                                                                       
+ 5773: C     CYCLE OVER LOADING CARDS                                          
+
+--- LINE 5779 ---
+ 5775:       IWARN=0
+ 5776:       ISTEP=0
+ 5777:     2 ISTEP= ISTEP+1
+ 5778:       IF( ISTEP.LE. NLOAD) GOTO 5
+ 5779:       IF( IWARN.EQ.1) WRITE (2,26) 
+ 5780:       IF( N1+2* M1.GT.0) GOTO 4
+ 5781:       NOP= N/ NP
+ 5782:       IF( NOP.EQ.1) GOTO 4
+ 5783:       DO 3  I=1, NP
+
+--- LINE 5791 ---
+ 5787:       L1= L1+ NP
+ 5788:     3 ZARRAY( L1)= ZT
+ 5789:     4 RETURN
+ 5790:     5 IF( LDTYP( ISTEP).LE.5) GOTO 6
+ 5791:       WRITE (2,27)  LDTYP( ISTEP)
+ 5792:       STOP
+ 5793:     6 LDTAGS= LDTAG( ISTEP)
+ 5794:       JUMP= LDTYP( ISTEP)+1
+ 5795: C                                                                       
+
+--- LINE 5806 ---
+ 5802:       IF( LDTAGF( ISTEP).EQ.0.AND. LDTAGT( ISTEP).EQ.0) GOTO 7
+ 5803:       L1= LDTAGF( ISTEP)
+ 5804:       L2= LDTAGT( ISTEP)
+ 5805:       IF( L1.GT. N1) GOTO 7
+ 5806:       WRITE (2,29) 
+ 5807:       STOP
+ 5808:     7 DO 17  I= L1, L2
+ 5809:       IF( LDTAGS.EQ.0) GOTO 8
+ 5810:       IF( LDTAGS.NE. ITAG( I)) GOTO 17
+
+--- LINE 5848 ---
+ 5844:      &) IWARN=1
+ 5845:       ZARRAY( I)= ZARRAY( I)+ ZT
+ 5846:    17 CONTINUE
+ 5847:       IF( ICHK.NE.0) GOTO 18
+ 5848:       WRITE (2,28)  LDTAGS
+ 5849: C                                                                       
+ 5850: C     PRINTING THE SEGMENT LOADING DATA, JUMP TO PROPER PRINT           
+ 5851: C                                                                       
+ 5852:       STOP
+
+--- LINE 6322 ---
+ 6318:     7 IROW1= IROW1+1
+ 6319:       IPNT( IROW1)= NSEG1
+ 6320:     8 CONTINUE
+ 6321:     9 IF( IROW1.LT. NDIMNP) GOTO 10
+ 6322:       WRITE (2,59) 
+ 6323:       STOP
+ 6324:    10 IF( IROW1.LT.2) GOTO 14
+ 6325:       DO 12  I=1, IROW1
+ 6326:       ISC1= IPNT( I)
+
+--- LINE 6351 ---
+ 6347:       NTEQ= IPNT( I)
+ 6348:       NTSC= IPNT( J)
+ 6349:    13 CONTINUE
+ 6350:       ASA= SQRT( ASA*2./ DFLOAT( IROW1*( IROW1-1)))
+ 6351:       WRITE (2,58)  ASM, NTEQ, NTSC, ASA
+ 6352: C                                                                       
+ 6353: C     SOLUTION OF NETWORK EQUATIONS                                     
+ 6354: C                                                                       
+ 6355:    14 IF( NONET.EQ.0) GOTO 48
+
+--- LINE 6443 ---
+ 6439:       IROW2= NDIMNP- NTSC
+ 6440:       NTSCA( NTSC)= NSEG2
+ 6441:       VSRC( NTSC)= VSANT( ISC2)
+ 6442:    33 IF( NTSC+ NTEQ.LT. NDIMNP) GOTO 34
+ 6443:       WRITE (2,59) 
+ 6444: C                                                                       
+ 6445: C     FILL NETWORK EQUATION MATRIX AND RIGHT HAND SIDE VECTOR WITH      
+ 6446: C     NETWORK SHORT-CIRCUIT ADMITTANCE MATRIX COEFFICIENTS.             
+ 6447: C                                                                       
+
+--- LINE 6517 ---
+ 6513:    45 EINC( IROW1)= EINC( IROW1)- RHNT( I)
+ 6514:       CALL SOLGF( CM, CMB, CMC, CMD, EINC, IP, NP, N1, N, MP, M1, M, 
+ 6515:      &NEQ, NEQ2, NEQZ2)
+ 6516:       CALL CABC( EINC)
+ 6517:       IF( NPRINT.EQ.0) WRITE (2,61) 
+ 6518:       IF( NPRINT.EQ.0) WRITE (2,60) 
+ 6519:       DO 46  I=1, NTEQ
+ 6520:       IROW1= NTEQA( I)
+ 6521:       VLT= RHNT( I)* SI( IROW1)* WLAM
+
+--- LINE 6518 ---
+ 6514:       CALL SOLGF( CM, CMB, CMC, CMD, EINC, IP, NP, N1, N, MP, M1, M, 
+ 6515:      &NEQ, NEQ2, NEQZ2)
+ 6516:       CALL CABC( EINC)
+ 6517:       IF( NPRINT.EQ.0) WRITE (2,61) 
+ 6518:       IF( NPRINT.EQ.0) WRITE (2,60) 
+ 6519:       DO 46  I=1, NTEQ
+ 6520:       IROW1= NTEQA( I)
+ 6521:       VLT= RHNT( I)* SI( IROW1)* WLAM
+ 6522:       CUX= EINC( IROW1)* WLAM
+
+--- LINE 6528 ---
+ 6524:       ZPED= VLT/ CUX
+ 6525:       IROW2= ITAG( IROW1)
+ 6526:       PWR=.5* REAL( VLT* CONJG( CUX))
+ 6527:       PNLS= PNLS- PWR
+ 6528:    46 IF( NPRINT.EQ.0) WRITE (2,62)  IROW2, IROW1, VLT, CUX, ZPED, YMIT
+ 6529:      &, PWR
+ 6530:       IF( NTSC.EQ.0) GOTO 49
+ 6531:       DO 47  I=1, NTSC
+ 6532:       IROW1= NTSCA( I)
+
+--- LINE 6540 ---
+ 6536:       ZPED= VLT/ CUX
+ 6537:       IROW2= ITAG( IROW1)
+ 6538:       PWR=.5* REAL( VLT* CONJG( CUX))
+ 6539:       PNLS= PNLS- PWR
+ 6540:    47 IF( NPRINT.EQ.0) WRITE (2,62)  IROW2, IROW1, VLT, CUX, ZPED, YMIT
+ 6541:      &, PWR
+ 6542: C                                                                       
+ 6543: C     SOLVE FOR CURRENTS WHEN NO NETWORKS ARE PRESENT                   
+ 6544: C                                                                       
+
+--- LINE 6551 ---
+ 6547:      &NEQ, NEQ2, NEQZ2)
+ 6548:       CALL CABC( EINC)
+ 6549:       NTSC=0
+ 6550:    49 IF( NSANT+ NVQD.EQ.0) RETURN
+ 6551:       WRITE (2,63) 
+ 6552:       WRITE (2,60) 
+ 6553:       IF( NSANT.EQ.0) GOTO 56
+ 6554:       DO 55  I=1, NSANT
+ 6555:       ISC1= ISANT( I)
+
+--- LINE 6552 ---
+ 6548:       CALL CABC( EINC)
+ 6549:       NTSC=0
+ 6550:    49 IF( NSANT+ NVQD.EQ.0) RETURN
+ 6551:       WRITE (2,63) 
+ 6552:       WRITE (2,60) 
+ 6553:       IF( NSANT.EQ.0) GOTO 56
+ 6554:       DO 55  I=1, NSANT
+ 6555:       ISC1= ISANT( I)
+ 6556:       VLT= VSANT( I)
+
+--- LINE 6575 ---
+ 6571:       PWR=.5* REAL( VLT* CONJG( CUX))
+ 6572:       PIN= PIN+ PWR
+ 6573:       IF( IROW1.NE.0) PNLS= PNLS+ PWR
+ 6574:       IROW2= ITAG( ISC1)
+ 6575:    55 WRITE (2,62)  IROW2, ISC1, VLT, CUX, ZPED, YMIT, PWR
+ 6576:    56 IF( NVQD.EQ.0) RETURN
+ 6577:       DO 57  I=1, NVQD
+ 6578:       ISC1= IVQD( I)
+ 6579:       VLT= VQD( I)
+
+--- LINE 6590 ---
+ 6586:       ZPED= VLT/ CUX
+ 6587:       PWR=.5* REAL( VLT* CONJG( CUX))
+ 6588:       PIN= PIN+ PWR
+ 6589:       IROW2= ITAG( ISC1)
+ 6590:    57 WRITE (2,64)  IROW2, ISC1, VLT, CUX, ZPED, YMIT, PWR
+ 6591: C                                                                       
+ 6592:       RETURN
+ 6593:    58 FORMAT(///,3X,'MAXIMUM RELATIVE ASYMMETRY OF THE DRIVING POINT',
+ 6594:      &' ADMITTANCE MATRIX IS',1P,E10.3,' FOR SEGMENTS',I5,4H AND,I5,/,3
+
+--- LINE 6628 ---
+ 6624: C***
+ 6625:       COMMON  /PLOT/ IPLP1, IPLP2, IPLP3, IPLP4
+ 6626:       DATA   TA/1.745329252D-02/
+ 6627:       IF( NFEH.EQ.1) GOTO 1
+ 6628:       WRITE (2,10) 
+ 6629:       GOTO 2
+ 6630:     1 WRITE (2,12) 
+ 6631:     2 ZNRT= ZNR- DZNR
+ 6632:       DO 9  I=1, NRZ
+
+--- LINE 6630 ---
+ 6626:       DATA   TA/1.745329252D-02/
+ 6627:       IF( NFEH.EQ.1) GOTO 1
+ 6628:       WRITE (2,10) 
+ 6629:       GOTO 2
+ 6630:     1 WRITE (2,12) 
+ 6631:     2 ZNRT= ZNR- DZNR
+ 6632:       DO 9  I=1, NRZ
+ 6633:       ZNRT= ZNRT+ DZNR
+ 6634:       IF( NEAR.EQ.0) GOTO 3
+
+--- LINE 6668 ---
+ 6664:       TMP4= CANG( EY)
+ 6665:       TMP5= ABS( EZ)
+ 6666:       TMP6= CANG( EZ)
+ 6667: C***
+ 6668:       WRITE (2,11)  XOB, YOB, ZOB, TMP1, TMP2, TMP3, TMP4, TMP5, TMP6
+ 6669:       IF( IPLP1.NE.2) GOTO 9
+ 6670:       GOTO (14,15,16), IPLP4
+ 6671:    14 XXX= XOB
+ 6672:       GOTO 17
+
+--- LINE 6890 ---
+ 6886:       Z( MI)=( XA*( Z1+ Z2+ Z3)+ XST*( Z1+ Z3+ Z4))* SALPN
+ 6887:       BI( MI)=.5*( XA+ XST)
+ 6888:       S1X=( XNV* XN2+ YNV* YN2+ ZNV* ZN2)/ XST
+ 6889:       IF( S1X.GT.0.9998) GOTO 6
+ 6890:       WRITE (2,14) 
+ 6891:       STOP
+ 6892:     6 T2X( MI)= YNV* T1Z( MI)- ZNV* T1Y( MI)
+ 6893:       T2Y( MI)= ZNV* T1X( MI)- XNV* T1Z( MI)
+ 6894:       T2Z( MI)= XNV* T1Y( MI)- YNV* T1X( MI)
+
+--- LINE 7158 ---
+ 7154:       K= K+1
+ 7155:       IVAR( K)= IFORM(7)
+ 7156:       K= K+1
+ 7157:       IVAR( K)= IFORM(8)
+ 7158:       WRITE (2,IVAR) ( INT( I), I=1, NINT),( FLT( J), J=1, NFLT),
+ 7159:      *      ( IA( L), L=1, ICHAR)
+ 7160:       RETURN
+ 7161:       END
+ 7162: C ***
+
+--- LINE 7329 ---
+ 7325:      &6HTICAL ,6H HORIZ,6HONTAL ,6H      ,6HTOTAL /
+ 7326:       DATA   PI, TA, TD/3.141592654D+0,1.745329252D-02,57.29577951D+0/
+ 7327:       DATA   NORMAX/1200/
+ 7328:       IF( IFAR.LT.2) GOTO 2
+ 7329:       WRITE (2,35) 
+ 7330:       IF( IFAR.LE.3) GOTO 1
+ 7331:       WRITE (2,36)  NRADL, SCRWLT, SCRWRT
+ 7332:       IF( IFAR.EQ.4) GOTO 2
+ 7333:     1 IF( IFAR.EQ.2.OR. IFAR.EQ.5) HCLIF= HPOL(1)
+
+--- LINE 7331 ---
+ 7327:       DATA   NORMAX/1200/
+ 7328:       IF( IFAR.LT.2) GOTO 2
+ 7329:       WRITE (2,35) 
+ 7330:       IF( IFAR.LE.3) GOTO 1
+ 7331:       WRITE (2,36)  NRADL, SCRWLT, SCRWRT
+ 7332:       IF( IFAR.EQ.4) GOTO 2
+ 7333:     1 IF( IFAR.EQ.2.OR. IFAR.EQ.5) HCLIF= HPOL(1)
+ 7334:       IF( IFAR.EQ.3.OR. IFAR.EQ.6) HCLIF= HCIR
+ 7335:       CL= CLT/ WLAM
+
+--- LINE 7338 ---
+ 7334:       IF( IFAR.EQ.3.OR. IFAR.EQ.6) HCLIF= HCIR
+ 7335:       CL= CLT/ WLAM
+ 7336:       CH= CHT/ WLAM
+ 7337:       ZRATI2= SQRT(1./ CMPLX( EPSR2,- SIG2* WLAM*59.96))
+ 7338:       WRITE (2,37)  HCLIF, CLT, CHT, EPSR2, SIG2
+ 7339:     2 IF( IFAR.NE.1) GOTO 3
+ 7340:       WRITE (2,41) 
+ 7341:       GOTO 5
+ 7342:     3 I=2* IPD+1
+
+--- LINE 7340 ---
+ 7336:       CH= CHT/ WLAM
+ 7337:       ZRATI2= SQRT(1./ CMPLX( EPSR2,- SIG2* WLAM*59.96))
+ 7338:       WRITE (2,37)  HCLIF, CLT, CHT, EPSR2, SIG2
+ 7339:     2 IF( IFAR.NE.1) GOTO 3
+ 7340:       WRITE (2,41) 
+ 7341:       GOTO 5
+ 7342:     3 I=2* IPD+1
+ 7343:       J= I+1
+ 7344:       ITMP1=2* IAX+1
+
+--- LINE 7346 ---
+ 7342:     3 I=2* IPD+1
+ 7343:       J= I+1
+ 7344:       ITMP1=2* IAX+1
+ 7345:       ITMP2= ITMP1+1
+ 7346:       WRITE (2,38) 
+ 7347:       IF( RFLD.LT.1.D-20) GOTO 4
+ 7348:       EXRM=1./ RFLD
+ 7349:       EXRA= RFLD/ WLAM
+ 7350:       EXRA=-360.*( EXRA- AINT( EXRA))
+
+--- LINE 7351 ---
+ 7347:       IF( RFLD.LT.1.D-20) GOTO 4
+ 7348:       EXRM=1./ RFLD
+ 7349:       EXRA= RFLD/ WLAM
+ 7350:       EXRA=-360.*( EXRA- AINT( EXRA))
+ 7351:       WRITE (2,39)  RFLD, EXRM, EXRA
+ 7352:     4 WRITE (2,40)  IGTP( I), IGTP( J), IGAX( ITMP1), IGAX( ITMP2)
+ 7353:     5 IF( IXTYP.EQ.0.OR. IXTYP.EQ.5) GOTO 7
+ 7354:       IF( IXTYP.EQ.4) GOTO 6
+ 7355:       PRAD=0.
+
+--- LINE 7352 ---
+ 7348:       EXRM=1./ RFLD
+ 7349:       EXRA= RFLD/ WLAM
+ 7350:       EXRA=-360.*( EXRA- AINT( EXRA))
+ 7351:       WRITE (2,39)  RFLD, EXRM, EXRA
+ 7352:     4 WRITE (2,40)  IGTP( I), IGTP( J), IGAX( ITMP1), IGAX( ITMP2)
+ 7353:     5 IF( IXTYP.EQ.0.OR. IXTYP.EQ.5) GOTO 7
+ 7354:       IF( IXTYP.EQ.4) GOTO 6
+ 7355:       PRAD=0.
+ 7356:       GCON=4.* PI/(1.+ XPR6* XPR6)
+
+--- LINE 7471 ---
+ 7467:       EPHA= EPHA+ EXRA
+ 7468: C      GO TO 29                                                         
+ 7469: C***
+ 7470: C28    WRITE(6,43)  RFLD,PHI,THET,ETHM,ETHA,EPHM,EPHA,ERDM,ERDA         
+ 7471:    27 WRITE (2,42)  THET, PHI, TMP5, TMP6, GTOT, AXRAT, TILTA, ISENS, 
+ 7472:      &ETHM, ETHA, EPHM, EPHA
+ 7473:       IF( IPLP1.NE.3) GOTO 299
+ 7474:       IF( IPLP3.EQ.0) GOTO 290
+ 7475:       IF( IPLP2.EQ.1.AND. IPLP3.EQ.1) WRITE( 8,*)  THET, ETHM, ETHA
+
+--- LINE 7487 ---
+ 7483:       IF( IPLP2.EQ.2.AND. IPLP4.EQ.1) WRITE( 8,*)  PHI, TMP5
+ 7484:       IF( IPLP2.EQ.2.AND. IPLP4.EQ.2) WRITE( 8,*)  PHI, TMP6
+ 7485:       IF( IPLP2.EQ.2.AND. IPLP4.EQ.3) WRITE( 8,*)  PHI, GTOT
+ 7486:       GOTO 299
+ 7487:    28 WRITE (2,43)  RFLD, PHI, THET, ETHM, ETHA, EPHM, EPHA, ERDM, ERDA
+ 7488:      &
+ 7489: C***
+ 7490:   299 CONTINUE
+ 7491:    29 CONTINUE
+
+--- LINE 7498 ---
+ 7494:       TMP4= TMP3+ DTH* TA* DFLOAT( NTH-1)
+ 7495:       TMP3= ABS( DPH* TA* DFLOAT( NPH-1)*( COS( TMP3)- COS( TMP4)))
+ 7496:       PINT= PINT/ TMP3
+ 7497:       TMP3= TMP3/ PI
+ 7498:       WRITE (2,44)  PINT, TMP3
+ 7499:    30 IF( INOR.EQ.0) GOTO 34
+ 7500:       IF( ABS( GNOR).GT.1.D-20) GMAX= GNOR
+ 7501:       ITMP1=( INOR-1)*2+1
+ 7502:       ITMP2= ITMP1+1
+
+--- LINE 7503 ---
+ 7499:    30 IF( INOR.EQ.0) GOTO 34
+ 7500:       IF( ABS( GNOR).GT.1.D-20) GMAX= GNOR
+ 7501:       ITMP1=( INOR-1)*2+1
+ 7502:       ITMP2= ITMP1+1
+ 7503:       WRITE (2,45)  IGNTP( ITMP1), IGNTP( ITMP2), GMAX
+ 7504:       ITMP2= NPH* NTH
+ 7505:       IF( ITMP2.GT. NORMAX) ITMP2= NORMAX
+ 7506:       ITMP1=( ITMP2+2)/3
+ 7507:       ITMP2= ITMP1*3- ITMP2
+
+--- LINE 7527 ---
+ 7523:       TSTOR1= GAIN( I)- GMAX
+ 7524:       IF( I.EQ. ITMP1.AND. ITMP2.NE.0) GOTO 32
+ 7525:       TSTOR2= GAIN( ITMP3)- GMAX
+ 7526:       PINT= GAIN( ITMP4)- GMAX
+ 7527:    31 WRITE (2,46)  TMP1, TMP2, TSTOR1, TMP3, TMP4, TSTOR2, TMP5, TMP6,
+ 7528:      & PINT
+ 7529:       GOTO 34
+ 7530:    32 IF( ITMP2.EQ.2) GOTO 33
+ 7531:       TSTOR2= GAIN( ITMP3)- GMAX
+
+--- LINE 7532 ---
+ 7528:      & PINT
+ 7529:       GOTO 34
+ 7530:    32 IF( ITMP2.EQ.2) GOTO 33
+ 7531:       TSTOR2= GAIN( ITMP3)- GMAX
+ 7532:       WRITE (2,46)  TMP1, TMP2, TSTOR1, TMP3, TMP4, TSTOR2
+ 7533:       GOTO 34
+ 7534:    33 WRITE (2,46)  TMP1, TMP2, TSTOR1
+ 7535: C                                                                       
+ 7536:    34 RETURN
+
+--- LINE 7534 ---
+ 7530:    32 IF( ITMP2.EQ.2) GOTO 33
+ 7531:       TSTOR2= GAIN( ITMP3)- GMAX
+ 7532:       WRITE (2,46)  TMP1, TMP2, TSTOR1, TMP3, TMP4, TSTOR2
+ 7533:       GOTO 34
+ 7534:    33 WRITE (2,46)  TMP1, TMP2, TSTOR1
+ 7535: C                                                                       
+ 7536:    34 RETURN
+ 7537:    35 FORMAT(///,31X,'- - - FAR FIELD GROUND PARAMETERS - - -',//)
+ 7538:    36 FORMAT(40X,'RADIAL WIRE GROUND SCREEN',/,40X,I5,' WIRES',/,40X,
+
+--- LINE 7657 ---
+ 7653:       Y2= RARR(5)
+ 7654:       Z2= RARR(6)
+ 7655:       RAD= RARR(7)
+ 7656:       RETURN
+ 7657:   110 WRITE (2,*) ' GEOMETRY DATA CARD ERROR'
+ 7658:       WRITE (2,*)  LINE(1: MAX(1, NLIN-1))
+ 7659:       STOP
+ 7660:       END
+ 7661: C ***
+
+--- LINE 7658 ---
+ 7654:       Z2= RARR(6)
+ 7655:       RAD= RARR(7)
+ 7656:       RETURN
+ 7657:   110 WRITE (2,*) ' GEOMETRY DATA CARD ERROR'
+ 7658:       WRITE (2,*)  LINE(1: MAX(1, NLIN-1))
+ 7659:       STOP
+ 7660:       END
+ 7661: C ***
+ 7662: C     DOUBLE PRECISION 6/4/85
+
+--- LINE 7745 ---
+ 7741:       F4= RARR(4)
+ 7742:       F5= RARR(5)
+ 7743:       F6= RARR(6)
+ 7744:       RETURN
+ 7745:   110 WRITE (2,*) '          FAULTY DATA CARD AFTER GEOMETRY SECTION'
+ 7746:       WRITE (2,*)  LINE(1: MAX(1, NLIN-1))
+ 7747:       STOP
+ 7748:       END
+ 7749: C ***
+
+--- LINE 7746 ---
+ 7742:       F5= RARR(5)
+ 7743:       F6= RARR(6)
+ 7744:       RETURN
+ 7745:   110 WRITE (2,*) '          FAULTY DATA CARD AFTER GEOMETRY SECTION'
+ 7746:       WRITE (2,*)  LINE(1: MAX(1, NLIN-1))
+ 7747:       STOP
+ 7748:       END
+ 7749: C ***
+ 7750: C     DOUBLE PRECISION 6/4/85
+
+--- LINE 7821 ---
+ 7817:       NX= I+ N- N1
+ 7818:       E1= Z( I)
+ 7819:       E2= Z2( I)
+ 7820:       IF( ABS( E1)+ ABS( E2).GT.1.D-5.AND. E1* E2.GE.-1.D-6) GOTO 1
+ 7821:       WRITE (2,24)  I
+ 7822:       STOP
+ 7823:     1 X( NX)= X( I)
+ 7824:       Y( NX)= Y( I)
+ 7825:       Z( NX)=- E1
+
+--- LINE 7841 ---
+ 7837:       DO 5  I= M2, M
+ 7838:       NXX= NXX-1
+ 7839:       NX= NXX- M+ M1
+ 7840:       IF( ABS( Z( NXX)).GT.1.D-10) GOTO 4
+ 7841:       WRITE (2,25)  I
+ 7842:       STOP
+ 7843:     4 X( NX)= X( NXX)
+ 7844:       Y( NX)= Y( NXX)
+ 7845:       Z( NX)=- Z( NXX)
+
+--- LINE 7865 ---
+ 7861:       NX= I+ N- N1
+ 7862:       E1= Y( I)
+ 7863:       E2= Y2( I)
+ 7864:       IF( ABS( E1)+ ABS( E2).GT.1.D-5.AND. E1* E2.GE.-1.D-6) GOTO 7
+ 7865:       WRITE (2,24)  I
+ 7866:       STOP
+ 7867:     7 X( NX)= X( I)
+ 7868:       Y( NX)=- E1
+ 7869:       Z( NX)= Z( I)
+
+--- LINE 7885 ---
+ 7881:       DO 11  I= M2, M
+ 7882:       NXX= NXX-1
+ 7883:       NX= NXX- M+ M1
+ 7884:       IF( ABS( Y( NXX)).GT.1.D-10) GOTO 10
+ 7885:       WRITE (2,25)  I
+ 7886:       STOP
+ 7887:    10 X( NX)= X( NXX)
+ 7888:       Y( NX)=- Y( NXX)
+ 7889:       Z( NX)= Z( NXX)
+
+--- LINE 7909 ---
+ 7905:       NX= I+ N- N1
+ 7906:       E1= X( I)
+ 7907:       E2= X2( I)
+ 7908:       IF( ABS( E1)+ ABS( E2).GT.1.D-5.AND. E1* E2.GE.-1.D-6) GOTO 13
+ 7909:       WRITE (2,24)  I
+ 7910:       STOP
+ 7911:    13 X( NX)=- E1
+ 7912:       Y( NX)= Y( I)
+ 7913:       Z( NX)= Z( I)
+
+--- LINE 7928 ---
+ 7924:       DO 17  I= M2, M
+ 7925:       NXX= NXX-1
+ 7926:       NX= NXX- M+ M1
+ 7927:       IF( ABS( X( NXX)).GT.1.D-10) GOTO 16
+ 7928:       WRITE (2,25)  I
+ 7929:       STOP
+ 7930:    16 X( NX)=- X( NXX)
+ 7931:       Y( NX)= Y( NXX)
+ 7932:       Z( NX)= Z( NXX)
+
+--- LINE 8023 ---
+ 8019:       Z= A
+ 8020:       ZE= B
+ 8021:       S= B- A
+ 8022:       IF( S.GE.0.) GOTO 1
+ 8023:       WRITE (2,18) 
+ 8024:       STOP
+ 8025:     1 EP= S/(1.E4* NM)
+ 8026:       ZEND= ZE- EP
+ 8027:       DO 2  I=1, N
+
+--- LINE 8100 ---
+ 8096:       NT=1
+ 8097:       GOTO 3
+ 8098:    14 NT=0
+ 8099:       IF( NS.LT. NM) GOTO 15
+ 8100:       WRITE (2,19)  Z
+ 8101:       GOTO 10
+ 8102:    15 NS= NS*2
+ 8103:       DZ= S/ NS
+ 8104:       DZOT= DZ*.5
+
+--- LINE 8245 ---
+ 8241:       XXI= QP* QP
+ 8242:       XXI= QP*(1.-.5* XXI)/(1.- XXI)
+ 8243:       CC=1./( CDH- XXI* SDH)
+ 8244:       RETURN
+ 8245:    24 WRITE (2,25)  I
+ 8246: C                                                                       
+ 8247:       STOP
+ 8248:    25 FORMAT(' SBF - SEGMENT CONNECTION ERROR FOR SEGMENT',I5)
+ 8249:       END
+
+--- LINE 8798 ---
+ 8794:    26 CX( JSNOP)=1./( CDH- XXI* SDH)
+ 8795:    27 JSNO= JSNOP
+ 8796:       AX( JSNO)=-1.
+ 8797:       RETURN
+ 8798:    28 WRITE (2,29)  I
+ 8799: C                                                                       
+ 8800:       STOP
+ 8801:    29 FORMAT(' TBF - SEGMENT CONNECTION ERROR FOR SEGMENT',I5)
+ 8802:       END
+
+--- LINE 8868 ---
+ 8864:     8 JSNO= JSNO+1
+ 8865:       CALL SBF( J, J, AX( JSNO), BX( JSNO), CX( JSNO))
+ 8866:       JCO( JSNO)= J
+ 8867:       RETURN
+ 8868:     9 WRITE (2,10)  J
+ 8869: C                                                                       
+ 8870:       STOP
+ 8871:    10 FORMAT(' TRIO - SEGMENT CONNENTION ERROR FOR SEGMENT',I5)
+ 8872:       END
+

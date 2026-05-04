@@ -3,9 +3,62 @@ Using OpenNEC (onec) with 4nec2
 
 ## Overview
 
-OpenNEC (`onec`) can be used as a drop-in replacement for the traditional NEC-2 calculation engines in 4nec2, providing better performance, cross-platform compatibility, and large numbers of segments. This guide explains how to configure 4nec2 to use `onec` instead of the older Fortran-based executables.
+OpenNEC (`onec`) can be used as a drop-in replacement for the traditional NEC-2 calculation engines in 4nec2, providing better performance, cross-platform compatibility, and supporting models with large numbers of segments. This guide explains how to configure 4nec2 to use `onec` instead of the older Fortran-based executables.
 
-## How 4nec2 Invokes NEC Engines
+Setting Up OpenNEC with 4nec2
+=============================
+
+4nec2 ships with several calculation engines based on variations of the original Fortran code:
+
+- **nec2d.exe** - Original NEC-2 engine (up to 2,000 segments)
+- **nec2dXS.exe** - Extended-segment variant (up to ~20,000 segments)
+- **somnec2d.exe** - Ground parameter generation engine
+
+4nec2's GUI includes a screen where you can specify which of these programs you wish to use. OpenNEC is designed to emulate these programs so it can be used in their place. The simplest approach is to copy the OpenNEC executable, `onec.exe`, into 4nec2's engine directory, then select it as your engine in the 4nec2 GUI.
+
+#### Step 1: Copy the Executable
+
+1. Locate your 4nec2 installation directory (typically `C:\4nec2\exe`)
+2. Locate the installation directory for OpenNEC, and the `exe` directory inside it
+3. Copy `onec.exe` from the OpenNEC `exe` directory to the 4nec2 `exe` directory
+
+```batch
+cd C:\4nec2\exe
+copy C:\path\to\onec.exe onec.exe
+```
+
+This preserves the original `nec2d.exe` as your fallback engine.
+
+#### Step 2: Configure 4nec2 to Use OpenNEC
+
+1. Open 4nec2
+2. Go to **Settings → NEC engine**
+3. In the menu, select the **Manual select** option
+    NOTE: if the checkbox beside it is turned on, select it to turn if off and then do this step again
+4. A dialog will appear allowing you to select the executable, type in `onec.exe` (you do not need the complete path, just the name). Click OK to accept it.
+5. A new window appears asking for the number of segments. OpenNEC can handle very large numbers, but 11000 appears to work well. Click OK to continue.
+6. Create a simple antenna test case and generate calculations (F7 / "Calculate")
+7. Verify that calculations complete successfully
+
+**Advantages:**
+- Keeps original `nec2d.exe` as a fallback
+- Easy to switch between engines anytime
+- Works with all 4nec2 features
+- Simple upgrade path, just replace `onec.exe` when new versions ship
+
+### Reverting to Original Engines
+
+To return to the original Fortran-based engines:
+
+1. Open 4nec2 **Settings → NEC engine → Manual select**
+2. Type in `nec2d.exe`. Click OK.
+3. Type in an appropriate number of segments. Click OK.
+4. Close Settings to save your selection
+
+The original engines remain intact and can be selected anytime. You can also simply delete `onec.exe` from the `exe` folder if you no longer need it.
+
+How 4nec2 Invokes NEC Engines
+=============================
 
 The original Fortran code, which ships with the 4nec2 install, is an interactive program which prompts the user for filenames for the input and output files. To drive these programs in an automated fashion, 4nec2 writes the input file to disk with the `.inp` extension and has the Fortran code write the results to a file with the `.out` extension. It then reads the `.out` file and parses it to get the results.
 
@@ -39,127 +92,8 @@ When invoked with no arguments on Windows, OpenNEC prints the same prompts as th
 
 This ensures complete compatibility with systems that might expect these prompts.
 
-## Engine Selection in 4nec2
-
-4nec2 can be configured in **Settings → NEC engine** to use different calculation engines:
-
-- **nec2d.exe** - Original NEC-2 engine (up to 2,000 segments)
-- **nec2dXS.exe** - Extended-segment variant (up to ~20,000 segments)
-- **somnec2d.exe** - Ground parameter generation engine
-
-A major difference between the original Fortran code and OpenNEC is that onec can calculate the Sommerfeld-Norton ground internally and does so automatically. No file needs to be generated for decks that use this feature. However, as 4nec2 users might expect to find the `.gnd` file, the batch file can still call `somnec2d.exe` without any issues for onec.
-
-## Setting Up OpenNEC with 4nec2
-
-### Option 1: GUI Engine Selection (Windows)
-
-The simplest approach is to copy the OpenNEC executable, `onec.exe`, into 4nec2's engine directory, then select it as your engine in the 4nec2 GUI.
-
-#### Step 1: Copy the Executable
-
-1. Locate your 4nec2 installation directory (typically `C:\4nec2\exe`)
-2. Copy `onec.exe` to the 4nec2 `exe` directory (keep the original `nec2d.exe` in place)
-
-```batch
-cd C:\4nec2\exe
-copy C:\path\to\onec.exe onec.exe
-```
-
-This preserves the original `nec2d.exe` as your fallback engine.
-
-#### Step 2: Configure 4nec2 to Use OpenNEC
-
-1. Open 4nec2
-2. Go to **Settings → NEC engine**
-3. Click the path selector button and navigate to `C:\4nec2\exe\onec.exe`
-4. Select `onec.exe` and confirm
-5. Close Settings to save your selection
-6. Create a simple antenna test case and generate calculations (F7 / "Calculate")
-7. Verify that calculations complete successfully
-
-**Advantages:**
-- Keeps original `nec2d.exe` as a fallback
-- Easy to switch between engines anytime
-- Works with all 4nec2 features
-- Simple upgrade path (just replace `onec.exe`)
-
-**Limitations:**
-- None significant; this is the recommended approach
-
-### Option 2: Custom Batch File Wrapper
-
-For more control and to support both NEC and ground calculations:
-
-#### Step 1: Create a Wrapper Batch File
-
-Create `nec2d_wrapper.bat` in your 4nec2 `exe` directory:
-
-```batch
-@echo off
-REM Wrapper for OpenNEC (onec) - compatible with 4nec2
-REM Usage: This script is called by 4nec2 with stdin redirection
-REM Example: nec2d_wrapper.bat < nec2d.tmp
-
-REM Path to OpenNEC executable
-set ONEC=C:\path\to\onec.exe
-
-REM Run OpenNEC with stdin redirection
-%ONEC%
-```
-
-#### Step 2: Create Ground Wrapper (Optional)
-
-If you want to handle both NEC and ground calculations, create adaptive logic:
-
-```batch
-@echo off
-REM Check which file is being processed by examining first line
-REM For now, direct all to onec
-
-set ONEC=C:\path\to\onec.exe
-
-REM Run OpenNEC
-%ONEC%
-```
-
-#### Step 3: Configure 4nec2
-
-1. In 4nec2 **Settings → NEC engine**
-2. Set the engine path to your wrapper script path
-3. Enable "Wait in DOS box" to see output during calculation
-
-### Option 3: Cross-Platform Using Binary/Script
-
-For macOS or Linux users running 4nec2 via Wine or WSL:
-
-#### Step 1: Build OpenNEC
-
-```bash
-make BACKEND=accelerate  # macOS with Accelerate
-make BACKEND=openblas    # Linux with OpenBLAS
-make BACKEND=original    # Universal (slower)
-```
-
-#### Step 2: Create Shell Wrapper
-
-Create `nec2d` (no extension) in 4nec2 `exe` directory:
-
-```bash
-#!/bin/bash
-# OpenNEC wrapper for 4nec2 under Wine/WSL
-/path/to/onec "$@"
-```
-
-Make it executable:
-```bash
-chmod +x nec2d
-```
-
-#### Step 3: Configure 4nec2 Settings
-
-Point to the wrapper script instead of .exe file.
-
-## Technical Considerations
+Technical Considerations
+========================
 
 ### Input Format Compatibility
 
@@ -203,7 +137,8 @@ This allows 4nec2 to work with complex antenna arrays beyond the original NEC-2 
 - For frequency sweeps, OpenNEC recalculates ground parameters for each frequency (more precise than the traditional "trick")
 - OpenNEC implements Sommerfeld-Norton ground calculation identically to the original somnec2d algorithm
 
-## Troubleshooting
+Troubleshooting
+===============
 
 ### Issue: "Engine not found" or "Access denied"
 
@@ -228,7 +163,8 @@ This allows 4nec2 to work with complex antenna arrays beyond the original NEC-2 
 - OpenNEC has no external dependencies (self-contained)
 - Simply select `onec.exe` in 4nec2 Settings and you won't need any Fortran libraries
 
-## Performance Comparison
+Performance Comparison
+======================
 
 Typical improvements when using OpenNEC:
 
@@ -241,7 +177,8 @@ Typical improvements when using OpenNEC:
 
 *Performance depends on CPU and model complexity*
 
-## Advanced: Command-Line Mode
+Advanced: Command-Line Mode
+===========================
 
 4nec2 supports command-line mode (since v5.7.3). This works seamlessly with OpenNEC:
 
@@ -259,30 +196,10 @@ onec.exe < input.tmp > output.txt
 
 This works because 4nec2 handles all pre/post-processing and simply invokes the selected NEC engine via stdin/stdout.
 
-## Reverting to Original Engines
-
-To return to the original Fortran-based engines:
-
-1. Open 4nec2 **Settings → NEC engine**
-2. Click the path selector button and navigate back to `C:\4nec2\exe\nec2d.exe`
-3. Select the original engine and confirm
-4. Close Settings to save your selection
-
-The original engines remain intact and can be selected anytime. You can also simply delete `onec.exe` from the `exe` folder if you no longer need it.
-
-## References
+References
+==========
 
 - [OpenNEC GitHub Repository](https://github.com/maurymarkowitz/OpenNEC)
 - [4nec2 Home Page](http://www.qsl.net/4nec2/)
 - [NEC-2 Documentation](https://en.wikipedia.org/wiki/Numerical_Electromagnetics_Code)
 - [OpenBLAS for High Performance](https://www.openblas.net/)
-
-## Support & Issues
-
-For issues specific to OpenNEC:
-- GitHub Issues: https://github.com/maurymarkowitz/OpenNEC/issues
-- Include your antenna model, system details, and output
-
-For issues with 4nec2 configuration:
-- Consult 4nec2 documentation and support channels
-- Verify that your antenna model is valid NEC-2 format

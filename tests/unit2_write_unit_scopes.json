@@ -1,0 +1,2032 @@
+{
+  "units": [
+    {
+      "kind": "PROGRAM",
+      "name": "MAIN",
+      "start": 1,
+      "end": 1067,
+      "formats": {
+        "700": "  700 FORMAT('$ENTER DATA INPUT FILENAME [HIT RETURN FOR TERMINAL',\n     &' INPUT] : ',/,'$     >')",
+        "701": "  701 FORMAT(A)",
+        "703": "  703 FORMAT('$ENTER DATA OUTPUT FILENAME [HIT RETURN FOR TERMINAL',\n     &' OUTPUT] : ',/,'$     >')",
+        "125": "  125 FORMAT(A2,19A4)",
+        "126": "  126 FORMAT('1')",
+        "127": "  127 FORMAT(///,33X,'************************************',//,36X,\n     &'NUMERICAL ELECTROMAGNETICS CODE',//,33X,\n     &'************************************')",
+        "128": "  128 FORMAT(////,37X,'- - - - COMMENTS - - - -',//)",
+        "129": "  129 FORMAT(' ', 20A4)",
+        "130": "  130 FORMAT(///,10X,'INCORRECT LABEL FOR A COMMENT CARD')",
+        "135": "  135 FORMAT(/////)",
+        "136": "  136 FORMAT(A2,I3,3I5,6E10.3)",
+        "137": "  137 FORMAT(1X,'***** DATA CARD NO.',I3,3X,A2,1X,I3,3(1X,I5),6(1X,1P,E\n     &12.5))",
+        "138": "  138 FORMAT(///,10X,'FAULTY DATA CARD LABEL AFTER GEOMETRY SECTION')",
+        "139": "  139 FORMAT(///,10X,'NUMBER OF LOADING CARDS EXCEEDS STORAGE ALLOTTED'\n     &)",
+        "140": "  140 FORMAT(///,10X,'DATA FAULT ON LOADING CARD NO.=',I5,5X,'ITAG S',\n     &'TEP1=',I5,'  IS GREATER THAN ITAG STEP2=',I5)",
+        "141": "  141 FORMAT(///,10X,'NUMBER OF EXCITATION CARDS EXCEEDS STORAGE ALLO',\n     &'TTED')",
+        "142": "  142 FORMAT(///,10X,'NUMBER OF NETWORK CARDS EXCEEDS STORAGE ALLOTTED'\n     &)",
+        "143": "  143 FORMAT(///,10X,'WHEN MULTIPLE FREQUENCIES ARE REQUESTED, ONLY ONE\n     & NEAR FIELD CARD CAN BE USED -',/,10X,'LAST CARD READ IS USED')",
+        "145": "  145 FORMAT(////,33X,'- - - - - - FREQUENCY - - - - - -',//,36X,'FR',\n     &'EQUENCY=',1P,E11.4,' MHZ',/,36X,'WAVELENGTH=',E11.4,' METERS')",
+        "146": "  146 FORMAT(///,30X,' - - - STRUCTURE IMPEDANCE LOADING - - -')",
+        "147": "  147 FORMAT(/,35X,'THIS STRUCTURE IS NOT LOADED')",
+        "148": "  148 FORMAT(///,34X,'- - - ANTENNA ENVIRONMENT - - -',/)",
+        "149": "  149 FORMAT(40X,'MEDIUM UNDER SCREEN -')",
+        "150": "  150 FORMAT(40X,'RELATIVE DIELECTRIC CONST.=',F7.3,/,40X,'CONDUCTIV',\n     &'ITY=',1P,E10.3,' MHOS/METER',/,40X,\n     &'COMPLEX DIELECTRIC CONSTANT=',2E12.5)",
+        "151": "  151 FORMAT(42X,'PERFECT GROUND')",
+        "152": "  152 FORMAT(44X,'FREE SPACE')",
+        "153": "  153 FORMAT(///,32X,'- - - MATRIX TIMING - - -',//,24X,'FILL=',F9.3,\n     &' SEC.,  FACTOR=',F9.3,' SEC.')",
+        "154": "  154 FORMAT(///,40X,'- - - EXCITATION - - -')",
+        "155": "  155 FORMAT(/,4X,'PLANE WAVE',4X,'THETA=',F7.2,' DEG,  PHI=',F7.2,\n     &' DEG,  ETA=',F7.2,' DEG,  TYPE -',A6,'=  AXIAL RATIO=',F6.3)",
+        "156": "  156 FORMAT(/,31X,'POSITION (METERS)',14X,'ORIENTATION (DEG)=/',28X,\n     &'X',12X,'Y',12X,'Z',10X,'ALPHA',5X,'BETA',4X,'DIPOLE MOMENT',//,4\n     &X,'CURRENT SOURCE',1X,3(3X,F10.5),1X,2(3X,F7.2),4X,F8.3)",
+        "157": "  157 FORMAT(4X,4(I5,1X),1P,6(3X,E11.4),3X,A6,A2)",
+        "158": "  158 FORMAT(///,44X,'- - - NETWORK DATA - - -')",
+        "159": "  159 FORMAT(/,6X,'- FROM -    - TO -',11X,'TRANSMISSION LINE',15X,\n     &'-  -  SHUNT ADMITTANCES (MHOS)  -  -',14X,'LINE',/,6X,\n     &'TAG  SEG.','   TAG  SEG.',6X,'IMPEDANCE',6X,'LENGTH',12X,\n     &'- END ONE -',17X,'- END TWO -',12X,'TYPE',/,6X,\n     &'NO.   NO.   NO.   NO.',9X,'OHM''S',8X,'METERS',9X,'REAL',10X,\n     &'IMAG.',9X,'REAL',10X,'IMAG.')",
+        "160": "  160 FORMAT(/,6X,'- FROM -',4X,'- TO -',26X,'-  -  ADMITTANCE MATRIX',\n     &' ELEMENTS (MHOS)  -  -',/,6X,'TAG  SEG.   TAG  SEG.',13X,'(ON',\n     &'E,ONE)',19X,'(ONE,TWO)',19X,'(TWO,TWO)',/,6X,'NO.   NO.   NO.',\n     &'   NO.',8X,'REAL',10X,'IMAG.',9X,'REAL',10X,'IMAG.',9X,'REAL',10\n     &X,'IMAG.')",
+        "161": "  161 FORMAT(///,29X,'- - - CURRENTS AND LOCATION - - -',//,33X,'DIS',\n     &'TANCES IN WAVELENGTHS')",
+        "162": "  162 FORMAT(//,2X,'SEG.',2X,'TAG',4X,'COORD. OF SEG. CENTER',5X,'SEG.'\n     &,12X,'- - - CURRENT (AMPS) - - -',/,2X,'NO.',3X,'NO.',5X,'X',8X,\n     &'Y',8X,'Z',6X,'LENGTH',5X,'REAL',8X,'IMAG.',7X,'MAG.',8X,'PHASE')",
+        "163": "  163 FORMAT(///,33X,'- - - RECEIVING PATTERN PARAMETERS - - -',/,43X,\n     &'ETA=',F7.2,' DEGREES',/,43X,'TYPE -',A6,/,43X,'AXIAL RATIO=',F6.\n     &3,//,11X,'THETA',6X,'PHI',10X,'-  CURRENT  -',9X,'SEG',/,11X,\n     &'(DEG)',5X,'(DEG)',7X,'MAGNITUDE',4X,'PHASE',6X,'NO.',/)",
+        "164": "  164 FORMAT(10X,2(F7.2,3X),1X,1P,E11.4,3X,0P,F7.2,4X,I5)",
+        "165": "  165 FORMAT(1X,2I5,3F9.4,F9.5,1X,1P,3E12.4,0P,F9.3)",
+        "166": "  166 FORMAT(///,40X,'- - - POWER BUDGET - - -',//,43X,'INPUT PO',\n     &'WER   =',1P,E11.4,' WATTS',/,43X,'RADIATED POWER=',E11.4,\n     &' WATTS',/,43X,'STRUCTURE LOSS=',E11.4,' WATTS',/,43X,\n     &'NETWORK LOSS  =',E11.4,' WATTS',/,43X,'EFFICIENCY    =',0P,F7.2,\n     &' PERCENT')",
+        "170": "  170 FORMAT(40X,'RADIAL WIRE GROUND SCREEN',/,40X,I5,' WIRES',/,40X,\n     &'WIRE LENGTH=',F8.2,' METERS',/,40X,'WIRE RADIUS=',1P,E10.3,\n     &' METERS')",
+        "181": "  181 FORMAT(///,4X,'RECEIVING PATTERN STORAGE TOO SMALL,ARRAY TRUNCA',\n     &'TED')",
+        "182": "  182 FORMAT(///,32X,'- - - NORMALIZED RECEIVING PATTERN - - -',/,41X,\n     &'NORMALIZATION FACTOR=',1P,E11.4,/,41X,'ETA=',0P,F7.2,' DEGREES',\n     &/,41X,'TYPE -',A6,/,41X,'AXIAL RATIO=',F6.3,/,41X,'SEGMENT NO.=',\n     &I5,//,21X,'THETA',6X,'PHI',9X,'-  PATTERN  -',/,21X,'(DEG)',5X,\n     &'(DEG)',8X,'DB',8X,'MAGNITUDE',/)",
+        "183": "  183 FORMAT(20X,2(F7.2,3X),1X,F7.2,4X,1P,E11.4)",
+        "184": "  184 FORMAT(///,36X,'- - - INPUT IMPEDANCE DATA - - -',/,45X,'SO',\n     &'URCE SEGMENT NO.',I4,/,45X,'NORMALIZATION FACTOR=',1P,E12.5,//,7\n     &X,'FREQ.',13X,'-  -  UNNORMALIZED IMPEDANCE  -  -',21X,'-',\n     &' -  NORMALIZED IMPEDANCE  -  -',/,19X,'RESISTANCE',4X,'REACTA',\n     &'NCE',6X,'MAGNITUDE',4X,'PHASE',7X,'RESISTANCE',4X,'REACTANCE',6X\n     &,'MAGNITUDE',4X,'PHASE',/,8X,'MHZ',11X,'OHMS',10X,'OHMS',11X,\n     &'OHMS',5X,'DEGREES',47X,'DEGREES',/)",
+        "185": "  185 FORMAT(///,4X,'STORAGE FOR IMPEDANCE NORMALIZATION TOO SMALL, A',\n     &'RRAY TRUNCATED')",
+        "186": "  186 FORMAT(3X,F9.3,2X,1P,2(2X,E12.5),3X,E12.5,2X,0P,F7.2,2X,1P,2(2X,E\n     &12.5),3X,E12.5,2X,0P,F7.2)",
+        "196": "  196 FORMAT(////,20X,'APPROXIMATE INTEGRATION EMPLOYED FOR SEGMENT',\n     &'S MORE THAN',F8.3,' WAVELENGTHS APART')",
+        "197": "  197 FORMAT(////,41X,'- - - - SURFACE PATCH CURRENTS - - - -',//,50X,\n     &'DISTANCE IN WAVELENGTHS',/,50X,'CURRENT IN AMPS/METER',//,28X,\n     &'- - SURFACE COMPONENTS - -',19X,'- - - RECTANGULAR COM',\n     &'PONENTS - - -',/,6X,'PATCH CENTER',6X,'TANGENT VECTOR 1',3X,\n     &'TANGENT VECTOR 2',11X,'X',19X,'Y',19X,'Z',/,5X,'X',6X,'Y',6X,'Z'\n     &,5X,'MAG.',7X,'PHASE',3X,'MAG.',7X,'PHASE',3(4X,'REAL',6X,'IMAG.'\n     &))",
+        "198": "  198 FORMAT(1X,I4,/,1X,3F7.3,2(1P,E11.4,0P,F8.2),1P,6E10.2)",
+        "201": "  201 FORMAT(/,' RUN TIME =',F10.3)",
+        "315": "  315 FORMAT(///,34X,'- - - CHARGE DENSITIES - - -',//,36X,\n     &'DISTANCES IN WAVELENGTHS',///,2X,'SEG.',2X,'TAG',4X,\n     &'COORD. OF SEG. CENTER',5X,'SEG.',10X,\n     &'CHARGE DENSITY (COULOMBS/METER)',/,2X,'NO.',3X,'NO.',5X,'X',8X,\n     &'Y',8X,'Z',6X,'LENGTH',5X,'REAL',8X,'IMAG.',7X,'MAG.',8X,'PHASE')",
+        "321": "  321 FORMAT(/,20X,'THE EXTENDED THIN WIRE KERNEL WILL BE USED')",
+        "303": "  303 FORMAT(/,' ERROR - ',A2,' CARD IS NOT ALLOWED WITH N.G.F.')",
+        "327": "  327 FORMAT(/,35X,' LOADING ONLY IN N.G.F. SECTION')",
+        "302": "  302 FORMAT(' ERROR - N.G.F. IN USE.  CANNOT WRITE NEW N.G.F.')",
+        "313": "  313 FORMAT(/,' NUMBER OF SEGMENTS IN COUPLING CALCULATION (CP) EXCEE'\n     &,'DS LIMIT')",
+        "390": "  390 FORMAT(' RADIAL WIRE G. S. APPROXIMATION MAY NOT BE USED WITH SO'\n     &,'MMERFELD GROUND OPTION')",
+        "391": "  391 FORMAT(40X,'FINITE GROUND.  REFLECTION COEFFICIENT APPROXIMATION'\n     &)",
+        "392": "  392 FORMAT(40X,'FINITE GROUND.  SOMMERFELD SOLUTION')",
+        "393": "  393 FORMAT(/,' ERROR IN GROUND PARAMETERS -',/,' COMPLEX DIELECTRIC',\n     &' CONSTANT FROM FILE IS',1P,2E12.5,/,32X,'REQUESTED',2E12.5)"
+      },
+      "writes": [
+        {
+          "line": 140,
+          "code": "          WRITE (2,126)",
+          "label": 126,
+          "condition": null
+        },
+        {
+          "line": 141,
+          "code": "          WRITE (2,127)",
+          "label": 127,
+          "condition": null
+        },
+        {
+          "line": 142,
+          "code": "          WRITE (2,128)",
+          "label": 128,
+          "condition": null
+        },
+        {
+          "line": 145,
+          "code": "      WRITE (2,129) ( COM( I, KCOM), I=1,19)",
+          "label": 129,
+          "condition": null
+        },
+        {
+          "line": 150,
+          "code": "          WRITE (2,130)",
+          "label": 130,
+          "condition": null
+        },
+        {
+          "line": 185,
+          "code": "      WRITE (2,135)",
+          "label": 135,
+          "condition": null
+        },
+        {
+          "line": 225,
+          "code": "      WRITE (2,137)  MPCNT, AIN, ITMP1, ITMP2, ITMP3, ITMP4, TMP1, TMP2",
+          "label": 137,
+          "condition": null
+        },
+        {
+          "line": 251,
+          "code": "      WRITE (2,201)  TMP1",
+          "label": 201,
+          "condition": null
+        },
+        {
+          "line": 253,
+          "code": "   15 WRITE (2,138)",
+          "label": 138,
+          "condition": null
+        },
+        {
+          "line": 260,
+          "code": "      WRITE (2,303)  AIN",
+          "label": 303,
+          "condition": null
+        },
+        {
+          "line": 302,
+          "code": "  312 WRITE (2,313)",
+          "label": 313,
+          "condition": null
+        },
+        {
+          "line": 314,
+          "code": "      WRITE (2,139)",
+          "label": 139,
+          "condition": null
+        },
+        {
+          "line": 322,
+          "code": "      WRITE (2,140)  NLOAD, ITMP3, ITMP4",
+          "label": 140,
+          "condition": null
+        },
+        {
+          "line": 333,
+          "code": "      WRITE (2,303)  AIN",
+          "label": 303,
+          "condition": null
+        },
+        {
+          "line": 348,
+          "code": "      WRITE (2,390)",
+          "label": 390,
+          "condition": null
+        },
+        {
+          "line": 380,
+          "code": "  206 WRITE (2,141)",
+          "label": 141,
+          "condition": null
+        },
+        {
+          "line": 415,
+          "code": "      WRITE (2,142)",
+          "label": 142,
+          "condition": null
+        },
+        {
+          "line": 467,
+          "code": "      WRITE (2,143)",
+          "label": 143,
+          "condition": null
+        },
+        {
+          "line": 521,
+          "code": "      WRITE (2,302)",
+          "label": 302,
+          "condition": null
+        },
+        {
+          "line": 594,
+          "code": "      WRITE (2,145)  FMHZ, WLAM",
+          "label": 145,
+          "condition": null
+        },
+        {
+          "line": 595,
+          "code": "      WRITE (2,196)  RKH",
+          "label": 196,
+          "condition": null
+        },
+        {
+          "line": 598,
+          "code": "      IF( IEXK.EQ.1) WRITE (2,321)",
+          "label": 321,
+          "condition": "IEXK.EQ.1"
+        },
+        {
+          "line": 621,
+          "code": "   46 WRITE (2,146)",
+          "label": 146,
+          "condition": null
+        },
+        {
+          "line": 624,
+          "code": "      IF( NLOAD.EQ.0.AND. NLODF.EQ.0) WRITE (2,147)",
+          "label": 147,
+          "condition": "NLOAD.EQ.0.AND. NLODF.EQ.0"
+        },
+        {
+          "line": 626,
+          "code": "      IF( NLOAD.EQ.0.AND. NLODF.NE.0) WRITE (2,327)",
+          "label": 327,
+          "condition": "NLOAD.EQ.0.AND. NLODF.NE.0"
+        },
+        {
+          "line": 627,
+          "code": "      WRITE (2,148)",
+          "label": 148,
+          "condition": null
+        },
+        {
+          "line": 641,
+          "code": "      WRITE (2,170)  NRADL, SCRWLT, SCRWRT",
+          "label": 170,
+          "condition": null
+        },
+        {
+          "line": 642,
+          "code": "      WRITE (2,149)",
+          "label": 149,
+          "condition": null
+        },
+        {
+          "line": 644,
+          "code": "      WRITE (2,391)",
+          "label": 391,
+          "condition": null
+        },
+        {
+          "line": 650,
+          "code": "      WRITE (2,393)  EPSCF, EPSC",
+          "label": 393,
+          "condition": null
+        },
+        {
+          "line": 652,
+          "code": "  400 WRITE (2,392)",
+          "label": 392,
+          "condition": null
+        },
+        {
+          "line": 653,
+          "code": "  329 WRITE (2,150)  EPSR, SIG, EPSC",
+          "label": 150,
+          "condition": null
+        },
+        {
+          "line": 655,
+          "code": "   48 WRITE (2,151)",
+          "label": 151,
+          "condition": null
+        },
+        {
+          "line": 657,
+          "code": "   49 WRITE (2,152)",
+          "label": 152,
+          "condition": null
+        },
+        {
+          "line": 683,
+          "code": "      WRITE (2,153)  TIM, TIM2",
+          "label": 153,
+          "condition": null
+        },
+        {
+          "line": 698,
+          "code": "      IF( IPTFLG.LE.0.OR. IXTYP.EQ.4) WRITE (2,154)",
+          "label": 154,
+          "condition": "IPTFLG.LE.0.OR. IXTYP.EQ.4"
+        },
+        {
+          "line": 706,
+          "code": "      WRITE (2,156)  XPR1, XPR2, XPR3, XPR4, XPR5, XPR6",
+          "label": 156,
+          "condition": null
+        },
+        {
+          "line": 712,
+          "code": "      IF( IPTFLG.LE.0) WRITE (2,155)  XPR1, XPR2, XPR3, HPOL( IXTYP),",
+          "label": 155,
+          "condition": "IPTFLG.LE.0"
+        },
+        {
+          "line": 719,
+          "code": "      WRITE (2,158)",
+          "label": 158,
+          "condition": null
+        },
+        {
+          "line": 724,
+          "code": "      IF( ITMP1.EQ.2) WRITE (2,159)",
+          "label": 159,
+          "condition": "ITMP1.EQ.2"
+        },
+        {
+          "line": 725,
+          "code": "      IF( ITMP1.EQ.1) WRITE (2,160)",
+          "label": 160,
+          "condition": "ITMP1.EQ.1"
+        },
+        {
+          "line": 736,
+          "code": "      WRITE (2,157)  ITAG( ITMP4), ITMP4, ITAG( ITMP5), ITMP5, X11R( J)",
+          "label": 157,
+          "condition": null
+        },
+        {
+          "line": 763,
+          "code": "      WRITE (2,161)",
+          "label": 161,
+          "condition": null
+        },
+        {
+          "line": 764,
+          "code": "      WRITE (2,162)",
+          "label": 162,
+          "condition": null
+        },
+        {
+          "line": 767,
+          "code": "      WRITE (2,163)  XPR3, HPOL( IXTYP), XPR6",
+          "label": 163,
+          "condition": null
+        },
+        {
+          "line": 787,
+          "code": "   67 IF( IPTFLG.NE.3) WRITE (2,164)  XPR1, XPR2, CMAG, PH, I",
+          "label": 164,
+          "condition": "IPTFLG.NE.3"
+        },
+        {
+          "line": 790,
+          "code": "   68 WRITE (2,165)  I, ITAG( I), X( I), Y( I), Z( I), SI( I), CURI,",
+          "label": 165,
+          "condition": null
+        },
+        {
+          "line": 798,
+          "code": "      WRITE (2,315)",
+          "label": 315,
+          "condition": null
+        },
+        {
+          "line": 810,
+          "code": "      WRITE (2,165)  I, ITAG( I), X( I), Y( I), Z( I), SI( I), CURI,",
+          "label": 165,
+          "condition": null
+        },
+        {
+          "line": 814,
+          "code": "      WRITE (2,197)",
+          "label": 197,
+          "condition": null
+        },
+        {
+          "line": 832,
+          "code": "      WRITE (2,198)  I, X( ITMP1), Y( ITMP1), Z( ITMP1), ETHM, ETHA,",
+          "label": 198,
+          "condition": null
+        },
+        {
+          "line": 844,
+          "code": "      WRITE (2,166)  PIN, TMP1, PLOSS, PNLS, TMP2",
+          "label": 166,
+          "condition": null
+        },
+        {
+          "line": 851,
+          "code": "      WRITE (2,135)",
+          "label": 135,
+          "condition": null
+        },
+        {
+          "line": 861,
+          "code": "      WRITE (2,135)",
+          "label": 135,
+          "condition": null
+        },
+        {
+          "line": 887,
+          "code": "      WRITE (2,181)",
+          "label": 181,
+          "condition": null
+        },
+        {
+          "line": 892,
+          "code": "      WRITE (2,182)  TMP1, XPR3, HPOL( IXTYP), XPR6, ISAVE",
+          "label": 182,
+          "condition": null
+        },
+        {
+          "line": 900,
+          "code": "      WRITE (2,183)  XPR1, XPR2, TMP3, TMP2",
+          "label": 183,
+          "condition": null
+        },
+        {
+          "line": 909,
+          "code": "      WRITE (2,135)",
+          "label": 135,
+          "condition": null
+        },
+        {
+          "line": 915,
+          "code": "      WRITE (2,184)  IVQD( NVQD), ZPNORM",
+          "label": 184,
+          "condition": null
+        },
+        {
+          "line": 917,
+          "code": "  199 WRITE (2,184)  ISANT( NSANT), ZPNORM",
+          "label": 184,
+          "condition": null
+        },
+        {
+          "line": 921,
+          "code": "      WRITE (2,185)",
+          "label": 185,
+          "condition": null
+        },
+        {
+          "line": 930,
+          "code": "      WRITE (2,186)  TMP1, FNORM( ITMP2), FNORM( ITMP2+1), FNORM( ITMP2",
+          "label": 186,
+          "condition": null
+        },
+        {
+          "line": 935,
+          "code": "      WRITE (2,135)",
+          "label": 135,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "ARC",
+      "start": 1068,
+      "end": 1114,
+      "formats": {
+        "3": "    3 FORMAT(' ERROR -- ARC ANGLE EXCEEDS 360. DEGREES')"
+      },
+      "writes": [
+        {
+          "line": 1088,
+          "code": "      WRITE (2,3)",
+          "label": 3,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "ATGN2",
+      "start": 1115,
+      "end": 1130,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "BLCKOT",
+      "start": 1131,
+      "end": 1162,
+      "formats": {
+        "4": "    4 FORMAT('  EOF ON UNIT',I3,'  NBLKS= ',I3,'  NEOF= ',I5)"
+      },
+      "writes": [
+        {
+          "line": 1153,
+          "code": "    3 WRITE (2,4)  NUNIT, NBLKS, NEOF",
+          "label": 4,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "CABC",
+      "start": 1163,
+      "end": 1249,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "CANG",
+      "start": 1250,
+      "end": 1262,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "CMNGF",
+      "start": 1263,
+      "end": 1542,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "CMSET",
+      "start": 1543,
+      "end": 1659,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "CMSS",
+      "start": 1660,
+      "end": 1746,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "CMSW",
+      "start": 1747,
+      "end": 1897,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "CMWS",
+      "start": 1898,
+      "end": 1988,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "CMWW",
+      "start": 1989,
+      "end": 2107,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "CONECT",
+      "start": 2108,
+      "end": 2418,
+      "formats": {
+        "50": "   50 FORMAT(//,9X,'- MULTIPLE WIRE JUNCTIONS -',/,1X,'JUNCTION',4X,\n     &'SEGMENTS  (- FOR END 1, + FOR END 2)')",
+        "51": "   51 FORMAT(1X,I5,5X,20I5,/,(11X,20I5))",
+        "52": "   52 FORMAT(2X,'NONE')",
+        "53": "   53 FORMAT(' CONNECT - SEGMENT CONNECTION ERROR FOR SEGMENT',I5)",
+        "54": "   54 FORMAT(/,3X,'GROUND PLANE SPECIFIED.')",
+        "55": "   55 FORMAT(/,3X,'WHERE WIRE ENDS TOUCH GROUND, CURRENT WILL BE ',\n     &'INTERPOLATED TO IMAGE IN GROUND PLANE.',/)",
+        "56": "   56 FORMAT(' GEOMETRY DATA ERROR-- SEGMENT',I5,' EXTENDS BELOW GRO',\n     &'UND')",
+        "57": "   57 FORMAT(' GEOMETRY DATA ERROR--SEGMENT',I5,' LIES IN GROUND ',\n     &'PLANE.')",
+        "58": "   58 FORMAT(/,3X,'TOTAL SEGMENTS USED=',I5,5X,'NO. SEG. IN ','A SY',\n     &'MMETRIC CELL=',I5,5X,'SYMMETRY FLAG=',I3)",
+        "59": "   59 FORMAT(' STRUCTURE HAS',I4,' FOLD ROTATIONAL SYMMETRY',/)",
+        "60": "   60 FORMAT(' STRUCTURE HAS',I2,' PLANES OF SYMMETRY',/)",
+        "61": "   61 FORMAT(3X,'TOTAL PATCHES USED=',I5,6X,'NO. PATCHES IN A SYMMET',\n     &'RIC CELL=',I5)",
+        "62": "   62 FORMAT(' ERROR - NO. NEW SEGMENTS CONNECTED TO N.G.F. SEGMENTS',\n     &'OR PATCHES EXCEEDS LIMIT OF',I5)"
+      },
+      "writes": [
+        {
+          "line": 2127,
+          "code": "      WRITE (2,54)",
+          "label": 54,
+          "condition": null
+        },
+        {
+          "line": 2128,
+          "code": "      IF( IGND.GT.0) WRITE (2,55)",
+          "label": 55,
+          "condition": "IGND.GT.0"
+        },
+        {
+          "line": 2152,
+          "code": "      WRITE (2,56)  I",
+          "label": 56,
+          "condition": null
+        },
+        {
+          "line": 2178,
+          "code": "      WRITE (2,56)  I",
+          "label": 56,
+          "condition": null
+        },
+        {
+          "line": 2182,
+          "code": "      WRITE (2,57)  I",
+          "label": 57,
+          "condition": null
+        },
+        {
+          "line": 2278,
+          "code": "      WRITE (2,62)  NPMAX",
+          "label": 62,
+          "condition": null
+        },
+        {
+          "line": 2280,
+          "code": "   26 WRITE (2,58)  N, NP, IPSYM",
+          "label": 58,
+          "condition": null
+        },
+        {
+          "line": 2281,
+          "code": "      IF( M.GT.0) WRITE (2,61)  M, MP",
+          "label": 61,
+          "condition": "M.GT.0"
+        },
+        {
+          "line": 2286,
+          "code": "   28 WRITE (2,59)  ISEG",
+          "label": 59,
+          "condition": null
+        },
+        {
+          "line": 2290,
+          "code": "      WRITE (2,60)  IC",
+          "label": 60,
+          "condition": null
+        },
+        {
+          "line": 2292,
+          "code": "      WRITE (2,50)",
+          "label": 50,
+          "condition": null
+        },
+        {
+          "line": 2354,
+          "code": "      WRITE (2,62)  NSMAX",
+          "label": 62,
+          "condition": null
+        },
+        {
+          "line": 2361,
+          "code": "      WRITE (2,51)  ISEG,( JCO( I), I=1, IC)",
+          "label": 51,
+          "condition": null
+        },
+        {
+          "line": 2373,
+          "code": "      IF( ISEG.EQ.0) WRITE (2,52)",
+          "label": 52,
+          "condition": "ISEG.EQ.0"
+        },
+        {
+          "line": 2392,
+          "code": "   49 WRITE (2,53)  IX",
+          "label": 53,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "COUPLE",
+      "start": 2419,
+      "end": 2495,
+      "formats": {
+        "6": "    6 FORMAT(///,36X,'- - - ISOLATION DATA - - -',//,6X,'- - COUPLIN',\n     &'G BETWEEN - -',8X,'MAXIMUM',15X,'- - - FOR MAXIMUM COUPLING - ',\n     &'- -',/,12X,'SEG.',14X,'SEG.',3X,'COUPLING',4X,'LOAD IMPEDANCE ',\n     &'(2ND SEG.)',7X,'INPUT IMPEDANCE',/,2X,'TAG/SEG.',3X,'NO.',4X,\n     &'TAG/''SEG.',3X,'NO.',6X,'(DB)',8X,'REAL',9X,'IMAG.',9X,'REAL',9X\n     &,'IMAG.')",
+        "7": "    7 FORMAT(2(1X,I4,1X,I4,1X,I5,2X),F9.3,2X,1P,2(2X,E12.5,1X,E12.5))",
+        "8": "    8 FORMAT(2(1X,I4,1X,I4,1X,I5,2X),'**ERROR** COUPLING IS NOT BETWE',\n     &'EN 0 AND 1. (=',1P,E12.5,')')"
+      },
+      "writes": [
+        {
+          "line": 2447,
+          "code": "      WRITE (2,6)",
+          "label": 6,
+          "condition": null
+        },
+        {
+          "line": 2477,
+          "code": "      WRITE (2,7)  ITT1, ITS1, ISG1, ITT2, ITS2, ISG2, DBC, ZL, ZIN",
+          "label": 7,
+          "condition": null
+        },
+        {
+          "line": 2479,
+          "code": "    4 WRITE (2,8)  ITT1, ITS1, ISG1, ITT2, ITS2, ISG2, C",
+          "label": 8,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "DATAGN",
+      "start": 2496,
+      "end": 2866,
+      "formats": {
+        "124": "  124 FORMAT(5X,'HELIX STRUCTURE-   AXIAL SPACING BETWEEN TURNS =',F8.3\n     &,' TOTAL AXIAL LENGTH =',F8.3/1X,I5,2X,'RADIUS OF HELIX =',4(2X,F\n     &8.3),7X,F11.5,I8,4X,I5,1X,I5,3X,I5)",
+        "38": "   38 FORMAT(1X,I5,2X,'ARC RADIUS =',F9.5,2X,'FROM',F8.3,' TO',F8.3,\n     &' DEGREES',11X,F11.5,2X,I5,4X,I5,1X,I5,3X,I5)",
+        "39": "   39 FORMAT(6X,3F11.5,1X,3F11.5)",
+        "40": "   40 FORMAT(////,33X,'- - - STRUCTURE SPECIFICATION - - -',//,37X,\n     &'COORDINATES MUST BE INPUT IN',/,37X,\n     &'METERS OR BE SCALED TO METERS',/,37X,\n     &'BEFORE STRUCTURE INPUT IS ENDED',//)",
+        "41": "   41 FORMAT(2X,'WIRE',79X,'NO. OF',4X,'FIRST',2X,'LAST',5X,'TAG',/,2X,\n     &'NO.',8X,'X1',9X,'Y1',9X,'Z1',10X,'X2',9X,'Y2',9X,'Z2',6X,\n     &'RADIUS',3X,'SEG.',5X,'SEG.',3X,'SEG.',5X,'NO.')",
+        "42": "   42 FORMAT(A2, I3, I5, 7F10.5)",
+        "43": "   43 FORMAT(1X,I5,3F11.5,1X,4F11.5,2X,I5,4X,I5,1X,I5,3X,I5)",
+        "44": "   44 FORMAT(6X,'STRUCTURE REFLECTED ALONG THE AXES',3(1X,A1),'.  TA',\n     &'GS INCREMENTED BY',I5)",
+        "45": "   45 FORMAT(6X,'STRUCTURE ROTATED ABOUT Z-AXIS',I3,' TIMES.  LABELS',\n     &' INCREMENTED BY',I5)",
+        "46": "   46 FORMAT(6X,'STRUCTURE SCALED BY FACTOR',F10.5)",
+        "47": "   47 FORMAT(6X,'THE STRUCTURE HAS BEEN MOVED, MOVE DATA CARD IS -/6X',\n     &I3,I5,7F10.5)",
+        "48": "   48 FORMAT(' GEOMETRY DATA CARD ERROR')",
+        "49": "   49 FORMAT(1X,A2,I3,I5,7F10.5)",
+        "50": "   50 FORMAT(' NUMBER OF WIRE SEGMENTS AND SURFACE PATCHES EXCEEDS DI',\n     &'MENSION LIMIT.')",
+        "51": "   51 FORMAT(1X,I5,A1,F10.5,2F11.5,1X,3F11.5)",
+        "52": "   52 FORMAT(' ERROR - GF MUST BE FIRST GEOMETRY DATA CARD')",
+        "53": "   53 FORMAT(////33X,'- - - - SEGMENTATION DATA - - - -',//,40X,'COO',\n     &'RDINATES IN METERS',//,25X,\n     &'I+ AND I- INDICATE THE SEGMENTS BEFORE AND AFTER I',//)",
+        "54": "   54 FORMAT(2X,'SEG.',3X,'COORDINATES OF SEG. CENTER',5X,'SEG.',5X,\n     &'ORIENTATION ANGLES',4X,'WIRE',4X,'CONNECTION DATA',3X,'TAG',/,2X\n     &,'NO.',7X,'X',9X,'Y',9X,'Z',7X,'LENGTH',5X,'ALPHA',5X,'BETA',6X,\n     &'RADIUS',4X,'I-',3X,'I',4X,'I+',4X,'NO.')",
+        "55": "   55 FORMAT(1X,I5,4F10.5,1X,3F10.5,1X,3I5,2X,I5)",
+        "56": "   56 FORMAT(' SEGMENT DATA ERROR')",
+        "57": "   57 FORMAT(////,44X,'- - - SURFACE PATCH DATA - - -',//,49X,'COORD',\n     &'INATES IN METERS',//,1X,'PATCH',5X,'COORD. OF PATCH CENTER',7X,\n     &'UNIT NORMAL VECTOR',6X,'PATCH',12X,\n     &'COMPONENTS OF UNIT TANGENT V''ECTORS',/,2X,'NO.',6X,'X',9X,'Y',9\n     &X,'Z',9X,'X',7X,'Y',7X,'Z',7X,'AREA',7X,'X1',6X,'Y1',6X,'Z1',7X,\n     &'X2',6X,'Y2',6X,'Z2')",
+        "58": "   58 FORMAT(1X,I4,3F10.5,1X,3F8.4,F10.5,1X,3F8.4,1X,3F8.4)",
+        "59": "   59 FORMAT(1X,I5,A1,F10.5,2F11.5,1X,3F11.5,5X,'SURFACE -',I4,' BY',I3\n     &,' PATCHES')",
+        "60": "   60 FORMAT(' PATCH DATA ERROR')",
+        "61": "   61 FORMAT(9X,'ABOVE WIRE IS TAPERED.  SEG. LENGTH RATIO =',F9.5,/,33\n     &X,'RADIUS FROM',F9.5,' TO',F9.5)"
+      },
+      "writes": [
+        {
+          "line": 2553,
+          "code": "      WRITE (2,40)",
+          "label": 40,
+          "condition": null
+        },
+        {
+          "line": 2554,
+          "code": "      WRITE (2,41)",
+          "label": 41,
+          "condition": null
+        },
+        {
+          "line": 2578,
+          "code": "      WRITE (2,43)  NWIRE, XW1, YW1, ZW1, XW2, YW2, ZW2, RAD, NS, I1,",
+          "label": 43,
+          "condition": null
+        },
+        {
+          "line": 2590,
+          "code": "    5 WRITE (2,48)",
+          "label": 48,
+          "condition": null
+        },
+        {
+          "line": 2592,
+          "code": "    6 WRITE (2,61)  XS1, YS1, ZS1",
+          "label": 61,
+          "condition": null
+        },
+        {
+          "line": 2604,
+          "code": "      WRITE (2,38)  NWIRE, XW1, YW1, ZW1, XW2, NS, I1, I2, ITG",
+          "label": 38,
+          "condition": null
+        },
+        {
+          "line": 2614,
+          "code": "      WRITE (2,124)  XW1, YW1, NWIRE, ZW1, XW2, YW2, ZW2, RAD, NS, I1,",
+          "label": 124,
+          "condition": null
+        },
+        {
+          "line": 2629,
+          "code": "      WRITE (2,51)  I1, IPT( NS), XW1, YW1, ZW1, XW2, YW2, ZW2",
+          "label": 51,
+          "condition": null
+        },
+        {
+          "line": 2663,
+          "code": "   12 WRITE (2,51)  I1, IPT( NS), XW1, YW1, ZW1, XW2, YW2, ZW2",
+          "label": 51,
+          "condition": null
+        },
+        {
+          "line": 2664,
+          "code": "      WRITE (2,39)  X3, Y3, Z3, X4, Y4, Z4",
+          "label": 39,
+          "condition": null
+        },
+        {
+          "line": 2670,
+          "code": "      WRITE (2,59)  I1, IPT(2), XW1, YW1, ZW1, XW2, YW2, ZW2, ITG, NS",
+          "label": 59,
+          "condition": null
+        },
+        {
+          "line": 2680,
+          "code": "   15 WRITE (2,39)  X3, Y3, Z3, X4, Y4, Z4",
+          "label": 39,
+          "condition": null
+        },
+        {
+          "line": 2685,
+          "code": "   17 WRITE (2,60)",
+          "label": 60,
+          "condition": null
+        },
+        {
+          "line": 2697,
+          "code": "      WRITE (2,44)  IFX( IX+1), IFY( IY+1), IFZ( IZ+1), ITG",
+          "label": 44,
+          "condition": null
+        },
+        {
+          "line": 2699,
+          "code": "   19 WRITE (2,45)  NS, ITG",
+          "label": 45,
+          "condition": null
+        },
+        {
+          "line": 2724,
+          "code": "   25 WRITE (2,46)  XW1",
+          "label": 46,
+          "condition": null
+        },
+        {
+          "line": 2729,
+          "code": "   26 WRITE (2,47)  ITG, NS, XW1, YW1, ZW1, XW2, YW2, ZW2, RAD",
+          "label": 47,
+          "condition": null
+        },
+        {
+          "line": 2739,
+          "code": "      WRITE (2,52)",
+          "label": 52,
+          "condition": null
+        },
+        {
+          "line": 2766,
+          "code": "      WRITE (2,53)",
+          "label": 53,
+          "condition": null
+        },
+        {
+          "line": 2767,
+          "code": "      WRITE (2,54)",
+          "label": 54,
+          "condition": null
+        },
+        {
+          "line": 2788,
+          "code": "      WRITE (2,55)  I, X( I), Y( I), Z( I), SI( I), XW2, YW2, BI( I),",
+          "label": 55,
+          "condition": null
+        },
+        {
+          "line": 2796,
+          "code": "      WRITE (2,56)",
+          "label": 56,
+          "condition": null
+        },
+        {
+          "line": 2800,
+          "code": "      WRITE (2,57)",
+          "label": 57,
+          "condition": null
+        },
+        {
+          "line": 2807,
+          "code": "      WRITE (2,58)  I, X( J), Y( J), Z( J), XW1, YW1, ZW1, BI( J), T1X(",
+          "label": 58,
+          "condition": null
+        },
+        {
+          "line": 2811,
+          "code": "   36 WRITE (2,48)",
+          "label": 48,
+          "condition": null
+        },
+        {
+          "line": 2812,
+          "code": "      WRITE (2,49)  GM, ITG, NS, XW1, YW1, ZW1, XW2, YW2, ZW2, RAD",
+          "label": 49,
+          "condition": null
+        },
+        {
+          "line": 2814,
+          "code": "   37 WRITE (2,50)",
+          "label": 50,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "DB10",
+      "start": 2867,
+      "end": 2885,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "EFLD",
+      "start": 2886,
+      "end": 3123,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "EKSC",
+      "start": 3124,
+      "end": 3169,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "EKSCX",
+      "start": 3170,
+      "end": 3253,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "ERROR",
+      "start": 3254,
+      "end": 3267,
+      "formats": {
+        "1": "    1 FORMAT(//,'  ****  ERROR  ****   ',//,5X,A,//)"
+      },
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "ETMNS",
+      "start": 3268,
+      "end": 3502,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "FACGF",
+      "start": 3503,
+      "end": 3599,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "FACIO",
+      "start": 3600,
+      "end": 3656,
+      "formats": {
+        "4": "    4 FORMAT(' CP TIME TAKEN FOR FACTORIZATION = ',1P,E12.5)"
+      },
+      "writes": [
+        {
+          "line": 3649,
+          "code": "      WRITE (2,4)  TIME",
+          "label": 4,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "FACTR",
+      "start": 3657,
+      "end": 3733,
+      "formats": {
+        "10": "   10 FORMAT(1H ,'PIVOT(',I3,')=',1P,E16.8)"
+      },
+      "writes": [
+        {
+          "line": 3724,
+          "code": "      WRITE (2,10)  R, DMAX",
+          "label": 10,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "FACTRS",
+      "start": 3734,
+      "end": 3821,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "FBAR",
+      "start": 3822,
+      "end": 3871,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "FBLOCK",
+      "start": 3872,
+      "end": 3979,
+      "formats": {
+        "14": "   14 FORMAT(//' MATRIX FILE STORAGE -  NO. BLOCKS=',I5,' COLUMNS PE',\n     &'R BLOCK=',I5,' COLUMNS IN LAST BLOCK=',I5)",
+        "15": "   15 FORMAT(' SUBMATRICIES FIT IN CORE')",
+        "16": "   16 FORMAT(' SUBMATRIX PARTITIONING -  NO. BLOCKS=',I5,' COLUMNS P',\n     &'ER BLOCK=',I5,' COLUMNS IN LAST BLOCK=',I5)",
+        "17": "   17 FORMAT(' ERROR - INSUFFICIENT STORAGE FOR MATRIX',2I5)",
+        "18": "   18 FORMAT(' SYMMETRY ERROR - NROW,NCOL=',2I5)"
+      },
+      "writes": [
+        {
+          "line": 3906,
+          "code": "      WRITE (2,14)  NBLOKS, NPBLK, NLAST",
+          "label": 14,
+          "condition": null
+        },
+        {
+          "line": 3914,
+          "code": "      WRITE (2,14)  NBLOKS, NPBLK, NLAST",
+          "label": 14,
+          "condition": null
+        },
+        {
+          "line": 3921,
+          "code": "      WRITE (2,15)",
+          "label": 15,
+          "condition": null
+        },
+        {
+          "line": 3931,
+          "code": "      WRITE (2,16)  NBLSYM, NPSYM, NLSYM",
+          "label": 16,
+          "condition": null
+        },
+        {
+          "line": 3964,
+          "code": "   12 WRITE (2,17)  NROW, NCOL",
+          "label": 17,
+          "condition": null
+        },
+        {
+          "line": 3966,
+          "code": "   13 WRITE (2,18)  NROW, NCOL",
+          "label": 18,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "FBNGF",
+      "start": 3980,
+      "end": 4054,
+      "formats": {
+        "7": "    7 FORMAT(55H ERROR - INSUFFICIENT STORAGE FOR INTERACTION MATRICIES\n     &,'  IRESRV,IMAT,NEQ,NEQ2 =',4I5)",
+        "8": "    8 FORMAT(' FILE STORAGE FOR NEW MATRIX SECTIONS -  ICASX =', I2)",
+        "9": "    9 FORMAT(' B FILLED BY ROWS -',15X,'NO. BLOCKS =',I3,3X,\n     &  'ROWS PER BLOCK =', I3, '   ROWS IN LAST BLOCK =', I3)",
+        "10": "   10 FORMAT(' B BY COLUMNS, C AND D BY ROWS -  NO. BLOCKS =',I3,\n     & '    R/C PER BLOCK =', I3, '    R/C IN LAST BLOCK =', I3)",
+        "11": "   11 FORMAT(//,' N.G.F. - NUMBER OF NEW UNKNOWNS IS', I4)"
+      },
+      "writes": [
+        {
+          "line": 4034,
+          "code": "      WRITE (2,11)  NEQ2",
+          "label": 11,
+          "condition": null
+        },
+        {
+          "line": 4036,
+          "code": "      WRITE (2,8)  ICASX",
+          "label": 8,
+          "condition": null
+        },
+        {
+          "line": 4037,
+          "code": "      WRITE (2,9)  NBBX, NPBX, NLBX",
+          "label": 9,
+          "condition": null
+        },
+        {
+          "line": 4038,
+          "code": "      WRITE (2,10)  NBBL, NPBL, NLBL",
+          "label": 10,
+          "condition": null
+        },
+        {
+          "line": 4040,
+          "code": "    6 WRITE (2,7)  IRESRV, IMAT, NEQ, NEQ2",
+          "label": 7,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "FFLD",
+      "start": 4055,
+      "end": 4271,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "FFLDS",
+      "start": 4272,
+      "end": 4306,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "GF",
+      "start": 4307,
+      "end": 4330,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "GFIL",
+      "start": 4331,
+      "end": 4487,
+      "formats": {
+        "14": "   14 FORMAT(5X,'**************************************************',\n     &'**********************************')",
+        "15": "   15 FORMAT(5X,3H** ,19A4,3H **)",
+        "16": "   16 FORMAT(////)",
+        "17": "   17 FORMAT(5X,2H**,80X,2H**)",
+        "18": "   18 FORMAT(5X,'** NUMERICAL GREEN S FUNCTION',53X,2H**,/,5X,'** NO',\n     &'. SEGMENTS =',I4,10X,'NO. PATCHES =',I4,34X,2H**)",
+        "19": "   19 FORMAT(5X,'** NO. SYMMETRIC SECTIONS =',I4,51X,2H**)",
+        "20": "   20 FORMAT(5X,'** N.G.F. MATRIX -  CORE STORAGE =',I7,' COMPLEX NU',\n     &'MBERS,  CASE',I2,16X,2H**)",
+        "21": "   21 FORMAT(5X,2H**,19X,'MATRIX SIZE =',I7,' COMPLEX NUMBERS',25X,'**')",
+        "22": "   22 FORMAT(5X,'** FREQUENCY =',1P,E12.5,' MHZ.',51X,2H**)",
+        "23": "   23 FORMAT(5X,'** PERFECT GROUND',65X,2H**)",
+        "24": "   24 FORMAT(5X,'** GROUND PARAMETERS - DIELECTRIC CONSTANT =',1P,E12.5,\n     &26X,'**',/,5X,'**',21X,'CONDUCTIVITY =',E12.5,' MHOS/M.',25X,'**')",
+        "25": "   25 FORMAT(39X,'NUMERICAL GREEN S FUNCTION DATA',/,41X,'COORDINATES',\n     &' OF SEGMENT ENDS',/,51X,'(METERS)',/,5X,'SEG.',11X,\n     &'- - - END ON''E - - -',26X,'- - - END TWO - - -',/,6X,3HNO.,6X,1\n     &HX,14X,1HY,14X,1HZ,14X,1HX,14X,1HY,14X,1HZ)",
+        "26": "   26 FORMAT(1X,I7,1P,6E15.6)",
+        "27": "   27 FORMAT(5X,'** FINITE GROUND.  REFLECTION COEFFICIENT APPROXIMAT',\n     &'ION',27X,2H**)",
+        "28": "   28 FORMAT(5X,'** FINITE GROUND.  SOMMERFELD SOLUTION',44X,'**')"
+      },
+      "writes": [
+        {
+          "line": 4433,
+          "code": "      WRITE (2,16)",
+          "label": 16,
+          "condition": null
+        },
+        {
+          "line": 4434,
+          "code": "      WRITE (2,14)",
+          "label": 14,
+          "condition": null
+        },
+        {
+          "line": 4435,
+          "code": "      WRITE (2,14)",
+          "label": 14,
+          "condition": null
+        },
+        {
+          "line": 4436,
+          "code": "      WRITE (2,17)",
+          "label": 17,
+          "condition": null
+        },
+        {
+          "line": 4437,
+          "code": "      WRITE (2,18)  N1, M1",
+          "label": 18,
+          "condition": null
+        },
+        {
+          "line": 4438,
+          "code": "      IF( NOP.GT.1) WRITE (2,19)  NOP",
+          "label": 19,
+          "condition": "NOP.GT.1"
+        },
+        {
+          "line": 4439,
+          "code": "      WRITE (2,20)  IMAT, ICASE",
+          "label": 20,
+          "condition": null
+        },
+        {
+          "line": 4442,
+          "code": "      WRITE (2,21)  NBL2",
+          "label": 21,
+          "condition": null
+        },
+        {
+          "line": 4443,
+          "code": "   11 WRITE (2,22)  FMHZ",
+          "label": 22,
+          "condition": null
+        },
+        {
+          "line": 4444,
+          "code": "      IF( KSYMP.EQ.2.AND. IPERF.EQ.1) WRITE (2,23)",
+          "label": 23,
+          "condition": "KSYMP.EQ.2.AND. IPERF.EQ.1"
+        },
+        {
+          "line": 4445,
+          "code": "      IF( KSYMP.EQ.2.AND. IPERF.EQ.0) WRITE (2,27)",
+          "label": 27,
+          "condition": "KSYMP.EQ.2.AND. IPERF.EQ.0"
+        },
+        {
+          "line": 4446,
+          "code": "      IF( KSYMP.EQ.2.AND. IPERF.EQ.2) WRITE (2,28)",
+          "label": 28,
+          "condition": "KSYMP.EQ.2.AND. IPERF.EQ.2"
+        },
+        {
+          "line": 4447,
+          "code": "      IF( KSYMP.EQ.2.AND. IPERF.NE.1) WRITE (2,24)  EPSR, SIG",
+          "label": 24,
+          "condition": "KSYMP.EQ.2.AND. IPERF.NE.1"
+        },
+        {
+          "line": 4448,
+          "code": "      WRITE (2,17)",
+          "label": 17,
+          "condition": null
+        },
+        {
+          "line": 4450,
+          "code": "   12 WRITE (2,15) ( COM( I, J), I=1,19)",
+          "label": 15,
+          "condition": null
+        },
+        {
+          "line": 4451,
+          "code": "      WRITE (2,17)",
+          "label": 17,
+          "condition": null
+        },
+        {
+          "line": 4452,
+          "code": "      WRITE (2,14)",
+          "label": 14,
+          "condition": null
+        },
+        {
+          "line": 4453,
+          "code": "      WRITE (2,14)",
+          "label": 14,
+          "condition": null
+        },
+        {
+          "line": 4454,
+          "code": "      WRITE (2,16)",
+          "label": 16,
+          "condition": null
+        },
+        {
+          "line": 4456,
+          "code": "      WRITE (2,25)",
+          "label": 25,
+          "condition": null
+        },
+        {
+          "line": 4458,
+          "code": "   13 WRITE (2,26)  I, X( I), Y( I), Z( I), SI( I), ALP( I), BET( I)",
+          "label": 26,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "GFLD",
+      "start": 4488,
+      "end": 4641,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "GFOUT",
+      "start": 4642,
+      "end": 4739,
+      "formats": {
+        "13": "   13 FORMAT(///,' ****NUMERICAL GREEN S FUNCTION FILE ON TAPE',I3,\n     &'****',/,5X,'MATRIX STORAGE -',I7,' COMPLEX NUMBERS',///)"
+      },
+      "writes": [
+        {
+          "line": 4731,
+          "code": "      WRITE (2,13)  IGFL, IMAT",
+          "label": 13,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "GH",
+      "start": 4740,
+      "end": 4759,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "GWAVE",
+      "start": 4760,
+      "end": 4841,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "GX",
+      "start": 4842,
+      "end": 4856,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "GXX",
+      "start": 4857,
+      "end": 4902,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "HELIX",
+      "start": 4903,
+      "end": 4977,
+      "formats": {
+        "104": "  104 FORMAT(5X,'THE CONE ANGLE OF THE SPIRAL IS',F10.4)",
+        "105": "  105 FORMAT(5X,'THE PITCH ANGLE IS',F10.4/5X,\n     &'THE LENGTH OF WIRE/TURN ''IS',F10.4)"
+      },
+      "writes": [
+        {
+          "line": 4951,
+          "code": "      WRITE (2,104)  SANGLE",
+          "label": 104,
+          "condition": null
+        },
+        {
+          "line": 4970,
+          "code": "   40 WRITE (2,105)  PITCH, TURN",
+          "label": 105,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "HFK",
+      "start": 4978,
+      "end": 5066,
+      "formats": {
+        "18": "   18 FORMAT(' STEP SIZE LIMITED AT Z=',F10.5)"
+      },
+      "writes": [
+        {
+          "line": 5047,
+          "code": "   15 WRITE (2,18)  Z",
+          "label": 18,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "HINTG",
+      "start": 5067,
+      "end": 5155,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "HSFLD",
+      "start": 5156,
+      "end": 5270,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "HSFLX",
+      "start": 5271,
+      "end": 5328,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "INTRP",
+      "start": 5329,
+      "end": 5487,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "INTX",
+      "start": 5488,
+      "end": 5597,
+      "formats": {
+        "20": "   20 FORMAT(' STEP SIZE LIMITED AT Z=',F10.5)"
+      },
+      "writes": [
+        {
+          "line": 5569,
+          "code": "   15 WRITE (2,20)  Z",
+          "label": 20,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "FUNCTION",
+      "name": "ISEGNO",
+      "start": 5598,
+      "end": 5633,
+      "formats": {
+        "6": "    6 FORMAT(4X,'CHECK DATA, PARAMETER SPECIFYING SEGMENT POSITION IN',\n     &' A GROUP OF EQUAL TAGS MUST NOT BE ZERO')",
+        "7": "    7 FORMAT(///,10X,'NO SEGMENT HAS AN ITAG OF ',I5)"
+      },
+      "writes": [
+        {
+          "line": 5610,
+          "code": "      WRITE (2,6)",
+          "label": 6,
+          "condition": null
+        },
+        {
+          "line": 5622,
+          "code": "    4 WRITE (2,7)  ITAGI",
+          "label": 7,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "LFACTR",
+      "start": 5634,
+      "end": 5744,
+      "formats": {
+        "17": "   17 FORMAT(' ','PIVOT(,I3,2H)=',1P,E16.8)"
+      },
+      "writes": [
+        {
+          "line": 5735,
+          "code": "      WRITE (2,17)  J2, DMAX",
+          "label": 17,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "LOAD",
+      "start": 5745,
+      "end": 5888,
+      "formats": {
+        "25": "   25 FORMAT(//,7X,'LOCATION',10X,'RESISTANCE',3X,'INDUCTANCE',2X,\n     &'CAPACITANCE',7X,'IMPEDANCE (OHMS)',5X,'CONDUCTIVITY',4X,'TYPE',/\n     &,4X,'ITAG',' FROM THRU',10X,'OHMS',8X,'HENRYS',7X,'FARADS',8X,\n     &'REAL',6X,'IMAGINARY',4X,'MHOS/METER')",
+        "26": "   26 FORMAT(/,10X,'NOTE, SOME OF THE ABOVE SEGMENTS HAVE BEEN LOADED',\n     &' TWICE - IMPEDANCES ADDED')",
+        "27": "   27 FORMAT(/,10X,'IMPROPER LOAD TYPE CHOOSEN, REQUESTED TYPE IS ',I3)",
+        "28": "   28 FORMAT(/,10X,'LOADING DATA CARD ERROR, NO SEGMENT HAS AN ITAG =',\n     &I5)",
+        "29": "   29 FORMAT(' ERROR - LOADING MAY NOT BE ADDED TO SEGMENTS IN N.G.F.',\n     &' SECTION')"
+      },
+      "writes": [
+        {
+          "line": 5769,
+          "code": "      WRITE (2,25)",
+          "label": 25,
+          "condition": null
+        },
+        {
+          "line": 5779,
+          "code": "      IF( IWARN.EQ.1) WRITE (2,26)",
+          "label": 26,
+          "condition": "IWARN.EQ.1"
+        },
+        {
+          "line": 5791,
+          "code": "      WRITE (2,27)  LDTYP( ISTEP)",
+          "label": 27,
+          "condition": null
+        },
+        {
+          "line": 5806,
+          "code": "      WRITE (2,29)",
+          "label": 29,
+          "condition": null
+        },
+        {
+          "line": 5848,
+          "code": "      WRITE (2,28)  LDTAGS",
+          "label": 28,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "LTSOLV",
+      "start": 5889,
+      "end": 5962,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "LUNSCR",
+      "start": 5963,
+      "end": 6028,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "MOVE",
+      "start": 6029,
+      "end": 6135,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "NEFLD",
+      "start": 6136,
+      "end": 6261,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "NETWK",
+      "start": 6262,
+      "end": 6609,
+      "formats": {
+        "58": "   58 FORMAT(///,3X,'MAXIMUM RELATIVE ASYMMETRY OF THE DRIVING POINT',\n     &' ADMITTANCE MATRIX IS',1P,E10.3,' FOR SEGMENTS',I5,4H AND,I5,/,3\n     &X,'RMS RELATIVE ASYMMETRY IS',E10.3)",
+        "59": "   59 FORMAT(1X,'ERROR - - NETWORK ARRAY DIMENSIONS TOO SMALL')",
+        "60": "   60 FORMAT(/,3X,'TAG',3X,'SEG.',4X,'VOLTAGE (VOLTS)',9X,'CURRENT (',\n     &'AMPS)',9X,'IMPEDANCE (OHMS)',8X,'ADMITTANCE (MHOS)',6X,'POWER',/\n     &,3X,'NO.',3X,'NO.',4X,'REAL',8X,'IMAG.',3(7X,'REAL',8X,'IMAG.'),5\n     &X,'(WATTS)')",
+        "61": "   61 FORMAT(///,27X,'- - - STRUCTURE EXCITATION DATA AT NETWORK CONN',\n     &'ECTION POINTS - - -')",
+        "62": "   62 FORMAT(2(1X,I5),1P,9E12.5)",
+        "63": "   63 FORMAT(///,42X,'- - - ANTENNA INPUT PARAMETERS - - -')",
+        "64": "   64 FORMAT(1X,I5,' *',I4,1P,9E12.5)"
+      },
+      "writes": [
+        {
+          "line": 6322,
+          "code": "      WRITE (2,59)",
+          "label": 59,
+          "condition": null
+        },
+        {
+          "line": 6351,
+          "code": "      WRITE (2,58)  ASM, NTEQ, NTSC, ASA",
+          "label": 58,
+          "condition": null
+        },
+        {
+          "line": 6443,
+          "code": "      WRITE (2,59)",
+          "label": 59,
+          "condition": null
+        },
+        {
+          "line": 6517,
+          "code": "      IF( NPRINT.EQ.0) WRITE (2,61)",
+          "label": 61,
+          "condition": "NPRINT.EQ.0"
+        },
+        {
+          "line": 6518,
+          "code": "      IF( NPRINT.EQ.0) WRITE (2,60)",
+          "label": 60,
+          "condition": "NPRINT.EQ.0"
+        },
+        {
+          "line": 6528,
+          "code": "   46 IF( NPRINT.EQ.0) WRITE (2,62)  IROW2, IROW1, VLT, CUX, ZPED, YMIT",
+          "label": 62,
+          "condition": "NPRINT.EQ.0"
+        },
+        {
+          "line": 6540,
+          "code": "   47 IF( NPRINT.EQ.0) WRITE (2,62)  IROW2, IROW1, VLT, CUX, ZPED, YMIT",
+          "label": 62,
+          "condition": "NPRINT.EQ.0"
+        },
+        {
+          "line": 6551,
+          "code": "      WRITE (2,63)",
+          "label": 63,
+          "condition": null
+        },
+        {
+          "line": 6552,
+          "code": "      WRITE (2,60)",
+          "label": 60,
+          "condition": null
+        },
+        {
+          "line": 6575,
+          "code": "   55 WRITE (2,62)  IROW2, ISC1, VLT, CUX, ZPED, YMIT, PWR",
+          "label": 62,
+          "condition": null
+        },
+        {
+          "line": 6590,
+          "code": "   57 WRITE (2,64)  IROW2, ISC1, VLT, CUX, ZPED, YMIT, PWR",
+          "label": 64,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "NFPAT",
+      "start": 6610,
+      "end": 6709,
+      "formats": {
+        "10": "   10 FORMAT(///,35X,'- - - NEAR ELECTRIC FIELDS - - -',//,12X,'-  L',\n     &'OCATION  -',21X,'-  EX  -',15X,'-  EY  -',15X,'-  EZ  -',/,8X,\n     &'X',10X,'Y',10X,'Z',10X,'MAGNITUDE',3X,'PHASE',6X,'MAGNITUDE',3X,\n     &'PHASE',6X,'MAGNITUDE',3X,'PHASE',/,6X,'METERS',5X,'METERS',5X,\n     &'METERS',8X,'VOLTS/M',3X,'DEGREES',6X,'VOLTS/M',3X,'DEGREES',6X\n     &,'VOLTS/M',3X,'DEGREES')",
+        "11": "   11 FORMAT(2X,3(2X,F9.4),1X,3(3X,1P,E11.4,2X,0P,F7.2))",
+        "12": "   12 FORMAT(///,35X,'- - - NEAR MAGNETIC FIELDS - - -',//,12X,'-  L',\n     &'OCATION  -',21X,'-  HX  -',15X,'-  HY  -',15X,'-  HZ  -',/,8X,\n     &'X',10X,'Y',10X,'Z',10X,'MAGNITUDE',3X,'PHASE',6X,'MAGNITUDE',3X,\n     &'PHASE',6X,'MAGNITUDE',3X,'PHASE',/,6X,'METERS',5X,'METERS',5X,\n     &'METERS',9X,'AMPS/M',3X,'DEGREES',7X,'AMPS/M',3X,'DEGREES',7X,\n     &'AMPS/M',3X,'DEGREES')"
+      },
+      "writes": [
+        {
+          "line": 6628,
+          "code": "      WRITE (2,10)",
+          "label": 10,
+          "condition": null
+        },
+        {
+          "line": 6630,
+          "code": "    1 WRITE (2,12)",
+          "label": 12,
+          "condition": null
+        },
+        {
+          "line": 6668,
+          "code": "      WRITE (2,11)  XOB, YOB, ZOB, TMP1, TMP2, TMP3, TMP4, TMP5, TMP6",
+          "label": 11,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "NHFLD",
+      "start": 6710,
+      "end": 6796,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "PATCH",
+      "start": 6797,
+      "end": 6998,
+      "formats": {
+        "14": "   14 FORMAT(' ERROR -- CORNERS OF QUADRILATERAL PATCH DO NOT LIE IN ',\n     &'A PLANE')"
+      },
+      "writes": [
+        {
+          "line": 6890,
+          "code": "      WRITE (2,14)",
+          "label": 14,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "PCINT",
+      "start": 6999,
+      "end": 7088,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "PRNT",
+      "start": 7089,
+      "end": 7164,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "QDSRC",
+      "start": 7165,
+      "end": 7294,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "RDPAT",
+      "start": 7295,
+      "end": 7573,
+      "formats": {
+        "35": "   35 FORMAT(///,31X,'- - - FAR FIELD GROUND PARAMETERS - - -',//)",
+        "36": "   36 FORMAT(40X,'RADIAL WIRE GROUND SCREEN',/,40X,I5,' WIRES',/,40X,\n     &'WIRE LENGTH=',F8.2,' METERS',/,40X,'WIRE RADIUS=',1P,E10.3,\n     &' METERS')",
+        "37": "   37 FORMAT(40X,A6,' CLIFF',/,40X,'EDGE DISTANCE=',F9.2,' METERS',/,40\n     &X,'HEIGHT=',F8.2,' METERS',/,40X,'SECOND MEDIUM -',/,40X,'RELA',\n     &'TIVE DIELECTRIC CONST.=',F7.3,/,40X,'CONDUCTIVITY=',1P,E10.3,\n     &' MHOS')",
+        "38": "   38 FORMAT(///,48X,'- - - RADIATION PATTERNS - - -')",
+        "39": "   39 FORMAT(54X,'RANGE=',1P,E13.6,' METERS',/,54X,'EXP(-JKR)/R=',E12.5\n     &,' AT PHASE',0P,F7.2,' DEGREES',/)",
+        "40": "   40 FORMAT(/,2X,'- - ANGLES - -',7X,2A6,'GAINS -',7X,'- - - POLARI',\n     &'ZATION - - -',4X,'- - - E(THETA) - - -',4X,'- - - E(PHI) - -',\n     &' -',/,2X,'THETA',5X,'PHI',7X,A6,2X,A6,3X,'TOTAL',6X,'AXIAL',5X,\n     &'TILT',3X,'SENSE',2(5X,'MAGNITUDE',4X,'PHASE'),/,2(1X,'DEGREES',1\n     &X),3(6X,'DB'),8X,'RATIO',5X,'DEG.',8X,2(6X,'VOLTS/M',4X,'DEGRE',\n     &'ES'))",
+        "41": "   41 FORMAT(///,28X,' - - - RADIATED FIELDS NEAR GROUND - - -',//,8X,\n     &'- - - LOCATION - - -',10X,'- - E(THETA) - -',8X,'- - E(PHI) -',\n     &' -',8X,'- - E(RADIAL) - -',/,7X,'RHO',6X,'PHI',9X,'Z',12X,'MAG',\n     &6X,'PHASE',9X,'MAG',6X,'PHASE',9X,'MAG',6X,'PHASE',/,5X,'METERS',\n     &3X,'DEGREES',4X,'METERS',8X,'VOLTS/M',3X,'DEGREES',6X,'VOLTS/M',3\n     &X,'DEGREES',6X,'VOLTS/M',3X,'DEGREES',/)",
+        "42": "   42 FORMAT(1X,F7.2,F9.2,3X,3F8.2,F11.5,F9.2,2X,A6,2(1P,E15.5,0P,F9.2)\n     &)",
+        "43": "   43 FORMAT(3X,F9.2,2X,F7.2,2X,F9.2,1X,3(3X,1P,E11.4,2X,0P,F7.2))",
+        "44": "   44 FORMAT(//,3X,'AVERAGE POWER GAIN=',1P,E12.5,7X,'SOLID ANGLE U',\n     &'SED IN AVERAGING=(',0P,F7.4,')*PI STERADIANS.',//)",
+        "45": "   45 FORMAT(//,37X,'- - - - NORMALIZED GAIN - - - -',//,37X,2A6,'GAI',\n     &'N',/,38X,'NORMALIZATION FACTOR =',F9.2,' DB',//,3(4X,\n     &'- - ANGLES'' - -',6X,'GAIN',7X),/,3(4X,'THETA',5X,'PHI',8X,'DB',\n     &8X),/,3(3X,'DEGREES',2X,'DEGREES',16X))",
+        "46": "   46 FORMAT(3(1X,2F9.2,1X,F9.2,6X))"
+      },
+      "writes": [
+        {
+          "line": 7329,
+          "code": "      WRITE (2,35)",
+          "label": 35,
+          "condition": null
+        },
+        {
+          "line": 7331,
+          "code": "      WRITE (2,36)  NRADL, SCRWLT, SCRWRT",
+          "label": 36,
+          "condition": null
+        },
+        {
+          "line": 7338,
+          "code": "      WRITE (2,37)  HCLIF, CLT, CHT, EPSR2, SIG2",
+          "label": 37,
+          "condition": null
+        },
+        {
+          "line": 7340,
+          "code": "      WRITE (2,41)",
+          "label": 41,
+          "condition": null
+        },
+        {
+          "line": 7346,
+          "code": "      WRITE (2,38)",
+          "label": 38,
+          "condition": null
+        },
+        {
+          "line": 7351,
+          "code": "      WRITE (2,39)  RFLD, EXRM, EXRA",
+          "label": 39,
+          "condition": null
+        },
+        {
+          "line": 7352,
+          "code": "    4 WRITE (2,40)  IGTP( I), IGTP( J), IGAX( ITMP1), IGAX( ITMP2)",
+          "label": 40,
+          "condition": null
+        },
+        {
+          "line": 7471,
+          "code": "   27 WRITE (2,42)  THET, PHI, TMP5, TMP6, GTOT, AXRAT, TILTA, ISENS,",
+          "label": 42,
+          "condition": null
+        },
+        {
+          "line": 7487,
+          "code": "   28 WRITE (2,43)  RFLD, PHI, THET, ETHM, ETHA, EPHM, EPHA, ERDM, ERDA",
+          "label": 43,
+          "condition": null
+        },
+        {
+          "line": 7498,
+          "code": "      WRITE (2,44)  PINT, TMP3",
+          "label": 44,
+          "condition": null
+        },
+        {
+          "line": 7503,
+          "code": "      WRITE (2,45)  IGNTP( ITMP1), IGNTP( ITMP2), GMAX",
+          "label": 45,
+          "condition": null
+        },
+        {
+          "line": 7527,
+          "code": "   31 WRITE (2,46)  TMP1, TMP2, TSTOR1, TMP3, TMP4, TSTOR2, TMP5, TMP6,",
+          "label": 46,
+          "condition": null
+        },
+        {
+          "line": 7532,
+          "code": "      WRITE (2,46)  TMP1, TMP2, TSTOR1, TMP3, TMP4, TSTOR2",
+          "label": 46,
+          "condition": null
+        },
+        {
+          "line": 7534,
+          "code": "   33 WRITE (2,46)  TMP1, TMP2, TSTOR1",
+          "label": 46,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "READGM",
+      "start": 7574,
+      "end": 7663,
+      "formats": {
+        "10": "   10 FORMAT(A)",
+        "111": "111   format(i3)",
+        "112": "  112 format (F15.7)"
+      },
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "READMN",
+      "start": 7664,
+      "end": 7751,
+      "formats": {
+        "10": "   10 FORMAT(A)",
+        "111": "  111 format(I5)",
+        "112": "  112 format(F15.7)"
+      },
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "REBLK",
+      "start": 7752,
+      "end": 7786,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "REFLC",
+      "start": 7787,
+      "end": 8003,
+      "formats": {
+        "24": "   24 FORMAT(' GEOMETRY DATA ERROR--SEGMENT,I5,26H LIES IN PLANE OF S',\n     &'YMMETRY')",
+        "25": "   25 FORMAT(' GEOMETRY DATA ERROR--PATCH,I4,26H LIES IN PLANE OF SYM',\n     &'METRY')"
+      },
+      "writes": [
+        {
+          "line": 7821,
+          "code": "      WRITE (2,24)  I",
+          "label": 24,
+          "condition": null
+        },
+        {
+          "line": 7841,
+          "code": "      WRITE (2,25)  I",
+          "label": 25,
+          "condition": null
+        },
+        {
+          "line": 7865,
+          "code": "      WRITE (2,24)  I",
+          "label": 24,
+          "condition": null
+        },
+        {
+          "line": 7885,
+          "code": "      WRITE (2,25)  I",
+          "label": 25,
+          "condition": null
+        },
+        {
+          "line": 7909,
+          "code": "      WRITE (2,24)  I",
+          "label": 24,
+          "condition": null
+        },
+        {
+          "line": 7928,
+          "code": "      WRITE (2,25)  I",
+          "label": 25,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "ROM2",
+      "start": 8004,
+      "end": 8117,
+      "formats": {
+        "18": "   18 FORMAT(' ERROR - B LESS THAN A IN ROM2')",
+        "19": "   19 FORMAT(' ROM2 -- STEP SIZE LIMITED AT Z =',1P,E12.5)"
+      },
+      "writes": [
+        {
+          "line": 8023,
+          "code": "      WRITE (2,18)",
+          "label": 18,
+          "condition": null
+        },
+        {
+          "line": 8100,
+          "code": "      WRITE (2,19)  Z",
+          "label": 19,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "SBF",
+      "start": 8118,
+      "end": 8252,
+      "formats": {
+        "25": "   25 FORMAT(' SBF - SEGMENT CONNECTION ERROR FOR SEGMENT',I5)"
+      },
+      "writes": [
+        {
+          "line": 8245,
+          "code": "   24 WRITE (2,25)  I",
+          "label": 25,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "SFLDS",
+      "start": 8253,
+      "end": 8374,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "SOLGF",
+      "start": 8375,
+      "end": 8496,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "SOLVE",
+      "start": 8497,
+      "end": 8543,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "SOLVES",
+      "start": 8544,
+      "end": 8665,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "TBF",
+      "start": 8666,
+      "end": 8805,
+      "formats": {
+        "29": "   29 FORMAT(' TBF - SEGMENT CONNECTION ERROR FOR SEGMENT',I5)"
+      },
+      "writes": [
+        {
+          "line": 8798,
+          "code": "   28 WRITE (2,29)  I",
+          "label": 29,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "TEST",
+      "start": 8806,
+      "end": 8827,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "TRIO",
+      "start": 8828,
+      "end": 8875,
+      "formats": {
+        "10": "   10 FORMAT(' TRIO - SEGMENT CONNENTION ERROR FOR SEGMENT',I5)"
+      },
+      "writes": [
+        {
+          "line": 8868,
+          "code": "    9 WRITE (2,10)  J",
+          "label": 10,
+          "condition": null
+        }
+      ]
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "UNERE",
+      "start": 8876,
+      "end": 8963,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "WIRE",
+      "start": 8964,
+      "end": 9085,
+      "formats": {},
+      "writes": []
+    },
+    {
+      "kind": "SUBROUTINE",
+      "name": "STR0PC",
+      "start": 9086,
+      "end": 9105,
+      "formats": {},
+      "writes": []
+    }
+  ]
+}
