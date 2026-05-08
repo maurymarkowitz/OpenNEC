@@ -536,7 +536,6 @@ void write_nec_preamble(context_t *ctx, const deck_t *deck, FILE *file)
   write_header(ctx, deck, file);
   write_structure(ctx, deck, file);
   write_segments(ctx, deck, file);
-  write_patches(ctx, deck, file);
   /* Write input cards excluding EN and NX cards (they're output separately at end) */
   /* Use the last card index if deck_end is invalid or before geometry end */
   int batch_end = deck->deck_end;
@@ -1405,13 +1404,18 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
   card_t card;
   int geo_card_num;
   int num_wires = 0;
-  /* int num_patches = 0; */
+  int num_patches = 0;
+  bool last_patch_pending_sc = false;
+  double last_patch_xw1 = 0.0, last_patch_yw1 = 0.0, last_patch_zw1 = 0.0;
+  double last_patch_xw2 = 0.0, last_patch_yw2 = 0.0, last_patch_zw2 = 0.0;
+  int last_patch_segs = 0;
+  int last_patch_tag = 0;
 
   int ix, iy, iz;
 
   // these are used to match various codes in the cards to text output
   char ifx[2] = {'*', 'X'}, ify[2] = {'*', 'Y'}, ifz[2] = {'*', 'Z'}; // reflection axes
-  // char ipt[4] = { 'P', 'R', 'T', 'Q' };
+  char ipt[4] = { 'P', 'R', 'T', 'Q' };
 
   // print the header
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
@@ -1482,6 +1486,7 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
     {
 
     case 0: // GW card, a wire
+      last_patch_pending_sc = false;
       num_wires++;
       if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
       {
@@ -1517,6 +1522,7 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
       break;
 
     case 1: // GX card, reflection or rotation
+      last_patch_pending_sc = false;
       // decode the flags stored in the I2 value on the card
       iy = card.i[2] / 10;
       iz = card.i[2] - iy * 10;
@@ -1537,14 +1543,17 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
       break;
 
     case 3: // GS card, scale structure dimensions
+      last_patch_pending_sc = false;
       fprintf(ctx->output_fp,
               "\n     STRUCTURE SCALED BY FACTOR: %10.5f", card.f[1]);
       break;
 
     case 4: // GE card, nothing to do
+      last_patch_pending_sc = false;
       break;
 
     case 5: // GM card, move/copy existing structure
+      last_patch_pending_sc = false;
       fprintf(ctx->output_fp,
               "\n     THE STRUCTURE HAS BEEN MOVED, MOVE DATA CARD IS:\n"
               "   %3d %5d %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f",
@@ -1552,23 +1561,45 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
       break;
 
     case 6: // SP card, generate single surface patch
-      /* num_patches++; */
+      num_patches++;
+      last_patch_pending_sc = true;
+      last_patch_xw1 = card.f[1];
+      last_patch_yw1 = card.f[2];
+      last_patch_zw1 = card.f[3];
+      last_patch_xw2 = card.f[4];
+      last_patch_yw2 = card.f[5];
+      last_patch_zw2 = card.f[6];
+      last_patch_segs = card.i[2];
+      last_patch_tag = card.i[1];
       fprintf(ctx->output_fp, "\n"
-                              " %5d%c %10.5f %10.5f %10.5f %10.5f %10.5f %10.5f",
-              card.i[1], 'R', card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6]);
+                              " %5d%c%10.5f%10.5f%10.5f%10.5f%10.5f%10.5f",
+              num_patches, ipt[card.i[2]], card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6]);
       break;
 
     case 7: // SM card, multiple-patch surface
-            //        i1= data.m+1;
-            //        fprintf( ctx->output_fp, "\n"
-            //                " %5d%c %10.5f %11.5f %11.5f %11.5f %11.5f %11.5f"
-            //                "     SURFACE - %d BY %d PATCHES",
-            //                i1, ipt[1], xw1, yw1, zw1, xw2, yw2, zw2, itg, ns );
-            //
-
+      {
+        int group_size = card.i[1] * card.i[2];
+        int patch_number = num_patches + 1;
+        num_patches += group_size;
+        last_patch_pending_sc = true;
+        last_patch_xw1 = card.f[1];
+        last_patch_yw1 = card.f[2];
+        last_patch_zw1 = card.f[3];
+        last_patch_xw2 = card.f[4];
+        last_patch_yw2 = card.f[5];
+        last_patch_zw2 = card.f[6];
+        last_patch_segs = card.i[2];
+        last_patch_tag = card.i[1];
+        fprintf(ctx->output_fp, "\n"
+                                " %5d%c%10.5f%11.5f%11.5f %11.5f%11.5f%11.5f"
+                                "     SURFACE - %d BY %d PATCHES",
+                patch_number, ipt[1], card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6],
+                card.i[1], card.i[2]);
+      }
       break;
 
     case 8: // GA card, arc
+      last_patch_pending_sc = false;
       num_wires++;
       fprintf(ctx->output_fp, "\n"
                               " %5d ARC RADIUS: %9.5f  FROM: %8.3f TO: %8.3f DEGREES"
@@ -1579,10 +1610,30 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
       // FIXME: this looks wrong, last input
       break;
 
-    case 9: // SC card, does nothing
+    case 9: // SC card, surface patch continuation
+      if (last_patch_pending_sc) {
+        double x3 = card.f[1];
+        double y3 = card.f[2];
+        double z3 = card.f[3];
+        double x4 = 0.0;
+        double y4 = 0.0;
+        double z4 = 0.0;
+        if (card.flts_used >= 6) {
+          x4 = card.f[4];
+          y4 = card.f[5];
+          z4 = card.f[6];
+        } else if (last_patch_segs == 2 || last_patch_tag > 0) {
+          x4 = last_patch_xw1 + x3 - last_patch_xw2;
+          y4 = last_patch_yw1 + y3 - last_patch_yw2;
+          z4 = last_patch_zw1 + z3 - last_patch_zw2;
+        }
+        fprintf(ctx->output_fp, "\n      %11.5f%11.5f%11.5f %11.5f%11.5f%11.5f",
+                x3, y3, z3, x4, y4, z4);
+      }
       break;
 
     case 10: // GH card, generate helix
+      last_patch_pending_sc = false;
       num_wires++;
       if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
       {
@@ -1631,10 +1682,22 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
   }
 
   if (ctx->geometry.num_patches > 0)
-    fprintf(ctx->output_fp, "\n"
-                            "       TOTAL PATCHES USED: %d   PATCHES"
-                            " IN A SYMMETRIC CELL: %d",
-            ctx->geometry.num_patches, ctx->geometry.num_patches_sym);
+  {
+    if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+    {
+      fprintf(ctx->output_fp, "\n"
+                              "   TOTAL PATCHES USED=   %d     NO. PATCHES IN A SYMMET"
+                              "RIC CELL=   %d",
+              ctx->geometry.num_patches, ctx->geometry.num_patches_sym);
+    }
+    else
+    {
+      fprintf(ctx->output_fp, "\n"
+                              "     TOTAL PATCHES USED: %d   PATCHES"
+                              " IN A SYMMETRIC CELL: %d",
+              ctx->geometry.num_patches, ctx->geometry.num_patches_sym);
+    }
+  }
 
   int iseg = (ctx->geometry.num_segs + ctx->geometry.num_patches) / (ctx->geometry.num_segs_sym + ctx->geometry.num_patches_sym);
   if (iseg != 1)
@@ -1804,6 +1867,10 @@ static int write_segments(context_t *ctx, const deck_t *deck, FILE *file)
   } /* for( i = 0; i < data.n; i++ ) */
 
   fprintf(ctx->output_fp, "\n");
+  
+  /* Print patch data as final part of geometry output block (matching Fortran flow) */
+  write_patches(ctx, deck, file);
+  
   return 0;
 } /* write_segments */
 
