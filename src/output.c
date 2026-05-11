@@ -35,6 +35,7 @@ static void write_network_excitation(FILE *file, const context_t *ctx);
 static void write_antenna_input_parameters(FILE *file, const context_t *ctx);
 static void write_coupling_data(context_t *ctx);
 static void write_currents(FILE *file, const context_t *ctx);
+static void write_patch_currents(FILE *file, const context_t *ctx);
 static void write_power_budget(FILE *file, const context_t *ctx);
 static void write_radiation_pattern_header(FILE *file, const context_t *ctx);
 static void write_radiation_pattern_data(FILE *file, const context_t *ctx);
@@ -564,6 +565,7 @@ void write_frequency_step_output(FILE *file, context_t *ctx)
   write_antenna_input_parameters(file, ctx);
   write_coupling_data(ctx);
   write_currents(file, ctx);
+  write_patch_currents(file, ctx);
   write_power_budget(file, ctx);
   write_radiation_pattern_header(file, ctx);
   write_radiation_pattern_data(file, ctx);
@@ -1370,9 +1372,8 @@ static void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    /* Original Fortran format: 2 padded blank lines (101 spaces each) */
-    fprintf(file, "                                                                                                     \n"
-                  "                                                                                                     \n");
+    /* Original Fortran format: 2 blank lines */
+    fprintf(file, "\n\n");
   }
 }
 
@@ -1420,7 +1421,7 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
   // print the header
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    fprintf(file, "\n\n\n\n"
+    fprintf(file, "\n\n\n"
                   "                                 "
                   "- - - STRUCTURE SPECIFICATION - - -\n"
                   "\n"
@@ -1592,7 +1593,7 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
         last_patch_tag = card.i[1];
         fprintf(ctx->output_fp, "\n"
                                 " %5d%c%10.5f%11.5f%11.5f %11.5f%11.5f%11.5f"
-                                "     SURFACE - %d BY %d PATCHES",
+                                "     SURFACE - %3d BY%3d PATCHES",
                 patch_number, ipt[1], card.f[1], card.f[2], card.f[3], card.f[4], card.f[5], card.f[6],
                 card.i[1], card.i[2]);
       }
@@ -1686,7 +1687,7 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
     if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
     {
       fprintf(ctx->output_fp, "\n"
-                              "   TOTAL PATCHES USED=   %d     NO. PATCHES IN A SYMMET"
+                              "   TOTAL PATCHES USED=   %d      NO. PATCHES IN A SYMMET"
                               "RIC CELL=   %d",
               ctx->geometry.num_patches, ctx->geometry.num_patches_sym);
     }
@@ -1891,13 +1892,13 @@ static void write_patches(const context_t *ctx, const deck_t *deck, FILE *file)
     fprintf(ctx->output_fp, "\n\n\n\n"
                             "                                            "
                             "- - - SURFACE PATCH DATA - - -\n"
-                            "\n\n"
+                            "\n"
                             "                                                 "
                             "COORDINATES IN METERS\n\n"
-                            " PATCH      COORD. OF PATCH CENTER           UNIT NORMAL VECTOR      "
-                            " PATCH           COMPONENTS OF UNIT TANGENT VECTORS\n"
-                            "  No:       X          Y          Z          X        Y        Z      "
-                            " AREA         X1       Y1       Z1        X2       Y2      Z2");
+                            " PATCH     COORD. OF PATCH CENTER       UNIT NORMAL VECTOR      "
+                            "PATCH            COMPONENTS OF UNIT TANGENT VECTORS\n"
+                            "  NO.      X         Y         Z         X       Y       Z       "
+                            "AREA       X1      Y1      Z1       X2      Y2      Z2");
   }
   else
   {
@@ -1906,9 +1907,9 @@ static void write_patches(const context_t *ctx, const deck_t *deck, FILE *file)
                             " --------- SURFACE PATCH DATA ---------\n"
                             "                                            "
                             " COORDINATES IN METERS\n\n"
-                            " PATCH      COORD. OF PATCH CENTER           UNIT NORMAL VECTOR      "
+                            " PATCH     COORD. OF PATCH CENTER           UNIT NORMAL VECTOR      "
                             " PATCH           COMPONENTS OF UNIT TANGENT VECTORS\n"
-                            "  No:       X          Y          Z          X        Y        Z      "
+                            "  No:      X          Y          Z          X        Y        Z      "
                             " AREA         X1       Y1       Z1        X2       Y2      Z2");
   }
 
@@ -1920,8 +1921,8 @@ static void write_patches(const context_t *ctx, const deck_t *deck, FILE *file)
     zw1 = (ctx->geometry.patch_t1x[i] * ctx->geometry.patch_t2y[i] - ctx->geometry.patch_t1y[i] * ctx->geometry.patch_t2x[i]) * ctx->geometry.patch_normal_z[i];
 
     fprintf(ctx->output_fp, "\n"
-                            " %4d %10.5f %10.5f %10.5f  %8.4f %8.4f %8.4f"
-                            " %10.5f  %8.4f %8.4f %8.4f  %8.4f %8.4f %8.4f",
+                            " %4d%10.5f%10.5f%10.5f%9.4f%8.4f%8.4f"
+                            "%10.5f%9.4f%8.4f%8.4f%9.4f%8.4f%8.4f",
             i + 1, ctx->geometry.patch_x_center[i], ctx->geometry.patch_y_center[i], ctx->geometry.patch_z_center[i], xw1, yw1, zw1, ctx->geometry.patch_area[i],
             ctx->geometry.patch_t1x[i], ctx->geometry.patch_t1y[i], ctx->geometry.patch_t1z[i], ctx->geometry.patch_t2x[i], ctx->geometry.patch_t2y[i], ctx->geometry.patch_t2z[i]);
   } /* for( i = 0; i < data.m; i++ ) */
@@ -2890,6 +2891,117 @@ static void write_currents(FILE *file, const context_t *ctx)
               sx, sy, sz,
               ctx->geometry.half_len[i],
               creal(curi), cimag(curi), cmag, ph);
+    }
+  }
+}
+
+/******************************************************************************
+ * write_patch_currents
+ *
+ * Writes the surface patch currents section (FORMAT 197/198 from Fortran).
+ * Only output if there are patches (num_patches > 0).
+ * Converts rectangular components (EX, EY, EZ) to tangent vector components
+ * (T1 magnitude/phase, T2 magnitude/phase).
+ */
+static void write_patch_currents(FILE *file, const context_t *ctx)
+{
+  if (ctx->geometry.num_patches == 0)
+  {
+    return; // No patches to write
+  }
+
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    /* FORMAT 197: Header for SURFACE PATCH CURRENTS */
+    fprintf(file, "\n\n\n\n");
+    fprintf(file, "                                         - - - - SURFACE PATCH CURRENTS - - - -\n");
+    fprintf(file, "\n");
+    fprintf(file, "                                                  DISTANCE IN WAVELENGTHS\n");
+    fprintf(file, "                                                  CURRENT IN AMPS/METER\n");
+    fprintf(file, "\n\n");
+    fprintf(file, "                            - - SURFACE COMPONENTS - -                   - - - RECTANGULAR COMPONENTS - - -\n");
+    fprintf(file, "      PATCH CENTER      TANGENT VECTOR 1   TANGENT VECTOR 2           X                   Y                   Z\n");
+    fprintf(file, "     X      Y      Z     MAG.       PHASE   MAG.       PHASE    REAL      IMAG.     REAL      IMAG.     REAL      IMAG.");
+
+    /* FORMAT 198: Data output for each patch */
+    for (int i = 0; i < ctx->geometry.num_patches; i++)
+    {
+      /* Surface current components in rectangular coordinates (scaled by wavelength) */
+      int surf_cur_idx = ctx->geometry.num_segs + 3 * i;
+      complex double ex = ctx->crnt.surface_cur[surf_cur_idx]     * ctx->geometry.wavelength;
+      complex double ey = ctx->crnt.surface_cur[surf_cur_idx + 1] * ctx->geometry.wavelength;
+      complex double ez = ctx->crnt.surface_cur[surf_cur_idx + 2] * ctx->geometry.wavelength;
+
+      /* Convert to tangent vector components */
+      complex double eth = ex * ctx->geometry.patch_t1x[i] +
+                           ey * ctx->geometry.patch_t1y[i] +
+                           ez * ctx->geometry.patch_t1z[i];
+      complex double eph = ex * ctx->geometry.patch_t2x[i] +
+                           ey * ctx->geometry.patch_t2y[i] +
+                           ez * ctx->geometry.patch_t2z[i];
+
+      double ethm = cabs(eth);
+      double etha = carg(eth) * TD; // Convert to degrees (TD = 57.29577951)
+      double ephm = cabs(eph);
+      double epha = carg(eph) * TD;
+
+      /* Patch number on its own line */
+      fprintf(file, "\n %4d", i + 1);
+      
+      /* Data line: patch center (X,Y,Z in wavelengths), T1/T2 mag/phase, rectangular components */
+      fprintf(file, "\n  %7.3f%7.3f%7.3f%11.4E%8.2f%11.4E%8.2f%10.2E%10.2E%10.2E%10.2E%10.2E%10.2E",
+              ctx->geometry.patch_x_center[i],
+              ctx->geometry.patch_y_center[i],
+              ctx->geometry.patch_z_center[i],
+              ethm, etha,
+              ephm, epha,
+              creal(ex), cimag(ex),
+              creal(ey), cimag(ey),
+              creal(ez), cimag(ez));
+    }
+    fprintf(file, "\n");
+  }
+  else
+  {
+    /* nec2c format - similar header but with possibly different formatting */
+    fprintf(file, "\n\n\n");
+    fprintf(file, "                            -------- SURFACE PATCH CURRENTS --------\n");
+    fprintf(file, "\n\n");
+    fprintf(file, "                           DISTANCE IN WAVELENGTHS\n");
+    fprintf(file, "                           CURRENT IN AMPS/METER\n");
+    fprintf(file, "\n");
+    fprintf(file, "       PATCH CENTER    TANGENT VECTOR 1  TANGENT VECTOR 2        X              Y              Z\n");
+    fprintf(file, "     X      Y      Z    MAG        PHASE  MAG        PHASE   REAL     IMAG  REAL     IMAG  REAL     IMAG");
+
+    for (int i = 0; i < ctx->geometry.num_patches; i++)
+    {
+      int surf_cur_idx = ctx->geometry.num_segs + 3 * i;
+      complex double ex = ctx->crnt.surface_cur[surf_cur_idx]     * ctx->geometry.wavelength;
+      complex double ey = ctx->crnt.surface_cur[surf_cur_idx + 1] * ctx->geometry.wavelength;
+      complex double ez = ctx->crnt.surface_cur[surf_cur_idx + 2] * ctx->geometry.wavelength;
+
+      complex double eth = ex * ctx->geometry.patch_t1x[i] +
+                           ey * ctx->geometry.patch_t1y[i] +
+                           ez * ctx->geometry.patch_t1z[i];
+      complex double eph = ex * ctx->geometry.patch_t2x[i] +
+                           ey * ctx->geometry.patch_t2y[i] +
+                           ez * ctx->geometry.patch_t2z[i];
+
+      double ethm = cabs(eth);
+      double etha = carg(eth) * TD;
+      double ephm = cabs(eph);
+      double epha = carg(eph) * TD;
+
+      fprintf(file, "\n %4d", i + 1);
+      fprintf(file, "\n  %7.3f %7.3f %7.3f %10.3E %8.2f %10.3E %8.2f %9.2E %9.2E %9.2E %9.2E %9.2E %9.2E",
+              ctx->geometry.patch_x_center[i],
+              ctx->geometry.patch_y_center[i],
+              ctx->geometry.patch_z_center[i],
+              ethm, etha,
+              ephm, epha,
+              creal(ex), cimag(ex),
+              creal(ey), cimag(ey),
+              creal(ez), cimag(ez));
     }
   }
 }
