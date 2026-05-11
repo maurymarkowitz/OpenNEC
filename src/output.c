@@ -1926,6 +1926,7 @@ static void write_patches(const context_t *ctx, const deck_t *deck, FILE *file)
             i + 1, ctx->geometry.patch_x_center[i], ctx->geometry.patch_y_center[i], ctx->geometry.patch_z_center[i], xw1, yw1, zw1, ctx->geometry.patch_area[i],
             ctx->geometry.patch_t1x[i], ctx->geometry.patch_t1y[i], ctx->geometry.patch_t1z[i], ctx->geometry.patch_t2x[i], ctx->geometry.patch_t2y[i], ctx->geometry.patch_t2z[i]);
   } /* for( i = 0; i < data.m; i++ ) */
+  fprintf(ctx->output_fp, "\n");
 }
 
 /**
@@ -2141,7 +2142,7 @@ void write_end_cards(FILE *file, const deck_t *deck)
     {
       if (found_rp && card->ints_used == 0 && card->flts_used == 0)
       {
-        fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d    %d  %d",
+        fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d     %d  %d",
                 current_card_number,
                 last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
         for (int j = 1; j <= 6; j++)
@@ -2152,7 +2153,7 @@ void write_end_cards(FILE *file, const deck_t *deck)
       }
       else
       {
-        fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d    %d  %d",
+        fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d     %d  %d",
                 current_card_number,
                 card->i[1], card->i[2], card->i[3], card->i[4]);
         for (int j = 1; j <= 6; j++)
@@ -2164,7 +2165,7 @@ void write_end_cards(FILE *file, const deck_t *deck)
     }
     else if (strncmp(card->card_code, "NX", 2) == 0)
     {
-      fprintf(file, " ***** DATA CARD NO. %2d   NX   %d   %d    %d  %d",
+      fprintf(file, " ***** DATA CARD NO. %2d   NX   %d   %d     %d  %d",
               current_card_number,
               card->i[1], card->i[2], card->i[3], card->i[4]);
       for (int j = 1; j <= 6; j++)
@@ -2180,7 +2181,7 @@ void write_end_cards(FILE *file, const deck_t *deck)
     current_card_number++;
     if (found_rp)
     {
-      fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d    %d  %d",
+      fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d     %d  %d",
               current_card_number,
               last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
       for (int j = 1; j <= 6; j++)
@@ -2768,7 +2769,7 @@ static void write_antenna_input_parameters(FILE *file, const context_t *ctx)
     for (int i = 0; i < ctx->netcx.ninp; i++)
     {
       fprintf(file, "\n"
-                    " %5d %5d %11.5E %11.5E %11.5E%11.5E %11.5E %11.5E %11.5E%11.5E %11.5E",
+                    " %5d %5d% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E",
               ctx->netcx.inp_tag[i], ctx->netcx.inp_seg[i],
               creal(ctx->netcx.inp_v[i]), cimag(ctx->netcx.inp_v[i]),
               creal(ctx->netcx.inp_i[i]), cimag(ctx->netcx.inp_i[i]),
@@ -2918,10 +2919,10 @@ static void write_patch_currents(FILE *file, const context_t *ctx)
     fprintf(file, "\n");
     fprintf(file, "                                                  DISTANCE IN WAVELENGTHS\n");
     fprintf(file, "                                                  CURRENT IN AMPS/METER\n");
-    fprintf(file, "\n\n");
+    fprintf(file, "\n");
     fprintf(file, "                            - - SURFACE COMPONENTS - -                   - - - RECTANGULAR COMPONENTS - - -\n");
     fprintf(file, "      PATCH CENTER      TANGENT VECTOR 1   TANGENT VECTOR 2           X                   Y                   Z\n");
-    fprintf(file, "     X      Y      Z     MAG.       PHASE   MAG.       PHASE    REAL      IMAG.     REAL      IMAG.     REAL      IMAG.");
+    fprintf(file, "     X      Y      Z     MAG.       PHASE   MAG.       PHASE    REAL      IMAG.     REAL      IMAG.     REAL      IMAG. ");
 
     /* FORMAT 198: Data output for each patch */
     for (int i = 0; i < ctx->geometry.num_patches; i++)
@@ -2949,7 +2950,7 @@ static void write_patch_currents(FILE *file, const context_t *ctx)
       fprintf(file, "\n %4d", i + 1);
       
       /* Data line: patch center (X,Y,Z in wavelengths), T1/T2 mag/phase, rectangular components */
-      fprintf(file, "\n  %7.3f%7.3f%7.3f%11.4E%8.2f%11.4E%8.2f%10.2E%10.2E%10.2E%10.2E%10.2E%10.2E",
+      fprintf(file, "\n %7.3f%7.3f%7.3f%11.4E%8.2f%11.4E%8.2f%10.2E%10.2E%10.2E%10.2E%10.2E%10.2E",
               ctx->geometry.patch_x_center[i],
               ctx->geometry.patch_y_center[i],
               ctx->geometry.patch_z_center[i],
