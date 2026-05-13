@@ -1602,7 +1602,7 @@ void wire_surface_impedance(context_t *restrict ctx, double sigl, double rolam, 
 #define cc2		(-3.4e-6     + I*5.1e-6)
 #define cc3		(-2.52e-5    + I*0.0)
 #define cc4		(-9.06e-5    - I*9.01e-5)
-#define cc5		( 0.         - I*9.765e4)
+#define cc5		( 0.         - I*9.765e-4)
 #define cc6		(.0110486    - I*0.0110485)
 #define cc7		( 0.         - I*0.3926991)
 #define cc8		( 1.6e-6     - I*3.2e-6)
@@ -1623,44 +1623,45 @@ void wire_surface_impedance(context_t *restrict ctx, double sigl, double rolam, 
   complex double br1, br2;
   
   x= sqrt( tpcmu* sigl)* rolam;
-  if( x <= 110.)
+  if( x > 110.)
   {
-    if( x <= 8.)
-    {
-      double y, s, ber, bei;
-      y= x/8.;
-      y= y* y;
-      s= y* y;
-      
-      ber=((((((-9.01e-6* s+1.22552e-3)* s-.08349609)* s+ 2.6419140)*
-             s-32.363456)* s+113.77778)* s-64.)* s+1.;
-      
-      bei=((((((1.1346e-4* s-.01103667)* s+.52185615)* s-10.567658)*
-             s+72.817777)* s-113.77778)* s+16.)* y;
-      
-      br1= cmplx( ber, bei);
-      
-      ber=(((((((-3.94e-6* s+4.5957e-4)* s-.02609253)* s+ .66047849)*
-              s-6.0681481)* s+14.222222)* s-4.)* y)* x;
-      
-      bei=((((((4.609e-5* s-3.79386e-3)* s+.14677204)* s- 2.3116751)*
-             s+11.377778)* s-10.666667)* s+.5)* x;
-      
-      br2= cmplx( ber, bei);
-      br1= br1/ br2;
-      *zint= CPLX_01* sqrt( cmotp/sigl )* br1/ rolam;
-      
-    } /* if( x <= 8.) */
-    
+    /* large-x limit: Kelvin functions reduce to (1-j)/sqrt(2) */
+    br1= cmplx(.70710678,-.70710678);
+  }
+  else if( x > 8.)
+  {
+    /* asymptotic expansion for intermediate x (Hankel / Kelvin functions) */
     br2= I*f(x)/ PI;
     br1= g( x)+ br2;
     br2= g( x)* ph(8./ x)- br2* ph(-8./ x);
     br1= br1/ br2;
-    *zint= CPLX_01* sqrt( cmotp/ sigl)* br1/ rolam;
-    
-  } /* if( x <= 110.) */
-  
-  br1= cmplx(.70710678,-.70710678);
+  }
+  else
+  {
+    /* polynomial (ber/bei) approximation for small x */
+    double y, s, ber, bei;
+    y= x/8.;
+    y= y* y;
+    s= y* y;
+
+    ber=((((((-9.01e-6* s+1.22552e-3)* s-.08349609)* s+ 2.6419140)*
+           s-32.363456)* s+113.77778)* s-64.)* s+1.;
+
+    bei=((((((1.1346e-4* s-.01103667)* s+.52185615)* s-10.567658)*
+           s+72.817777)* s-113.77778)* s+16.)* y;
+
+    br1= cmplx( ber, bei);
+
+    ber=(((((((-3.94e-6* s+4.5957e-4)* s-.02609253)* s+ .66047849)*
+            s-6.0681481)* s+14.222222)* s-4.)* y)* x;
+
+    bei=((((((4.609e-5* s-3.79386e-3)* s+.14677204)* s- 2.3116751)*
+           s+11.377778)* s-10.666667)* s+.5)* x;
+
+    br2= cmplx( ber, bei);
+    br1= br1/ br2;
+  }
+
   *zint= CPLX_01* sqrt( cmotp/ sigl)* br1/ rolam;
 }
 

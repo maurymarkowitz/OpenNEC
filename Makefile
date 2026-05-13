@@ -44,6 +44,11 @@ UNAME_M := $(shell uname -m)
 # Valid backends: auto, accelerate, openblas, mkl, atlas, blas, original
 BACKEND ?= auto
 
+# Static BLAS linking (Linux only): wraps BLAS/LAPACK/gfortran in -Wl,-Bstatic
+# to produce a self-contained binary with no runtime dependency on these shared libs.
+# Usage: make BACKEND=openblas STATIC_BLAS=1
+STATIC_BLAS ?= 0
+
 ifeq ($(BACKEND),accelerate)
     # Accelerate framework (macOS only)
     ifneq ($(UNAME_S),Darwin)
@@ -94,7 +99,14 @@ else ifeq ($(BACKEND),openblas)
 
     # Ensure lapack symbols get resolved for builds where OpenBLAS may not expose full LAPACK API
     ifeq ($(UNAME_S),Linux)
-        LDFLAGS += -llapack -lgfortran
+        ifeq ($(STATIC_BLAS),1)
+            # Replace dynamic BLAS flags with a static-wrapped equivalent so the
+            # release binary carries its own copies of OpenBLAS/LAPACK/gfortran.
+            LDFLAGS := -Wl,-Bstatic -lopenblas -llapack -lgfortran -Wl,-Bdynamic
+            $(info Static BLAS: OpenBLAS/LAPACK/gfortran linked statically)
+        else
+            LDFLAGS += -llapack -lgfortran
+        endif
     endif
     $(info OpenBLAS backend: LDFLAGS=$(LDFLAGS))
 
@@ -265,6 +277,8 @@ $(EXECUTABLE): src/main.o $(LIBRARY)
 			ACTUAL_EXE="$${ACTUAL_EXE}.exe"; \
 		fi; \
 		if [ -f "$$ACTUAL_EXE" ]; then \
+			echo "Stripping symbols from release binary..."; \
+			strip "$$ACTUAL_EXE" || true; \
 			echo "Release binary size: $$(du -h "$$ACTUAL_EXE" | cut -f1)"; \
 		fi; \
 	fi

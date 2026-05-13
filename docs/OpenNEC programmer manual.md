@@ -11,20 +11,20 @@ Using OpenNEC as a plug-in engine
 ---------------------------------
 The OpenNEC command-line shell program, `onec`, has been designed to be able to work as a drop-in replacement for the original Fortran NEC-2 executables like `nec2d`, as well as programs that expect the slightly different parameter style found in the `nec2c` and `necpp` versions.
 
-On Unix systems, `onec` matches the nec2c interface, which used the `-i` parameter to define the input filename, and `-o` for the output filename. If no `-o` is provided, it uses the input name and changes the extension to `.out`. If no paramaters are provided, the original nec2c will exit with usage notes. OpenNEC changes this only slightly, allowing you to supply the file through redirection, so you can pipe in the file(s).
+On Unix systems, `onec` matches the nec2c interface, which used the `-i` parameter to define the input filename, and `-o` for the output filename. If no `-o` is provided, it writes to `stdout`, allowing you to pipe it where you need. If `-o` is provided but has no parameter, it makes a new output file using the input name and changing the extension to `.out`. If no paramaters are provided, the original nec2c will exit with usage notes. OpenNEC changes this only slightly, allowing you to supply the file through redirection, so you can pipe in the file(s).
 
-OpenNEC also supports `-f`, `--format` to select the output format for the generated `.out` file. Valid values are `nec2c` for the modern Unix-style output and `original` for the legacy Fortran-style layout. The default is `nec2c` on macOS and Linux, and `original` on Windows.
-
-You can use `--line-ending` to select the line ending style for output files. Valid values are `lf` (default on Unix/macOS) or `crlf` (default on Windows).
-
-The Windows version supports the same switches for input and output, but changes the behaviour in the no-parameter case to match nec2d. In that case, it interactively asks for the input and output filenames, and exits if the former is blank. Most programs used redirection in this case, passing in the two filenames from a file. The key difference is that the Unix version expects a deck as the input, whereas the Windows version expects two filenames.
+The Windows version supports the same switches for input and output, `-i` and `-o`, but changes the behaviour in the no-parameter case to match nec2d. On Windows, when no files are provided it interactively asks for the input and output filenames, and exits if the former is blank. Most programs used redirection in this case, passing in the two filenames saved into another text file. The key difference is that the Unix version expects a deck as the input in the no-parameter case, whereas the Windows version expects two filenames.
 
 The exact calling proceedure varies among programs, so separate document have been created for each commonly used program. For now, these include:
 
 - [Using OpenNEC with 4nec2](Using&20%OpenNEC&20%with&20%4nec2.md)
 - [Using onec with cocoaNEC](Using&20%OpenNEC&20%with&20%cocoaNEC.md)
 
-Using OpenNEC as a Library
+OpenNEC also supports `-f`, `--format` to select the output format for the generated `.out` file. Valid values are `nec2c` for the modern Unix-style output and `original` for the legacy Fortran-style layout. The default is `nec2c` on macOS and Linux, and `original` on Windows.
+
+You can use `--line-ending` to select the line ending style for output files. Valid values are `lf`, which is the default on Unix/macOS, or `crlf`, which is the default on Windows.
+
+Using OpenNEC as a library
 --------------------------
 Although `onec` provides a compatible shell interface for use with existing programs, it is mostly intended to be used as a statically-linked library within other programs.
 
@@ -46,9 +46,9 @@ The sub-headers it aggregates cover types (`types.h`), memory and logging helper
 
 ### Core Data Structures
 
-**`deck_t`** holds the full set of cards read from a `.deck` or `.nec` file together with section bookmarks, `comment_start`, `geometry_start`, `geometry_end`, `deck_end`, and so on. It owns the underlying `card_t` array and all heap memory referenced from it.
+**`deck_t`** holds the full set of cards read from a `.nec` file together with section bookmarks, `comment_start`, `geometry_start`, `geometry_end`, `deck_end`, and so on. It owns the underlying `card_t` array and all heap memory referenced from it.
 
-**`card_t`** represents one line of the input file. It stores the two-letter card code, the raw string, the parsed numeric fields (`i[1..4]`, `f[1..7]`), any OpenNEC key-value extensions, and metadata such as whether the card is commented out or marked invisible.
+**`card_t`** represents one line of the input file. It stores the two-letter card code, the raw string, the parsed numeric fields (`i[1..4]`, `f[1..7]`), any OpenNEC key-value extensions, and metadata such as whether the card is commented out or marked invisible. Generally, programs should consume only the parsed data, although the original raw string is also available.
 
 **`context_t`** is an opaque handle to all internal simulation state — matrices, segment data, frequency counters, and accumulated results. Because it is forward-declared in `types.h` and only ever accessed through the API, its internal layout is not part of the public contract.
 

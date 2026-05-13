@@ -40,7 +40,7 @@
 #define	SMIN	1.e-3
 
 /* Replaces the "10000" limit used to identiy segment/patch connections */
-#define	PCHCON  100000
+#define	PCHCON  10000
 
 /* carriage return and line feed */
 #define	CR	0x0d

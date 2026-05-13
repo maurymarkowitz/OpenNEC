@@ -107,7 +107,7 @@ SY Z83=0.5			'z coordinate of Corner 3
 
 
 GW	1	11	0	0	HAG	0	0	DEL+HAG		WIRE_RAD 	'Whip Element Driven
-'GW	2	1	0	0	HAG	-0.055	0	HAG		WIRE_RAD	'Connects to Patch
+GW	2	1	0	0	HAG	-0.055	0	HAG		WIRE_RAD	'Connects to Patch
 
 CM Patch 1
 SM	3	3	X1	Y1	Z1	X2	Y2	Z2
@@ -150,7 +150,7 @@ EK									'Initiates use of extended thin wire kernal
 LD	5	0	0	0	5.8001e7			'Set all materials to copper
 
 
-EX	0	1	2	0	1	0			'Specifies excitation for the Driven Element
+EX	0	1	2	0	1000	0			'Specifies excitation for the Driven Element
 
 FR	0	3	0	0	6.0	1			'Specifies the frequency of operation
 RP	0	181	1	1000	-90	0	1	1	'Specifies the radiation pattern sampling parameters

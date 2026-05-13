@@ -8,14 +8,14 @@ OpenNEC also includes many features inspired by other NEC engines. The sections 
 Changes from nec2c
 ------------------
 
-- nec2c is in the form of a stand-alone command-line program. Other programs wanting to use nec2c to perform calculations by creating a temporary deck file, running the program, and then parsing the resulting output file.
+- nec2c is in the form of a stand-alone command-line program. Other programs use nec2c to perform calculations by creating a temporary deck file, running the program, and then parsing the resulting output file.
 - onec is in the form of a library that can be directly included in other programs. Those programs can modify the deck and read the results directly without using files. A command-line wrapper program is also included, which emulates the nec2c command-line interface.
 
 - nec2c parses the deck card-by-card from the input file.
 - onec parses the entire deck in one pass, which allows it to perform whole-deck checks and perform file-type conversions.
 
 - nec2c can calculate only one file at a time.
-- onec's command line can process multiple files, all the files in a directory, and can recurse through all the files in multiple directories.
+- onec's command line can process multiple files, all the files in a directory, and even recurse through all the files in multiple directories.
 
 - nec2c has considerable global state inherited from the original Fortran code's `COMMON` sections. This makes it non-reentrant and it cannot be used in a threaded fashion.
 - onec has been refactored so there is no global state and is completely thread-safe. Programs can use the library to work on multiple decks, and the command shell can run multiple input files in parallel at the same time.
@@ -39,7 +39,7 @@ Other basic changes
 
 Note: Most validations are emitted as warnings (non-fatal) to preserve compatibility with existing decks while highlighting potential issues.
 
-- onec also includes per-field validations that can be used by a GUI program to graphically indicate problems. For instance, if the user makes a new FR card, the validation functions will indicate that the base frequency value in the F1 field needs to be entered. If they enter a value in I2, which indicates steps, it will also indicate that a step value has to be entered in F2. There is an extensive suite of these validations that can be tied to fields in the GUI and updated in real-time.
+- onec also includes per-field validations that can be used by a GUI program to graphically indicate problems. For instance, if the user makes a new FR card, the validation functions will indicate that the base frequency value in the F1 field needs to be entered. If they enter a value in I2, which indicates steps, it will then indicate that a step value has to be entered in F2. There is an extensive suite of these validations that can be tied to fields in the GUI and updated in real-time.
 
 - onec fixes a notorious bug in the geometry system that caused the program to go into an infinite loop when segments were connected improperly. The program exits gracefully in this case, with a clear error message.
 
@@ -87,7 +87,7 @@ https://github.com/tmolteno/necpp
 
 4nec2 is a powerful GUI program for Windows machines by Arie Voors, started in the 1990s and seeing continual development since then. Over time, it added a number of features like formulas and additional NEC options like EX 6.
 
-The actual calculations are carried out using Windows compiled versions of the original Fortran code, which is called through a batch files. OpenNEC attempts to implement these same features directly in the library, avoiding the need to create temporary decks or process the resulting output text. However, many of these features are poorly documented, if at all, so these will require further testing and comparison to ensure they work as 4nec2 intends.
+The actual calculations are carried out using Windows compiled versions of the original Fortran code, which is called through a batch file. OpenNEC attempts to implement these same features directly in the library, avoiding the need to create temporary decks or process the resulting output text. However, many of these features are poorly documented, if at all, so these will require further testing and comparison to ensure they work as 4nec2 intends.
 
 4nec2 is distributed only in compiled form, and can be found here:
 

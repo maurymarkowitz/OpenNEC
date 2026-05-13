@@ -2927,11 +2927,11 @@ static void write_patch_currents(FILE *file, const context_t *ctx)
     /* FORMAT 198: Data output for each patch */
     for (int i = 0; i < ctx->geometry.num_patches; i++)
     {
-      /* Surface current components in rectangular coordinates (scaled by wavelength) */
+      /* Surface current components in rectangular coordinates (Amps/meter, no wavelength scaling) */
       int surf_cur_idx = ctx->geometry.num_segs + 3 * i;
-      complex double ex = ctx->crnt.surface_cur[surf_cur_idx]     * ctx->geometry.wavelength;
-      complex double ey = ctx->crnt.surface_cur[surf_cur_idx + 1] * ctx->geometry.wavelength;
-      complex double ez = ctx->crnt.surface_cur[surf_cur_idx + 2] * ctx->geometry.wavelength;
+      complex double ex = ctx->crnt.surface_cur[surf_cur_idx];
+      complex double ey = ctx->crnt.surface_cur[surf_cur_idx + 1];
+      complex double ez = ctx->crnt.surface_cur[surf_cur_idx + 2];
 
       /* Convert to tangent vector components */
       complex double eth = ex * ctx->geometry.patch_t1x[i] +
@@ -2977,9 +2977,9 @@ static void write_patch_currents(FILE *file, const context_t *ctx)
     for (int i = 0; i < ctx->geometry.num_patches; i++)
     {
       int surf_cur_idx = ctx->geometry.num_segs + 3 * i;
-      complex double ex = ctx->crnt.surface_cur[surf_cur_idx]     * ctx->geometry.wavelength;
-      complex double ey = ctx->crnt.surface_cur[surf_cur_idx + 1] * ctx->geometry.wavelength;
-      complex double ez = ctx->crnt.surface_cur[surf_cur_idx + 2] * ctx->geometry.wavelength;
+      complex double ex = ctx->crnt.surface_cur[surf_cur_idx];
+      complex double ey = ctx->crnt.surface_cur[surf_cur_idx + 1];
+      complex double ez = ctx->crnt.surface_cur[surf_cur_idx + 2];
 
       complex double eth = ex * ctx->geometry.patch_t1x[i] +
                            ey * ctx->geometry.patch_t1y[i] +

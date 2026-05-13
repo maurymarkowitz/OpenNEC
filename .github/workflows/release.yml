@@ -17,171 +17,182 @@ permissions:
 jobs:
   build-linux-x86_64:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        backend: [original, openblas]
     steps:
       - uses: actions/checkout@v4
       - name: Install build deps
-        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config zip
-      - name: Build (x86_64)
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libopenblas-dev liblapack-dev gfortran zip
+      - name: Set build vars
+        run: |
+          if [ "${{ matrix.backend }}" = "original" ]; then
+            echo "DIST_SUFFIX=" >> $GITHUB_ENV
+            echo "MAKE_OPTS=BACKEND=original" >> $GITHUB_ENV
+          else
+            echo "DIST_SUFFIX=-${{ matrix.backend }}" >> $GITHUB_ENV
+            echo "MAKE_OPTS=BACKEND=${{ matrix.backend }} STATIC_BLAS=1" >> $GITHUB_ENV
+          fi
+      - name: Build (x86_64, ${{ matrix.backend }})
         run: |
           make clean
-          make RELEASE=1 BACKEND=original
+          make RELEASE=1 $MAKE_OPTS
       - name: Package
         run: |
-          mkdir -p dist/onec-linux-x86_64/lib dist/onec-linux-x86_64/include dist/onec-linux-x86_64/bin
-          cp onec dist/onec-linux-x86_64/bin/
-          cp README.MD dist/onec-linux-x86_64/
-          cp examples/example5.nec dist/onec-linux-x86_64/
-          cp libonec.a dist/onec-linux-x86_64/lib/
-          cp src/opennec.h dist/onec-linux-x86_64/include/
-          cp src/types.h dist/onec-linux-x86_64/include/
-          cp src/deck.h dist/onec-linux-x86_64/include/
-          cp src/input.h dist/onec-linux-x86_64/include/
-          cp src/output.h dist/onec-linux-x86_64/include/
-          cp src/geometry.h dist/onec-linux-x86_64/include/
-          cp src/control.h dist/onec-linux-x86_64/include/
-          cp src/fields.h dist/onec-linux-x86_64/include/
-          cp src/ground.h dist/onec-linux-x86_64/include/
-          cp src/calculations.h dist/onec-linux-x86_64/include/
-          cp src/matrix.h dist/onec-linux-x86_64/include/
-          cp src/network.h dist/onec-linux-x86_64/include/
-          cp src/radiation.h dist/onec-linux-x86_64/include/
-          cp src/somnec.h dist/onec-linux-x86_64/include/
-          cp src/misc.h dist/onec-linux-x86_64/include/
-          cp -r docs dist/onec-linux-x86_64/
-          cp -r examples dist/onec-linux-x86_64/
-          cd dist && zip -r onec-linux-x86_64.zip onec-linux-x86_64/
+          DIST="onec-linux-x86_64${DIST_SUFFIX}"
+          mkdir -p "dist/${DIST}/lib" "dist/${DIST}/include" "dist/${DIST}/bin"
+          cp onec "dist/${DIST}/bin/"
+          cp README.MD "dist/${DIST}/"
+          cp examples/example5.nec "dist/${DIST}/"
+          cp libonec.a "dist/${DIST}/lib/"
+          cp src/opennec.h src/types.h src/deck.h src/input.h src/output.h \
+             src/geometry.h src/control.h src/fields.h src/ground.h \
+             src/calculations.h src/matrix.h src/network.h src/radiation.h \
+             src/somnec.h src/misc.h "dist/${DIST}/include/"
+          cp -r docs "dist/${DIST}/"
+          cp -r examples "dist/${DIST}/"
+          cd dist && zip -r "${DIST}.zip" "${DIST}/"
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" dist/onec-linux-x86_64.zip --clobber
+          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" "dist/onec-linux-x86_64${DIST_SUFFIX}.zip" --clobber
 
   build-linux-aarch64:
     runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        backend: [original, openblas]
     steps:
       - uses: actions/checkout@v4
       - name: Install build deps
-        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config zip
-      - name: Build (aarch64)
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libopenblas-dev liblapack-dev gfortran zip
+      - name: Set build vars
+        run: |
+          if [ "${{ matrix.backend }}" = "original" ]; then
+            echo "DIST_SUFFIX=" >> $GITHUB_ENV
+            echo "MAKE_OPTS=BACKEND=original" >> $GITHUB_ENV
+          else
+            echo "DIST_SUFFIX=-${{ matrix.backend }}" >> $GITHUB_ENV
+            echo "MAKE_OPTS=BACKEND=${{ matrix.backend }} STATIC_BLAS=1" >> $GITHUB_ENV
+          fi
+      - name: Build (aarch64, ${{ matrix.backend }})
         run: |
           make clean
-          make RELEASE=1 BACKEND=original
+          make RELEASE=1 $MAKE_OPTS
       - name: Package
         run: |
-          mkdir -p dist/onec-linux-aarch64/lib dist/onec-linux-aarch64/include dist/onec-linux-aarch64/bin
-          cp onec dist/onec-linux-aarch64/bin/
-          cp README.MD dist/onec-linux-aarch64/
-          cp examples/example5.nec dist/onec-linux-aarch64/
-          cp libonec.a dist/onec-linux-aarch64/lib/
-          cp src/opennec.h dist/onec-linux-aarch64/include/
-          cp src/types.h dist/onec-linux-aarch64/include/
-          cp src/deck.h dist/onec-linux-aarch64/include/
-          cp src/input.h dist/onec-linux-aarch64/include/
-          cp src/output.h dist/onec-linux-aarch64/include/
-          cp src/geometry.h dist/onec-linux-aarch64/include/
-          cp src/control.h dist/onec-linux-aarch64/include/
-          cp src/fields.h dist/onec-linux-aarch64/include/
-          cp src/ground.h dist/onec-linux-aarch64/include/
-          cp src/calculations.h dist/onec-linux-aarch64/include/
-          cp src/matrix.h dist/onec-linux-aarch64/include/
-          cp src/network.h dist/onec-linux-aarch64/include/
-          cp src/radiation.h dist/onec-linux-aarch64/include/
-          cp src/somnec.h dist/onec-linux-aarch64/include/
-          cp src/misc.h dist/onec-linux-aarch64/include/
-          cp -r docs dist/onec-linux-aarch64/
-          cp -r examples dist/onec-linux-aarch64/
-          cd dist && zip -r onec-linux-aarch64.zip onec-linux-aarch64/
+          DIST="onec-linux-aarch64${DIST_SUFFIX}"
+          mkdir -p "dist/${DIST}/lib" "dist/${DIST}/include" "dist/${DIST}/bin"
+          cp onec "dist/${DIST}/bin/"
+          cp README.MD "dist/${DIST}/"
+          cp examples/example5.nec "dist/${DIST}/"
+          cp libonec.a "dist/${DIST}/lib/"
+          cp src/opennec.h src/types.h src/deck.h src/input.h src/output.h \
+             src/geometry.h src/control.h src/fields.h src/ground.h \
+             src/calculations.h src/matrix.h src/network.h src/radiation.h \
+             src/somnec.h src/misc.h "dist/${DIST}/include/"
+          cp -r docs "dist/${DIST}/"
+          cp -r examples "dist/${DIST}/"
+          cd dist && zip -r "${DIST}.zip" "${DIST}/"
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" dist/onec-linux-aarch64.zip --clobber
+          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" "dist/onec-linux-aarch64${DIST_SUFFIX}.zip" --clobber
 
   build-macos-x86:
     runs-on: macos-latest
+    strategy:
+      matrix:
+        backend: [original, accelerate]
     steps:
       - uses: actions/checkout@v4
-      - name: Build (macOS x86_64)
+      - name: Set build vars
+        run: |
+          if [ "${{ matrix.backend }}" = "original" ]; then
+            echo "DIST_SUFFIX=" >> $GITHUB_ENV
+            echo "MAKE_OPTS=BACKEND=original" >> $GITHUB_ENV
+          else
+            echo "DIST_SUFFIX=-${{ matrix.backend }}" >> $GITHUB_ENV
+            echo "MAKE_OPTS=BACKEND=${{ matrix.backend }}" >> $GITHUB_ENV
+          fi
+      - name: Build (macOS x86_64, ${{ matrix.backend }})
         run: |
           make clean
-          make RELEASE=1 CC=clang CFLAGS="-I. -Isrc -O2 -Wall -Wno-unused-parameter -arch x86_64 -mmacosx-version-min=11.0" LDFLAGS="-arch x86_64 -mmacosx-version-min=11.0" BACKEND=original
+          make RELEASE=1 CC=clang CFLAGS="-I. -Isrc -O2 -Wall -Wno-unused-parameter -arch x86_64 -mmacosx-version-min=11.0" LDFLAGS="-arch x86_64 -mmacosx-version-min=11.0" $MAKE_OPTS
       - name: Package
         run: |
-          mkdir -p dist/onec-macos-x86/lib dist/onec-macos-x86/include dist/onec-macos-x86/bin
-          cp onec dist/onec-macos-x86/bin/
-          cp README.MD dist/onec-macos-x86/
-          cp examples/example5.nec dist/onec-macos-x86/
-          cp libonec.a dist/onec-macos-x86/lib/
-          cp src/opennec.h dist/onec-macos-x86/include/
-          cp src/types.h dist/onec-macos-x86/include/
-          cp src/deck.h dist/onec-macos-x86/include/
-          cp src/input.h dist/onec-macos-x86/include/
-          cp src/output.h dist/onec-macos-x86/include/
-          cp src/geometry.h dist/onec-macos-x86/include/
-          cp src/control.h dist/onec-macos-x86/include/
-          cp src/fields.h dist/onec-macos-x86/include/
-          cp src/ground.h dist/onec-macos-x86/include/
-          cp src/calculations.h dist/onec-macos-x86/include/
-          cp src/matrix.h dist/onec-macos-x86/include/
-          cp src/network.h dist/onec-macos-x86/include/
-          cp src/radiation.h dist/onec-macos-x86/include/
-          cp src/somnec.h dist/onec-macos-x86/include/
-          cp src/misc.h dist/onec-macos-x86/include/
-          cp -r docs dist/onec-macos-x86/
-          cp -r examples dist/onec-macos-x86/
-          cd dist && zip -r onec-macos-x86.zip onec-macos-x86/
+          DIST="onec-macos-x86${DIST_SUFFIX}"
+          mkdir -p "dist/${DIST}/lib" "dist/${DIST}/include" "dist/${DIST}/bin"
+          cp onec "dist/${DIST}/bin/"
+          cp README.MD "dist/${DIST}/"
+          cp examples/example5.nec "dist/${DIST}/"
+          cp libonec.a "dist/${DIST}/lib/"
+          cp src/opennec.h src/types.h src/deck.h src/input.h src/output.h \
+             src/geometry.h src/control.h src/fields.h src/ground.h \
+             src/calculations.h src/matrix.h src/network.h src/radiation.h \
+             src/somnec.h src/misc.h "dist/${DIST}/include/"
+          cp -r docs "dist/${DIST}/"
+          cp -r examples "dist/${DIST}/"
+          cd dist && zip -r "${DIST}.zip" "${DIST}/"
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" dist/onec-macos-x86.zip --clobber
+          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" "dist/onec-macos-x86${DIST_SUFFIX}.zip" --clobber
 
   build-macos-arm64:
     runs-on: macos-latest
-    name: Build macOS (arm64)
+    name: Build macOS (arm64, ${{ matrix.backend }})
+    strategy:
+      matrix:
+        backend: [original, accelerate]
     steps:
       - uses: actions/checkout@v4
       - name: Show runner arch
         run: |
           uname -m || true
           sysctl -n hw.machine || true
-      - name: Build (macOS arm64)
+      - name: Set build vars
+        run: |
+          if [ "${{ matrix.backend }}" = "original" ]; then
+            echo "DIST_SUFFIX=" >> $GITHUB_ENV
+            echo "MAKE_OPTS=BACKEND=original" >> $GITHUB_ENV
+          else
+            echo "DIST_SUFFIX=-${{ matrix.backend }}" >> $GITHUB_ENV
+            echo "MAKE_OPTS=BACKEND=${{ matrix.backend }}" >> $GITHUB_ENV
+          fi
+      - name: Build (macOS arm64, ${{ matrix.backend }})
         run: |
           make clean
-          make RELEASE=1 CC=clang CFLAGS="-I. -Isrc -O2 -Wall -Wno-unused-parameter -arch arm64 -mmacosx-version-min=11.0" LDFLAGS="-arch arm64 -mmacosx-version-min=11.0" BACKEND=original
+          make RELEASE=1 CC=clang CFLAGS="-I. -Isrc -O2 -Wall -Wno-unused-parameter -arch arm64 -mmacosx-version-min=11.0" LDFLAGS="-arch arm64 -mmacosx-version-min=11.0" $MAKE_OPTS
       - name: Package
         run: |
-          mkdir -p dist/onec-macos-arm64/lib dist/onec-macos-arm64/include dist/onec-macos-arm64/bin
-          cp onec dist/onec-macos-arm64/bin/
-          cp README.MD dist/onec-macos-arm64/
-          cp examples/example5.nec dist/onec-macos-arm64/
-          cp libonec.a dist/onec-macos-arm64/lib/
-          cp src/opennec.h dist/onec-macos-arm64/include/
-          cp src/types.h dist/onec-macos-arm64/include/
-          cp src/deck.h dist/onec-macos-arm64/include/
-          cp src/input.h dist/onec-macos-arm64/include/
-          cp src/output.h dist/onec-macos-arm64/include/
-          cp src/geometry.h dist/onec-macos-arm64/include/
-          cp src/control.h dist/onec-macos-arm64/include/
-          cp src/fields.h dist/onec-macos-arm64/include/
-          cp src/ground.h dist/onec-macos-arm64/include/
-          cp src/calculations.h dist/onec-macos-arm64/include/
-          cp src/matrix.h dist/onec-macos-arm64/include/
-          cp src/network.h dist/onec-macos-arm64/include/
-          cp src/radiation.h dist/onec-macos-arm64/include/
-          cp src/somnec.h dist/onec-macos-arm64/include/
-          cp src/misc.h dist/onec-macos-arm64/include/
-          cp -r docs dist/onec-macos-arm64/
-          cp -r examples dist/onec-macos-arm64/
-          cd dist && zip -r onec-macos-arm64.zip onec-macos-arm64/
+          DIST="onec-macos-arm64${DIST_SUFFIX}"
+          mkdir -p "dist/${DIST}/lib" "dist/${DIST}/include" "dist/${DIST}/bin"
+          cp onec "dist/${DIST}/bin/"
+          cp README.MD "dist/${DIST}/"
+          cp examples/example5.nec "dist/${DIST}/"
+          cp libonec.a "dist/${DIST}/lib/"
+          cp src/opennec.h src/types.h src/deck.h src/input.h src/output.h \
+             src/geometry.h src/control.h src/fields.h src/ground.h \
+             src/calculations.h src/matrix.h src/network.h src/radiation.h \
+             src/somnec.h src/misc.h "dist/${DIST}/include/"
+          cp -r docs "dist/${DIST}/"
+          cp -r examples "dist/${DIST}/"
+          cd dist && zip -r "${DIST}.zip" "${DIST}/"
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" dist/onec-macos-arm64.zip --clobber
+          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" "dist/onec-macos-arm64${DIST_SUFFIX}.zip" --clobber
 
   build-windows-mingw:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        backend: [original, openblas]
     steps:
       - uses: actions/checkout@v4
       - name: Setup MSYS2/MINGW64
@@ -194,41 +205,41 @@ jobs:
             mingw-w64-x86_64-openblas
             pkgconf
             make
-      - name: Build (MINGW64)
+      - name: Set build vars
+        shell: bash -l {0}
+        run: |
+          if [ "${{ matrix.backend }}" = "original" ]; then
+            echo "DIST_SUFFIX=" >> $GITHUB_ENV
+            echo "MAKE_OPTS=BACKEND=original" >> $GITHUB_ENV
+          else
+            echo "DIST_SUFFIX=-${{ matrix.backend }}" >> $GITHUB_ENV
+            echo "MAKE_OPTS=BACKEND=${{ matrix.backend }}" >> $GITHUB_ENV
+          fi
+      - name: Build (MINGW64, ${{ matrix.backend }})
         shell: bash -l {0}
         run: |
           export PATH="/c/msys64/mingw64/bin:$PATH"
           make clean
-          make RELEASE=1 LDFLAGS="-static" CC=x86_64-w64-mingw32-gcc BACKEND=original
+          make RELEASE=1 LDFLAGS="-static" CC=x86_64-w64-mingw32-gcc $MAKE_OPTS
       - name: Package
         shell: bash -l {0}
         run: |
-          mkdir -p dist/onec-windows-x86_64/lib dist/onec-windows-x86_64/include dist/onec-windows-x86_64/bin
-          cp onec.exe dist/onec-windows-x86_64/bin/
-          cp README.MD dist/onec-windows-x86_64/
-          cp examples/example5.nec dist/onec-windows-x86_64/
-          cp libonec.a dist/onec-windows-x86_64/lib/
-          cp src/opennec.h dist/onec-windows-x86_64/include/
-          cp src/types.h dist/onec-windows-x86_64/include/
-          cp src/deck.h dist/onec-windows-x86_64/include/
-          cp src/input.h dist/onec-windows-x86_64/include/
-          cp src/output.h dist/onec-windows-x86_64/include/
-          cp src/geometry.h dist/onec-windows-x86_64/include/
-          cp src/control.h dist/onec-windows-x86_64/include/
-          cp src/fields.h dist/onec-windows-x86_64/include/
-          cp src/ground.h dist/onec-windows-x86_64/include/
-          cp src/calculations.h dist/onec-windows-x86_64/include/
-          cp src/matrix.h dist/onec-windows-x86_64/include/
-          cp src/network.h dist/onec-windows-x86_64/include/
-          cp src/radiation.h dist/onec-windows-x86_64/include/
-          cp src/somnec.h dist/onec-windows-x86_64/include/
-          cp src/misc.h dist/onec-windows-x86_64/include/
-          cp -r docs dist/onec-windows-x86_64/
-          cp -r examples dist/onec-windows-x86_64/
-          powershell.exe -NoProfile -Command "Compress-Archive -Path 'dist/onec-windows-x86_64/*' -DestinationPath 'dist/onec-windows-x86_64.zip' -Force"
+          DIST="onec-windows-x86_64${DIST_SUFFIX}"
+          mkdir -p "dist/${DIST}/lib" "dist/${DIST}/include" "dist/${DIST}/bin"
+          cp onec.exe "dist/${DIST}/bin/"
+          cp README.MD "dist/${DIST}/"
+          cp examples/example5.nec "dist/${DIST}/"
+          cp libonec.a "dist/${DIST}/lib/"
+          cp src/opennec.h src/types.h src/deck.h src/input.h src/output.h \
+             src/geometry.h src/control.h src/fields.h src/ground.h \
+             src/calculations.h src/matrix.h src/network.h src/radiation.h \
+             src/somnec.h src/misc.h "dist/${DIST}/include/"
+          cp -r docs "dist/${DIST}/"
+          cp -r examples "dist/${DIST}/"
+          powershell.exe -NoProfile -Command "Compress-Archive -Path \"dist/${DIST}/*\" -DestinationPath \"dist/${DIST}.zip\" -Force"
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash -l {0}
         run: |
-          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" dist/onec-windows-x86_64.zip --clobber
+          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" "dist/onec-windows-x86_64${DIST_SUFFIX}.zip" --clobber

@@ -23,7 +23,7 @@ The latest source code and binaries can be found at:
 
 https://github.com/maurymarkowitz/OpenNEC/releases
 
-Binaries are built for macOS, Linux and Windows. They can be installed by downloading the appropriate .zip file and unzipping into any convenient location.
+Binaries are built for macOS, Linux and Windows. On Linux and Windows they are built in versions that use the original built-in math code, as well as versions using the much faster OpenBLAS code. The macOS version always uses BLAS, through Apple's Accelerate framework. The programs be installed by downloading the appropriate .zip file and unzipping into any convenient location.
 
 On macOS and Linux, you can use homebrew:
 

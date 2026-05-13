@@ -1,7 +1,12 @@
 OpenNEC version history
 
+Version 1.4.1 - 2026 May 13
+- fixed issues scaling the output values from surface patches (was an output-only issue)
+- minor display issue in the way connections were displayed (PCHCON)
+- added separate builds for OpenBLAS and "original" math code
+
 Version 1.4.0 - 2026 May 11
-- fixed surface patch currents output formatting (antenna input row field spacing, patch currents leading spaces, EN/NX card integer spacing, patch currents header trailing space)
+- fixed surface patch currents output formatting
 
 Version 1.3.9 - 2026 May 7
 - work on getting patch output working

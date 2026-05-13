@@ -40,12 +40,6 @@ This preserves the original `nec2d.exe` as your fallback engine.
 6. Create a simple antenna test case and generate calculations (F7 / "Calculate")
 7. Verify that calculations complete successfully
 
-**Advantages:**
-- Keeps original `nec2d.exe` as a fallback
-- Easy to switch between engines anytime
-- Works with all 4nec2 features
-- Simple upgrade path, just replace `onec.exe` when new versions ship
-
 ### Reverting to Original Engines
 
 To return to the original Fortran-based engines:
@@ -62,7 +56,7 @@ How 4nec2 Invokes NEC Engines
 
 The original Fortran code, which ships with the 4nec2 install, is an interactive program which prompts the user for filenames for the input and output files. To drive these programs in an automated fashion, 4nec2 writes the input file to disk with the `.inp` extension and has the Fortran code write the results to a file with the `.out` extension. It then reads the `.out` file and parses it to get the results.
 
-To do this, 4nec2 uses "redirection" through a batch file. First it writes another file, `nec2d.tmp`, which contains the name of the input and output files. It then runs `4nec2.bat`, which feeds that file into the Fortran program. Ultimately, what's run by the batch file is something like this:
+To do this, 4nec2 uses "redirection" through a batch file. First it writes another file, `nec2d.tmp`, which contains the name of the input and output files. It then runs `4nec2.bat`, which feeds the `nec2d.tmp` file into the Fortran program. Ultimately, what's run by the batch file is something like this:
 
 `nec2d.exe < nec2d.tmp`
 
