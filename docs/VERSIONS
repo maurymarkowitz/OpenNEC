@@ -1,6 +1,7 @@
 OpenNEC version history
 
 Version 1.4.1 - 2026 May 13
+- fixed issue in radiation pattern output for small E(PHI) values
 - fixed issues scaling the output values from surface patches (was an output-only issue)
 - minor display issue in the way connections were displayed (PCHCON)
 - added separate builds for OpenBLAS and "original" math code

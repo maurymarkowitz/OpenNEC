@@ -192,7 +192,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        backend: [original, openblas]
+        backend: [original]
     steps:
       - uses: actions/checkout@v4
       - name: Setup MSYS2/MINGW64
