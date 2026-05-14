@@ -192,7 +192,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        backend: [original, openblas]
+        backend: [original]
     steps:
       - uses: actions/checkout@v4
       - name: Setup MSYS2/MINGW64
@@ -205,27 +205,16 @@ jobs:
             mingw-w64-x86_64-openblas
             pkgconf
             make
-      - name: Set build vars
-        shell: bash -l {0}
-        run: |
-          if [ "${{ matrix.backend }}" = "original" ]; then
-            echo "DIST_SUFFIX=" >> $GITHUB_ENV
-            echo "MAKE_OPTS=BACKEND=original" >> $GITHUB_ENV
-          else
-            echo "DIST_SUFFIX=-${{ matrix.backend }}" >> $GITHUB_ENV
-            echo "MAKE_OPTS=BACKEND=${{ matrix.backend }} STATIC_BLAS=1" >> $GITHUB_ENV
-          fi
-      - name: Build (MINGW64, ${{ matrix.backend }})
+      - name: Build (MINGW64, original)
         shell: bash -l {0}
         run: |
           export PATH="/c/msys64/mingw64/bin:$PATH"
-          export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:/mingw64/share/pkgconfig:$PKG_CONFIG_PATH"
           make clean
-          make RELEASE=1 CC=x86_64-w64-mingw32-gcc $MAKE_OPTS
+          make RELEASE=1 CC=x86_64-w64-mingw32-gcc BACKEND=original
       - name: Package
         shell: bash -l {0}
         run: |
-          DIST="onec-windows-x86_64${DIST_SUFFIX}"
+          DIST="onec-windows-x86_64"
           mkdir -p "dist/${DIST}/lib" "dist/${DIST}/include" "dist/${DIST}/bin"
           cp onec.exe "dist/${DIST}/bin/"
           cp README.MD "dist/${DIST}/"
@@ -243,4 +232,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash -l {0}
         run: |
-          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" "dist/onec-windows-x86_64${DIST_SUFFIX}.zip" --clobber
+          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" "dist/onec-windows-x86_64.zip" --clobber
