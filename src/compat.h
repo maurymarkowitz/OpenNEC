@@ -77,6 +77,7 @@ int __cdecl clock_gettime64(int clk_id, struct timespec *tp);
 
 /* Provide strcasestr on platforms that don't have it (Windows CRT lacks it) */
 #if defined(_WIN32)
+__attribute__((unused))
 static char *strcasestr(const char *haystack, const char *needle)
 {
     if (!haystack || !needle) return NULL;

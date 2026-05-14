@@ -81,7 +81,7 @@ int write_deck_nec2(const deck_t *deck, FILE *file)
             for (int j = 0; j <= card->ints_used && j <= MAX_INTS; j++)
             {
                 char key[8];
-                snprintf(key, sizeof(key), "I%d", j);
+                snprintf(key, sizeof(key), "I%d", j % 100);  /* limit to 2 digits */
                 const char *formula = lookup_formula(card, key);
 
                 if (formula != NULL)
@@ -96,7 +96,7 @@ int write_deck_nec2(const deck_t *deck, FILE *file)
             for (int j = 0; j <= card->flts_used && j <= MAX_FLTS; j++)
             {
                 char key[8];
-                snprintf(key, sizeof(key), "F%d", j);
+                snprintf(key, sizeof(key), "F%d", j % 100);  /* limit to 2 digits */
                 const char *formula = lookup_formula(card, key);
 
                 if (formula != NULL)

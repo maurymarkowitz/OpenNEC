@@ -964,7 +964,7 @@ static int nc_scan_control_vars(const char *text, char vars[][64], int max)
                     if (strcmp(vars[i], ident) == 0) { already = true; break; }
                 }
                 if (!already && count < max) {
-                    strncpy(vars[count++], ident, 63);
+                    memcpy(vars[count++], ident, 63);
                     vars[count-1][63] = '\0';
                 }
             }
@@ -1280,7 +1280,7 @@ static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
         expand_expr(args[2], im, sizeof im);
         nc_track_expr_vars(s, re);
         nc_track_expr_vars(s, im);
-        char buf[512];
+        char buf[1024];
         snprintf(buf, sizeof buf,
                  "EX %d, %d, %s, 0, %s, %s",
                  ex_type, tag, cseg, re, im);
@@ -1300,7 +1300,7 @@ static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
         expand_expr(args[1], re, sizeof re);
         expand_expr(args[2], im, sizeof im);
         char seg_e[64]; expand_expr(args[3], seg_e, sizeof seg_e);
-        char buf[512];
+        char buf[1024];
         snprintf(buf, sizeof buf,
                  "EX %d, %d, %s, 0, %s, %s",
                  ex_type, tag, seg_e, re, im);
@@ -1534,14 +1534,14 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
                         if (strcmp(s->sy_vars[i], name) == 0) { already = true; break; }
                     }
                     if (!already) {
-                        strncpy(s->sy_vars[s->n_syv], name, 63);
+                        memcpy(s->sy_vars[s->n_syv], name, 63);
                         s->sy_vars[s->n_syv][63] = '\0';
                         s->sy_assigned[s->n_syv] = false;
                         s->n_syv++;
                     }
                 }
                 if (is_elem && s->n_elv < NCR_MAX_VARS) {
-                    strncpy(s->el_vars[s->n_elv], name, 63);
+                    memcpy(s->el_vars[s->n_elv], name, 63);
                     s->el_vars[s->n_elv][63] = '\0';
                     s->el_tags[s->n_elv] = 0;
                     s->el_segs[s->n_elv][0] = '\0';
@@ -1745,7 +1745,7 @@ int read_deck_nc(context_t *ctx, deck_t *deck, FILE *fp, errors_list_t *errors)
                         if (strcmp(s.sy_vars[i], name) == 0) { already = true; break; }
                     }
                     if (!already) {
-                        strncpy(s.sy_vars[s.n_syv], name, 63);
+                        memcpy(s.sy_vars[s.n_syv], name, 63);
                         s.sy_vars[s.n_syv][63] = '\0';
                         s.sy_assigned[s.n_syv] = false;
                         s.n_syv++;
@@ -1871,7 +1871,7 @@ int read_deck_nc(context_t *ctx, deck_t *deck, FILE *fp, errors_list_t *errors)
                 size_t mlen = strlen(used_var) * 2 + 128;
                 char *msg = malloc(mlen);
                 if (msg) {
-                    sprintf(msg, "WARNING: variable '%s' is used in model() but only assigned in control(); the generated NEC output will have SY %s=0 and requires user initialization.", used_var, used_var);
+                    snprintf(msg, mlen, "WARNING: variable '%s' is used in model() but only assigned in control(); the generated NEC output will have SY %s=0 and requires user initialization.", used_var, used_var);
                     add_error(ctx, errors, msg, WARNING);
                 }
             }

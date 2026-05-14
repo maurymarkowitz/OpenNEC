@@ -153,7 +153,8 @@ void read_deck(context_t *ctx, deck_t *deck, FILE *pfile)
       add_error(ctx, &ctx->errors, msg, FATAL);
       return;
     }
-    strncpy(dest->orig_str, line_buf, line_len);
+    /* Safe: allocate size is line_len + 1, we copy line_len bytes + null */
+    memcpy(dest->orig_str, line_buf, line_len);
     dest->orig_str[line_len] = '\0';
     if (read_result == EOF && !last_line_nonempty) {
       break;
@@ -349,7 +350,7 @@ void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors)
       char temp_str[MAX_LINE_LEN];
       size_t orig_len = strlen(curr_card->orig_str);
       if (orig_len >= MAX_LINE_LEN) orig_len = MAX_LINE_LEN - 1;
-      strncpy(temp_str, curr_card->orig_str, orig_len);
+      memcpy(temp_str, curr_card->orig_str, orig_len);
       temp_str[orig_len] = '\0';
       
       // Find the comment part (after the marker)
@@ -605,7 +606,7 @@ void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors)
       }
       // malloc room for the card part, copy that in, and close the string
       card->card_str = (char *)malloc((len * sizeof(char)) + 1);
-      strncpy(card->card_str, base, len);
+      memcpy(card->card_str, base, len);
       card->card_str[len] = '\0';
 
       // and if there was any leftover, copy it into the extension, otherwise make sure its empty

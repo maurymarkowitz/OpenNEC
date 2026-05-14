@@ -1471,6 +1471,7 @@ int main(int argc, char **argv)
 
 /*-----------------------------------------------------------------------*/
 #if defined(_WIN32)
+__attribute__((unused))
 static void sig_handler(int signal)
 {
   fprintf(stderr, "\n");
