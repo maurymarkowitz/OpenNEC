@@ -114,8 +114,13 @@ else ifeq ($(BACKEND),openblas)
         endif
     else ifneq (,$(filter MINGW%,$(UNAME_S)))
         # Windows/MINGW64: OpenBLAS doesn't include LAPACK, link it separately
-        LDFLAGS += -llapack -lgfortran
-        $(info MINGW64: Linking LAPACK and gfortran with OpenBLAS)
+        ifeq ($(STATIC_BLAS),1)
+            LDFLAGS += -static -lopenblas -llapack -lgfortran
+            $(info MINGW64: Static linking OpenBLAS/LAPACK/gfortran)
+        else
+            LDFLAGS += -llapack -lgfortran
+            $(info MINGW64: Linking LAPACK and gfortran with OpenBLAS)
+        endif
     endif
     $(info OpenBLAS backend: LDFLAGS=$(LDFLAGS))
 

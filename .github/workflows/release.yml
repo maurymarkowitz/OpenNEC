@@ -213,7 +213,7 @@ jobs:
             echo "MAKE_OPTS=BACKEND=original" >> $GITHUB_ENV
           else
             echo "DIST_SUFFIX=-${{ matrix.backend }}" >> $GITHUB_ENV
-            echo "MAKE_OPTS=BACKEND=${{ matrix.backend }}" >> $GITHUB_ENV
+            echo "MAKE_OPTS=BACKEND=${{ matrix.backend }} STATIC_BLAS=1" >> $GITHUB_ENV
           fi
       - name: Build (MINGW64, ${{ matrix.backend }})
         shell: bash -l {0}
@@ -221,7 +221,7 @@ jobs:
           export PATH="/c/msys64/mingw64/bin:$PATH"
           export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:/mingw64/share/pkgconfig:$PKG_CONFIG_PATH"
           make clean
-          make RELEASE=1 LDFLAGS="-static" CC=x86_64-w64-mingw32-gcc $MAKE_OPTS
+          make RELEASE=1 CC=x86_64-w64-mingw32-gcc $MAKE_OPTS
       - name: Package
         shell: bash -l {0}
         run: |
