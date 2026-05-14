@@ -192,7 +192,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        backend: [original]
+        backend: [original, openblas]
     steps:
       - uses: actions/checkout@v4
       - name: Setup MSYS2/MINGW64
@@ -219,6 +219,7 @@ jobs:
         shell: bash -l {0}
         run: |
           export PATH="/c/msys64/mingw64/bin:$PATH"
+          export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:/mingw64/share/pkgconfig:$PKG_CONFIG_PATH"
           make clean
           make RELEASE=1 LDFLAGS="-static" CC=x86_64-w64-mingw32-gcc $MAKE_OPTS
       - name: Package
