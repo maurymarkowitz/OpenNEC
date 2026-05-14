@@ -61,8 +61,13 @@ else ifeq ($(BACKEND),openblas)
     # OpenBLAS - check using pkg-config
     OPENBLAS_CHECK := $(shell pkg-config --exists openblas 2>/dev/null && echo yes)
     ifneq ($(OPENBLAS_CHECK),yes)
+        # Windows/MINGW64: manually link OpenBLAS without pkg-config
+        ifneq (,$(filter MINGW%,$(UNAME_S)))
+            LDFLAGS += -lopenblas
+            CFLAGS += -DHAVE_OPENBLAS
+            $(info Building with OpenBLAS (MINGW64 default search paths))
         # Fallback: try Homebrew OpenBLAS on macOS
-        ifeq ($(UNAME_S),Darwin)
+        else ifeq ($(UNAME_S),Darwin)
             ALT_OPENBLAS_PREFIX := /opt/homebrew/opt/openblas
             ifneq ($(wildcard $(ALT_OPENBLAS_PREFIX)/lib/libopenblas.*),)
                 BREW_OPENBLAS_PREFIX := $(ALT_OPENBLAS_PREFIX)
