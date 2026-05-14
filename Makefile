@@ -287,8 +287,12 @@ $(EXECUTABLE): src/main.o $(LIBRARY)
 	$(CC) src/main.o $(LIBRARY) $(LDFLAGS) -o $@ -lm
 	@if [ "$(RELEASE)" = "1" ]; then \
 		ACTUAL_EXE="$@"; \
-		if [ ! -f "$$ACTUAL_EXE" ] && [ -f "$${ACTUAL_EXE}.exe" ]; then \
-			ACTUAL_EXE="$${ACTUAL_EXE}.exe"; \
+		if [ ! -f "$$ACTUAL_EXE" ]; then \
+			if [ -f "$$${ACTUAL_EXE}.exe" ]; then \
+				ACTUAL_EXE="$$${ACTUAL_EXE}.exe"; \
+			elif [ -f "$$${ACTUAL_EXE}.EXE" ]; then \
+				ACTUAL_EXE="$$${ACTUAL_EXE}.EXE"; \
+			fi; \
 		fi; \
 		if [ -f "$$ACTUAL_EXE" ]; then \
 			echo "Stripping symbols from release binary..."; \

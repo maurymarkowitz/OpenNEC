@@ -1020,7 +1020,7 @@ void parse_key_values(context_t *ctx, card_t *card, errors_list_t *errors)
     // Truncate if too long, but this is a rare case
     extn_len = MAX_LINE_LEN - 1;
   }
-  strncpy(str, card->extn_str, extn_len);
+  memcpy(str, card->extn_str, extn_len);
   str[extn_len] = '\0';
   
   // We'll parse tokens manually to support quoted values (single or
