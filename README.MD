@@ -123,21 +123,23 @@ OpenNEC has built-in readers and writers for various 3rd party file formats. For
 
 ```./onec example.maa```
 
-This will read the file `example.maa`, convert it to NEC format, and then run the simulations. When started with a path, or with the `-r` option, normally only NEC files will be processed. You can force it to read other files using a globbing expression:
+This will read the MMANA-GAL format `example.maa` file, convert it to NEC format, and then run the simulations.
+
+OpenNEC can also write files in various formats using the `-w` option. This is normally used with a "bare" extension like `.nec`, but you can also provide a complete filename if you wish to rename the converted deck. In most cases, you use something like:
+
+```./onec -n -w .nec example.maa```
+
+This will read the file `example.maa` and write it back out in .nec format, converting the file to a format that can then be used by any NEC engine. This example uses the `-n` switch to avoid running the calculations, which may not be desired when doing conversions.
+
+When started with a path, or with the `-r` option, normally only NEC files will be processed. You can force it to read other files using a globbing expression:
 
 ```./onec -r /example_files/*.maa```
 
-In this example it will ignore anything that is *not* an `.mma` file.
+In this example, it will ignore anything that is *not* an `.mma` file. This will run the conversion to NEC format internally, run the simulation, and write an `.out` file for every MMANA file it finds.
 
-onec can also write files in different formats using the `-w` option. This is normally used with a "bare" extension like `.nec`, but you can also provide a complete filename if you wish to rename the converted deck. In most cases, you use something like:
-
-```./onec -w .nec example.maa```
-
-This will create a new NEC file, `example.nec`. This also works along with `-r` and globbing, so one can convert a folder of files to NEC format with something like:
+Writing also works along with `-r` and globbing, so one can convert an entire folder of files to NEC format with something like:
 
 ```./onec -r -n -w .nec /example_files/*.maa```
-
-In this case the `-n` was added so it does not try to calculate any results, it simply reads the file and writes the deck.
 
 There are a number of limitations in these importers as the various formats support different features and options. See the various "file format" documents in the [docs folder](docs/) for more details. The currently recognized formats and extensions are:
 
@@ -146,10 +148,10 @@ There are a number of limitations in these importers as the various formats supp
 | `.nec` `.deck` `.4nec` | OpenNEC / 4nec2 deck | ✓ | ✓ |
 | `.nec2` | NEC-2 | ✓ | ✓ |
 | `.nec4` | NEC-4 | ✓ | ✓ |
+| `.ez` `.ezn` | EZNEC | recognised | — |
 | `.maa` `.mma` | MMANA-GAL | ✓ | ✓ |
 | `.nc` | cocoaNEC | ✓ | ✓ |
 | `.yo` `.ant` `.yag` | Yagi Optimizer | ✓ | ✓ |
-| `.ez` `.ezn` | EZNEC | recognised | — |
 | `.nwp` `.nwz` | NEC-Win Plus / Zip | recognised | — |
 | `.aci` | AntSolver | recognised | — |
 | `.mmae` | MMANA-EZ | recognised | — |
@@ -158,7 +160,7 @@ There are a number of limitations in these importers as the various formats supp
 
 OpenNEC concept
 ---------------
-OpenNEC's code ultimately traces its history to the NEC-2 Fortran code released by Lawrence Livermore in the early 1980s. A port from Fortran to C using an automated conversion tool was made by Neoklis Kyriazis in the nec2c program which was first released on 20 August 2003. OpenNEC was forked from the 1.3 version of nec2c, released in 2014. Although initially conceived a simple update to nec2c, OpenNEC was eventually completely re-written, but an effort was made to keep the overall layout of the nec2c project.
+OpenNEC's code ultimately traces its history to the NEC-2 Fortran code released by Lawrence Livermore in the early 1980s. A port from Fortran to C using an automated conversion tool was made by Neoklis Kyriazis in the nec2c program which was first released on 20 August 2003. OpenNEC was originally forked from the 1.3 version of nec2c, which Kyriazis released in 2014. Although initially conceived a simple update to nec2c, OpenNEC was eventually completely re-written, but an effort was made to keep the overall layout of the nec2c project for familiarity.
 
 The primary difference between OpenNEC and nec2c is its form; nec2c is a command-line program, while most of the OpenNEC code is in the form of a static library. This allows OpenNEC to be embedded in any program written in a language that provides access to C libraries, like Rust, Java, or Swift. The optional `main.c` included in the project wraps the library to provide a command line tool similar to the original nec2c, but adds a number of new command line switches to provide finer control over execution and many new options.
 
@@ -172,11 +174,11 @@ OpenNEC also adds many of the features found in the popular 4nec2 program on Win
 
 Known limitations
 -----------------
-
 * OpenNEC does not currently implement the IT and OP cards from 4nec2.
 * NEC-4 cards like CW and IS are not currently supported.
 
 Acknowledgements
 ----------------
+* 4nec2 compatibility would not have been possible without the tireless help of Greg Mew.
 * OpenNEC is a fork of nec2c by Neoklis Kyriazis
 * OpenNEC parses formulas using tinyexpr by Lewis Van Winkle, which is released under the zlib licence

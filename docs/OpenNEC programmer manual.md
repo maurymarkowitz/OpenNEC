@@ -650,13 +650,13 @@ In addition to SY cards, OpenNEC allows formulas to appear *directly* in card fi
 GW  1  21  0  0  -300/(2*14.2)  0  0  300/(2*14.2)  0.001
 ```
 
-However, inline formulas are **not** portable to standard NEC-2. To maintain compatibility, you can use **out-of-band formulas** — formulas stored in trailing comments using the OpenNEC extension syntax:
+However, inline formulas are **not** portable to standard NEC-2, and would be lost if the deck is used with a NEC-2 program. To maintain compatibility, you can use **out-of-band formulas** — formulas stored in trailing comments using the OpenNEC extension syntax:
 
 ```
 GW  1  21  0  0  10.563  0  0  10.563  0.001  F3=-300/(2*14.2) F4=300/(2*14.2)
 ```
 
-When this deck is saved, the formula is stored in the comment section, and the numeric value remains in the field, making it fully NEC-2 compatible. When the deck is later loaded, the formula is restored from the comment.
+When this deck is saved, the formula is stored in the comment section, and the numeric value is placed in the field, making it fully NEC-2 compatible. When the deck is later loaded, the formula will be restored from the comment.
 
 ### Common Antenna Design Patterns
 
