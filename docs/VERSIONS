@@ -1,5 +1,10 @@
 OpenNEC version history
 
+Version 1.4.2 - 2026 May 21
+- fix grouping issues with DATA CARD listing with multiple batches using a 4nec2 frequency file
+- added missing column headers in STRUCTURE EXCITATION section
+- examined PIVOT debug info... do we really need that?
+
 Version 1.4.1 - 2026 May 13
 - fixed issue in radiation pattern output for small E(PHI) values
 - fixed issues scaling the output values from surface patches (was an output-only issue)

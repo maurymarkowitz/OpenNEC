@@ -537,9 +537,10 @@ void write_nec_preamble(context_t *ctx, const deck_t *deck, FILE *file)
   write_header(ctx, deck, file);
   write_structure(ctx, deck, file);
   write_segments(ctx, deck, file);
-  /* Write input cards excluding EN and NX cards (they're output separately at end) */
-  /* Use the last card index if deck_end is invalid or before geometry end */
-  int batch_end = deck->deck_end;
+  /* Echo only this batch's cards (up to the current batch end, not the whole deck).
+   * This mirrors Fortran's behavior of echoing each FR/RP pair immediately before
+   * its computation output, rather than dumping all cards at the top. */
+  int batch_end = ctx->batch_end_card;
   if (batch_end < 0 || batch_end >= deck->num_cards || batch_end <= deck->geometry_end) {
     batch_end = deck->num_cards - 1;
   }
@@ -2047,6 +2048,67 @@ static void write_input_cards_excluding_end(FILE *file, const context_t *ctx, co
 }
 
 /******************************************************************************
+ * count_echoed_cards_in_range()
+ *
+ * Returns the count of control cards that write_input_cards_excluding_end()
+ * would echo in the index range [from, to].  Used to compute the correct
+ * sequential card number offset for subsequent batches.
+ */
+static int count_echoed_cards_in_range(const deck_t *deck, int from, int to)
+{
+  int count = 0;
+  for (int i = from; i <= to && i < deck->num_cards; i++)
+  {
+    card_t *card = &deck->cards[i];
+    if (strncmp(card->card_code, "EN", 2) == 0 || strncmp(card->card_code, "NX", 2) == 0)
+      continue;
+    if (strncmp(card->card_code, "XT", 2) == 0) { count++; continue; }
+    if (strncmp(card->card_code, "FR", 2) == 0 ||
+        strncmp(card->card_code, "EX", 2) == 0 ||
+        strncmp(card->card_code, "LD", 2) == 0 ||
+        strncmp(card->card_code, "TL", 2) == 0 ||
+        strncmp(card->card_code, "NT", 2) == 0 ||
+        strncmp(card->card_code, "RP", 2) == 0 ||
+        strncmp(card->card_code, "GN", 2) == 0 ||
+        strncmp(card->card_code, "EK", 2) == 0 ||
+        strncmp(card->card_code, "KH", 2) == 0 ||
+        strncmp(card->card_code, "NE", 2) == 0 ||
+        strncmp(card->card_code, "NH", 2) == 0 ||
+        strncmp(card->card_code, "PT", 2) == 0 ||
+        strncmp(card->card_code, "PQ", 2) == 0 ||
+        strncmp(card->card_code, "CP", 2) == 0 ||
+        strncmp(card->card_code, "GD", 2) == 0 ||
+        strncmp(card->card_code, "WG", 2) == 0 ||
+        strncmp(card->card_code, "XQ", 2) == 0)
+      count++;
+  }
+  return count;
+}
+
+/******************************************************************************
+ * write_batch_card_echo()
+ *
+ * Echoes the control cards for the current batch (ctx->batch_start_card to
+ * ctx->batch_end_card) with correct sequential numbering, accounting for all
+ * previously echoed batches.  Called before each non-first batch's frequency
+ * output to mirror Fortran behavior: each FR/RP pair is echoed immediately
+ * before its own computation output rather than all cards being dumped at
+ * the top of the file.
+ */
+void write_batch_card_echo(FILE *file, const context_t *ctx, const deck_t *deck)
+{
+  if (file == NULL || ctx == NULL || deck == NULL)
+    return;
+
+  /* Number cards in this batch sequentially after all previous batches. */
+  int offset = count_echoed_cards_in_range(deck, deck->geometry_end + 1,
+                                            ctx->batch_start_card - 1);
+  write_input_cards_excluding_end(file, ctx, deck,
+                                   ctx->batch_start_card, ctx->batch_end_card,
+                                   offset);
+}
+
+/******************************************************************************
  * write_end_cards()
  *
  * Outputs EN and NX cards as separate batches at the end of the output,
@@ -2273,20 +2335,20 @@ static void write_loading_data(FILE *file, const context_t *ctx)
   {
     fprintf(file, "\n\n\n"
                   "                               "
-                  "- - - STRUCTURE IMPEDANCE LOADING - - -\n\n");
+                  "- - - STRUCTURE IMPEDANCE LOADING - - -\n");
   }
   else
   {
     fprintf(file, "\n\n\n"
                   "                          "
-                  "------ STRUCTURE IMPEDANCE LOADING ------\n\n");
+                  "------ STRUCTURE IMPEDANCE LOADING ------\n");
   }
 
   if (ctx->zload.num_loads == 0)
   {
     fprintf(file, "\n"
-                  "                                 "
-                  "THIS STRUCTURE IS NOT LOADED");
+                  "                                   "
+                  "THIS STRUCTURE IS NOT LOADED\n");
     return;
   }
 
@@ -2563,7 +2625,7 @@ static void write_network_data(FILE *file, const context_t *ctx)
 
   int itmp1 = ctx->netcx.net_types[0];
   int itmp3 = 0;
-  const char *pnet[3] = {"  ", "NON-CROSSED", "CROSSED"};
+  const char *pnet[6] = {"      ", "  ", "STRAIG", "HT", "CROSSE", "D"};
 
   for (int i = 0; i < 2; i++)
   {
@@ -2574,13 +2636,13 @@ static void write_network_data(FILE *file, const context_t *ctx)
     {
       if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
       {
-        fprintf(file, "\n"
+        fprintf(file, "\n\n"
                       "      - FROM -    - TO -           TRANSMISSION LINE               "
                       "-  -  SHUNT ADMITTANCES (MHOS)  -  -              LINE\n"
-                      "      TAG  SEG.   TAG  SEG.      IMPEDANCE      LENGTH           "
-                      "- END ONE -               - END TWO -            TYPE\n"
-                      "      NO.   NO.   NO.   NO.         OHM'S      METERS         "
-                      "REAL      IMAG.      REAL      IMAG.");
+                      "      TAG  SEG.   TAG  SEG.      IMPEDANCE      LENGTH            "
+                      "- END ONE -                 - END TWO -            TYPE\n"
+                      "      NO.   NO.   NO.   NO.         OHMS        METERS         "
+                      "REAL          IMAG.         REAL          IMAG.");
       }
       else
       {
@@ -2597,7 +2659,7 @@ static void write_network_data(FILE *file, const context_t *ctx)
     {
       if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
       {
-        fprintf(file, "\n"
+        fprintf(file, "\n\n"
                       "      - FROM -    - TO -           -  -  ADMITTANCE MATRIX ELEMENTS "
                       "(MHOS)  -  -\n"
                       "      TAG  SEG.   TAG  SEG.         (ONE,ONE)                 "
@@ -2641,14 +2703,14 @@ static void write_network_data(FILE *file, const context_t *ctx)
         }
 
         fprintf(file, "\n"
-                      " %4d %5d %4d %5d  %11.4E %11.4E  "
-                      "%11.4E %11.4E  %11.4E %11.4E  %s",
+                      "    %5d %5d %5d %5d    %11.4E   %11.4E   "
+                      "%11.4E   %11.4E   %11.4E   %11.4E   %s%s",
                 ctx->geometry.tag_nums[idx4], itmp4,
                 ctx->geometry.tag_nums[idx5], itmp5,
                 ctx->netcx.y11_real[j], ctx->netcx.y11_imag[j],
                 ctx->netcx.y12_real[j], ctx->netcx.y12_imag[j],
                 ctx->netcx.y22_real[j], ctx->netcx.y22_imag[j],
-                pnet[itmp2 - 1]);
+                pnet[2*itmp2 - 2], pnet[2*itmp2 - 1]);
       }
     }
 
@@ -2697,13 +2759,20 @@ static void write_network_excitation(FILE *file, const context_t *ctx)
   {
     fprintf(file, "\n\n\n"
                   "                          "
-                  "- - - STRUCTURE EXCITATION DATA AT NETWORK CONNECTION POINTS - - -");
+                  "- - - STRUCTURE EXCITATION DATA AT NETWORK CONNECTION POINTS - - -\n");
+
+    fprintf(file, "\n"
+                  "   TAG   SEG.    VOLTAGE (VOLTS)         "
+                  "CURRENT (AMPS)         IMPEDANCE (OHMS)        "
+                  "ADMITTANCE (MHOS)      POWER\n"
+                  "   NO.   NO.    REAL        IMAG.       "
+                  "REAL        IMAG.       REAL        IMAG.       "
+                  "REAL        IMAG.     (WATTS)");
 
     for (int i = 0; i < ctx->netcx.nexc; i++)
     {
       fprintf(file, "\n"
-                    " %5d %5d %12.5E %12.5E %12.5E %12.5E"
-                    " %12.5E %12.5E %12.5E %12.5E %12.5E",
+                    " %5d %5d% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E",
               ctx->netcx.exc_tag[i], ctx->netcx.exc_seg[i],
               creal(ctx->netcx.exc_v[i]), cimag(ctx->netcx.exc_v[i]),
               creal(ctx->netcx.exc_i[i]), cimag(ctx->netcx.exc_i[i]),

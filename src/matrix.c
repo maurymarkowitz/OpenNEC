@@ -1230,7 +1230,14 @@ void factor_matrix(const context_t *restrict ctx, int n, complex double *restric
 
 	if( iflg == true )
 	{
-	  report(ctx, ONEC_SEV_INFO, "PIVOT(%d)= %16.8E", r, dmax);
+	  /* report(ctx, ONEC_SEV_INFO, "PIVOT(%d)= %16.8E", r, dmax); */
+	  
+	  /* Write PIVOT diagnostic to output file in ORIGINAL format mode */
+	  /* if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL && ctx->output_fp != NULL)
+	  {
+	    fprintf(ctx->output_fp, " PIVOT(%3d)=%16.8E\n", r+1, dmax);
+	  } */
+	  
 	  iflg=false;
 	}
 

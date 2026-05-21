@@ -54,6 +54,21 @@ void write_frequency_step_output(FILE *file, context_t *ctx);
 void write_extra_pattern_output(FILE *file, context_t *ctx);
 
 /**
+ * @brief Echoes the current batch's control cards before its frequency output.
+ *
+ * Writes the DATA CARD echo lines for ctx->batch_start_card through
+ * ctx->batch_end_card with correct sequential numbering, accounting for all
+ * previously echoed batches.  Called before each non-first batch's frequency
+ * output to mirror Fortran behavior: each FR/RP pair is echoed immediately
+ * before its own output section rather than all cards appearing at the top.
+ *
+ * @param file Output file pointer.
+ * @param ctx  The simulation context (provides batch_start_card/batch_end_card).
+ * @param deck The deck associated with the simulation.
+ */
+void write_batch_card_echo(FILE *file, const context_t *ctx, const deck_t *deck);
+
+/**
  * @brief Writes the EN and NX end cards as separate batches.
  *
  * Outputs EN and NX cards as individual batches with their own DATA CARD No:

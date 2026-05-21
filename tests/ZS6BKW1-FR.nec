@@ -1,0 +1,223 @@
+CM ZS6BKW Multiband Antenna
+CM Developed by Greg Mew
+CM Model runs with onec.exe
+CE
+
+SY	Freq=14.2				'Frequency in MHz
+SY	HWM=1.35				' Half Wavelength Multiplier
+SY	EL=HWM*(150/Freq)			' Length of Half Wavelength 1.35
+SY	FPL=0.5					' Length of Feed Point element
+SY	HAG=15					' Height Above Ground
+SY	FM=0.62					' Feeder Multiplier
+SY	FL=FM*(300/Freq)			' Length of Feeder 0.62
+SY	FP=HAG-FL				' Height of Feed Point
+'SY	FPX=(FL^2-(HAG-FP)^2)^0.5		' When HAG is less than FL use trigonomety to determine position in X didrection
+
+
+GW	1	101	0	-EL	HAG	0	EL	HAG	0.0005
+GW	2	3	0	-FPL	FP	0	FPL	FP	0.0005
+	
+
+GE -1
+
+GN  	2       0    0    0      13.0     0.005  
+
+TL	1	51	2	2	450	FL
+
+EX	0	2	2	0	1000	0.0
+
+
+FR	0	1	0	0	2.00000E+00	0.0
+XQ
+
+FR	0	1	0	0	1.00000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.50000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.80000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.81000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.82000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.83000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.84000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.85000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.86000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.87500E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.00000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	3.00000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	3.50000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	3.60000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	3.70000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	3.80000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	4.00000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	5.00000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	6.00000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	7.00000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	7.10000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	7.20000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	7.30000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	8.00000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	9.00000E+00	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.00000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.01000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.01500E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.10000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.20000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.30000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.40000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.41000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.42000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.43500E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.50000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.60000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.70000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.80000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.80680E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.81680E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	1.90000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.00000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.10000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.11000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.12000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.13000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.14500E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.20000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.30000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.40000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.48900E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.49900E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.50000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.60000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.70000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.80000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.85000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.90000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	2.95000E+01	0.0
+
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+FR	0	1	0	0	3.00000E+01	0.0
+RP 	0 	37 	1 	1000 	-90 	90 	5	
+EN
+
+'Even using the recommended 34-foot open-wire matching section, the designer
+'states that an antenna tuner is necessary for all-band operation.  AO confirms
+'some pretty wild input impedances.  The radiation pattern on each band is just
+'what you would expect for a center-fed wire of this length:  Dipole-like on the
+'lower bands, cloverleaf-shaped on the higher.  All in all, this popular antenna
+'does not seem to possess any special properties, operating like any ordinary,
+'random-length center-fed wire.

@@ -1593,6 +1593,10 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
     if (ctx->output_fp != NULL && !ctx->preamble_written) {
         write_nec_preamble(ctx, deck, ctx->output_fp);
         ctx->preamble_written = true;
+    } else if (ctx->output_fp != NULL) {
+        /* Subsequent batches: echo this batch's FR/RP cards before its output,
+         * mirroring Fortran's card-by-card read-and-echo loop. */
+        write_batch_card_echo(ctx->output_fp, ctx, deck);
     }
 
     // Frequency loop
