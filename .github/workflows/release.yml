@@ -247,9 +247,8 @@ jobs:
             pkgconf
             make
       - name: Build (MINGW64, openblas)
-        shell: bash -l {0}
+        shell: msys2 {0}
         run: |
-          export PATH="/c/msys64/mingw64/bin:$PATH"
           make clean
           make RELEASE=1 CC=x86_64-w64-mingw32-gcc BACKEND=openblas
       - name: Package
