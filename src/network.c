@@ -77,6 +77,21 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
     mreq = (size_t)ndimn;
     mreq *= sizeof(int);
     mem_alloc(ctx, (void *)&ipnt, mreq );
+
+    /* rhs and cmn are needed by the irow1 >= 2 asymmetry-check block even
+       when there are no NT networks (e.g. CP-only decks where check_asymmetry
+       is set via the EX card's i4 field).  Allocate them here so the block
+       does not dereference NULL pointers. zero-NT decks are valid in NEC- */
+    mreq = (size_t)ctx->geometry.num_segs_3xpatches;
+    mreq *= sizeof(complex double);
+    mem_alloc(ctx, (void *)&rhs, mreq );
+
+    if( ndimn > 0 )
+    {
+      mreq = (size_t)ndimn * (size_t)ndimn;
+      mreq *= sizeof(complex double);
+      mem_alloc(ctx, (void *)&cmn, mreq );
+    }
   }
 
   if( ctx->netcx.network_type == 0)

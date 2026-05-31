@@ -1,8 +1,6 @@
 OpenNEC file format
 ===================
 
-Version 1.0, January 2026
-
 Introduction
 ------------
 

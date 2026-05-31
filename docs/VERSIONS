@@ -1,5 +1,9 @@
 OpenNEC version history
 
+Version 1.4.3 - 2026 May 31
+- decks with CP cards but no NLs now work properly. this is not valid in NEC-2, but is in NEC-4
+- more work on OpenBLAS on Windows
+
 Version 1.4.2 - 2026 May 21
 - fix grouping issues with DATA CARD listing with multiple batches using a 4nec2 frequency file
 - added missing column headers in STRUCTURE EXCITATION section
