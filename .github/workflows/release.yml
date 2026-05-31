@@ -190,9 +190,6 @@ jobs:
 
   build-windows-mingw:
     runs-on: windows-latest
-    strategy:
-      matrix:
-        backend: [original]
     steps:
       - uses: actions/checkout@v4
       - name: Setup MSYS2/MINGW64
@@ -233,3 +230,47 @@ jobs:
         shell: bash -l {0}
         run: |
           gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" "dist/onec-windows-x86_64.zip" --clobber
+
+  build-windows-mingw-openblas:
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup MSYS2/MINGW64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: |
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-openblas
+            pkgconf
+            make
+      - name: Build (MINGW64, openblas)
+        shell: bash -l {0}
+        run: |
+          export PATH="/c/msys64/mingw64/bin:$PATH"
+          make clean
+          make RELEASE=1 CC=x86_64-w64-mingw32-gcc BACKEND=openblas
+      - name: Package
+        shell: bash -l {0}
+        run: |
+          DIST="onec-windows-x86_64-openblas"
+          mkdir -p "dist/${DIST}/lib" "dist/${DIST}/include" "dist/${DIST}/bin"
+          cp onec.exe "dist/${DIST}/bin/"
+          cp README.MD "dist/${DIST}/"
+          cp examples/example5.nec "dist/${DIST}/"
+          cp libonec.a "dist/${DIST}/lib/"
+          cp src/opennec.h src/types.h src/deck.h src/input.h src/output.h \
+             src/geometry.h src/control.h src/fields.h src/ground.h \
+             src/calculations.h src/matrix.h src/network.h src/radiation.h \
+             src/somnec.h src/misc.h "dist/${DIST}/include/"
+          cp -r docs "dist/${DIST}/"
+          cp -r examples "dist/${DIST}/"
+          powershell.exe -NoProfile -Command "Compress-Archive -Path \"dist/${DIST}/*\" -DestinationPath \"dist/${DIST}.zip\" -Force"
+      - name: Upload to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash -l {0}
+        run: |
+          gh release upload "${{ github.event.release.tag_name || inputs.tag_name }}" "dist/onec-windows-x86_64-openblas.zip" --clobber

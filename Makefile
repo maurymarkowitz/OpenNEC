@@ -63,9 +63,10 @@ else ifeq ($(BACKEND),openblas)
     ifneq ($(OPENBLAS_CHECK),yes)
         # Windows/MINGW64: manually link OpenBLAS without pkg-config
         ifneq (,$(filter MINGW%,$(UNAME_S)))
-            LDFLAGS += -lopenblas
-            CFLAGS += -DHAVE_OPENBLAS
-            $(info Building with OpenBLAS (MINGW64 default search paths))
+            MINGW_OPENBLAS_PREFIX ?= /mingw64
+            LDFLAGS += -L$(MINGW_OPENBLAS_PREFIX)/lib -lopenblas
+            CFLAGS += -I$(MINGW_OPENBLAS_PREFIX)/include/openblas -DHAVE_OPENBLAS
+            $(info Building with OpenBLAS (MINGW64 fallback) at $(MINGW_OPENBLAS_PREFIX))
         # Fallback: try Homebrew OpenBLAS on macOS
         else ifeq ($(UNAME_S),Darwin)
             ALT_OPENBLAS_PREFIX := /opt/homebrew/opt/openblas
@@ -113,13 +114,13 @@ else ifeq ($(BACKEND),openblas)
             LDFLAGS += -llapack -lgfortran
         endif
     else ifneq (,$(filter MINGW%,$(UNAME_S)))
-        # Windows/MINGW64: OpenBLAS doesn't include LAPACK, link it separately
+        # Windows/MINGW64: the MSYS2 OpenBLAS package already provides LAPACK symbols.
         ifeq ($(STATIC_BLAS),1)
-            LDFLAGS += -static -lopenblas -llapack -lgfortran
-            $(info MINGW64: Static linking OpenBLAS/LAPACK/gfortran)
+            LDFLAGS += -static -lgfortran
+            $(info MINGW64: Static linking OpenBLAS and gfortran)
         else
-            LDFLAGS += -llapack -lgfortran
-            $(info MINGW64: Linking LAPACK and gfortran with OpenBLAS)
+            LDFLAGS += -lgfortran
+            $(info MINGW64: Linking gfortran with OpenBLAS)
         endif
     endif
     $(info OpenBLAS backend: LDFLAGS=$(LDFLAGS))
