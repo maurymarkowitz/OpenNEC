@@ -114,14 +114,9 @@ else ifeq ($(BACKEND),openblas)
             LDFLAGS += -llapack -lgfortran
         endif
     else ifneq (,$(filter MINGW%,$(UNAME_S)))
-        # Windows/MINGW64: the MSYS2 OpenBLAS package already provides LAPACK symbols.
-        ifeq ($(STATIC_BLAS),1)
-            LDFLAGS += -static -lgfortran
-            $(info MINGW64: Static linking OpenBLAS and gfortran)
-        else
-            LDFLAGS += -lgfortran
-            $(info MINGW64: Linking gfortran with OpenBLAS)
-        endif
+        # Windows/MINGW64: the MSYS2 OpenBLAS DLL bundles the Fortran runtime
+        # internally, so no separate -lgfortran is needed or available.
+        $(info MINGW64: OpenBLAS bundles Fortran runtime; no extra flags needed)
     endif
     $(info OpenBLAS backend: LDFLAGS=$(LDFLAGS))
 
