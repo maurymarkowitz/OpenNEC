@@ -1,5 +1,8 @@
 OpenNEC version history
 
+Version 2.0.0 - 2026 June 2
+- re-releasing 1.4.3 as 2.0.0 now that it passes 4nec2 testing!
+
 Version 1.4.3 - 2026 May 31
 - decks with CP cards but no NLs now work properly. this is not valid in NEC-2, but is in NEC-4
 - more work on OpenBLAS on Windows
