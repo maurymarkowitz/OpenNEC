@@ -750,31 +750,14 @@ static int process_single_file(const char *input_filename, const char *output_fi
   }
 
   // run it if we've been asked to
+  int sim_result = -1;
   if (do_run_simulation)
   {
     // Run complete simulation with batch processing
-    int sim_result = run_simulation(ctx, &deck);
-
-    // Check for any errors that occurred during calculation (whether simulation failed or succeeded)
-    if (ctx->errors.num_errors > 0 || sim_result != 0)
+    sim_result = run_simulation(ctx, &deck);
+    if (ctx->errors.num_errors > 0)
     {
-      if (sim_result != 0)
-      {
-        // fprintf(ctx->error_fp, "Failed to run simulation for %s.\n",
-        //         strlen(input_filename) > 0 ? input_filename : "stdin");
-      }
-
-      if (ctx->errors.num_errors > 0)
-      {
-        report(ctx, ONEC_SEV_INFO, "=== Found %d Simulation Errors ===", ctx->errors.num_errors);
-      }
-
-      if (input_fp != stdin)
-        fclose(input_fp);
-      if (output_fp != stdout)
-        fclose(output_fp);
-      destroy_context(ctx);
-      return -1;
+      report(ctx, ONEC_SEV_INFO, "=== Found %d Simulation Errors ===", ctx->errors.num_errors);
     }
   }
 
@@ -793,10 +776,24 @@ static int process_single_file(const char *input_filename, const char *output_fi
         write_nec_preamble(ctx, &deck, output_fp);
       }
       
-      // Write frequency-specific data only if output request card was present
-      // and hasn't been written already inside the frequency loop
-      if (ctx->frequency_loop_ran && !ctx->freq_step_output_written) {
-        write_frequency_step_output(output_fp, ctx);
+      // Check for simulation errors before writing frequency-step data
+      if (ctx->errors.num_errors > 0 || sim_result != 0) {
+        // Write error section instead of frequency-step output
+        fprintf(output_fp, "\n\n");
+        fprintf(output_fp, "                    *** SIMULATION ERRORS ***\n\n");
+        if (sim_result != 0) {
+          fprintf(output_fp, "Simulation failed with error code %d\n", sim_result);
+        }
+        if (ctx->errors.num_errors > 0) {
+          fprintf(output_fp, "Found %d error(s) during simulation\n", ctx->errors.num_errors);
+        }
+        fprintf(output_fp, "The above output reflects the geometry and structure that were successfully parsed.\n\n");
+      } else {
+        // Write frequency-specific data only if output request card was present
+        // and hasn't been written already inside the frequency loop
+        if (ctx->frequency_loop_ran && !ctx->freq_step_output_written) {
+          write_frequency_step_output(output_fp, ctx);
+        }
       }
       
       // Write footer (which emits EN/NX cards and runtime summary)
