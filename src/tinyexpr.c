@@ -162,6 +162,84 @@ static double te_atn(double x) { return atan(x) * TE_RAD2DEG; }
 static double te_sgn(double x) { return (double)((x > 0.0) - (x < 0.0)); }
 static double te_mod(double x, double y) { return fmod(x, y); }
 
+/* OpenNEC extension: max/min with variable arity support
+ * 4nec2 allows max() and min() with unlimited arguments: max(a,b,c,...), min(a,b,c,...)
+ * tinyexpr's type system supports functions with fixed arity 0-7.
+ * To support variable-argument functions, we provide separate implementations for each arity:
+ * max1(a), max2(a,b), max3(a,b,c), ..., max7(a,b,c,d,e,f,g)
+ * min1(a), min2(a,b), min3(a,b,c), ..., min7(a,b,c,d,e,f,g)
+ * The parser selects the appropriate function based on argument count.
+ * Limitation: maximum 7 arguments per max()/min() call (can nest for more).
+ */
+
+/* max functions with arity 1-7 */
+static double te_max1(double a) { return a; }
+static double te_max2(double a, double b) { return a > b ? a : b; }
+static double te_max3(double a, double b, double c) {
+  double m = a > b ? a : b;
+  return m > c ? m : c;
+}
+static double te_max4(double a, double b, double c, double d) {
+  double m = a > b ? a : b;
+  m = m > c ? m : c;
+  return m > d ? m : d;
+}
+static double te_max5(double a, double b, double c, double d, double e) {
+  double m = a > b ? a : b;
+  m = m > c ? m : c;
+  m = m > d ? m : d;
+  return m > e ? m : e;
+}
+static double te_max6(double a, double b, double c, double d, double e, double f) {
+  double m = a > b ? a : b;
+  m = m > c ? m : c;
+  m = m > d ? m : d;
+  m = m > e ? m : e;
+  return m > f ? m : f;
+}
+static double te_max7(double a, double b, double c, double d, double e, double f, double g) {
+  double m = a > b ? a : b;
+  m = m > c ? m : c;
+  m = m > d ? m : d;
+  m = m > e ? m : e;
+  m = m > f ? m : f;
+  return m > g ? m : g;
+}
+
+/* min functions with arity 1-7 */
+static double te_min1(double a) { return a; }
+static double te_min2(double a, double b) { return a < b ? a : b; }
+static double te_min3(double a, double b, double c) {
+  double m = a < b ? a : b;
+  return m < c ? m : c;
+}
+static double te_min4(double a, double b, double c, double d) {
+  double m = a < b ? a : b;
+  m = m < c ? m : c;
+  return m < d ? m : d;
+}
+static double te_min5(double a, double b, double c, double d, double e) {
+  double m = a < b ? a : b;
+  m = m < c ? m : c;
+  m = m < d ? m : d;
+  return m < e ? m : e;
+}
+static double te_min6(double a, double b, double c, double d, double e, double f) {
+  double m = a < b ? a : b;
+  m = m < c ? m : c;
+  m = m < d ? m : d;
+  m = m < e ? m : e;
+  return m < f ? m : f;
+}
+static double te_min7(double a, double b, double c, double d, double e, double f, double g) {
+  double m = a < b ? a : b;
+  m = m < c ? m : c;
+  m = m < d ? m : d;
+  m = m < e ? m : e;
+  m = m < f ? m : f;
+  return m < g ? m : g;
+}
+
 static const te_variable functions[] = {
   /* must be in alphabetical order */
   {"abs", fabs,     TE_FUNCTION1 | TE_FLAG_PURE, 0},
@@ -185,6 +263,20 @@ static const te_variable functions[] = {
   {"log", log10,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
 #endif
   {"log10", log10,  TE_FUNCTION1 | TE_FLAG_PURE, 0},
+  {"max1", te_max1, TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* OpenNEC: max with arity 1 */
+  {"max2", te_max2, TE_FUNCTION2 | TE_FLAG_PURE, 0},  /* OpenNEC: max with arity 2 */
+  {"max3", te_max3, TE_FUNCTION3 | TE_FLAG_PURE, 0},  /* OpenNEC: max with arity 3 */
+  {"max4", te_max4, TE_FUNCTION4 | TE_FLAG_PURE, 0},  /* OpenNEC: max with arity 4 */
+  {"max5", te_max5, TE_FUNCTION5 | TE_FLAG_PURE, 0},  /* OpenNEC: max with arity 5 */
+  {"max6", te_max6, TE_FUNCTION6 | TE_FLAG_PURE, 0},  /* OpenNEC: max with arity 6 */
+  {"max7", te_max7, TE_FUNCTION7 | TE_FLAG_PURE, 0},  /* OpenNEC: max with arity 7 */
+  {"min1", te_min1, TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* OpenNEC: min with arity 1 */
+  {"min2", te_min2, TE_FUNCTION2 | TE_FLAG_PURE, 0},  /* OpenNEC: min with arity 2 */
+  {"min3", te_min3, TE_FUNCTION3 | TE_FLAG_PURE, 0},  /* OpenNEC: min with arity 3 */
+  {"min4", te_min4, TE_FUNCTION4 | TE_FLAG_PURE, 0},  /* OpenNEC: min with arity 4 */
+  {"min5", te_min5, TE_FUNCTION5 | TE_FLAG_PURE, 0},  /* OpenNEC: min with arity 5 */
+  {"min6", te_min6, TE_FUNCTION6 | TE_FLAG_PURE, 0},  /* OpenNEC: min with arity 6 */
+  {"min7", te_min7, TE_FUNCTION7 | TE_FLAG_PURE, 0},  /* OpenNEC: min with arity 7 */
   {"mod",   te_mod,  TE_FUNCTION2 | TE_FLAG_PURE, 0},  /* 4nec2: remainder after division */
   {"ncr", ncr,      TE_FUNCTION2 | TE_FLAG_PURE, 0},
   {"npr", npr,      TE_FUNCTION2 | TE_FLAG_PURE, 0},

@@ -1296,11 +1296,16 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
     }
 
     // Preprocess AWG syntax (#14 -> awg value)
+    // NOTE: All preprocessing creates NEW strings; original sym->value is never modified
     char *temp_formula = preprocess_awg(sym->value);
 
     // Preprocess implicit multiplication (135 ft -> 135*ft)
-    char *processed_formula = preprocess_implicit_multiplication(temp_formula);
+    char *temp_formula2 = preprocess_implicit_multiplication(temp_formula);
     free(temp_formula);
+
+    // Preprocess max/min functions (max(a,b,c) -> max3(a,b,c))
+    char *processed_formula = preprocess_max_min(temp_formula2);
+    free(temp_formula2);
 
     int err = 0;
     te_expr *expr = te_compile(processed_formula, vars, sym_count, &err);
@@ -1452,11 +1457,16 @@ void update_card_values(deck_t *deck)
           int err = 0;
 
           // Preprocess AWG syntax in the expression
+          // NOTE: All preprocessing creates NEW strings; original kv->value is never modified
           char *temp_expr = preprocess_awg(expr_str);
 
           // Preprocess implicit multiplication
-          char *processed_expr = preprocess_implicit_multiplication(temp_expr);
+          char *temp_expr2 = preprocess_implicit_multiplication(temp_expr);
           free(temp_expr);
+
+          // Preprocess max/min functions
+          char *processed_expr = preprocess_max_min(temp_expr2);
+          free(temp_expr2);
 
           // Normalize to lowercase for case-insensitive symbol matching
           for (char *p = processed_expr; *p; p++)
@@ -1523,11 +1533,16 @@ void evaluate_formula(context_t *ctx, key_value_t *formula, deck_t *deck, errors
   }
 
   // Preprocess AWG syntax (#14 -> awg value)
+  // NOTE: All preprocessing creates NEW strings; original formula->value is never modified
   char *temp_formula = preprocess_awg(formula->value);
 
   // Preprocess implicit multiplication (135 ft -> 135*ft)
-  char *processed_formula = preprocess_implicit_multiplication(temp_formula);
+  char *temp_formula2 = preprocess_implicit_multiplication(temp_formula);
   free(temp_formula);
+
+  // Preprocess max/min functions (max(a,b,c) -> max3(a,b,c))
+  char *processed_formula = preprocess_max_min(temp_formula2);
+  free(temp_formula2);
 
   // Normalize to lowercase for case-insensitive symbol matching
   for (char *p = processed_formula; *p; p++)
