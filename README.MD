@@ -83,7 +83,7 @@ There are two changes in the command-line interface on windows, to better suppor
 
 The first is to add the `/?` command line switch, the same as `-h`.
 
-The second is that running the `onec.exe` with no command line switches or positional arguments will prompt the user for input and output filenames, rather than printing the usage notes. This matches the behavior of the original Fortran code, which is normally fed input from `CONIN$` (the windows `stdin`). The input is a file that contains two lines of text, the first having the input filename, and the second the output filename. If the filename is empty, the program will exit with an error.
+The second is that running the `onec.exe` with no command line switches or positional arguments will prompt the user for input and output filenames, rather than printing the usage notes. This matches the behavior of the original Fortran code, which is normally fed input from `CONIN$` (the windows `stdin`). The input is a file that contains two lines of text, the first line having the input filename, and the second the output filename. If the filename is empty, the program will exit with an error.
 
 Examples
 --------

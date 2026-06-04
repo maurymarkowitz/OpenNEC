@@ -1,5 +1,7 @@
 Items still to be implemented:
 
+* the system does not currently store blank lines in the resulting deck. this means card numbers and line numbers in a text file might not line up. it is not clear whether the blanks are valid in NEC2 and should be removed, but 4nec2 seems to use them in some decks.
+
 * add the examples from https://k6sti.neocities.org
 
 * finish maa support, need to properly handle the loading based on wire and segment
