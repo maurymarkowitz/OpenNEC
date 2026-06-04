@@ -618,7 +618,18 @@ void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors)
         // card_str starts at the actual code position, not the comment marker
         card_str_offset = pos;
       }
-    } // checking for hidden info
+    }
+
+    // track whether this deck contains any report/output request cards
+    if (!card->ignore &&
+        (strcmp(card->card_code, "RP") == 0 ||
+         strcmp(card->card_code, "NE") == 0 ||
+         strcmp(card->card_code, "NH") == 0 ||
+         strcmp(card->card_code, "XQ") == 0 ||
+         strcmp(card->card_code, "WG") == 0)) {
+      ctx->has_output_request_cards = true;
+    }
+    // checking for hidden info
     
     // if we're past the end of the deck, everything that appears is a comment,
     // and we'll just copy it into the comment string. but if we are not past

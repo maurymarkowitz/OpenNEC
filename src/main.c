@@ -785,9 +785,12 @@ static int process_single_file(const char *input_filename, const char *output_fi
           fprintf(output_fp, "Simulation failed with error code %d\n", sim_result);
         }
         if (ctx->errors.num_errors > 0) {
-          fprintf(output_fp, "Found %d error(s) during simulation\n", ctx->errors.num_errors);
+          fprintf(output_fp, "Found %d error(s) during simulation\n\n", ctx->errors.num_errors);
         }
-        fprintf(output_fp, "The above output reflects the geometry and structure that were successfully parsed.\n\n");
+      } else if (!ctx->has_output_request_cards) {
+        fprintf(output_fp, "\n\n");
+        fprintf(output_fp, "                    *** NO REPORT CARDS FOUND ***\n\n");
+        fprintf(output_fp, "No RP/NE/NH/XQ/WG cards were found in the deck; no frequency-step output was generated.\n\n");
       } else {
         // Write frequency-specific data only if output request card was present
         // and hasn't been written already inside the frequency loop

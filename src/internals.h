@@ -693,6 +693,7 @@ struct context_t
 	bool freq_step_output_written;  /* True once per-step output has been written inside the freq loop */
 	bool patterns_output_for_freq;  /* True if RP/NE/NH output was written for current frequency (to avoid duplicates) */
 	bool preamble_written;          /* True once the geometry preamble has been written for this section */
+	bool has_output_request_cards;  /* True if the input deck contains RP/NE/NH/XQ/WG output request cards */
 	bool step_size_warned;    /* True once the Romberg step-size-limited warning has been emitted */
 };
 
