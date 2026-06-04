@@ -349,7 +349,8 @@ void next_token(state *s) {
       s->type = TOK_NUMBER;
     } else {
       /* Look for a variable or builtin function call. */
-      if ((s->next[0] >= 'a' && s->next[0] <= 'z') || (s->next[0] >= 'A' && s->next[0] <= 'Z')) {
+      /* OpenNEC extension: Allow underscores at the start of identifiers for private/internal variables (e.g., _G3) */
+      if ((s->next[0] >= 'a' && s->next[0] <= 'z') || (s->next[0] >= 'A' && s->next[0] <= 'Z') || (s->next[0] == '_')) {
         const char *start;
         start = s->next;
         while (((s->next[0] >= 'a' && s->next[0] <= 'z') || (s->next[0] >= 'A' && s->next[0] <= 'Z')) || (s->next[0] >= '0' && s->next[0] <= '9') || (s->next[0] == '_')) s->next++;

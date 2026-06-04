@@ -1,0 +1,41 @@
+CM TWO MONOPOLES TO TEST COUPLING
+CM Simplified model
+CM file modified with additional XQ and EX commands
+CM Example run with onec.exe Version 1.4.3 blas
+CE
+
+
+GW  	1    	7    	0. 	0.   	0.    	0.     	0. 	23.  	.1
+GW  	2    	7    	20. 	0. 	0.  	20  	0.   	23. 	.2
+
+
+GE	1
+GN	2	0	0	0	13	0.005																										
+
+FR	0	1	0	0	14.0
+CP  	1    	1    	2    	1
+EX  	0    	1    	1    	0    	1.
+XQ
+EX  	0    	2    	1    	0   	1.
+XQ
+
+
+FR	0	1	0	0	14.2
+CP  	1    	1    	2    	1
+EX  	0    	1    	1    	0    	1.
+XQ
+EX  	0    	2    	1    	0   	1.
+XQ
+
+FR	0	1	0	0	14.4
+CP  	1    	1    	2    	1
+EX  	0    	1    	1    	0    	1.
+XQ
+EX  	0    	2    	1    	0   	1.
+XQ
+
+'RP  	0   	73    	1 	1000   	0.        0.        5.        0.
+'EX  	0    	2    	1    	0   	1.
+
+EN
+
