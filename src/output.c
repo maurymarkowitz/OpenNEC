@@ -241,6 +241,18 @@ void write_deck_onec(const context_t *ctx, const deck_t *deck, FILE *file)
       continue;
     }
 
+    // Blank lines (card_code="" and cmt_code="" are onec-only)
+    // Output the original whitespace if present, otherwise just a newline
+    if (card->card_code[0] == '\0' && card->cmt_code[0] == '\0')
+    {
+      if (card->orig_str && strlen(card->orig_str) > 0)
+      {
+        fputs(card->orig_str, file);  // preserves spaces/tabs
+      }
+      fputc('\n', file);
+      continue;
+    }
+
     // all the rest of the cards have multiple parts to put together
 
     // for commented-out cards, write the leading marker before the code
@@ -1964,6 +1976,12 @@ static void write_input_cards_excluding_end(FILE *file, const context_t *ctx, co
 
     /* Skip EN and NX cards - they're output separately at the end */
     if (strncmp(card->card_code, "EN", 2) == 0 || strncmp(card->card_code, "NX", 2) == 0)
+    {
+      continue;
+    }
+
+    /* Skip blank lines for NEC2/Fortran format (they are onec-only) */
+    if (card->card_code[0] == '\0' && card->cmt_code[0] == '\0')
     {
       continue;
     }

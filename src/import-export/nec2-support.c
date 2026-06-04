@@ -51,6 +51,10 @@ int write_deck_nec2(const deck_t *deck, FILE *file)
         if (is_extension(card))
             continue;
 
+        // skip blank lines for NEC2 format (they are onec-only)
+        if (card->card_code[0] == '\0' && card->cmt_code[0] == '\0')
+            continue;
+
         // for comment cards with the CM or CE *in the header*, simply export the card
         if (i <= deck->geometry_start &&
             (strcmp(card->card_code, "CM") == 0 ||
@@ -59,6 +63,7 @@ int write_deck_nec2(const deck_t *deck, FILE *file)
             fprintf(file, "%s%s", deck->cards[i].card_code,
                     deck->cards[i].comment);
             fputc('\n', file);
+            continue;
         }
         // for comment cards with other headers, only export if the option is on
         if (is_comment(card))
@@ -66,6 +71,7 @@ int write_deck_nec2(const deck_t *deck, FILE *file)
             fprintf(file, "%s%s", deck->cards[i].card_code,
                     deck->cards[i].comment);
             fputc('\n', file);
+            continue;
         }
 
         // for geometry and command cards, start with the code

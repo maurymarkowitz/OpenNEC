@@ -119,6 +119,21 @@ void read_deck(context_t *ctx, deck_t *deck, FILE *pfile)
     }
 
     line_len = strlen(line_buf);
+    
+    // Check if this is a blank line: empty string OR all whitespace
+    bool is_blank_line = (line_len == 0);
+    if (!is_blank_line) {
+      // Check if all characters are whitespace
+      bool all_whitespace = true;
+      for (int i = 0; i < line_len; i++) {
+        if (!isspace((unsigned char)line_buf[i])) {
+          all_whitespace = false;
+          break;
+        }
+      }
+      is_blank_line = all_whitespace;
+    }
+    
     if(deck->num_cards == 0) {
       deck->num_cards++;
       deck->cards = calloc(1, sizeof(card_t));
@@ -142,7 +157,7 @@ void read_deck(context_t *ctx, deck_t *deck, FILE *pfile)
     card_t *dest = &deck->cards[deck->num_cards - 1];
     *dest = (card_t){
       .edited = false,
-      .ignore = false,
+      .ignore = is_blank_line,  // Mark blank lines as ignored (comment)
       .card_num = line_num
     };
 
@@ -156,6 +171,13 @@ void read_deck(context_t *ctx, deck_t *deck, FILE *pfile)
     /* Safe: allocate size is line_len + 1, we copy line_len bytes + null */
     memcpy(dest->orig_str, line_buf, line_len);
     dest->orig_str[line_len] = '\0';
+    
+    // For blank lines, set card_code and cmt_code to empty strings
+    // This marks them as "blank line comments" distinct from regular comments
+    if (is_blank_line) {
+      dest->card_code[0] = '\0';
+      dest->cmt_code[0] = '\0';  // empty cmt_code means "blank line" (not a comment marker like ' or !)
+    }
     if (read_result == EOF && !last_line_nonempty) {
       break;
     }
@@ -202,6 +224,10 @@ void read_deck(context_t *ctx, deck_t *deck, FILE *pfile)
  *  to have been opened previous to this call
  * 
 */
+// Static lookahead buffer for read_line - handles peeked character after blank line detection
+static int peeked_char = -1;
+static int peeked_is_eof = 0;
+
 int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num)
 {
   int
@@ -212,30 +238,50 @@ int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num)
   // clear buffer
   buff[0] = '\0';
   
-  // if we're at the end of the file, return that, we're done
-  if((chr = getc(pfile)) == EOF) {
-    return(EOF);
-  }
-
-  // the line parser below stops and returns as soon as it sees a single
-  // cr or lf. That means that when we re-enter the routine, the file might
-  // have leading cr's or lf's left over. this code eats them. note that this
-  // also eats totally empty lines, and it's not clear that's what we want,
-  // we might want to save those in order to report a warning. if that's the
-  // case, it would seem we should do this eating at the end of the routine?
-  while((chr == CR) || (chr == LF)) {
-    // eat the next char, and return if that's the eof
+  // Check if we have a peeked character from previous blank line detection
+  if (peeked_char != -1) {
+    chr = peeked_char;
+    peeked_char = -1;
+    if (peeked_is_eof) {
+      eof = EOF;
+      peeked_is_eof = 0;
+    }
+  } else {
+    // if we're at the end of the file, return that, we're done
     if((chr = getc(pfile)) == EOF) {
       return(EOF);
     }
+  }
 
-    // eat any remaining line-ends
+  // Handle leading blank lines: skip over sequences of CR/LF and return
+  // a single blank line. The next call will get the character after those blank lines.
+  // CHANGE: Instead of consuming blank lines entirely, we now return them as empty
+  // strings so they can be imported as comment cards with card_code="" and cmt_code="".
+  if((chr == CR) || (chr == LF)) {
+    // Skip all leading line-end characters
     while((chr == CR) || (chr == LF)) {
       if((chr = getc(pfile)) == EOF) {
-        return(EOF);
+        // End of file after blank lines - return one blank line
+        buff[0] = '\0';
+        return(0);
       }
     }
-  } /* end of while( (chr == CR) || ... */
+    // We hit a non-line-end character; save it for next call
+    peeked_char = chr;
+    // Return a blank line (empty string)
+    buff[0] = '\0';
+    return(0);
+  }
+  
+  // At this point, chr contains the first non-line-end character
+  buff[0] = (char)chr;
+  num_chr = 1;
+
+  // read the next character to check if we need to continue reading
+  if((chr = getc(pfile)) == EOF) {
+    buff[num_chr] = '\0';
+    return(EOF);
+  }
 
   // read the line until you pick up any trailing cr's or lfs.
   while(num_chr < MAX_LINE_LEN - 1) {
@@ -419,12 +465,13 @@ void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors)
     size_t first = 0;
     while (first < line_len && isspace((unsigned char)card->orig_str[first])) first++;
 
-    // If the line is empty or entirely whitespace, skip it
+    // If the line is empty or entirely whitespace, it's a blank line
+    // Set card_code to empty string (not "!") to distinguish it from regular comments
     if (first >= line_len) {
-      strcpy(type_buff, "!");
+      strcpy(type_buff, "");
       strncpy(card->card_code, type_buff, 2);
       card->card_code[2] = '\0';
-      continue;
+      // Don't continue - let the card be processed with empty card_code
     }
 
     // Check for comment markers (CM, CE, !, #, ')
