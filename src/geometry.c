@@ -563,8 +563,8 @@ void calculate_geometry(context_t *ctx, deck_t *deck, errors_list_t *errors, out
         add_error(ctx, errors, msg, WARNING);
         continue;
         
-      default: // error message if this isn't a comment
-        if(!is_comment(card)) {
+      default: // error message if this isn't a comment or blank line
+        if(!is_comment(card) && strlen(card->card_code) > 0) {
           snprintf(msg, sizeof(msg), "Unknown card type '%s' on line %d: skipped.", card->card_code, i + 1);
           add_error(ctx, errors, msg, 1);
         }

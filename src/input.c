@@ -36,7 +36,7 @@
 #include "input.h"
 
 /* Forward declarations for internal functions */
-static int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num);
+static int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num, deck_t *deck);
 static void parse_comment_card(context_t *ctx, card_t *card, errors_list_t *errors);
 static void parse_geometry_or_control_card(context_t *ctx, card_t *card, errors_list_t *errors);
 static void parse_onec_card(context_t *ctx, card_t *card, errors_list_t *errors);
@@ -74,7 +74,7 @@ void read_deck(context_t *ctx, deck_t *deck, FILE *pfile)
   int last_line_nonempty = 0;
   do {
     line_num++;
-    int read_result = read_line(ctx, line_buf, pfile, line_num);
+    int read_result = read_line(ctx, line_buf, pfile, line_num, deck);
     if(read_result == EOF) {
       if (strlen(line_buf) > 0) {
         last_line_nonempty = 1;
@@ -228,7 +228,7 @@ void read_deck(context_t *ctx, deck_t *deck, FILE *pfile)
 static int peeked_char = -1;
 static int peeked_is_eof = 0;
 
-int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num)
+int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num, deck_t *deck)
 {
   int
     num_chr = 0,  // number of characters read, excluding lf/cr
@@ -258,7 +258,7 @@ int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num)
   // CHANGE: Instead of consuming blank lines entirely, we now return them as empty
   // strings so they can be imported as comment cards with card_code="" and cmt_code="".
   if((chr == CR) || (chr == LF)) {
-    // Skip all leading line-end characters
+    // Skip all leading line-end characters and detect line ending type
     while((chr == CR) || (chr == LF)) {
       if((chr = getc(pfile)) == EOF) {
         // End of file after blank lines - return one blank line
@@ -300,6 +300,34 @@ int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num)
       break;
     }
   } /* end of while( num_chr < MAX_LINE_LEN - 1 ) */
+  
+  // Detect line ending type (LF vs CRLF) and update deck tracking if not yet determined
+  if(deck && deck->line_ending_type == LINE_ENDING_UNDETERMINED) {
+    if(chr == CR) {
+      // We detected CR; check if next char is LF
+      int next_chr = getc(pfile);
+      if(next_chr == LF) {
+        // CRLF detected (Windows)
+        deck->line_ending_type = LINE_ENDING_DETECTED_CRLF;
+      } else {
+        // CR without LF (old Mac format, treat as LF for compatibility)
+        deck->line_ending_type = LINE_ENDING_DETECTED_LF;
+        if(next_chr != EOF) {
+          peeked_char = next_chr;
+        }
+      }
+    } else if(chr == LF) {
+      // LF detected (Unix/Mac)
+      deck->line_ending_type = LINE_ENDING_DETECTED_LF;
+    }
+  } else if(eof != EOF && chr == CR) {
+    // Line ending already detected, but still need to consume the LF after CR
+    int next_chr = getc(pfile);
+    if(next_chr != LF && next_chr != EOF) {
+      // Not a \n following \r, so we need to peek this character for the next call
+      peeked_char = next_chr;
+    }
+  }
   
   // If we exited the loop because the buffer is full (not because of CR/LF or EOF),
   // we need to consume any remaining characters on this line so they don't become
@@ -634,8 +662,8 @@ void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors)
     // if we're past the end of the deck, everything that appears is a comment,
     // and we'll just copy it into the comment string. but if we are not past
     // the end, and we didn't recognize the code then we want to report
-    // an error
-    if (!sawEN && !isCmt && !isCtl && !isGeo && !isExt) {
+    // an error. Note: blank lines (type_buff == "") are allowed and should not error.
+    if (!sawEN && !isCmt && !isCtl && !isGeo && !isExt && strlen(type_buff) > 0) {
       char msg[MAX_ERROR_LEN];
       snprintf(msg, MAX_ERROR_LEN, "The card on line %d has unknown type '%s'. Card skipped.", i+1, type_buff);
       add_error(ctx, errors, msg, PROBLEM);

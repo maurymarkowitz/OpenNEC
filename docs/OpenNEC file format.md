@@ -22,7 +22,7 @@ On top of all this, new card types like `SY` have been added by 3rd party softwa
 Design decisions
 ----------------
 
-Individual fields on the cards are read using a flexible field separation parser that recognizes things like tabs, single or multiple spaces, and even where spaces are used to produce lined up columns. This means that if you read a deck and immediately write it, you should get a new file that is significantly similar to the original. This does not work every time, as these decks come in every format you might imagine, but it does work in most cases.
+Individual fields on the cards are read using a flexible field separation parser that recognizes things like tabs, single or multiple spaces, and even where spaces are used to produce lined up columns. Likewise, OpenNEC allows both Unix-style LF line-ends, as well as Windows-style CRLF, and will attempt to determine which was used when reading files. This means that if you read a deck and immediately write it, you should get a new file that is significantly similar to the original. This does not work every time, as these decks come in every format you might imagine, but it does work in most cases.
 
 The values in the fields are treated as strings until calculations start. This is used to retain formulas in their original format, both so they can be written back in the same layout, as well as to ensure any other changes in the deck are always reflected in the values. For instance, changing the value on an SY card earlier in the deck will always update the formulas that use it when the calculation runs, without the need for complex change tracking.
 

@@ -52,6 +52,7 @@ static char *write_file = "";  /* -w / --write-file: convert deck to this format
 static int jobs = 1; // number of parallel jobs (-j)
 static int output_format_choice = DEFAULT_OUTPUT_FORMAT;  /* Output format selection */
 static int line_ending_choice = DEFAULT_LINE_ENDING;  /* 0=LF (Unix), 1=CRLF (Windows) */
+static bool line_ending_explicitly_set = false;  /* Track if user explicitly set via -L flag */
 
 /**
  * @brief Print the version string and terminate.
@@ -150,7 +151,7 @@ void parse_options(int argc, char *argv[])
   {
     // eat an option and exit if we're done
     /* portable short options: 'g' has an optional argument */
-    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:Sf:", program_options, &option_index); // should match the items above
+    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:Sf:L:", program_options, &option_index); // should match the items above
     if (c == -1)
       break;
 
@@ -227,8 +228,10 @@ void parse_options(int argc, char *argv[])
     case 'L':
       if (strcasecmp(optarg, "lf") == 0) {
         line_ending_choice = 0;  /* Unix LF */
+        line_ending_explicitly_set = true;
       } else if (strcasecmp(optarg, "crlf") == 0) {
         line_ending_choice = 1;  /* Windows CRLF */
+        line_ending_explicitly_set = true;
       } else {
         fprintf(stderr, "onec: invalid line-ending '%s'. Use 'lf' or 'crlf'.\n", optarg);
         exit(1);
@@ -666,6 +669,50 @@ static int process_single_file(const char *input_filename, const char *output_fi
 
   // and then parse what we read into the card
   parse_deck(ctx, &deck, &import_errors);
+
+  // Debug: output detected line ending to stderr
+  const char *line_ending_name = "undetermined";
+  if (deck.line_ending_type == LINE_ENDING_DETECTED_LF) {
+    line_ending_name = "LF (Unix/Mac)";
+  } else if (deck.line_ending_type == LINE_ENDING_DETECTED_CRLF) {
+    line_ending_name = "CRLF (Windows)";
+  }
+  fprintf(stderr, "[Input] Detected line ending: %s\n", line_ending_name);
+
+  // Apply priority logic for line ending format:
+  // 1. If user explicitly set via -L flag, use that
+  // 2. Else if deck has detected line ending, use that
+  // 3. Else use platform default
+  if (!line_ending_explicitly_set && deck.line_ending_type != LINE_ENDING_UNDETERMINED) {
+    // User didn't explicitly set, but we detected a format — use it
+    int old_line_ending = ctx->line_ending;
+    ctx->line_ending = deck.line_ending_type;
+    fprintf(stderr, "[Output] Using detected line ending for output\n");
+    
+    // If we changed from LF to CRLF and haven't already set up temp file, do it now
+    if (old_line_ending != LINE_ENDING_CRLF && ctx->line_ending == LINE_ENDING_CRLF && !using_temp_output && output_fp != NULL)
+    {
+      // Already opened output file in LF mode, need to switch to temp file for CRLF conversion
+      FILE *existing_fp = output_fp;
+      temp_output_fp = tmpfile();
+      if (temp_output_fp != NULL)
+      {
+        output_fp = temp_output_fp;
+        using_temp_output = true;
+        // Close the previously opened file - it will be replaced
+        if (existing_fp != stdout && existing_fp != stdin)
+          fclose(existing_fp);
+      }
+    }
+  } else if (line_ending_explicitly_set) {
+    // User explicitly set via -L flag — already set in ctx at line 517, just confirm
+    const char *explicit_name = (ctx->line_ending == LINE_ENDING_LF) ? "LF" : "CRLF";
+    fprintf(stderr, "[Output] Using user-specified line ending: %s\n", explicit_name);
+  } else {
+    // No detection and no user choice — using platform default (already set)
+    const char *default_name = (ctx->line_ending == LINE_ENDING_LF) ? "LF" : "CRLF";
+    fprintf(stderr, "[Output] Using platform default line ending: %s\n", default_name);
+  }
 
   // Initialize symbol table: collect all SY symbols, add defaults (pi, c),
   // and evaluate symbols in comment section for initial values

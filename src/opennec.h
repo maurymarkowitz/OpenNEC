@@ -113,4 +113,13 @@
 #endif
 /** @} */
 
+/** @name Line Ending Detection Constants
+ *  Line ending style detected when reading files.
+ *  @{
+ */
+#define LINE_ENDING_UNDETERMINED -1  /**< Line ending not yet detected */
+#define LINE_ENDING_DETECTED_LF   0  /**< Unix line ending (LF) detected */
+#define LINE_ENDING_DETECTED_CRLF 1  /**< Windows line ending (CRLF) detected */
+/** @} */
+
 #endif

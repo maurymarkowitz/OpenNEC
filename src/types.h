@@ -230,6 +230,7 @@ typedef struct deck_t
   key_value_t **symbols; /**< Array of symbols (SY) found in the deck */
   int num_symbols;    /**< Total number of symbols */
   field_sep_t field_sep; /**< Separator style shared by all geo/control cards, or FSEP_UNKNOWN if mixed */
+  int line_ending_type; /**< Line ending style detected in input file: -1=undetermined, 0=LF (Unix), 1=CRLF (Windows) */
 } deck_t;
 
 /** @brief Opaque handle to the internal simulation state. 

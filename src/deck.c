@@ -195,6 +195,7 @@ void init_deck(deck_t *deck)
   if (deck == NULL)
     return;
   memset(deck, 0, sizeof(deck_t));
+  deck->line_ending_type = LINE_ENDING_UNDETERMINED;
 }
 
 /******************************************************************************
