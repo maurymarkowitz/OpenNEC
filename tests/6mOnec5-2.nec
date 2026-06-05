@@ -1,11 +1,10 @@
 CM 6m Yagi 
-CM Design by Greg Mew VK4GRM
 CM Simple 3 Element Yagi design optimised for 50 ohm feed.  
 CM Bandwidth 50 to 54MHz
 CM Optimised design for three elements with low SWR
 CM Based on 6mYagi-Opt13-1MHz with Reflector fixed in length to 3m and dimensions rounded to the mm.
 CM Maximum Boom length 1.0m
-CM Model to be run in 4nec2 using NEC2
+CM 
 CE
 SY FREQ=50.313			'Centre Frequency
 SY WL=300/FREQ			'Wavelength is 300/Frequency
@@ -15,13 +14,15 @@ SY REF_Sep=0.357		'Reflector separation from Driven Element
 SY DIR1=2.687			'Director 1 length
 SY DIR1_Sep=0.297		'Director 1 separation from DE
 SY WIRE_RAD=0.005		'Dipole Radius
-SY HEIGHT=0
+SY HEIGHT=10			'Height 10m above goround
 
 GW	1	29	0		-DE_LEN/2	HEIGHT	0		DE_LEN/2	HEIGHT	WIRE_RAD 	'Driven Element 
 GW	2	29	-REF_Sep	-REF/2		HEIGHT	-REF_SEP	REF/2		HEIGHT	WIRE_RAD	'Reflector
 GW	3	29	DIR1_Sep	-DIR1/2		HEIGHT	DIR1_Sep	DIR1/2		HEIGHT	WIRE_RAD	'Director
 
-GE	0								'No ground plane present
+GE	1								'Ground plane is present
+GN	2	0	0	0	13	0.005			'Sommerfeld/Norton method			
+
 EK									'Initiates use of extended thin wire kernal			
 
 LD	5	0	0	0	3.69E+07			'Set all materials to aluminium
@@ -29,5 +30,5 @@ LD	5	0	0	0	3.69E+07			'Set all materials to aluminium
 
 EX	0	1	15	0	1	0			'Specifies excitation for the Driven Element
 FR	0	21	0	0	50	0.1			'Specifies the frequency of operation
-'RP	0	361	361	1000	0	0	1	1	'Specifies the radiation pattern sampling parameters
+RP  0  181    1 1001    -90.00       0.0      1.00      1.00      0.00	'Specifies the radiation pattern sampling parameters Verticval pattern
 EN									'End of data entry

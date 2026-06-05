@@ -1,0 +1,17 @@
+CM 6m Yagi 
+CM Simple 3 Element Yagi design optimised for 50 ohm feed.  
+CM Bandwidth 50 to 54MHz
+CM Optimised design for three elements with low SWR
+CM Based on 6mYagi-Opt13-1MHz with Reflector fixed in length to 3m and dimensions rounded to the mm.
+CM Maximum Boom length 1.0m
+CM 
+CE
+GW 1 29 0 -1.4355 0 0 1.4355 0 5.e-3
+GW 2 29 -0.357 -1.5 0 -0.357 1.5 0 5.e-3
+GW 3 29 0.297 -1.3435 0 0.297 1.3435 0 5.e-3
+GE 0
+EK
+LD 5 0 0 0 3.69E+07
+EX 0 1 15 0 1 0
+FR 0 2 0 0 50 0.1
+RP 0 181 91 1000 0 0 5 5

@@ -1,0 +1,14 @@
+CM 6m Yagi 
+CM Design by Greg Mew VK4GRM
+CM Simple dipole over Ground 
+CM Bandwidth 50 to 54MHz
+CM Model to be run in 4nec2 using NEC2
+CE
+GW 1 29 0 -1.4355 10 0 1.4355 10 5.e-3
+GE -1
+GN 2 0 0 0 13 0.005
+EK
+LD 5 0 0 0 3.69E+07
+EX 0 1 15 0 1 0
+FR 0 21 0 0 50 0.1
+XQ

@@ -1,10 +1,7 @@
 CM 6m Yagi 
 CM Design by Greg Mew VK4GRM
-CM Simple 3 Element Yagi design optimised for 50 ohm feed.  
+CM Simple dipole over Ground 
 CM Bandwidth 50 to 54MHz
-CM Optimised design for three elements with low SWR
-CM Based on 6mYagi-Opt13-1MHz with Reflector fixed in length to 3m and dimensions rounded to the mm.
-CM Maximum Boom length 1.0m
 CM Model to be run in 4nec2 using NEC2
 CE
 SY FREQ=50.313			'Centre Frequency
@@ -15,13 +12,14 @@ SY REF_Sep=0.357		'Reflector separation from Driven Element
 SY DIR1=2.687			'Director 1 length
 SY DIR1_Sep=0.297		'Director 1 separation from DE
 SY WIRE_RAD=0.005		'Dipole Radius
-SY HEIGHT=0
+SY HEIGHT=10
 
 GW	1	29	0		-DE_LEN/2	HEIGHT	0		DE_LEN/2	HEIGHT	WIRE_RAD 	'Driven Element 
-GW	2	29	-REF_Sep	-REF/2		HEIGHT	-REF_SEP	REF/2		HEIGHT	WIRE_RAD	'Reflector
-GW	3	29	DIR1_Sep	-DIR1/2		HEIGHT	DIR1_Sep	DIR1/2		HEIGHT	WIRE_RAD	'Director
 
-GE	0								'No ground plane present
+
+GE	-1
+GN	2	0	0	0	13	0.005
+
 EK									'Initiates use of extended thin wire kernal			
 
 LD	5	0	0	0	3.69E+07			'Set all materials to aluminium

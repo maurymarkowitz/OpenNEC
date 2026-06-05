@@ -90,3 +90,6 @@ xcshareddata/
 # Windows executables
 *.exe
 
+# debugging artifacts
+debugging/
+

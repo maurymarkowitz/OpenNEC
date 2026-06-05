@@ -1,0 +1,157 @@
+CM Model deveoped by Greg Mew to test patch functions for OpenNEC testing
+CM Developed: 10/05/2026
+CM Multiple patches used
+CM This model used for OpenNEC test
+CE
+
+
+SY FREQ=14.074			'Centre Frequency
+SY WL=300/FREQ			'Wavelength is 300/Frequency
+SY CPL=5.3			'Counterpoise length
+
+SY HAG=2.47			'Height above Ground of base of the antenna
+SY Z0=50, Vf=0.66		' Coax Z0 and Vf for RG213
+SY WIRE_RAD=0.001		' Wire Radius
+SY DEL=1.6			' Driven Element Length
+SY DTWA=0.055			'Distance to whip antenna
+
+CM Patch details to simulate the side of the Motorhome where the antenna is connected
+SY X1=-DTWA			'x coordinate of Corner 1
+SY Y1=-1.5			'y coordinate of Corner 1
+SY Z1=HAG-0.5			'z coordinate of Corner 1
+SY X2=-DTWA			'x coordinate of Corner 2
+SY Y2=1.5			'y coordinate of Corner 2
+SY Z2=HAG-0.5			'z coordinate of Corner 2
+SY X3=-DTWA			'x coordinate of Corner 3
+SY Y3=1.5			'y coordinate of Corner 3
+SY Z3=HAG+0.5			'z coordinate of Corner 3
+
+CM Patch 2 - below the antenna mounting 
+SY X21=-DTWA			'x coordinate of Corner 1
+SY Y21=-1.5			'y coordinate of Corner 1
+SY Z21=0.5			'z coordinate of Corner 1
+SY X22=-DTWA			'x coordinate of Corner 2
+SY Y22=1.5			'y coordinate of Corner 2
+SY Z22=0.5			'z coordinate of Corner 2
+SY X23=-DTWA			'x coordinate of Corner 3
+SY Y23=1.5			'y coordinate of Corner 3
+SY Z23=HAG-0.5			'z coordinate of Corner 3
+
+CM Patch 3 - above the antenna mounting
+SY X31=-DTWA			'x coordinate of Corner 1
+SY Y31=-1.5			'y coordinate of Corner 1
+SY Z31=HAG+0.5			'z coordinate of Corner 1
+SY X32=-DTWA			'x coordinate of Corner 2
+SY Y32=1.5			'y coordinate of Corner 2
+SY Z32=HAG+0.5			'z coordinate of Corner 2
+SY X33=-DTWA			'x coordinate of Corner 3
+SY Y33=1.5			'y coordinate of Corner 3
+SY Z33=HAG+1			'z coordinate of Corner 3
+
+CM Patch 4 - Front of vehicle
+SY X41=-2			'x coordinate of Corner 1
+SY Y41=-1.5			'y coordinate of Corner 1
+SY Z41=0.5			'z coordinate of Corner 1
+SY X42=-DTWA			'x coordinate of Corner 2
+SY Y42=-1.5			'y coordinate of Corner 2
+SY Z42=0.5			'z coordinate of Corner 2
+SY X43=-DTWA			'x coordinate of Corner 3
+SY Y43=-1.5			'y coordinate of Corner 3
+SY Z43=HAG+1			'z coordinate of Corner 3
+
+CM Patch 5 - Side opposite to antenna on the vehicle
+SY X51=-2			'x coordinate of Corner 1
+SY Y51=1.5			'y coordinate of Corner 1
+SY Z51=0.5			'z coordinate of Corner 1
+SY X52=-2			'x coordinate of Corner 2
+SY Y52=-1.5			'y coordinate of Corner 2
+SY Z52=0.5			'z coordinate of Corner 2
+SY X53=-2			'x coordinate of Corner 3
+SY Y53=-1.5			'y coordinate of Corner 3
+SY Z53=HAG+1			'z coordinate of Corner 3
+
+CM Patch 6 - Rear of the vehicle
+SY X61=-DTWA			'x coordinate of Corner 1
+SY Y61=1.5			'y coordinate of Corner 1
+SY Z61=0.5			'z coordinate of Corner 1
+SY X62=-2			'x coordinate of Corner 2
+SY Y62=1.5			'y coordinate of Corner 2
+SY Z62=0.5			'z coordinate of Corner 2
+SY X63=-2			'x coordinate of Corner 3
+SY Y63=1.5			'y coordinate of Corner 3
+SY Z63=HAG+1			'z coordinate of Corner 3
+
+CM Patch 7 - Top of the vehicle
+SY X71=-DTWA			'x coordinate of Corner 1
+SY Y71=-1.5			'y coordinate of Corner 1
+SY Z71=HAG+1			'z coordinate of Corner 1
+SY X72=-DTWA			'x coordinate of Corner 2
+SY Y72=1.5			'y coordinate of Corner 2
+SY Z72=HAG+1			'z coordinate of Corner 2
+SY X73=-2			'x coordinate of Corner 3
+SY Y73=1.5			'y coordinate of Corner 3
+SY Z73=HAG+1			'z coordinate of Corner 3
+
+CM Patch 8 - Bottom of the vehicle
+SY X81=-DTWA			'x coordinate of Corner 1
+SY Y81=-1.5			'y coordinate of Corner 1
+SY Z81=0.5			'z coordinate of Corner 1
+SY X82=-DTWA			'x coordinate of Corner 2
+SY Y82=1.5			'y coordinate of Corner 2
+SY Z82=0.5			'z coordinate of Corner 2
+SY X83=-2			'x coordinate of Corner 3
+SY Y83=1.5			'y coordinate of Corner 3
+SY Z83=0.5			'z coordinate of Corner 3
+
+
+
+
+GW	1	11	0	0	HAG	0	0	DEL+HAG		WIRE_RAD 	'Whip Element Driven
+'GW	2	1	0	0	HAG	X1	0	HAG		WIRE_RAD	'Connects to Patch
+
+CM Patch 1
+SM	3	3	X1	Y1	Z1	X2	Y2	Z2
+SC	0	0	X3	Y3	Z3
+
+CM Patch 2
+SM	3	3	X21	Y21	Z21	X22	Y22	Z22
+SC	0	0	X23	Y23	Z23	
+
+CM Patch 3	
+SM	3	3	X31	Y31	Z31	X32	Y32	Z32
+SC	0	0	X33	Y33	Z33	
+
+CM Patch 4	
+SM	3	3	X41	Y41	Z41	X42	Y42	Z42
+SC	0	0	X43	Y43	Z43	
+
+CM Patch 5	
+SM	3	3	X51	Y51	Z51	X52	Y52	Z52
+SC	0	0	X53	Y53	Z53	
+
+CM Patch 6	
+SM	3	3	X61	Y61	Z61	X62	Y62	Z62
+SC	0	0	X63	Y63	Z63	
+
+CM Patch 7	
+SM	3	3	X71	Y71	Z71	X72	Y72	Z72
+SC	0	0	X73	Y73	Z73	
+
+CM Patch 8	
+SM	3	3	X81	Y81	Z81	X82	Y82	Z82
+SC	0	0	X83	Y83	Z83	
+
+
+
+GE 1
+GN  	2       0    0    0      13.0     0.005  			'Ground plane parameters
+EK									'Initiates use of extended thin wire kernal			
+
+LD	5	0	0	0	5.8001e7			'Set all materials to copper
+
+
+EX	0	1	2	0	1	0			'Specifies excitation for the Driven Element
+
+FR	0	3	0	0	6.0	1			'Specifies the frequency of operation
+RP	0	181	1	1000	-90	0	1	1	'Specifies the radiation pattern sampling parameters
+EN									'End of data entry

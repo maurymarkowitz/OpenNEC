@@ -786,6 +786,19 @@ static int process_single_file(const char *input_filename, const char *output_fi
         }
         if (ctx->errors.num_errors > 0) {
           fprintf(output_fp, "Found %d error(s) during simulation\n\n", ctx->errors.num_errors);
+          
+          // Print error details
+          int max_display = (ctx->errors.num_errors < 10) ? ctx->errors.num_errors : 10;
+          for (int i = 0; i < max_display; i++) {
+            fprintf(output_fp, "  Error %d: %s\n", i + 1, ctx->errors.errors[i].message);
+          }
+          
+          if (ctx->errors.num_errors > 10) {
+            int remaining = ctx->errors.num_errors - 10;
+            fprintf(output_fp, "  ... there are another %d error%s.\n", 
+                    remaining, (remaining == 1) ? "" : "s");
+          }
+          fprintf(output_fp, "\n");
         }
       } else if (!ctx->has_output_request_cards) {
         fprintf(output_fp, "\n\n");

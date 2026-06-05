@@ -26,6 +26,9 @@ Changes from nec2c
 - nec2c added initial support for green's files, but never implemented it.
 - onec has complete green's file support, and a green's file can be written using the -g flag on the command line, bypassing the need to modify the deck to add a WG card.
 
+- nec2c changed the output format of the reports in the .out files, which caused it to be incompatible with many GUI programs, but others used the new format instead
+- onec can generate both the original NEC-2 format and the new nec2c format reports, and should work with any program (see the --format switch)
+
 Other basic changes
 -------------------
 
@@ -65,9 +68,23 @@ Other NEC engines
 
 In addition to nec2c, there have been many other NEC-2 adaptations over the years.
 
+### The *other* OpenNEC
+
+Long after starting work on OpenNEC, I came across another OpenNEC project, this time on SorceForge:
+
+https://sourceforge.net/projects/gnec/
+
+The repo consists only of the original NEC-2 documentation, it appears the project never moved forward.
+
+### NEC2
+
+An updated version of the original Fortran code by Ulrich Steinmann so it works better on Unix:
+
+https://github.com/yeti01/nec2
+
 ### xnec2c
 
-A further development of nec2c by Neoklis Kyriazis to add an X Windows-based GUI. This version of the system was extended to include multi-threaded capabilities and support for math libraries. While OpenNEC also adds these capabilties, it did not use the code from xnec2c to do so. The xnec2c project appears to be moribund.
+A further development of nec2c by Neoklis Kyriazis to add an X Windows-based GUI. This version of the system was extended to include multi-threaded capabilities and support for math libraries like BLAS. The xnec2c project appears to be moribund.
 
 The xnec2c code can be found here:
 
@@ -105,16 +122,6 @@ OpenNEC has been written specifically to be able to replace the Fortran engines 
 
 https://www.qsl.net/4nec2/
 
-### The *other* OpenNEC
+### nec2d and nec2d-XS
 
-Long after starting work on OpenNEC, I came across another OpenNEC project, this time on SorceForge:
-
-https://sourceforge.net/projects/gnec/
-
-The repo consists only of the original NEC-2 documentation, it appears the project never moved forward.
-
-### NEC2
-
-An updated version of the original Fortran code by Ulrich Steinmann so it works better on Unix:
-
-https://github.com/yeti01/nec2
+4nec2 uses external engines to perform the calculations. These are built using various options based on the original Fortran code, changing the amount of memory or the way it is used. nec2d-XS is a further extended version that adds an Extended Sommerfeld option allows users to compute more accurate near-field results in certain scenarios by using a more rigorous treatment of the ground plane effects.

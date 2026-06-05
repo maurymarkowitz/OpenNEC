@@ -1319,21 +1319,23 @@ static void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
     fprintf(file, "\n\n\n"
                   "                                 *********************************************\n"
                   "\n"
-                  "                                    NUMERICAL ELECTROMAGNETICS CODE (onec)\n"
+                  "                                  NUMERICAL ELECTROMAGNETICS CODE (onec %s)\n"
                   "\n"
-                  "                                 *********************************************\n");
+                  "                                 *********************************************\n",
+                  VERSION_STRING);
   }
   else
   {
     fprintf(file, "\n\n\n"
                   "                              "
-                  " __________________________________________\n"
+                  " ________________________________________________\n"
                   "                              "
-                  "|                                          |\n"
+                  "|                                                |\n"
                   "                              "
-                  "|  NUMERICAL ELECTROMAGNETICS CODE (onec)  |\n"
+                  "|  NUMERICAL ELECTROMAGNETICS CODE (onec %s)  |\n"
                   "                              "
-                  "|__________________________________________|\n");
+                  "|________________________________________________|\n",
+                  VERSION_STRING);
   }
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)

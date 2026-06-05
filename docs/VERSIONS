@@ -1,8 +1,10 @@
 OpenNEC version history
 
 Version 2.0.1 - 2026 June 4
-- added max() and min() functions for 4nec2 support, allow underscore at front of variable names
-- decks now store blank lines and treat them like comments
+- added version number to header in .out files
+- added max() and min() functions for 4nec2 support
+- allow underscore at front of variable names (SY cards)
+- decks now store blank lines and treats them like comments, these are often seen in 4nec2 decks
 - changes to the way the .out file is written so something gets sent out even with errors
 - added a test that prints "no report cards" if the deck lacks (or commented out) all the RPs etc
 

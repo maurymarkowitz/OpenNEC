@@ -1,0 +1,42 @@
+CM ZS6BKW Multiband Antenna
+CM Developed by Greg Mew
+CM Model runs with nec2dxs11k.exe
+CE
+
+SY	Freq=14.2				'Frequency in MHz
+SY	HWM=1.35				' Half Wavelength Multiplier
+SY	EL=HWM*(150/Freq)			' Length of Half Wavelength 1.35
+SY	FPL=0.5					' Length of Feed Point element
+SY	HAG=15					' Height Above Ground
+SY	FM=0.62					' Feeder Multiplier
+SY	FL=FM*(300/Freq)			' Length of Feeder 0.62
+SY	FP=HAG-FL				' Height of Feed Point
+'SY	FPX=(FL^2-(HAG-FP)^2)^0.5		' When HAG is less than FL use trigonomety to determine position in X didrection
+
+
+GW	1	101	0	-EL	HAG	0	EL	HAG	0.0005
+GW	2	3	0	-FPL	FP	0	FPL	FP	0.0005
+	
+
+GE -1
+
+GN  	2       0    0    0      13.0     0.005  
+
+TL	1	51	2	2	450	FL
+
+EX	0	2	2	0	1000	0.0
+
+
+FR	0	293	0	0	2	0.1	
+
+RP 	0 	181 	1 	1000 	-90 	90 	1 	1	 
+EN
+
+'Even using the recommended 34-foot open-wire matching section, the designer
+'states that an antenna tuner is necessary for all-band operation.  AO confirms
+'some pretty wild input impedances.  The radiation pattern on each band is just
+'what you would expect for a center-fed wire of this length:  Dipole-like on the
+'lower bands, cloverleaf-shaped on the higher.  All in all, this popular antenna
+'does not seem to possess any special properties, operating like any ordinary,
+'random-length center-fed wire.
+
