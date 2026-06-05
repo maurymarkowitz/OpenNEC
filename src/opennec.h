@@ -90,12 +90,8 @@
 #define OUTPUT_FORMAT_NEC2C     0  /**< Modern nec2c format (default on Unix/macOS) */
 #define OUTPUT_FORMAT_ORIGINAL  1  /**< Original Fortran NEC-2 format (default on Windows) */
 
-/* Platform-specific default output format */
-#if defined(_WIN32) || defined(__MINGW32__)
-  #define DEFAULT_OUTPUT_FORMAT OUTPUT_FORMAT_ORIGINAL
-#else
-  #define DEFAULT_OUTPUT_FORMAT OUTPUT_FORMAT_NEC2C
-#endif
+/* Default output format: always ORIGINAL (nec2c only when explicitly set) */
+#define DEFAULT_OUTPUT_FORMAT OUTPUT_FORMAT_ORIGINAL
 /** @} */
 
 /** @name Line Ending Constants
