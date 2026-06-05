@@ -6,6 +6,7 @@ Version 2.0.1 - 2026 June 4
 - decks now store blank lines and treats them like comments, these are often seen in 4nec2 decks
 - added code to detect the type of line endings and use them when writing files, this reduces the need for --line-ending
 - fixed a problem when using CRLF and tab field separators that cause some files to fail to parse
+- fixed issues around EX cards, correctly batches them now
 - added max() and min() functions for 4nec2 support
 - allow underscore at front of variable names (SY cards)
 - changes to the way the .out file is written so something gets sent out even with errors

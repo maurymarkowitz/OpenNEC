@@ -151,36 +151,49 @@ void compute_coupling(context_t *ctx, complex double *cur, double wlam )
   size_t mreq;
   
   
-  if( (ctx->vsorc.num_vsrcs != 1) || (ctx->vsorc.num_qdsrcs != 0) )
+  /* OpenNEC: Support multiple excitation sources. Unlike Fortran NEC-2 which
+   * calls COUPLE once per excitation and stores admittance incrementally, OpenNEC
+   * solves all excitations at once. This function processes all sources and
+   * frequencies in one pass by treating coupling_flag as a frequency counter.
+   * Quasi-static sources (QD) are still unsupported. */
+  if( ctx->vsorc.num_qdsrcs != 0 )
     return;
   
-  j= segment_number(ctx,  ctx->yparm.pair_tags[ctx->yparm.coupling_flag], ctx->yparm.pair_segs[ctx->yparm.coupling_flag]);
-  if( j != ctx->vsorc.vsrc_segs[0] )
+  /* If no voltage sources or no coupling pairs requested, nothing to compute */
+  if( ctx->vsorc.num_vsrcs == 0 || ctx->yparm.num_pairs == 0 )
     return;
   
-  zin= ctx->vsorc.vsrc_voltages[0];
-  ctx->yparm.coupling_flag++;
-  mreq = (size_t)ctx->yparm.coupling_flag;
-  mreq *= sizeof( complex double);
-  mem_realloc(ctx,  (void *)&ctx->yparm.y11, mreq );
-  ctx->yparm.y11[ctx->yparm.coupling_flag-1]= cur[j-1]*wlam/zin;
-  
-  l1=(ctx->yparm.coupling_flag-1)*(ctx->yparm.num_pairs-1);
-  for( i = 0; i < ctx->yparm.num_pairs; i++ )
+  /* For each excitation source, compute and store admittances
+   * y11 = self-admittance, y12 = mutual admittances */
+  for( int src_idx = 0; src_idx < ctx->vsorc.num_vsrcs; src_idx++ )
   {
-    if( (i+1) == ctx->yparm.coupling_flag)
-      continue;
+    j = segment_number(ctx, ctx->yparm.pair_tags[src_idx], ctx->yparm.pair_segs[src_idx]);
+    if( j != ctx->vsorc.vsrc_segs[src_idx] )
+      continue;  /* This source is not at the expected segment */
     
-    l1++;
-    mreq = (size_t)l1;
-    mreq *= sizeof( complex double);
-    mem_realloc(ctx,  (void *)&ctx->yparm.y12, mreq );
-    k= segment_number(ctx,  ctx->yparm.pair_tags[i], ctx->yparm.pair_segs[i]);
-    ctx->yparm.y12[l1-1]= cur[k-1]* wlam/ zin;
+    complex double zin_src = ctx->vsorc.vsrc_voltages[src_idx];
+    
+    /* Allocate and store y11[src_idx] */
+    mreq = (size_t)(src_idx + 1) * sizeof(complex double);
+    mem_realloc(ctx, (void *)&ctx->yparm.y11, mreq);
+    ctx->yparm.y11[src_idx] = cur[j-1] * wlam / zin_src;
+    
+    /* Store y12[...] for all pairs involving this source */
+    for( i = 0; i < ctx->yparm.num_pairs; i++ )
+    {
+      if( i == src_idx )
+        continue;
+      
+      l1 = src_idx * (ctx->yparm.num_pairs - 1) + (i < src_idx ? i : i - 1);
+      mreq = (size_t)(l1 + 1) * sizeof(complex double);
+      mem_realloc(ctx, (void *)&ctx->yparm.y12, mreq);
+      k = segment_number(ctx, ctx->yparm.pair_tags[i], ctx->yparm.pair_segs[i]);
+      ctx->yparm.y12[l1] = cur[k-1] * wlam / zin_src;
+    }
   }
   
-  if( ctx->yparm.coupling_flag < ctx->yparm.num_pairs)
-    return;
+  /* Now compute coupling coefficients from accumulated admittances */
+  npm1 = ctx->yparm.num_pairs - 1;
   
   /* Accumulate coupling rows; write_nec_output() will render them. */
   npm1= ctx->yparm.num_pairs-1;

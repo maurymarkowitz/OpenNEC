@@ -317,9 +317,20 @@ int run_simulation(context_t *ctx, deck_t *deck)
                                      has_xq) &&
                                     !ctx->wg_after_cmset);
 
+        // If this batch has no new FR and patterns have already been output for the
+        // current frequency, convert it to extra patterns mode. This handles:
+        // - XQ-only batches after an XQ batch with the same frequency
+        // - RP/NE/NH batches after XQ/RP/NE/NH batches with the same frequency
+        // without re-running the full frequency loop and matrix solve.
+        if (!batch_has_fr && ctx->frequency_loop_ran && ctx->patterns_output_for_freq &&
+            (has_xq || ctx->gnd.far_field_type != -1 || ctx->fpat.is_near_field != -1) &&
+            !ctx->wg_after_cmset) {
+            extra_patterns_only = true;
+        }
+
         if (!is_termination && has_output_request) {
             if (extra_patterns_only) {
-                // XQ alone with no new FR: nothing new to compute, skip
+                // XQ/RP/NE/NH alone with no new FR: nothing new to compute, skip
                 if (!has_xq) {
                     if (execute_extra_patterns(ctx, deck, batch_start, batch_end) != 0) {
                         return -1;
@@ -1601,6 +1612,21 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
 
     // Frequency loop
     for (int mhz = 1; mhz <= nfrq; mhz++) {
+        // Clear coupling admittance arrays for fresh computation at this frequency
+        if (ctx->yparm.y11 != NULL) {
+            mem_free(ctx, (void **)&ctx->yparm.y11);
+        }
+        if (ctx->yparm.y12 != NULL) {
+            mem_free(ctx, (void **)&ctx->yparm.y12);
+        }
+        // Clear coupling rows output from previous frequency
+        if (ctx->yparm.coupling_rows != NULL) {
+            free(ctx->yparm.coupling_rows);
+            ctx->yparm.coupling_rows = NULL;
+        }
+        ctx->yparm.num_coupling_rows = 0;
+        ctx->yparm.coupling_rows_cap = 0;
+        
         // Clear loading outputs from previous frequency iteration
         ctx->loading_outputs.count = 0;
         
