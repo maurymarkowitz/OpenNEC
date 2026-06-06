@@ -1,18 +1,19 @@
 OpenNEC version history
 
 Version 2.1.0 - 2026 June 6
-- the output format now defaults to "original" on all platforms
-- added version number to header in .out files
+- the output format now defaults to "original" on all platforms, you can still override with --format (but you won't)
+- added the version number to the header in reports, so it's "(onec 2.1.0)" instead of "(onec)"
 - decks now store blank lines and treats them like comments, these are often seen in 4nec2 decks
-- added code to detect the type of line endings and use them when writing files, this reduces the need for --line-ending
+- added code to detect the type of line endings and use them when writing files (reduces the need for --line-ending)
 - fixed a problem when using CRLF and tab field separators that cause some files to fail to parse
 - fixed issues around EX cards, correctly batches them now
+- fixed a major issue in the way EX was being calculated that inverted some results
 - added max(a,b) and min(a,b) functions for 4nec2 support
 - added the missing "fix" function as well
 - allow underscore at front of variable names (SY cards)
 - added arc-trig functions
+- PT cards now properly suppress the CURRENT output in those cases
 - changes to the way the .out file is written so something gets sent out even with errors
-- added a test that prints "no report cards" if the deck lacks (or commented out) all the RPs etc
 
 Version 2.0.0 - 2026 June 2
 - re-releasing 1.4.3 as 2.0.0 now that it passes 4nec2 testing!

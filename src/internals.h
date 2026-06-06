@@ -680,6 +680,9 @@ struct context_t
 	int output_format;      /* OUTPUT_FORMAT_NEC2C or OUTPUT_FORMAT_ORIGINAL */
 	int line_ending;        /* 0=LF (Unix), 1=CRLF (Windows); default 1 for Fortran */
 	
+	/* PT card print control */
+	int currents_print_control; /* iptflg — Fortran IPTFLG: controls CURRENTS section visibility; -1=suppress, 0/-2=default, >0=alternate format */
+	
 	/* Batch processing state for XQ command support */
 	int current_card_idx;   /* Current position in deck for batch processing */
 	int batch_start_card;   /* Start of current batch (inclusive) */

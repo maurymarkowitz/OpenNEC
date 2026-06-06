@@ -698,6 +698,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
       if (temp_output_fp != NULL)
       {
         output_fp = temp_output_fp;
+        ctx->output_fp = temp_output_fp;  /* UPDATE: Also update context pointer! */
         using_temp_output = true;
         // Close the previously opened file - it will be replaced
         if (existing_fp != stdout && existing_fp != stdin)
@@ -848,9 +849,9 @@ static int process_single_file(const char *input_filename, const char *output_fi
           fprintf(output_fp, "\n");
         }
       } else if (!ctx->has_output_request_cards) {
-        fprintf(output_fp, "\n\n");
-        fprintf(output_fp, "                    *** NO REPORT CARDS FOUND ***\n\n");
-        fprintf(output_fp, "No RP/NE/NH/XQ/WG cards were found in the deck; no frequency-step output was generated.\n\n");
+        // fprintf(output_fp, "\n\n");
+        // fprintf(output_fp, "                    *** NO REPORT CARDS FOUND ***\n\n");
+        // fprintf(output_fp, "No RP/NE/NH/XQ/WG cards were found in the deck; no frequency-step output was generated.\n\n");
       } else {
         // Write frequency-specific data only if output request card was present
         // and hasn't been written already inside the frequency loop

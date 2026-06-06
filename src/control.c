@@ -1365,7 +1365,19 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
             ctx->fpat.cliff_dist = f3;
             ctx->fpat.cliff_height = f4;
         }
-        else if (strcmp(code, "PT") == 0 || strcmp(code, "PQ") == 0 || strcmp(code, "PL") == 0) {
+        else if (strcmp(code, "PT") == 0) {
+            // PT card - Print control for current distribution
+            // IPTFLG = ITMP1 (first integer parameter)
+            // -1: suppress CURRENTS section
+            // 0 or -2: print CURRENTS (default)
+            // >0: alternate format
+            ctx->currents_print_control = i1;
+            // If third parameter is 0 and IPTFLG is not -1, set to -2 (Fortran behavior)
+            if (i3 == 0 && i1 != -1) {
+                ctx->currents_print_control = -2;
+            }
+        }
+        else if (strcmp(code, "PQ") == 0 || strcmp(code, "PL") == 0) {
             // These cards are print control - skip in batch processing
             continue;
         }

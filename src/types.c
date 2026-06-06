@@ -124,6 +124,7 @@ void context_init(context_t *ctx)
     ctx->fpat.is_near_field = -1;  // -1 = sentinel "no NE/NH card" (0 is a valid near-field mode)
     ctx->gnd.impedance_ratio = CPLX_10;
     ctx->save.freq_mhz = CVEL;
+    ctx->currents_print_control = -2;  /* iptflg — Fortran default: -2 (print currents) */
     
     // Start timing for total runtime
     get_time_ms(ctx, &ctx->start_time);

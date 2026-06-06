@@ -581,7 +581,10 @@ void write_frequency_step_output(FILE *file, context_t *ctx)
   fprintf(stderr, "[DBG-OUTPUT] After write_antenna_input_parameters, before write_coupling_data\n");
   write_coupling_data(ctx);
   fprintf(stderr, "[DBG-OUTPUT] After write_coupling_data\n");
-  write_currents(file, ctx);
+  /* Skip CURRENTS section if PT card has IPTFLG = -1 */
+  if (ctx->currents_print_control != -1) {
+    write_currents(file, ctx);
+  }
   write_patch_currents(file, ctx);
   write_power_budget(file, ctx);
   write_radiation_pattern_header(file, ctx);
