@@ -790,6 +790,12 @@ void fill_excitation_vector(context_t *restrict ctx, double p1, double p2, doubl
 	  {
 		is = ctx->vsorc.vsrc_segs[i] - 1;
 		e[is] = -ctx->vsorc.vsrc_voltages[i] / ( ctx->geometry.half_len[is] * ctx->geometry.wavelength );
+		// DEBUG: Show RHS values
+		fprintf(stderr, "[DBG-RHS-FILL] i=%d, seg=%d, is=%d, voltage=%.15E, half_len=%.15f, wavelength=%.15f\n",
+			i, ctx->vsorc.vsrc_segs[i], is, cabs(ctx->vsorc.vsrc_voltages[i]), 
+			ctx->geometry.half_len[is], ctx->geometry.wavelength);
+		fprintf(stderr, "[DBG-RHS-FILL] e[%d] = %.15E + %.15Ej (magnitude: %.15E)\n",
+			is, creal(e[is]), cimag(e[is]), cabs(e[is]));
 	  }
 	}
 
@@ -1112,15 +1118,9 @@ void factor_matrix(const context_t *restrict ctx, int n, complex double *restric
 		}
 	}
 
-	/* Match custom semantics: the original routine "un-transposes" the matrix
-		 before factorization by swapping across the diagonal. Do the same here. */
-	for (int i = 1; i < n; i++) {
-		for (int j = 0; j < i; j++) {
-			complex double tmp = buf[i + j * lda];
-			buf[i + j * lda] = buf[j + i * lda];
-			buf[j + i * lda] = tmp;
-		}
-	}
+	/* Don't transpose for LAPACK - LAPACK handles column-major order correctly.
+	   The custom non-LAPACK implementation below needs the transpose for its
+	   forward/backward substitution logic, but LAPACK does not. */
 
 	/* Factorize local buffer: buf = P*L*U. */
 	zgetrf_(&m, &m, (double _Complex *)buf, &lda, ipiv, &info);

@@ -568,6 +568,7 @@ void write_nec_preamble(context_t *ctx, const deck_t *deck, FILE *file)
  */
 void write_frequency_step_output(FILE *file, context_t *ctx)
 {
+  fprintf(stderr, "[DBG-OUTPUT] Starting frequency step output, ninp=%d\n", ctx->netcx.ninp);
   write_frequency_data(file, ctx);
   write_loading_data(file, ctx);
   write_environment_data(file, ctx);
@@ -575,8 +576,11 @@ void write_frequency_step_output(FILE *file, context_t *ctx)
   write_network_data(file, ctx);
   write_matrix_asymmetry(file, ctx);
   write_network_excitation(file, ctx);
+  fprintf(stderr, "[DBG-OUTPUT] Before write_antenna_input_parameters\n");
   write_antenna_input_parameters(file, ctx);
+  fprintf(stderr, "[DBG-OUTPUT] After write_antenna_input_parameters, before write_coupling_data\n");
   write_coupling_data(ctx);
+  fprintf(stderr, "[DBG-OUTPUT] After write_coupling_data\n");
   write_currents(file, ctx);
   write_patch_currents(file, ctx);
   write_power_budget(file, ctx);

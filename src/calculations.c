@@ -163,6 +163,15 @@ void compute_coupling(context_t *ctx, complex double *cur, double wlam )
   if( ctx->vsorc.num_vsrcs == 0 || ctx->yparm.num_pairs == 0 )
     return;
   
+  /* When solving sources separately (separate XQ per source), coupling computation
+   * only makes sense when all coupling pair sources are present. Skip if we have
+   * fewer active sources than coupling pairs. */
+  if( ctx->vsorc.num_vsrcs < ctx->yparm.num_pairs ) {
+    fprintf(stderr, "[DBG] Skipping coupling: num_vsrcs=%d < num_pairs=%d (separate solve)\n",
+            ctx->vsorc.num_vsrcs, ctx->yparm.num_pairs);
+    return;
+  }
+  
   /* For each excitation source, compute and store admittances
    * y11 = self-admittance, y12 = mutual admittances */
   for( int src_idx = 0; src_idx < ctx->vsorc.num_vsrcs; src_idx++ )

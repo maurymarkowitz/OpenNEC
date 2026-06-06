@@ -271,6 +271,9 @@ int run_simulation(context_t *ctx, deck_t *deck)
             return -1;
         }
         
+        fprintf(stderr, "[DBG] process_next_batch returned [%d-%d], batch_has_fr=%d, result=%d\n",
+                batch_start, batch_end, batch_has_fr, batch_result);
+        
         // Check if we're done before processing the batch
         if (batch_result == 1) {
             deck_complete = true;
@@ -317,12 +320,30 @@ int run_simulation(context_t *ctx, deck_t *deck)
                                      has_xq) &&
                                     !ctx->wg_after_cmset);
 
+        // Check if this batch has new EX cards - they require a full matrix solve
+        bool has_new_ex = false;
+        for (int idx = batch_start; idx <= batch_end; idx++) {
+            card_t *c = &deck->cards[idx];
+            if (c->ignore || is_comment(c)) continue;
+            if (strcmp(c->card_code, "EX") == 0) {
+                has_new_ex = true;
+                break;
+            }
+        }
+        
+        // If this batch has new EX, we MUST do a full solve regardless of prior state
+        if (has_new_ex) {
+            extra_patterns_only = false;
+        }
+
         // If this batch has no new FR and patterns have already been output for the
-        // current frequency, convert it to extra patterns mode. This handles:
-        // - XQ-only batches after an XQ batch with the same frequency
-        // - RP/NE/NH batches after XQ/RP/NE/NH batches with the same frequency
-        // without re-running the full frequency loop and matrix solve.
+        // current frequency, it can be treated as extra patterns mode (no matrix re-solve).
+        // HOWEVER: if there are EX cards in this batch (has_new_ex), we MUST run the full
+        // frequency loop to re-solve the matrix with the new excitation, even if patterns
+        // have already been output for this frequency. This handles multiple EX cards at
+        // the same frequency correctly (each EX gets its own matrix solve).
         if (!batch_has_fr && ctx->frequency_loop_ran && ctx->patterns_output_for_freq &&
+            !has_new_ex &&
             (has_xq || ctx->gnd.far_field_type != -1 || ctx->fpat.is_near_field != -1) &&
             !ctx->wg_after_cmset) {
             extra_patterns_only = true;
@@ -337,10 +358,19 @@ int run_simulation(context_t *ctx, deck_t *deck)
                     }
                 }
             } else {
+                fprintf(stderr, "[DBG] Before execute_frequency_loop batch [%d-%d]: num_vsrcs=%d\n",
+                        batch_start, batch_end, ctx->vsorc.num_vsrcs);
+                fprintf(stderr, "[DBG] Calling execute_frequency_loop...\n");
+                fflush(stderr);
+                
+                // Always run frequency loop - batches are merged so all EX at same frequency are together
                 ctx->frequency_loop_ran = true;
                 if (execute_frequency_loop(ctx, ctx->save.num_freq, ctx->save.freq_step_type, ctx->save.freq_step, deck) != 0) {
                     return -1;
                 }
+                
+                fprintf(stderr, "[DBG] After execute_frequency_loop batch [%d-%d]: ninp=%d\n",
+                        batch_start, batch_end, ctx->netcx.ninp);
             }
         }
         
@@ -869,6 +899,10 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
     *batch_end = ctx->current_card_idx;
     bool found_batch_end = false;
     bool found_fr = false;  // track whether an FR card is in this batch
+    bool found_ex = false;  // track whether an EX card is in this batch (for splitting multi-EX)
+    bool found_xq = false;  // track if we've found first XQ
+    
+    fprintf(stderr, "[DBG-FIND] Starting batch search from card %d\n", ctx->current_card_idx);
     
     for (int card_idx = ctx->current_card_idx; card_idx < deck->num_cards; card_idx++) {
         card_t *card = &deck->cards[card_idx];
@@ -885,13 +919,26 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
             found_fr = true;
         }
         
+        // Handle EX card - always keep in same batch
+        if (strcmp(code, "EX") == 0) {
+            found_ex = true;
+        }
+        
         // Check for batch termination cards
-        if (strcmp(code, "XQ") == 0 ||
-            strcmp(code, "RP") == 0 ||
-            strcmp(code, "NE") == 0 ||
-            strcmp(code, "NH") == 0) {
-            *batch_end = card_idx;  // Include this card in the batch
-            ctx->current_card_idx = card_idx + 1;  // Next batch starts after
+        if (strcmp(code, "XQ") == 0) {
+            // XQ terminates batch - each EX gets its own batch
+            fprintf(stderr, "[DBG-FIND] Found batch terminator XQ at card %d\n", card_idx);
+            *batch_end = card_idx;
+            ctx->current_card_idx = card_idx + 1;
+            found_batch_end = true;
+            break;
+        }
+        else if (strcmp(code, "RP") == 0 ||
+                 strcmp(code, "NE") == 0 ||
+                 strcmp(code, "NH") == 0) {
+            fprintf(stderr, "[DBG-FIND] Found batch terminator %s at card %d\n", code, card_idx);
+            *batch_end = card_idx;
+            ctx->current_card_idx = card_idx + 1;
             found_batch_end = true;
             break;
         }
@@ -900,7 +947,7 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
             if (card_idx > ctx->current_card_idx) {
                 // There are cards before EN/XT, end batch before EN/XT
                 *batch_end = card_idx - 1;
-                ctx->current_card_idx = card_idx;  // Next batch starts at EN/XT
+                ctx->current_card_idx = card_idx;
                 found_batch_end = true;
                 break;
             } else {
@@ -936,6 +983,27 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
     }
     if (!found_batch_end) {
         is_final_batch = true;  // Implicit EN at end of deck
+    }
+    
+    // If this batch has EX/XQ but no FR, and we have prior excitations from a completed solve,
+    // clear them before processing this batch's new EX cards
+    if (!*batch_has_fr && *batch_start <= *batch_end) {
+        bool batch_has_ex = false;
+        bool batch_has_xq = false;
+        for (int idx = *batch_start; idx <= *batch_end; idx++) {
+            card_t *c = &deck->cards[idx];
+            if (!c->ignore && !is_comment(c)) {
+                if (strcmp(c->card_code, "EX") == 0) batch_has_ex = true;
+                if (strcmp(c->card_code, "XQ") == 0) batch_has_xq = true;
+            }
+        }
+        // If this batch has both EX and XQ (a separate solve), clear prior excitations before processing
+        if (batch_has_ex && batch_has_xq && (ctx->vsorc.num_vsrcs > 0 || ctx->vsorc.num_qdsrcs > 0)) {
+            fprintf(stderr, "[DBG-BATCH] Batch [%d-%d] has EX+XQ without FR: clearing prior excitations BEFORE processing\n", *batch_start, *batch_end);
+            ctx->vsorc.num_vsrcs = 0;
+            ctx->vsorc.num_qdsrcs = 0;
+            ctx->vsorc.num_qdsrcs_used = 0;
+        }
     }
     
     // Now process the control cards in this batch to configure ctx
@@ -974,6 +1042,13 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
         // Process based on card type
         if (strcmp(code, "FR") == 0) {
             // FR card - Frequency specification
+            // When we hit a new FR card, clear prior excitations (start fresh for new frequency)
+            if (ctx->vsorc.num_vsrcs > 0 || ctx->vsorc.num_qdsrcs > 0) {
+                fprintf(stderr, "[DBG] FR card at line %d: clearing prior excitations before new frequency\n", card_idx + 1);
+                ctx->vsorc.num_vsrcs = 0;
+                ctx->vsorc.num_qdsrcs = 0;
+                ctx->vsorc.num_qdsrcs_used = 0;
+            }
             if (ctx->iflow != 1) {
                 ctx->iflow = 1;
             }
@@ -1097,6 +1172,7 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
         // Continue processing other cards...
         else if (strcmp(code, "EX") == 0) {
             // EX card - Excitation
+            
             ctx->fpat.excitation_type = i1;
             ctx->netcx.check_asymmetry = i4 / 10;
 
@@ -1107,6 +1183,8 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
                 if (i1 == 5) {
                     // Incident plane wave or elementary current source
                     ctx->vsorc.num_qdsrcs++;
+                    fprintf(stderr, "[DBG] EX card at line %d: added quasi-static source, num_qdsrcs now %d\n",
+                            card_idx + 1, ctx->vsorc.num_qdsrcs);
                     size_t mreq = (size_t)ctx->vsorc.num_qdsrcs * sizeof(int);
                     mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_segs, mreq);
                     mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_indices, mreq);
@@ -1132,6 +1210,8 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
                 } else {
                     // Applied voltage source
                     ctx->vsorc.num_vsrcs++;
+                    fprintf(stderr, "[DBG] EX card at line %d: tag=%d, added voltage source, num_vsrcs now %d\n",
+                            card_idx + 1, i2, ctx->vsorc.num_vsrcs);
                     size_t mreq = (size_t)ctx->vsorc.num_vsrcs * sizeof(int);
                     mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_segs, mreq);
                     
@@ -1514,6 +1594,9 @@ static int execute_extra_patterns(context_t *ctx, const deck_t *deck, int batch_
  */
 static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double delfrq, const deck_t *deck)
 {
+    fprintf(stderr, "[DBG] ENTER execute_frequency_loop: nfrq=%d\n", nfrq);
+    fflush(stderr);
+    
     if (ctx == NULL) {
         return -1;
     }
@@ -1764,6 +1847,17 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
             // Fill right-hand side matrix (excitation)
             fill_excitation_vector(ctx, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ctx->fpat.excitation_type, ctx->crnt.surface_cur);
             
+            // DEBUG: Print frequency and wavelength
+            fprintf(stderr, "[DBG-FREQ-SOLVE] freq_mhz=%.15f, wavelength=%.15f, CVEL=%.15f\n",
+                    ctx->save.freq_mhz, ctx->geometry.wavelength, CVEL);
+            if (ctx->vsorc.num_vsrcs > 0) {
+                fprintf(stderr, "[DBG-GEOM-SOLVE] segment[0]: half_len=%.15f, vsrc_seg=%d, vsrc_voltage=%.15E\n",
+                        ctx->geometry.half_len[0], ctx->vsorc.vsrc_segs[0], cabs(ctx->vsorc.vsrc_voltages[0]));
+                fprintf(stderr, "[DBG-RHS-CALC] e[0] should be: -1.0 / (%.15f * %.15f) = %.15E\n",
+                        ctx->geometry.half_len[ctx->vsorc.vsrc_segs[0]-1], ctx->geometry.wavelength,
+                        -1.0 / (ctx->geometry.half_len[ctx->vsorc.vsrc_segs[0]-1] * ctx->geometry.wavelength));
+            }
+            
             // Solve with network
             network(ctx, cm, ctx->save.pivot, ctx->crnt.surface_cur);
             ctx->netcx.network_type = 1;
@@ -1782,10 +1876,16 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
                 }
             }
             
+            fprintf(stderr, "[DBG-FREQ] After ohmic loss calculation\n");
+            
             // Handle coupling calculations if requested
             if (ctx->yparm.num_pairs > 0) {
+                fprintf(stderr, "[DBG-FREQ] Before compute_coupling, num_pairs=%d\n", ctx->yparm.num_pairs);
                 compute_coupling(ctx, ctx->crnt.surface_cur, ctx->geometry.wavelength);
+                fprintf(stderr, "[DBG-FREQ] After compute_coupling\n");
             }
+            
+            fprintf(stderr, "[DBG-FREQ] Coupling section complete\n");
             
             // Near field calculation if requested
             // Note: do NOT reset near to -1 here after the last frequency;

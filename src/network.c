@@ -546,6 +546,15 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
     /* solve for currents when no networks are present */
     solve_symmetric(ctx, cm, ip, einc, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
     compute_current_coefficients(ctx, einc);
+    
+    // DEBUG: Show einc values after solve
+    if (ctx->vsorc.num_vsrcs > 0) {
+      int debug_seg = ctx->vsorc.vsrc_segs[0] - 1;
+      fprintf(stderr, "[DBG-SOLVE-AFTER] After solve_symmetric:\n");
+      fprintf(stderr, "[DBG-SOLVE-AFTER] einc[%d] = %.15E + %.15Ej (magnitude: %.15E)\n",
+              debug_seg, creal(einc[debug_seg]), cimag(einc[debug_seg]), cabs(einc[debug_seg]));
+    }
+    
     ntsc=0;
   }
 
@@ -564,9 +573,19 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
   mem_realloc(ctx, (void **)&ctx->netcx.inp_z, ctx->netcx.ninp * sizeof(complex double));
   mem_realloc(ctx, (void **)&ctx->netcx.inp_y, ctx->netcx.ninp * sizeof(complex double));
   mem_realloc(ctx, (void **)&ctx->netcx.inp_pwr, ctx->netcx.ninp * sizeof(double));
+  
+  /* Clear antenna input arrays to ensure fresh data (fixes issue where old data persists after realloc) */
+  memset(ctx->netcx.inp_tag, 0, ctx->netcx.ninp * sizeof(int));
+  memset(ctx->netcx.inp_seg, 0, ctx->netcx.ninp * sizeof(int));
+  memset(ctx->netcx.inp_v, 0, ctx->netcx.ninp * sizeof(complex double));
+  memset(ctx->netcx.inp_i, 0, ctx->netcx.ninp * sizeof(complex double));
+  memset(ctx->netcx.inp_z, 0, ctx->netcx.ninp * sizeof(complex double));
+  memset(ctx->netcx.inp_y, 0, ctx->netcx.ninp * sizeof(complex double));
+  memset(ctx->netcx.inp_pwr, 0, ctx->netcx.ninp * sizeof(double));
 
   if( ctx->vsorc.num_vsrcs != 0)
   {
+    fprintf(stderr, "[DBG-SOLVE] Starting antenna extraction with num_vsrcs=%d\n", ctx->vsorc.num_vsrcs);
     for( i = 0; i < ctx->vsorc.num_vsrcs; i++ )
     {
       isc1= ctx->vsorc.vsrc_segs[i]-1;
@@ -574,7 +593,17 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
 
       if( ntsc == 0)
       {
+        fprintf(stderr, "[DBG-ANT-CALC] EX[%d]: seg=%d, isc1=%d\n", i, ctx->vsorc.vsrc_segs[i], isc1);
+        fprintf(stderr, "[DBG-ANT-CALC] vlt=%.15E + %.15Ej (mag: %.15E)\n",
+                creal(vlt), cimag(vlt), cabs(vlt));
+        fprintf(stderr, "[DBG-ANT-CALC] einc[%d] before wavelength scaling = %.15E + %.15Ej (mag: %.15E)\n",
+                isc1, creal(einc[isc1]), cimag(einc[isc1]), cabs(einc[isc1]));
+        fprintf(stderr, "[DBG-ANT-CALC] wavelength = %.15f\n", ctx->geometry.wavelength);
+        
         cux= einc[isc1]* ctx->geometry.wavelength;
+        
+        fprintf(stderr, "[DBG-ANT-CALC] cux (current) = einc * wavelength = %.15E + %.15Ej (mag: %.15E)\n",
+                creal(cux), cimag(cux), cabs(cux));
         irow1=0;
       }
       else
@@ -603,6 +632,9 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
       irow2= ctx->geometry.tag_nums[isc1];
       
       /* Store in arrays */
+      fprintf(stderr, "[DBG-ANT] EX %d: isc1=%d (seg %d), tag=%d, vlt=%.5E, cux=%.5E+%.5Ej, mag=%.5E\n",
+              i, isc1, isc1+1, irow2, cabs(vlt), creal(cux), cimag(cux), cabs(cux));
+      
       ctx->netcx.inp_tag[i] = irow2;
       ctx->netcx.inp_seg[i] = isc1 + 1;
       ctx->netcx.inp_v[i] = vlt;
@@ -643,6 +675,8 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
 
     } /* for( i = 0; i < ctx->vsorc.num_qdsrcs; i++ ) */
 
+  fprintf(stderr, "[DBG-SOLVE] Antenna extraction complete, ninp=%d, freeing buffers\n", ctx->netcx.ninp);
+
   /* Free network buffers */
   mem_free( ctx, (void *)&ipnt );
   mem_free( ctx, (void *)&nteqa );
@@ -652,6 +686,8 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
   mem_free( ctx, (void *)&cmn );
   mem_free( ctx, (void *)&rhnt );
   mem_free( ctx, (void *)&rhnx );
+  
+  fprintf(stderr, "[DBG-SOLVE] All buffers freed successfully\n");
 
   return;
 }

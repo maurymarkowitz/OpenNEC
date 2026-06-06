@@ -77,7 +77,6 @@ field_sep_t detect_field_separator(const char *card_str);
 /* 4nec2 Preprocessing */
 char *preprocess_awg(const char *formula);
 char *preprocess_implicit_multiplication(const char *formula);
-char *preprocess_max_min(const char *formula);  /* OpenNEC: convert max/min to max1-7/min1-7 */
 double convert_awg_to_meters(double awg_value);
 
 #endif /* MISC_H */
