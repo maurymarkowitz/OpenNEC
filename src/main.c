@@ -93,7 +93,7 @@ void print_usage(char *argv[])
   puts("  -w file, --write-file=file: write the deck to file in the format inferred from its extension");
   puts("    Supported: .nec/.deck (OpenNEC), .nec2 (NEC-2), .nec4 (NEC-4), .maa/.mma (MMANA-GAL), .yo/.ant/.yag (Yagi Optimizer), .nc (cocoaNEC)");
   puts("    Pass a bare extension (e.g. -w .maa) to convert multiple input files in place.");
-  puts("  -f, --format: output format for .out file: 'nec2c' (modern, default on Unix) or 'original' (Fortran, default on Windows)");
+  puts("  -f, --format: output format for .out file: 'nec2c' (modern) or 'original' (Fortran, default on all platforms)");
 #if defined(_WIN32) || defined(__MINGW32__)
   puts("  --line-ending: line ending style: 'crlf' (default on Windows) or 'lf' (Unix/macOS)");
 #else
