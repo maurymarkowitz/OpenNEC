@@ -8,6 +8,9 @@ nec2c
 # old code
 old/
 
+# debug folder (local testing artifacts)
+debug/
+
 # legacy header (not used)
 nec2c.h
 
