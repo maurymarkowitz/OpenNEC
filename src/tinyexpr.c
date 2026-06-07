@@ -161,6 +161,8 @@ static double te_tan(double d) { return tan(d * TE_DEG2RAD); }
 static double te_atn(double x) { return atan(x) * TE_RAD2DEG; }
 static double te_sgn(double x) { return (double)((x > 0.0) - (x < 0.0)); }
 static double te_mod(double x, double y) { return fmod(x, y); }
+static double te_max(double a, double b) { return (a > b) ? a : b; }
+static double te_min(double a, double b) { return (a < b) ? a : b; }
 
 static const te_variable functions[] = {
   /* must be in alphabetical order */
@@ -185,6 +187,8 @@ static const te_variable functions[] = {
   {"log", log10,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
 #endif
   {"log10", log10,  TE_FUNCTION1 | TE_FLAG_PURE, 0},
+  {"max",   te_max,  TE_FUNCTION2 | TE_FLAG_PURE, 0},  /* 4nec2: returns maximum of two values */
+  {"min",   te_min,  TE_FUNCTION2 | TE_FLAG_PURE, 0},  /* 4nec2: returns minimum of two values */
   {"mod",   te_mod,  TE_FUNCTION2 | TE_FLAG_PURE, 0},  /* 4nec2: remainder after division */
   {"ncr", ncr,      TE_FUNCTION2 | TE_FLAG_PURE, 0},
   {"npr", npr,      TE_FUNCTION2 | TE_FLAG_PURE, 0},
