@@ -158,6 +158,10 @@ static double npr(double n, double r) {return ncr(n, r) * fac(r);}
 static double te_sin(double d) { return sin(d * TE_DEG2RAD); }
 static double te_cos(double d) { return cos(d * TE_DEG2RAD); }
 static double te_tan(double d) { return tan(d * TE_DEG2RAD); }
+static double te_asin(double x) { return asin(x) * TE_RAD2DEG; }
+static double te_acos(double x) { return acos(x) * TE_RAD2DEG; }
+static double te_atan(double x) { return atan(x) * TE_RAD2DEG; }
+static double te_atan2(double y, double x) { return atan2(y, x) * TE_RAD2DEG; }
 static double te_atn(double x) { return atan(x) * TE_RAD2DEG; }
 static double te_sgn(double x) { return (double)((x > 0.0) - (x < 0.0)); }
 static double te_mod(double x, double y) { return fmod(x, y); }
@@ -168,11 +172,14 @@ static double te_fix(double x) { return trunc(x); }
 static const te_variable functions[] = {
   /* must be in alphabetical order */
   {"abs", fabs,     TE_FUNCTION1 | TE_FLAG_PURE, 0},
-  {"acos", acos,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
-  {"asin", asin,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
-  {"atan", atan,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
-  {"atan2", atan2,  TE_FUNCTION2 | TE_FLAG_PURE, 0},
-  {"atn",   te_atn,  TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: arc tangent, result in degrees */
+  {"acos", te_acos,  TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: arc cosine, result in degrees */
+  {"arccos", te_acos, TE_FUNCTION1 | TE_FLAG_PURE, 0}, /* 4nec2: alias for acos, result in degrees */
+  {"arcsin", te_asin, TE_FUNCTION1 | TE_FLAG_PURE, 0}, /* 4nec2: alias for asin, result in degrees */
+  {"arctan", te_atan, TE_FUNCTION1 | TE_FLAG_PURE, 0}, /* 4nec2: alias for atan, result in degrees */
+  {"asin", te_asin,  TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: arc sine, result in degrees */
+  {"atan", te_atan,  TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: arc tangent, result in degrees */
+  {"atan2", te_atan2, TE_FUNCTION2 | TE_FLAG_PURE, 0}, /* 4nec2: 2-arg arc tangent, result in degrees */
+  {"atn",   te_atn,  TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: arc tangent, result in degrees (alias) */
   {"ceil", ceil,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"cos",  te_cos,  TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: argument in degrees */
   {"cosh", cosh,    TE_FUNCTION1 | TE_FLAG_PURE, 0},
