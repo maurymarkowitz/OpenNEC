@@ -163,6 +163,7 @@ static double te_sgn(double x) { return (double)((x > 0.0) - (x < 0.0)); }
 static double te_mod(double x, double y) { return fmod(x, y); }
 static double te_max(double a, double b) { return (a > b) ? a : b; }
 static double te_min(double a, double b) { return (a < b) ? a : b; }
+static double te_fix(double x) { return trunc(x); }
 
 static const te_variable functions[] = {
   /* must be in alphabetical order */
@@ -178,6 +179,7 @@ static const te_variable functions[] = {
   {"e", e,          TE_FUNCTION0 | TE_FLAG_PURE, 0},
   {"exp", exp,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"fac", fac,      TE_FUNCTION1 | TE_FLAG_PURE, 0},
+  {"fix",   te_fix,  TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: truncates towards zero */
   {"floor", floor,  TE_FUNCTION1 | TE_FLAG_PURE, 0},
   {"int",   round,   TE_FUNCTION1 | TE_FLAG_PURE, 0},  /* 4nec2: rounds to nearest integer */
   {"ln", log,       TE_FUNCTION1 | TE_FLAG_PURE, 0},
