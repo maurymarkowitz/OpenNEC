@@ -1,5 +1,10 @@
 OpenNEC version history
 
+Version 2.1.1 - 2026 June 7
+- rolled back to v2.0.0 codebase (stable, numerically correct baseline)
+- merged documentation updates from v2.1.0
+- v2.1.0 introduced numerical calculation regressions and line wrapping issues (reverted)
+
 Version 2.1.0 - 2026 June 6
 - the output format now defaults to "original" on all platforms, you can still override with --format (but you won't)
 - added the version number to the header in reports, so it's "(onec 2.1.0)" instead of "(onec)"
