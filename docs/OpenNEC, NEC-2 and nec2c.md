@@ -1,7 +1,7 @@
 OpenNEC, NEC-2, nec2c and others
 ================================
 
-OpenNEC, onec for short, is a re-implementation of the nec2c code, which is a reimplementation of the original Fortran NEC-2 code. The differences between onec and nec2c are much greater than those between nec2c and NEC-2. This document describes the main changes between nec2c and OpenNEC.
+OpenNEC, onec for short, is a reimplementation of the nec2c code, which is a reimplementation of the original Fortran NEC-2 code. The differences between OpenNEC and nec2c are much greater than those between nec2c and NEC-2. This document describes the main changes between nec2c and OpenNEC.
 
 OpenNEC also includes many features inspired by other NEC engines. The sections below outline these features, as well as listing a number of alternative NEC engines similar OpenNEC.
 
@@ -9,7 +9,7 @@ Changes from nec2c
 ------------------
 
 - nec2c is in the form of a stand-alone command-line program. Other programs use nec2c to perform calculations by creating a temporary deck file, running the program, and then parsing the resulting output file.
-- onec is in the form of a library that can be directly included in other programs. Those programs can modify the deck and read the results directly without using files. A command-line wrapper program is also included, which emulates the nec2c command-line interface.
+- onec is in the form of a library that can be directly included in other programs. Those programs can modify the deck, ask for a calculation, and read the results directly without using files. A command-line wrapper program is also included, which emulates the nec2c command-line interface.
 
 - nec2c parses the deck card-by-card from the input file.
 - onec parses the entire deck in one pass, which allows it to perform whole-deck checks and perform file-type conversions.
@@ -21,10 +21,13 @@ Changes from nec2c
 - onec has been refactored so there is no global state and is completely thread-safe. Programs can use the library to work on multiple decks, and the command shell can run multiple input files in parallel at the same time.
 
 - nec2c uses the original Fortran matrix calculation code. A number of forks of nec2c support one matrix library or another.
-- onec supports a wide variety of well-known matrix libraries across multiple platforms. These offer major performance improvements on larger files (3x on 1000 segments, 7x on 4000). You can compare the performance by running the script in the speed_tests folder. On Apple platforms, Accelerate will be linked by default as this is always available, on other platforms the library selection is manual. See the [BUILD.md](BUILD.md) file for details.
+- onec supports a wide variety of well-known matrix libraries across multiple platforms. These offer major performance improvements on larger files (3x on 1000 segments, 7x on 4000).
 
 - nec2c added initial support for green's files, but never implemented it.
-- onec has complete green's file support, and a green's file can be written using the -g flag on the command line, bypassing the need to add a WG card to the deck.
+- onec has complete green's file support, and a green's file can be written using the -g flag on the command line, bypassing the need to modify the deck to add a WG card.
+
+- nec2c changed the output format of the reports in the .out files, which caused it to be incompatible with many GUI programs, but others used the new format instead
+- onec can generate both the original NEC-2 format and the new nec2c format reports, and should work with any program (see the --format switch)
 
 Other basic changes
 -------------------
@@ -52,7 +55,7 @@ A number of features commonly found in other popular NEC-based programs have bee
 
 * onec supports the `SY` card type from 4nec2. This is used to define variables, or SYmbols, which can be used in place of numbers in the rest of the deck. These are useful for defining the radius of wires and similar tasks, as well as making the deck more self-documented. A common example is to use something like `SY rad=0.01` to define a 1 cm radius, and then use the variable `rad` instead of typing `0.01` everywhere. A major advantage is that you can experiment with changing the radius by editing a single card.
 
-* onec supports in-line formulas, also found in 4nec2 decks. These allow you to define a symbol and then perform basic math operations on it, like "height+5". This has many uses, especially during optimizations.  onec can save files in 4nec2 format with these formulas directly in the fields, or in OpenNEC format with them hidden in comments so that the resulting deck is NEC-2 compatible. In the latter case, the calculated value is placed in the field so it remains NEC-2 compatible during calculations.
+* onec supports in-line formulas, also found in 4nec2 decks. These allow you to define a symbol and then perform basic math operations on it, like "height+5". This has many uses, especially during optimizations. onec can save files in 4nec2 format with these formulas directly in the fields, or in OpenNEC format with them hidden in comments so that the resulting deck is NEC-2 compatible. In the latter case, the calculated value is placed in the field so it is a valid NEC-2 deck for calculations.
 
 * In-line formulas can be used to support measurement units on a per-field basis. For instance, one can use "1ft" to define the span of a wire. Internally, this is converted to the formula "1*ft", where ft is a variable with the conversion from feet to meters. This is the same basic logic used in 4nec2.
 
@@ -63,35 +66,7 @@ A number of features commonly found in other popular NEC-based programs have bee
 Other NEC engines
 =================
 
-### xnec2c
-
-A further development of nec2c by Neoklis Kyriazis to add an X Windows-based GUI. This version of the system was extended to include multi-threaded capabilities and support for math libraries. While OpenNEC also adds these capabilties, it did not use the code from xnec2c to do so. The xnec2c project appears to be moribund.
-
-The xnec2c code can be found here:
-
-https://github.com/KJ7LNW/xnec2c
-
-### nec2++
-
-Another re-factoring of the original NEC-2 code, this time as a re-implementation in C++, as opposed to a port. nec2++ is very similar to OpenNEC in concept, including threading support, math library support, an object-oriented structure (based on structs in OpenNEC), and so-forth. It also includes some deck and card validation functionality.
-
-So why make OpenNEC if nec2++ does many of the same things? The main reason is that pure-C implementations generally integrate with other languages more cleanly. In particular, the original target for OpenNEC is a Swift GUI, and integrating C code with Swift is *much* easier than using C++ code.
-
-OpenNEC also expands the system in several ways that nec2++ didn't, including measurement units, symbols and formulas, and import/export. All of these could be easily ported back to nec2++.
-
-The nec2++ code can be found here:
-
-https://github.com/tmolteno/necpp
-
-### 4nec2
-
-4nec2 is a powerful GUI program for Windows machines by Arie Voors, started in the 1990s and seeing continual development since then. Over time, it added a number of features like formulas and additional NEC options like EX 6.
-
-The actual calculations are carried out using Windows compiled versions of the original Fortran code, which is called through a batch file. OpenNEC attempts to implement these same features directly in the library, avoiding the need to create temporary decks or process the resulting output text. However, many of these features are poorly documented, if at all, so these will require further testing and comparison to ensure they work as 4nec2 intends.
-
-4nec2 is distributed only in compiled form, and can be found here:
-
-https://www.qsl.net/4nec2/
+In addition to nec2c, there have been many other NEC-2 adaptations over the years.
 
 ### The *other* OpenNEC
 
@@ -106,3 +81,47 @@ The repo consists only of the original NEC-2 documentation, it appears the proje
 An updated version of the original Fortran code by Ulrich Steinmann so it works better on Unix:
 
 https://github.com/yeti01/nec2
+
+### xnec2c
+
+A further development of nec2c by Neoklis Kyriazis to add an X Windows-based GUI. This version of the system was extended to include multi-threaded capabilities and support for math libraries like BLAS. The xnec2c project appears to be moribund.
+
+The xnec2c code can be found here:
+
+https://github.com/KJ7LNW/xnec2c
+
+### nec2++
+
+Another re-factoring of the original NEC-2 code, this time as a re-implementation in C++, as opposed to a port. nec2++ is very similar to OpenNEC in concept, including threading support, math library support, an object-oriented structure (based on structs in OpenNEC), and so forth. It also includes some deck and card validation functionality.
+
+So why make OpenNEC if nec2++ does many of the same things? The main reason is that pure-C implementations generally integrate with other languages more cleanly. In particular, the original target for OpenNEC is a Swift GUI, and integrating C code with Swift is *much* easier than using C++ code.
+
+OpenNEC also expands the system in several ways that nec2++ didn't, including measurement units, symbols and formulas, and import/export. All of these could be easily ported back to nec2++.
+
+The nec2++ code can be found here:
+
+https://github.com/tmolteno/necpp
+
+### aegnec2
+
+aegnec2 is a version of the original Fortran code that has been broken out into smaller, more managable files. It also adds a manually-controlled memory allocation feature, which allows a single binary to support different sizes of models, whereas earlier Fortran codes were generally supplied in multiple versions with different hard-coded segment limits. For instance, one can run aegnec2 with the `-s` flag set to 4000 in order to allow it to support models with up to 4000 segments. This sort of allocation is automatic in OpenNEC, which can support very small to very large models.
+
+The aegnec2 home page can ge found here:
+
+https://github.com/flintoftid/aegnec2
+
+### 4nec2
+
+4nec2 is a powerful GUI program for Windows machines by Arie Voors, started in the 1990s and seeing continual development since then. Over time, it added a number of features like formulas and additional NEC options like EX 6.
+
+The actual calculations are carried out using Windows compiled versions of the original Fortran code, which is called through a batch file. OpenNEC attempts to implement these same features directly in the library, avoiding the need to create temporary decks or process the resulting output text. However, many of these features are poorly documented, if at all, so these will require further testing and comparison to ensure they work as 4nec2 intends.
+
+OpenNEC has been written specifically to be able to replace the Fortran engines supplied with 4nec2. This is described in [Using OpenNEC with 4nec2](Using%20OpenNEC%20with%204nec2.md).
+
+4nec2 is distributed only in compiled form, and can be found here:
+
+https://www.qsl.net/4nec2/
+
+### nec2d and nec2d-XS
+
+4nec2 uses external engines to perform the calculations. These are built using various options based on the original Fortran code, changing the amount of memory or the way it is used. nec2d-XS is a further extended version that adds an Extended Sommerfeld option allows users to compute more accurate near-field results in certain scenarios by using a more rigorous treatment of the ground plane effects.

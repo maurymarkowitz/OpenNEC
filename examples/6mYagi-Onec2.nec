@@ -29,5 +29,5 @@ LD	5	0	0	0	3.69E+07			'Set all materials to aluminium
 
 EX	0	1	15	0	1	0			'Specifies excitation for the Driven Element
 FR	0	21	0	0	50	0.1			'Specifies the frequency of operation
-XQ									'Execute - triggers frequency loop
+'RP	0	361	361	1000	0	0	1	1	'Specifies the radiation pattern sampling parameters
 EN									'End of data entry

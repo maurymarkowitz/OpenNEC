@@ -20,9 +20,9 @@ The exact calling proceedure varies among programs, so separate document have be
 - [Using OpenNEC with 4nec2](Using&20%OpenNEC&20%with&20%4nec2.md)
 - [Using onec with cocoaNEC](Using&20%OpenNEC&20%with&20%cocoaNEC.md)
 
-OpenNEC also supports `-f`, `--format` to select the output format for the generated `.out` file. Valid values are `nec2c` for the modern Unix-style output and `original` for the legacy Fortran-style layout. The default is `nec2c` on macOS and Linux, and `original` on Windows.
+OpenNEC also supports `-f`, `--format` to select the output format for the generated `.out` file, `original` or `nec2c`. The default is `nec2c` on macOS and Linux, and `original` on Windows.
 
-You can use `--line-ending` to select the line ending style for output files. Valid values are `lf`, which is the default on Unix/macOS, or `crlf`, which is the default on Windows.
+You can use `--line-ending` to select the line ending style for output files. Valid values are `lf`, which is the default on Unix/macOS, or `crlf`, which is the default on Windows. If you do not explicitely use this switch, the code will attempt to determine which one to use based on the input file. If it cannot be determined, or the file is newly created, it will use the platform's default system.
 
 Using OpenNEC as a library
 --------------------------

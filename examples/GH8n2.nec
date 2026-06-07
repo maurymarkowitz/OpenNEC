@@ -1,0 +1,112 @@
+CM GH8n2 Widebeam65 Edition optimized for 2020 repack CH7-36 by HamiltonOTA (height limited to 0.5969m / 23.5", width limited to 0.8128 / 32")
+CM 24" height, 10.9db avg UHF, 6.8db avg VHF, 373" length of 1/4" Aluminium
+CM at 30*, 8.4db avg UHF, 4.9db avg VHF, at 45*, 5.3db avg UHF, 2.4db avg VHF
+CM covered by GPL v3 or later (http://www.gnu.org/licenses/gpl.txt)
+CM see http://www.digitalhome.ca/forum/showpost.php?p=907404&postcount=2
+CMD--OPT -s(470,6,24) -t(13.7,13.9) -s(174,6,8) -t(7,6) --forward-dir=35
+CMD--OPT -F "(.2*ave_max_gain_diff+.8*ave_gain_diff)+(1+max(abs(min_agt_correction), abs(max_agt_correction))) if height < maxheight and width < maxwidth and GHangles > minGHIangle and GHL3 < maxGHL3 and GHL3 > minGHL3 else max(height,width)*100"
+CMD--OPT --num-cores=3 -a10 --de-np=50 -r restart.log
+CMD--EVAL --num-cores=3 -a24 -s(174,6,8) -s(470,6,24)
+CE
+
+SY maxheight=0.29845
+SY maxwidth=0.4064
+SY minGHIangle=65
+SY maxGHL3=0.0762
+SY minGHL3=0.04445
+SY radius=0.003175
+SY narod_surf_spacing=0.00747043' 0.005, 0.012
+SY narod_spacing=narod_surf_spacing + 2*radius
+
+SY feed=0.02009267' 0.02, 0.07
+
+SY b=0.2280086' 0.075, 0.3
+SY a1=0.118504' 0.02, 0.13
+SY _G3=0.006186153' 0.006, 0.1
+SY a2=a1+feed-_G3'this is to avoid self intersection since _G3 is to be > radius+2.5mm
+SY a3=0.0332313' 0.02, 0.12
+
+SY x=-0.09632227' -0.15, -0.06
+SY l1=0.1507767' 0.1, 0.4
+SY l2=0.1582194' 0.1, 0.4
+SY l3=0.2850609' 0.1, 0.4
+SY l4=0.3304045' 0.1, 0.4
+
+SY n_h=0
+SY n_f_dx=0
+SY n_top_dy=0.04563822' -0.06, 0.06
+SY n_b_taper=0
+SY n_top=_G3+a3+n_top_dy- n_b_taper/2'hat head size
+SY n_f=x + n_f_dx'so the hat does not tilt behind the reflectors
+
+
+SY narod_top = a1+a2+a3+narod_spacing+n_h'want to put 3 reflectors between z=very_small and z=narod_top +/- very_small,  1 reflectors around narod_top and 1 above it
+SY dz3=0.1096263' 0.017, 0.18
+SY above_below=-1
+SY sign = abs(above_below)/above_below' may fail at 0
+
+SY z3 = sign*dz3+narod_top
+SY dz = z3/5
+
+SY dz1=1.744382' 0.2, 2
+SY z1 = (1+(dz1-1))*dz
+SY dz2=1.577144' 0.2, 2
+SY z2 = (3+(dz2-1))*dz
+
+
+SY dz4=0.09578426' 0.05, 0.3
+SY z4=z3+dz4
+
+SY ay1=feed+a1
+SY ay2=feed+a1-a2
+SY ay3=feed+a1-a2+a3
+SY ay4=feed+a1-a2+a3+b
+SY az1=a1
+SY az2=a1+a2
+SY az3=a1+a2+a3
+
+SY n_b=0.2177978' 0.075, 0.3
+SY n_b_z=az3+narod_spacing
+SY n_b_y1=n_top+n_b_taper
+SY n_b_y2=n_b_y1+n_b
+
+SY n_z_coef=0.3256487' 0.2, 1.4
+SY n_zsz=0.4035265' 0.3, 0.55
+'SY n_0sz=0.5997196' 0.3, 0.6
+SY n_x_diff=0.1586748' 0.15, 0.5
+SY n_x = x-n_x_diff
+SY n_z = narod_top*n_z_coef
+
+SY height=max(n_z, max(z4, max(n_b_z, n_b_z+n_h)))
+SY width=max(n_zsz, max(l4, max(l3, max(l2, max(l1, max(ay4,n_b_y2))))))
+SY GHA1=2*atn( (az1-0)/(ay1-feed) )
+SY GHA2=atn( (az1-0)/(ay1-feed) ) + atn( (az2-az1)/(ay1-ay2) )
+SY GHA3=atn( (az2-az1)/(ay1-ay2) ) + atn( (az3-az2)/(ay3-ay2) )
+SY GHAW=atn( (ay3-ay2)/(az3-az2) ) + 90
+SY GHangles=min(GHAW, min(GHA3, min(GHA2, GHA1)))
+SY GHL3=( ((ay3-ay2)^2) + ((az3-az2)^2) ) ^0.5
+
+
+GW 1 21 0 feed 0 0 ay1 az1 radius'#00f
+GW 2 23 0 ay1 az1 0 ay2 az2 radius'#00f
+GW 3 6 0 ay2 az2 0 ay3 az3 radius'#00f
+GW 4 29 0 ay3 az3 0 ay4 az3 radius'#00f
+GW 11 12 n_f n_top n_b_z+n_h 0 n_b_y1 n_b_z radius'#000
+GW 12 27 0 n_b_y1 n_b_z 0 n_b_y2 n_b_z radius'#000
+GX    20    010
+GW 5 39 x l1 z1 x -l1 z1 radius'#0f0
+GW 6 41 x l2 z2 x -l2 z2 radius'#0f0
+GW 7 73 x l3 z3 x -l3 z3 radius'#0f0
+GW 8 85 x l4 z4 x -l4 z4 radius'#0f0
+GW 13 21 n_f -n_top n_b_z+n_h n_f n_top n_b_z+n_h radius'#000
+GW 15 103 n_x -n_zsz n_z n_x n_zsz n_z radius'#D00
+GX    40    001
+'GW 16 63 n_x -n_0sz 0 n_x n_0sz 0 radius'#D00
+GW 100 5 0 -feed 0 0 feed 0 radius'#f40
+GE    0
+LD    5    0    0    0    24900000
+GN    -1
+EK
+EX 0 100 3 0 1
+FR    0    0    0    0    800    0
+EN

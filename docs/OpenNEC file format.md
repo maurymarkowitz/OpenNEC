@@ -22,7 +22,7 @@ On top of all this, new card types like `SY` have been added by 3rd party softwa
 Design decisions
 ----------------
 
-Individual fields on the cards are read using a flexible field separation parser that recognizes things like tabs, single or multiple spaces, and even where spaces are used to produce lined up columns. This means that if you read a deck and immediately write it, you should get a new file that is significantly similar to the original. This does not work every time, as these decks come in every format you might imagine, but it does work in most cases.
+Individual fields on the cards are read using a flexible field separation parser that recognizes things like tabs, single or multiple spaces, and even where spaces are used to produce lined up columns. Likewise, OpenNEC allows both Unix-style LF line-ends, as well as Windows-style CRLF, and will attempt to determine which was used when reading files. This means that if you read a deck and immediately write it, you should get a new file that is significantly similar to the original. This does not work every time, as these decks come in every format you might imagine, but it does work in most cases.
 
 The values in the fields are treated as strings until calculations start. This is used to retain formulas in their original format, both so they can be written back in the same layout, as well as to ensure any other changes in the deck are always reflected in the values. For instance, changing the value on an SY card earlier in the deck will always update the formulas that use it when the calculation runs, without the need for complex change tracking.
 
@@ -74,6 +74,26 @@ For systems where NEC-2 compatibility is important, onec also allows formulas to
 
 **NOTE:** *Generally* speaking, the `=` key:value separator should be used primarily for formulas, and `:` otherwise. This makes it easier to pick out the formuals visually.
 
+Blank lines
+-----------
+
+The onec format preserves blank lines and all-whitespace lines (lines containing only spaces or tabs) from the original deck during import and export to onec format. These lines are treated as special "blank line comments" with empty card codes and are marked as ignored during processing.
+
+When importing a deck:
+- Empty lines (consisting only of CR/LF or LF) are imported as blank line comments
+- Lines containing only whitespace (spaces, tabs) are also imported as blank line comments, with the original whitespace preserved
+- These blank line comments do not affect the antenna calculations
+
+When exporting to onec format:
+- Blank line comments are output as empty lines (preserved whitespace is included, if present)
+- This allows decks to maintain their original formatting and readability across round-trip import/export cycles
+
+When exporting to NEC-2 format:
+- All blank lines and whitespace-only lines are excluded from the output
+- This ensures NEC-2 compatibility, as the original NEC-2 format does not allow empty cards
+
+This behavior is useful for organizing and visually separating sections of a deck (e.g., grouping related geometry elements) while maintaining full compatibility with standard NEC-2 when needed.
+
 Converting from onec to NEC
 ---------------------------
 
@@ -90,11 +110,12 @@ NEC does not allow empty cards in the deck, but other formats allow this or some
 
 1) remove all leading whitespace on lines, before the card type marker
 2) remove any card that is empty, consisting solely of a CR, LF or CR/LF
-3) remove any card that starts with a non-NEC comment marker like `'`, `!` or `#`
-4) scan the deck for leading comments, any card at the top of the deck marked with `CM` or `CE`. this section ends with the first card that starts with a `G`, or the `CE` card if present.
-5) remove any cards that start with `CM` *after* that point. The original NEC format only supports comments at the top, but NEC-4 allowed these to be added.
-6) scan the geometry section and remove any cards containing upper or lower case versions of strings `ignore=true`, `ignore:yes`, etc. (see below for details).
-7) remove any remaining cards that are not part of the NEC standard. This would include any cards like `IT`.
+3) remove any card that consists only of whitespace (spaces or tabs). These are preserved as "blank line comments" during import and export to onec format, but removed when converting to NEC
+4) remove any card that starts with a non-NEC comment marker like `'`, `!` or `#`
+5) scan the deck for leading comments, any card at the top of the deck marked with `CM` or `CE`. this section ends with the first card that starts with a `G`, or the `CE` card if present.
+6) remove any cards that start with `CM` *after* that point. The original NEC format only supports comments at the top, but NEC-4 allowed these to be added.
+7) scan the geometry section and remove any cards containing upper or lower case versions of strings `ignore=true`, `ignore:yes`, etc. (see below for details).
+8) remove any remaining cards that are not part of the NEC standard. This would include any cards like `IT`.
 
 The resulting deck is now compatible with any known NEC parser.
 

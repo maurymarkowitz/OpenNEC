@@ -12,7 +12,7 @@ Introduction
 
 This document describes the NC format and how it can be used in a traditional NEC engine like OpenNEC. OpenNEC includes both an importer and an exporter for the cocoaNEC `.nc` scripting language; the implementation covers a practical subset sufficient to round-trip the example `.nc` files included with this repository. In contrast to some other formats, like `.EZ`, NC maps 1 to 1 onto NEC constructs, and conversion is always possible with no loss of information.
 
-The choice of `.nec` for a non-NEC file, and `.deck` for those that are NEC format, is unfortunate as it means the default behaviour when opening one of these files may result in the wrong internal code being called.
+The choice of `.nec` for a non-NEC file, and `.deck` for those that *are* NEC format, is unfortunate as it means the default behaviour when opening one of these files may result in the wrong internal code being called.
 
 Format overview
 ---------------
