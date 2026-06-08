@@ -184,12 +184,21 @@ void write_deck_onec(const context_t *ctx, const deck_t *deck, FILE *file)
       continue;
     }
 
-    // comment cards care also easy
+    // comment cards are easy
     if (is_comment(card))
     {
-      fputs(card->card_code, file);
-      fputs(card->comment, file);
-      fputc('\n', file);
+      // Special case: blank lines are marked with code="!" and empty comment.
+      // Output them as actual blank lines, not as "!" markers.
+      if (strcmp(card->card_code, "!") == 0 && 
+          (card->comment == NULL || strlen(card->comment) == 0)) {
+        // This is a blank line marker - output just a newline
+        fputc('\n', file);
+      } else {
+        // Regular comment card
+        fputs(card->card_code, file);
+        fputs(card->comment, file);
+        fputc('\n', file);
+      }
       continue;
     }
 
@@ -2887,6 +2896,12 @@ static void write_currents(FILE *file, const context_t *ctx)
   if (ctx->geometry.num_segs == 0)
   {
     return; // No segments to write
+  }
+
+  /* Check PT card control: if currents_pattern_print_control is -2, suppress all output */
+  if (ctx->fpat.currents_pattern_print_control == -2)
+  {
+    return;  // PT card suppresses current output
   }
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)

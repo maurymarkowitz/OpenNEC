@@ -485,6 +485,10 @@ static int calculation_defaults(context_t *ctx)
     // these are reset for each run to support multiple calculations
     ctx->fpat.excitation_type = 0;
     ctx->fpat.is_near_field = -1;
+    ctx->fpat.currents_pattern_print_control = 1;   // Default: print all currents (IPTFLG=1)
+    ctx->fpat.pattern_print_tag = 0;                 // Default: all tags
+    ctx->fpat.pattern_print_segment_first = 0;       // Default: all segments
+    ctx->fpat.pattern_print_segment_last = 0;        // Default: all segments
     ctx->zload.num_loads = 0;
     ctx->loading_outputs.count = 0;
     ctx->loading_outputs.capacity = 0;
@@ -1274,8 +1278,24 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
             ctx->fpat.cliff_dist = f3;
             ctx->fpat.cliff_height = f4;
         }
-        else if (strcmp(code, "PT") == 0 || strcmp(code, "PQ") == 0 || strcmp(code, "PL") == 0) {
-            // These cards are print control - skip in batch processing
+        else if (strcmp(code, "PT") == 0) {
+            // PT card - Pattern (currents) print control
+            ctx->fpat.currents_pattern_print_control = i1;
+            ctx->fpat.pattern_print_tag = i2;
+            ctx->fpat.pattern_print_segment_first = i3;
+            ctx->fpat.pattern_print_segment_last = i4;
+            
+            // Apply Fortran logic: if segment range not specified, suppress output
+            if (i3 == 0 && i1 != -1) {
+                ctx->fpat.currents_pattern_print_control = -2;
+            }
+            // If last segment is 0, set it to first segment
+            if (i4 == 0) {
+                ctx->fpat.pattern_print_segment_last = i3;
+            }
+        }
+        else if (strcmp(code, "PQ") == 0 || strcmp(code, "PL") == 0) {
+            // PQ (charge) and PL (plot) cards - skip for now
             continue;
         }
         else if (strcmp(code, "RP") == 0) {

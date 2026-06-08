@@ -110,18 +110,12 @@ The aegnec2 home page can ge found here:
 
 https://github.com/flintoftid/aegnec2
 
-### 4nec2
+### nec2d and nec2d-XS
 
 4nec2 is a powerful GUI program for Windows machines by Arie Voors, started in the 1990s and seeing continual development since then. Over time, it added a number of features like formulas and additional NEC options like EX 6.
 
-The actual calculations are carried out using Windows compiled versions of the original Fortran code, which is called through a batch file. OpenNEC attempts to implement these same features directly in the library, avoiding the need to create temporary decks or process the resulting output text. However, many of these features are poorly documented, if at all, so these will require further testing and comparison to ensure they work as 4nec2 intends.
-
-OpenNEC has been written specifically to be able to replace the Fortran engines supplied with 4nec2. This is described in [Using OpenNEC with 4nec2](Using%20OpenNEC%20with%204nec2.md).
-
-4nec2 is distributed only in compiled form, and can be found here:
-
-https://www.qsl.net/4nec2/
-
-### nec2d and nec2d-XS
-
 4nec2 uses external engines to perform the calculations. These are built using various options based on the original Fortran code, changing the amount of memory or the way it is used. nec2d-XS is a further extended version that adds an Extended Sommerfeld option allows users to compute more accurate near-field results in certain scenarios by using a more rigorous treatment of the ground plane effects.
+
+The nec2d-XS source code can be found here:
+
+https://www.qsl.net/4nec2/supfiles.htm

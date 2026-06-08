@@ -219,23 +219,20 @@ int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num)
 
   // the line parser below stops and returns as soon as it sees a single
   // cr or lf. That means that when we re-enter the routine, the file might
-  // have leading cr's or lf's left over. this code eats them. note that this
-  // also eats totally empty lines, and it's not clear that's what we want,
-  // we might want to save those in order to report a warning. if that's the
-  // case, it would seem we should do this eating at the end of the routine?
-  while((chr == CR) || (chr == LF)) {
-    // eat the next char, and return if that's the eof
-    if((chr = getc(pfile)) == EOF) {
-      return(EOF);
-    }
+  // have leading cr's or lf's left over. OpenNEC now preserves blank lines
+  // as separate cards for editor functionality, so return them as empty strings
+  // rather than skipping them entirely.
+  if((chr == CR) || (chr == LF)) {
+    // This is a blank line. Return it as an empty string so read_deck
+    // can create a blank card. Don't skip multiple newlines here - let
+    // the next call handle them so each blank line is a separate card.
+    buff[0] = '\0';  // Return empty string for blank line
+    return(0);       // Success: blank line
+  }
 
-    // eat any remaining line-ends
-    while((chr == CR) || (chr == LF)) {
-      if((chr = getc(pfile)) == EOF) {
-        return(EOF);
-      }
-    }
-  } /* end of while( (chr == CR) || ... */
+  // the line parser below stops and returns as soon as it sees a single
+  // cr or lf. That means that when we re-enter the routine, the file might
+  // have been left with leading content. Just continue reading the line normally.
 
   // read the line until you pick up any trailing cr's or lfs.
   while(num_chr < MAX_LINE_LEN - 1) {
@@ -419,25 +416,33 @@ void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors)
     size_t first = 0;
     while (first < line_len && isspace((unsigned char)card->orig_str[first])) first++;
 
-    // If the line is empty or entirely whitespace, skip it
+    // If the line is empty or entirely whitespace, mark as comment
     if (first >= line_len) {
       strcpy(type_buff, "!");
       strncpy(card->card_code, type_buff, 2);
       card->card_code[2] = '\0';
-      continue;
     }
-
     // Check for comment markers (CM, CE, !, #, ')
-    if (toupper(card->orig_str[first]) == 'C' && first + 1 < line_len && toupper(card->orig_str[first+1]) == 'M') {
+    else if (toupper(card->orig_str[first]) == 'C' && first + 1 < line_len && toupper(card->orig_str[first+1]) == 'M') {
       strcpy(type_buff, "CM");
+      strncpy(card->card_code, type_buff, 2);
+      card->card_code[2] = '\0';
     } else if (toupper(card->orig_str[first]) == 'C' && first + 1 < line_len && toupper(card->orig_str[first+1]) == 'E') {
       strcpy(type_buff, "CE");
+      strncpy(card->card_code, type_buff, 2);
+      card->card_code[2] = '\0';
     } else if (card->orig_str[first] == '!') {
       strcpy(type_buff, "!");
+      strncpy(card->card_code, type_buff, 2);
+      card->card_code[2] = '\0';
     } else if (card->orig_str[first] == '#') {
       strcpy(type_buff, "#");
+      strncpy(card->card_code, type_buff, 2);
+      card->card_code[2] = '\0';
     } else if (card->orig_str[first] == '\'') {
       strcpy(type_buff, "'");
+      strncpy(card->card_code, type_buff, 2);
+      card->card_code[2] = '\0';
     } else {
       // not a comment marker, extract up to 2 chars for card code
       if (line_len - first == 1) {
@@ -449,9 +454,9 @@ void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors)
         type_buff[2] = '\0';
         if (isspace(type_buff[1])) type_buff[1] = '\0';
       }
+      strncpy(card->card_code, type_buff, 2);
+      card->card_code[2] = '\0';  // Ensure null termination
     }
-    strncpy(card->card_code, type_buff, 2);
-    card->card_code[2] = '\0';  // Ensure null termination
     
     // see if we can find out what sort of card it is
     isCmt = is_comment(card);

@@ -162,7 +162,11 @@ typedef struct
 		avg_power_flag, /* iavp — Fortran IAVP: average power integration */
 		normalize_gain, /* inor — Fortran INOR: normalized gain flag */
 		pol_axis,       /* iax — Fortran IAX: polarization axis selector */
-		excitation_type; /* ixtyp — Fortran IXTYP: excitation type */
+		excitation_type, /* ixtyp — Fortran IXTYP: excitation type */
+		currents_pattern_print_control, /* iptflg — Fortran IPTFLG: pattern current print control */
+		pattern_print_tag,     /* iptag — Fortran IPTAG: tag for segment filtering */
+		pattern_print_segment_first, /* iptagf — Fortran IPTAGF: first segment in range */
+		pattern_print_segment_last;  /* iptagt — Fortran IPTAGT: last segment in range */
 
 	double
 		theta_start,    /* thets — Fortran THETS: starting theta (deg) */
