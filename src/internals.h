@@ -682,7 +682,6 @@ struct context_t
 	
 	/* Output format selection */
 	int output_format;      /* OUTPUT_FORMAT_NEC2C or OUTPUT_FORMAT_ORIGINAL */
-	int line_ending;        /* 0=LF (Unix), 1=CRLF (Windows); default 1 for Fortran */
 	
 	/* Batch processing state for XQ command support */
 	int current_card_idx;   /* Current position in deck for batch processing */

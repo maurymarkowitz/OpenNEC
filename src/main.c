@@ -52,6 +52,7 @@ static char *write_file = "";  /* -w / --write-file: convert deck to this format
 static int jobs = 1; // number of parallel jobs (-j)
 static int output_format_choice = DEFAULT_OUTPUT_FORMAT;  /* Output format selection */
 static int line_ending_choice = DEFAULT_LINE_ENDING;  /* 0=LF (Unix), 1=CRLF (Windows) */
+static bool line_ending_explicitly_set = false;  /* True if user specified -L flag */
 
 /**
  * @brief Print the version string and terminate.
@@ -233,6 +234,7 @@ void parse_options(int argc, char *argv[])
         fprintf(stderr, "onec: invalid line-ending '%s'. Use 'lf' or 'crlf'.\n", optarg);
         exit(1);
       }
+      line_ending_explicitly_set = true;
       break;
 
     default:
@@ -514,7 +516,6 @@ static int process_single_file(const char *input_filename, const char *output_fi
   ctx->error_fp = error_fp;
   ctx->source_filename = (strlen(input_filename) > 0) ? (char *)input_filename : NULL;
   ctx->output_format = output_format_choice;
-  ctx->line_ending = line_ending_choice;  /* Use command-line choice, default is 1 (Windows CRLF) */
 
   // open input file or use stdin
   // empty string or "-" both mean stdin
@@ -538,9 +539,10 @@ static int process_single_file(const char *input_filename, const char *output_fi
 
   // open output file or use stdout
   // empty string or "-" both mean stdout
+  // Note: initial decision based on explicit flag or default; will be refined after reading deck
   if (strlen(output_filename) > 0 && strcmp(output_filename, "-") != 0)
   {
-    if (ctx->line_ending == LINE_ENDING_CRLF)
+    if (line_ending_choice == LINE_ENDING_CRLF)
     {
       temp_output_fp = tmpfile();
       if (temp_output_fp != NULL)
@@ -568,7 +570,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
   }
   else
   {
-    if (ctx->line_ending == LINE_ENDING_CRLF)
+    if (line_ending_choice == LINE_ENDING_CRLF)
     {
       temp_output_fp = tmpfile();
       if (temp_output_fp != NULL)
@@ -663,6 +665,45 @@ static int process_single_file(const char *input_filename, const char *output_fi
     /* NEC, STDIN, or UNKNOWN extension — attempt native NEC parsing */
     read_deck(ctx, &deck, input_fp);
   }
+
+  // Refine line ending decision after reading deck
+  // Priority: explicit flag > detected > default
+  int effective_line_ending = line_ending_choice;
+  if (!line_ending_explicitly_set && deck.line_endings != LINE_ENDING_UNDETERMINED) {
+    effective_line_ending = deck.line_endings;
+    // If we initially didn't use temp file but now need CRLF, set it up
+    if (effective_line_ending == LINE_ENDING_CRLF && !using_temp_output) {
+      // Need to close existing file and reopen with temp if it was a real file
+      if (output_fp != NULL && output_fp != stdout) {
+        fclose(output_fp);
+      }
+      if (strlen(output_filename) > 0 && strcmp(output_filename, "-") != 0) {
+        temp_output_fp = tmpfile();
+        if (temp_output_fp != NULL) {
+          output_fp = temp_output_fp;
+          using_temp_output = true;
+        } else {
+          // Fall back to writing directly
+          if ((output_fp = fopen(output_filename, "w")) == NULL) {
+            char mesg[88] = "onec: ";
+            strcat(mesg, output_filename);
+            perror(mesg);
+            if (input_fp != stdin) fclose(input_fp);
+            destroy_context(ctx);
+            return -1;
+          }
+        }
+      } else {
+        // stdout case
+        temp_output_fp = tmpfile();
+        if (temp_output_fp != NULL) {
+          output_fp = temp_output_fp;
+          using_temp_output = true;
+        }
+      }
+    }
+  }
+  ctx->output_fp = output_fp;
 
   // and then parse what we read into the card
   parse_deck(ctx, &deck, &import_errors);

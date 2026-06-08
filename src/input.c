@@ -42,6 +42,10 @@ static void parse_geometry_or_control_card(context_t *ctx, card_t *card, errors_
 static void parse_onec_card(context_t *ctx, card_t *card, errors_list_t *errors);
 static void parse_key_values(context_t *ctx, card_t *card, errors_list_t *errors);
 
+/* Module-level variables for line ending detection */
+static int line_ending_crlf_count = 0;
+static int line_ending_lf_count = 0;
+
 /******************************************************************************
  * read_deck()
  *
@@ -59,6 +63,12 @@ void read_deck(context_t *ctx, deck_t *deck, FILE *pfile)
   char line_buf[1024];  // make it large enough to hold any line
   size_t line_len;      // actual length of the current card being read
     
+  // reset line ending detection for new read
+  line_ending_crlf_count = 0;
+  line_ending_lf_count = 0;
+  // and default to unknown
+  deck->line_endings = LINE_ENDING_UNDETERMINED;
+
   // set the card count to 0, it might have !=0 default
   deck->num_cards = 0;
 
@@ -162,6 +172,19 @@ void read_deck(context_t *ctx, deck_t *deck, FILE *pfile)
     last_line_nonempty = 0;
   } while(true);
   // do not free(card) here; its contents are now owned by deck->cards[]
+  
+  // detect and store the line ending style used in the file
+   if(line_ending_crlf_count == 0 && line_ending_lf_count == 0) {
+    deck->line_endings = LINE_ENDING_UNDETERMINED;
+  } else if(line_ending_crlf_count > line_ending_lf_count) {
+    deck->line_endings = LINE_ENDING_CRLF;
+  } else if(line_ending_lf_count > line_ending_crlf_count) {
+    deck->line_endings = LINE_ENDING_LF;
+  } else {
+    // equal counts - shouldn't happen unless exactly one of each.
+    // default to CRLF in that case.
+    deck->line_endings = LINE_ENDING_CRLF;
+  }
 } /* end read_deck */
 
 /******************************************************************************
@@ -223,6 +246,20 @@ int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num)
   // as separate cards for editor functionality, so return them as empty strings
   // rather than skipping them entirely.
   if((chr == CR) || (chr == LF)) {
+    // Track line endings: check if this is CRLF or just LF
+    if(chr == CR) {
+      // Might be CRLF - peek at next char
+      chr = getc(pfile);
+      if(chr == LF) {
+        line_ending_crlf_count++;
+      } else {
+        line_ending_lf_count++;  // Just CR, treat as LF for counting
+        if(chr != EOF) ungetc(chr, pfile);
+      }
+    } else {
+      // Just LF
+      line_ending_lf_count++;
+    }
     // This is a blank line. Return it as an empty string so read_deck
     // can create a blank card. Don't skip multiple newlines here - let
     // the next call handle them so each blank line is a separate card.
@@ -251,6 +288,23 @@ int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num)
       break;
     }
   } /* end of while( num_chr < MAX_LINE_LEN - 1 ) */
+  
+  // Track line ending: if we exited due to CR/LF, record which type(s)
+  if(eof != EOF && (chr == CR || chr == LF)) {
+    if(chr == CR) {
+      // Might be CRLF - peek at next char
+      int next = getc(pfile);
+      if(next == LF) {
+        line_ending_crlf_count++;
+      } else {
+        line_ending_lf_count++;  // Just CR, treat as LF
+        if(next != EOF) ungetc(next, pfile);
+      }
+    } else {
+      // Just LF
+      line_ending_lf_count++;
+    }
+  }
   
   // If we exited the loop because the buffer is full (not because of CR/LF or EOF),
   // we need to consume any remaining characters on this line so they don't become
