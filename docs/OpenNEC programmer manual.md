@@ -22,7 +22,7 @@ The exact calling proceedure varies among programs, so separate document have be
 
 OpenNEC also supports `-f`, `--format` to select the output format for the generated `.out` file, `original` or `nec2c`. The default is `original` on all platforms.
 
-You can use `--line-ending` to select the line ending style for output files. Valid values are `lf`, which is the default on Unix/macOS, or `crlf`, which is the default on Windows. If you do not explicitely use this switch, the code will attempt to determine which one to use based on the input file. If it cannot be determined, or the file is newly created, it will use the platform's default system.
+You can use `-l`, `--line-ending` to select the line ending style for output files. Normally files default to CRLF, except on Unix/macOS when the input file used only LF. If you need an LF file regardless of the input format, use this swtich.
 
 Using OpenNEC as a library
 --------------------------

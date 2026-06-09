@@ -102,12 +102,8 @@
 #define LINE_ENDING_CRLF 1  /**< Windows line ending (CRLF) */
 #define LINE_ENDING_UNDETERMINED -1  /**< Could not determine line ending from input */
 
-/* Platform-specific default line ending */
-#if defined(_WIN32) || defined(__MINGW32__)
-  #define DEFAULT_LINE_ENDING LINE_ENDING_CRLF
-#else
-  #define DEFAULT_LINE_ENDING LINE_ENDING_LF
-#endif
+/* Default to CRLF for all platforms unless on Unix with LF input */
+#define DEFAULT_LINE_ENDING LINE_ENDING_CRLF
 /** @} */
 
 #endif

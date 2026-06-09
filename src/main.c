@@ -52,7 +52,7 @@ static char *write_file = "";  /* -w / --write-file: convert deck to this format
 static int jobs = 1; // number of parallel jobs (-j)
 static int output_format_choice = DEFAULT_OUTPUT_FORMAT;  /* Output format selection */
 static int line_ending_choice = DEFAULT_LINE_ENDING;  /* 0=LF (Unix), 1=CRLF (Windows) */
-static bool line_ending_explicitly_set = false;  /* True if user specified -L flag */
+static bool line_ending_explicitly_set = false;  /* True if user specified -l flag */
 
 /**
  * @brief Print the version string and terminate.
@@ -95,11 +95,7 @@ void print_usage(char *argv[])
   puts("    Supported: .nec/.deck (OpenNEC), .nec2 (NEC-2), .nec4 (NEC-4), .maa/.mma (MMANA-GAL), .yo/.ant/.yag (Yagi Optimizer), .nc (cocoaNEC)");
   puts("    Pass a bare extension (e.g. -w .maa) to convert multiple input files in place.");
   puts("  -f, --format: output format for .out file: 'nec2c' (modern) or 'original' (Fortran, default on all platforms)");
-#if defined(_WIN32) || defined(__MINGW32__)
-  puts("  --line-ending: line ending style: 'crlf' (default on Windows) or 'lf' (Unix/macOS)");
-#else
-  puts("  --line-ending: line ending style: 'lf' (default on Unix/macOS) or 'crlf' (Windows)");
-#endif
+  puts("  -l, --line-ending: line ending style: 'crlf' (default) or 'lf' (Unix/macOS)");
   puts("Multiple input files or folders can be specified; each file will generate a .out file.");
   puts("If no input_file is provided, input is read from stdin and output goes to stdout.");
   exit(0);
@@ -118,9 +114,9 @@ static struct option program_options[] =
         {"greens", optional_argument, NULL, 'g'},
         {"jobs", required_argument, NULL, 'j'},
         {"write-file", required_argument, NULL, 'w'},
-        {"skip-large", no_argument, NULL, 'S'},
+        {"skip-large", no_argument, NULL, 's'},
         {"format", required_argument, NULL, 'f'},
-        {"line-ending", required_argument, NULL, 'L'},
+        {"line-ending", required_argument, NULL, 'l'},
         {0, 0, 0, 0}};
 
 /**
@@ -151,7 +147,7 @@ void parse_options(int argc, char *argv[])
   {
     // eat an option and exit if we're done
     /* portable short options: 'g' has an optional argument */
-    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:Sf:", program_options, &option_index); // should match the items above
+    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:sf:l:", program_options, &option_index); // should match the items above
     if (c == -1)
       break;
 
@@ -206,7 +202,7 @@ void parse_options(int argc, char *argv[])
       if (jobs < 1)
         jobs = 1;
       break;
-    case 'S':
+    case 's':
       skip_large = true;
       break;
 
@@ -225,7 +221,7 @@ void parse_options(int argc, char *argv[])
       }
       break;
 
-    case 'L':
+    case 'l':
       if (strcasecmp(optarg, "lf") == 0) {
         line_ending_choice = 0;  /* Unix LF */
       } else if (strcasecmp(optarg, "crlf") == 0) {
@@ -469,6 +465,46 @@ static int copy_stream_crlf(FILE *src, FILE *dst)
 }
 
 /**
+ * @brief Copy a stream while converting CRLF line endings to LF.
+ *
+ * When `src` contains CRLF line endings, this helper writes only LF to `dst`.
+ * Existing LF-only sequences are preserved unchanged.
+ *
+ * @param src Source stream opened for reading.
+ * @param dst Destination stream opened for writing.
+ * @return 0 on success, -1 on write failure.
+ */
+static int copy_stream_lf(FILE *src, FILE *dst)
+{
+  int ch;
+  int prev = 0;
+
+  while ((ch = fgetc(src)) != EOF)
+  {
+    if (ch == '\r')
+    {
+      prev = ch;
+      continue;  /* Skip CR, let the following LF be written */
+    }
+    if (ch == '\n' && prev == '\r')
+    {
+      /* CRLF sequence: write only LF */
+      if (fputc('\n', dst) == EOF)
+        return -1;
+      prev = 0;
+    }
+    else
+    {
+      if (fputc(ch, dst) == EOF)
+        return -1;
+      prev = ch;
+    }
+  }
+
+  return 0;
+}
+
+/**
  * @brief Compute destination filename for a converted deck.
  *
  * If `wf` is a bare extension (".nec", ".maa", etc.) the output file
@@ -667,10 +703,22 @@ static int process_single_file(const char *input_filename, const char *output_fi
   }
 
   // Refine line ending decision after reading deck
-  // Priority: explicit flag > detected > default
+  // Priority: explicit user flag > detected input on Unix > default CRLF
+  // Only use LF if: (1) not explicitly set, (2) on non-Windows platform, and (3) input is LF
   int effective_line_ending = line_ending_choice;
-  if (!line_ending_explicitly_set && deck.line_endings != LINE_ENDING_UNDETERMINED) {
-    effective_line_ending = deck.line_endings;
+  if (!line_ending_explicitly_set) {
+    if (deck.line_endings == LINE_ENDING_LF) {
+      /* On non-Windows platforms with LF input, use LF */
+#if !defined(_WIN32) && !defined(__MINGW32__)
+      effective_line_ending = LINE_ENDING_LF;
+#else
+      /* On Windows, always use CRLF regardless of input */
+      effective_line_ending = LINE_ENDING_CRLF;
+#endif
+    } else {
+      /* For CRLF input or undetermined: use CRLF (default) */
+      effective_line_ending = LINE_ENDING_CRLF;
+    }
     // If we initially didn't use temp file but now need CRLF, set it up
     if (effective_line_ending == LINE_ENDING_CRLF && !using_temp_output) {
       // Need to close existing file and reopen with temp if it was a real file
@@ -870,15 +918,33 @@ static int process_single_file(const char *input_filename, const char *output_fi
       }
       else
       {
-        if (copy_stream_crlf(output_fp, final_fp) != 0)
-          conv_error = 1;
+        /* Convert based on effective line ending choice */
+        if (effective_line_ending == LINE_ENDING_CRLF)
+        {
+          if (copy_stream_crlf(output_fp, final_fp) != 0)
+            conv_error = 1;
+        }
+        else
+        {
+          if (copy_stream_lf(output_fp, final_fp) != 0)
+            conv_error = 1;
+        }
         fclose(final_fp);
       }
     }
     else
     {
-      if (copy_stream_crlf(output_fp, stdout) != 0)
-        conv_error = 1;
+      /* Convert based on effective line ending choice */
+      if (effective_line_ending == LINE_ENDING_CRLF)
+      {
+        if (copy_stream_crlf(output_fp, stdout) != 0)
+          conv_error = 1;
+      }
+      else
+      {
+        if (copy_stream_lf(output_fp, stdout) != 0)
+          conv_error = 1;
+      }
       fflush(stdout);
     }
 
