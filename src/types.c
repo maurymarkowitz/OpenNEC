@@ -158,6 +158,11 @@ void context_init(context_t *ctx)
         .dx = 1.0,
         .dy = 1.0
     };
+    
+    // Initialize EX card queuing system
+    ctx->ex_queue.flow = 0;
+    ctx->ex_queue.num_queued = 0;
+    memset(ctx->ex_queue.queued, 0, sizeof(ctx->ex_queue.queued));
 }
 
 void context_cleanup(context_t *ctx)

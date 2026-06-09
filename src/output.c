@@ -521,6 +521,9 @@ static void write_coupling_data(context_t *ctx)
               r->c_value);
     }
   }
+  
+  /* Clear coupling rows after output so they don't accumulate between frequencies */
+  ctx->yparm.num_coupling_rows = 0;
 }
 
 /******************************************************************************

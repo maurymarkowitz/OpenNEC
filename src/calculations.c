@@ -150,90 +150,112 @@ void compute_coupling(context_t *ctx, complex double *cur, double wlam )
   complex double y11, y12, y22, yl, yin, zl, zin, rho;
   size_t mreq;
   
-  
-  if( (ctx->vsorc.num_vsrcs != 1) || (ctx->vsorc.num_qdsrcs != 0) )
+  /* Skip if we have quasi-static sources (which are handled differently) */
+  if( ctx->vsorc.num_qdsrcs != 0 )
     return;
   
-  j= segment_number(ctx,  ctx->yparm.pair_tags[ctx->yparm.coupling_flag], ctx->yparm.pair_segs[ctx->yparm.coupling_flag]);
-  if( j != ctx->vsorc.vsrc_segs[0] )
+  /* Allow coupling calculation with EXACTLY 1 source (like Fortran COUPLE subroutine).
+     The Fortran check is: IF(NSANT.NE.1.OR.NVQD.NE.0) RETURN
+     This ensures coupling is only computed when processing one source at a time. */
+  
+  if( ctx->vsorc.num_vsrcs != 1 )
     return;
   
-  zin= ctx->vsorc.vsrc_voltages[0];
+  /* Find the segment being analyzed for coupling_flag */
+  j = segment_number(ctx, ctx->yparm.pair_tags[ctx->yparm.coupling_flag], 
+                    ctx->yparm.pair_segs[ctx->yparm.coupling_flag]);
+  
+  /* With exactly one source, get the source voltage as impedance reference */
+  zin = ctx->vsorc.vsrc_voltages[0];  /* Use source voltage (should be 1V if not specified) */
+  
+  /* Verify the segment matches the excited segment (redundant check, but matches Fortran) */
+  if (ctx->vsorc.vsrc_segs[0] != j) {
+    /* Segment doesn't match excited segment - shouldn't happen with current code */
+    return;
+  }
+  
   ctx->yparm.coupling_flag++;
-  mreq = (size_t)ctx->yparm.coupling_flag;
-  mreq *= sizeof( complex double);
-  mem_realloc(ctx,  (void *)&ctx->yparm.y11, mreq );
-  ctx->yparm.y11[ctx->yparm.coupling_flag-1]= cur[j-1]*wlam/zin;
   
-  l1=(ctx->yparm.coupling_flag-1)*(ctx->yparm.num_pairs-1);
-  for( i = 0; i < ctx->yparm.num_pairs; i++ )
-  {
-    if( (i+1) == ctx->yparm.coupling_flag)
+  /* Compute Y11 as the admittance at the excited segment: Y = (I * wlam) / V */
+  complex double y11_calc = (cur[j-1] * wlam) / zin;
+  
+  mreq = (size_t)ctx->yparm.coupling_flag;
+  mreq *= sizeof(complex double);
+  mem_realloc(ctx, (void *)&ctx->yparm.y11, mreq);
+  ctx->yparm.y11[ctx->yparm.coupling_flag-1] = y11_calc;
+  
+  l1 = (ctx->yparm.coupling_flag-1)*(ctx->yparm.num_pairs-1);
+  for (i = 0; i < ctx->yparm.num_pairs; i++) {
+    if ((i+1) == ctx->yparm.coupling_flag)
       continue;
     
     l1++;
     mreq = (size_t)l1;
-    mreq *= sizeof( complex double);
-    mem_realloc(ctx,  (void *)&ctx->yparm.y12, mreq );
-    k= segment_number(ctx,  ctx->yparm.pair_tags[i], ctx->yparm.pair_segs[i]);
-    ctx->yparm.y12[l1-1]= cur[k-1]* wlam/ zin;
+    mreq *= sizeof(complex double);
+    mem_realloc(ctx, (void *)&ctx->yparm.y12, mreq);
+    k = segment_number(ctx, ctx->yparm.pair_tags[i], ctx->yparm.pair_segs[i]);
+    /* Y12 is mutual admittance: (I_at_k * wlam) / V_source */
+    ctx->yparm.y12[l1-1] = (cur[k-1] * wlam) / zin;
   }
   
-  if( ctx->yparm.coupling_flag < ctx->yparm.num_pairs)
+  if (ctx->yparm.coupling_flag < ctx->yparm.num_pairs) {
     return;
+  }
   
   /* Accumulate coupling rows; write_nec_output() will render them. */
-  npm1= ctx->yparm.num_pairs-1;
+  npm1 = ctx->yparm.num_pairs - 1;
+  
 
-  for( i = 0; i < npm1; i++ )
-  {
-    itt1= ctx->yparm.pair_tags[i];
-    its1= ctx->yparm.pair_segs[i];
-    isg1= segment_number(ctx,  itt1, its1);
-    l1= i+1;
 
-    for( j = l1; j < ctx->yparm.num_pairs; j++ )
-    {
-      itt2= ctx->yparm.pair_tags[j];
-      its2= ctx->yparm.pair_segs[j];
-      isg2= segment_number(ctx,  itt2, its2);
-      j1= j+ i* npm1-1;
-      j2= i+ j* npm1;
-      y11= ctx->yparm.y11[i];
-      y22= ctx->yparm.y11[j];
-      y12=.5*( ctx->yparm.y12[j1]+ ctx->yparm.y12[j2]);
-      yin= y12* y12;
-      dbc= cabs( yin);
-      c= dbc/(2.* creal( y11)* creal( y22)- creal( yin));
+  for (i = 0; i < npm1; i++) {
+    itt1 = ctx->yparm.pair_tags[i];
+    its1 = ctx->yparm.pair_segs[i];
+    isg1 = segment_number(ctx, itt1, its1);
+    l1 = i + 1;
+
+    for (j = l1; j < ctx->yparm.num_pairs; j++) {
+      itt2 = ctx->yparm.pair_tags[j];
+      its2 = ctx->yparm.pair_segs[j];
+      isg2 = segment_number(ctx, itt2, its2);
+      j1 = j + i * npm1 - 1;
+      j2 = i + j * npm1;
+      y11 = ctx->yparm.y11[i];
+      y22 = ctx->yparm.y11[j];
+      y12 = 0.5 * (ctx->yparm.y12[j1] + ctx->yparm.y12[j2]);
+      yin = y12 * y12;
+      dbc = cabs(yin);
+      /* Use real parts like Fortran (now with only 1 source active) */
+      c = dbc / (2.0 * creal(y11) * creal(y22) - creal(yin));
+      
+
 
       coupling_row_t row;
       memset(&row, 0, sizeof(row));
       row.tag1 = itt1; row.seg1 = its1; row.segno1 = isg1;
       row.tag2 = itt2; row.seg2 = its2; row.segno2 = isg2;
 
-      if( (c >= 0.0) && (c <= 1.0) )
-      {
-        if( c >= .01 )
-          gmax=(1.- sqrt(1.- c*c))/c;
+      if ((c >= 0.0) && (c <= 1.0)) {
+        if (c >= 0.01)
+          gmax = (1.0 - sqrt(1.0 - c*c)) / c;
         else
-          gmax=.5*( c+.25* c* c* c);
+          gmax = 0.5 * (c + 0.25 * c * c * c);
 
-        rho= gmax* conj( yin)/ dbc;
-        yl=((1.- rho)/(1.+ rho)+1.)* creal( y22)- y22;
-        zl=1./ yl;
-        yin= y11- yin/( y22+ yl);
-        zin=1./ yin;
-        dbc= db10(ctx,  gmax);
+        rho = gmax * conj(yin) / dbc;
+        yl = ((1.0 - rho)/(1.0 + rho) + 1.0) * creal(y22) - y22;
+        zl = 1.0 / yl;
+        yin = y11 - yin / (y22 + yl);
+        zin = 1.0 / yin;
+        dbc = db10(ctx, gmax);
+        
 
-        row.is_error   = false;
+
+        row.is_error = false;
         row.coupling_db = dbc;
-        row.zl_real    = creal(zl);  row.zl_imag  = cimag(zl);
-        row.zin_real   = creal(zin); row.zin_imag = cimag(zin);
-      }
-      else
-      {
+        row.zl_real = creal(zl);  row.zl_imag = cimag(zl);
+        row.zin_real = creal(zin); row.zin_imag = cimag(zin);
+      } else {
         row.is_error = true;
-        row.c_value  = c;
+        row.c_value = c;
       }
 
       /* grow buffer if needed */
@@ -244,10 +266,8 @@ void compute_coupling(context_t *ctx, complex double *cur, double wlam )
         ctx->yparm.coupling_rows_cap = newcap;
       }
       ctx->yparm.coupling_rows[ctx->yparm.num_coupling_rows++] = row;
-
-    } /* for( j = l1; j < ctx->yparm.num_pairs; j++ ) */
-
-  } /* for( i = 0; i < npm1; i++ ) */
+    }
+  }
 
   return;
 }

@@ -33,6 +33,7 @@ static int count_tag_segments(const context_t *ctx, int tag);
 static int resolve_pct_segment(const context_t *ctx, const card_t *card, int field_idx, int tag);
 static void validate_geometry_post_calculation(context_t *ctx, errors_list_t *errors);
 static int inject_current_source(context_t *ctx, int card_idx, int tag, int seg_idx, complex double I_desired);
+static int process_ex_batch(context_t *ctx);  /* NEW: Process queued EX cards */
 
 /******************************************************************************
  * count_tag_segments()
@@ -84,6 +85,82 @@ static int resolve_pct_segment(const context_t *ctx, const card_t *card,
         kv = kv->next;
     }
     return card->i[field_idx];
+}
+
+/******************************************************************************
+ * process_ex_batch()
+ *
+ * Process all queued EX cards and add them to the voltage source arrays.
+ * This implements the batch processing approach used by the original Fortran code,
+ * allowing multiple EX cards in the same frequency run for coupling calculations.
+ *
+ * When multiple EX cards are present (e.g., EX 0 1 1 and EX 0 2 1), each
+ * represents a voltage source on a different segment. Coupling calculations
+ * compare these sources to determine mutual coupling and isolation data.
+ *
+ * @param ctx  The NEC context with queued EX cards
+ * @return 0 on success, -1 on error
+ */
+static int process_ex_batch(context_t *ctx)
+{
+    if (ctx->ex_queue.num_queued == 0) {
+        return 0;  /* Nothing to process */
+    }
+    
+    /* Process FIRST queued EX card and remove from queue.
+       With one-at-a-time processing, frequency loop is called after each XQ,
+       which allows coupling_flag to increment properly for multi-source coupling. 
+       
+       KEY: EX cards REPLACE the active source, not accumulate! Clear previous sources first. */
+    
+    /* Clear previous voltage sources before adding new one */
+    ctx->vsorc.num_vsrcs = 0;
+    if (ctx->vsorc.vsrc_segs != NULL) free(ctx->vsorc.vsrc_segs);
+    if (ctx->vsorc.vsrc_voltages != NULL) free(ctx->vsorc.vsrc_voltages);
+    ctx->vsorc.vsrc_segs = NULL;
+    ctx->vsorc.vsrc_voltages = NULL;
+    
+    ex_card_t *ex = &ctx->ex_queue.queued[0];
+    
+    if (ex->type == 5) {
+        /* Type 5: Incident plane wave or elementary current source */
+        ctx->vsorc.num_qdsrcs++;
+        size_t mreq = (size_t)ctx->vsorc.num_qdsrcs * sizeof(int);
+        mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_segs, mreq);
+        mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_indices, mreq);
+        
+        mreq = (size_t)ctx->vsorc.num_qdsrcs * sizeof(complex double);
+        mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_voltages, mreq);
+        mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_voltages_saved, mreq);
+        
+        int idx = ctx->vsorc.num_qdsrcs - 1;
+        ctx->vsorc.qdsrc_segs[idx] = ex->seg_index;
+        ctx->vsorc.qdsrc_voltages[idx] = ex->voltage;
+        
+    } else if (ex->type == 0) {
+        /* Type 0: Applied voltage source - REPLACES previous, not accumulates */
+        ctx->vsorc.num_vsrcs = 1;  /* SET to 1, not increment */
+        size_t mreq = sizeof(int);
+        mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_segs, mreq);
+        
+        mreq = sizeof(complex double);
+        mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_voltages, mreq);
+        
+        /* Always store at index 0 since we cleared before */
+        ctx->vsorc.vsrc_segs[0] = ex->seg_index;
+        ctx->vsorc.vsrc_voltages[0] = ex->voltage;
+    }
+    
+    /* Remove first card from queue and shift remaining cards */
+    for (int i = 0; i < ctx->ex_queue.num_queued - 1; i++) {
+        ctx->ex_queue.queued[i] = ctx->ex_queue.queued[i + 1];
+    }
+    ctx->ex_queue.num_queued--;
+    if (ctx->ex_queue.num_queued == 0) {
+        ctx->ex_queue.flow = 0;
+    }
+    
+    return 0;
 }
 
 /******************************************************************************
@@ -326,9 +403,18 @@ int run_simulation(context_t *ctx, deck_t *deck)
                     }
                 }
             } else {
-                ctx->frequency_loop_ran = true;
-                if (execute_frequency_loop(ctx, ctx->save.num_freq, ctx->save.freq_step_type, ctx->save.freq_step, deck) != 0) {
-                    return -1;
+                /* Process queued EX cards one at a time, executing frequency loop
+                   after each. This allows coupling_flag to increment properly
+                   across multiple XQ commands for multi-source coupling. */
+                while (ctx->ex_queue.num_queued > 0) {
+                    if (process_ex_batch(ctx) != 0) {
+                        return -1;
+                    }
+                    
+                    ctx->frequency_loop_ran = true;
+                    if (execute_frequency_loop(ctx, ctx->save.num_freq, ctx->save.freq_step_type, ctx->save.freq_step, deck) != 0) {
+                        return -1;
+                    }
                 }
             }
         }
@@ -499,7 +585,14 @@ static int calculation_defaults(context_t *ctx)
     ctx->plot.plot_component = 0;
     ctx->plot.plot_gain_type = 0;
     ctx->yparm.num_pairs = 0;
-    ctx->yparm.coupling_flag = 0;
+    /* NOTE: Do NOT reset coupling_flag here - it should persist within a frequency
+       batch to allow coupling_flag to increment across multiple EX/XQ pairs.
+       Only reset when a new FR card is encountered. */
+    /* ctx->yparm.coupling_flag = 0;      REMOVED */
+    /* NOTE: Do NOT reset vsorc here - it should persist across XQ boundaries
+       within a frequency batch. Only reset when a new FR card is encountered. */
+    /* ctx->vsorc.num_vsrcs = 0;           REMOVED */
+    /* ctx->vsorc.num_qdsrcs = 0;          REMOVED */
     ctx->gnd.is_perfect = 0;
     ctx->gnd.num_radials = 0;
     ctx->dataj.k_half_len = 1.0;  // Default matrix integration limit
@@ -581,6 +674,14 @@ static void reset_coupling_buffers(context_t *ctx)
         mem_free(ctx, (void **)&ctx->yparm.pair_tags);
         mem_free(ctx, (void **)&ctx->yparm.pair_segs);
         ctx->yparm.num_pairs = 0;
+    }
+    /* Reset coupling calculation state for new frequency */
+    ctx->yparm.coupling_flag = 0;
+    if (ctx->yparm.y11 != NULL) {
+        mem_free(ctx, (void **)&ctx->yparm.y11);
+    }
+    if (ctx->yparm.y12 != NULL) {
+        mem_free(ctx, (void **)&ctx->yparm.y12);
     }
 }
 
@@ -967,6 +1068,12 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
         // Process based on card type
         if (strcmp(code, "FR") == 0) {
             // FR card - Frequency specification
+            // Reset vsorc and coupling when starting a new frequency
+            ctx->vsorc.num_vsrcs = 0;
+            ctx->vsorc.num_qdsrcs = 0;
+            ctx->yparm.num_pairs = 0;      /* Reset coupling pairs for new frequency */
+            ctx->yparm.coupling_flag = 0;  /* Reset coupling flag for new frequency */
+            
             if (ctx->iflow != 1) {
                 ctx->iflow = 1;
             }
@@ -1090,74 +1197,63 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
         // Continue processing other cards...
         else if (strcmp(code, "EX") == 0) {
             // EX card - Excitation
+            // Queue the card for batch processing instead of immediate processing
+            // This allows multiple EX cards to be compared for coupling calculations
+            
             ctx->fpat.excitation_type = i1;
             ctx->netcx.check_asymmetry = i4 / 10;
-
-            // For voltage source types (0 and 5)
+            
+            // Only queue voltage source types (0 and 5); type 6 handled separately
             if (i1 == 0 || i1 == 5) {
+                // Set flow control on first EX card (matching Fortran IFLOW=5)
+                if (ctx->ex_queue.num_queued == 0) {
+                    ctx->ex_queue.flow = 5;
+                }
+                
+                // Queue this EX card for batch processing
+                if (ctx->ex_queue.num_queued >= 150) {
+                    char msg[MAX_ERROR_LEN];
+                    snprintf(msg, sizeof(msg), "EX queue overflow: too many EX cards (max 150)");
+                    add_error(ctx, &ctx->errors, msg, FATAL);
+                    return -1;
+                }
+                
+                ex_card_t *ex = &ctx->ex_queue.queued[ctx->ex_queue.num_queued];
+                ex->type = i1;
+                ex->tag = i2;
+                ex->iped = i4 % 10;
+                ex->masym = i4 / 10;
+                ex->zpnorm = f3;
+                ex->voltage = f1 + I * f2;
+                ex->card_line = card_idx + 1;
+                
+                // Resolve segment index
+                int i3_resolved = resolve_pct_segment(ctx, card, 3, i2);
+                int seg_num = segment_number(ctx, i2, i3_resolved);
+                if (seg_num == 0) {
+                    char msg[MAX_ERROR_LEN];
+                    snprintf(msg, sizeof(msg), "EX on line %d: references invalid tag %d, segment %d", card_idx + 1, i2, i3_resolved);
+                    add_error(ctx, &ctx->errors, msg, FATAL);
+                    return -1;
+                }
+                
+                ex->seg_index = seg_num;
+                ctx->ex_queue.num_queued++;
                 ctx->netcx.network_type = 0;
                 
-                if (i1 == 5) {
-                    // Incident plane wave or elementary current source
-                    ctx->vsorc.num_qdsrcs++;
-                    size_t mreq = (size_t)ctx->vsorc.num_qdsrcs * sizeof(int);
-                    mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_segs, mreq);
-                    mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_indices, mreq);
-                    
-                    mreq = (size_t)ctx->vsorc.num_qdsrcs * sizeof(complex double);
-                    mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_voltages, mreq);
-                    mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_voltages_saved, mreq);
-                    
-                    int idx = ctx->vsorc.num_qdsrcs - 1;
-                    int i3_resolved = resolve_pct_segment(ctx, card, 3, i2);
-                    int seg_num = segment_number(ctx, i2, i3_resolved);
-                    if (seg_num == 0) {
-                        char msg[MAX_ERROR_LEN];
-                        snprintf(msg, sizeof(msg), "EX on line %d: references invalid tag %d, segment %d", card_idx + 1, i2, i3_resolved);
-                        add_error(ctx, &ctx->errors, msg, FATAL);
-                        return -1;
-                    }
-                    ctx->vsorc.qdsrc_segs[idx] = seg_num;
-                    ctx->vsorc.qdsrc_voltages[idx] = f1 + I * f2;
-                    if (cabs(ctx->vsorc.qdsrc_voltages[idx]) < 1.e-20) {
-                        ctx->vsorc.qdsrc_voltages[idx] = CPLX_10;
-                    }
-                } else {
-                    // Applied voltage source
-                    ctx->vsorc.num_vsrcs++;
-                    size_t mreq = (size_t)ctx->vsorc.num_vsrcs * sizeof(int);
-                    mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_segs, mreq);
-                    
-                    mreq = (size_t)ctx->vsorc.num_vsrcs * sizeof(complex double);
-                    mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_voltages, mreq);
-                    
-                    int idx = ctx->vsorc.num_vsrcs - 1;
-                    int i3_resolved = resolve_pct_segment(ctx, card, 3, i2);
-                    int seg_num = segment_number(ctx, i2, i3_resolved);
-                    if (seg_num == 0) {
-                        char msg[MAX_ERROR_LEN];
-                        snprintf(msg, sizeof(msg), "EX on line %d: references invalid tag %d, segment %d", card_idx + 1, i2, i3_resolved);
-                        add_error(ctx, &ctx->errors, msg, FATAL);
-                        return -1;
-                    }
-                    ctx->vsorc.vsrc_segs[idx] = seg_num;
-                    ctx->vsorc.vsrc_voltages[idx] = f1 + I * f2;
-                    if (cabs(ctx->vsorc.vsrc_voltages[idx]) < 1.e-20) {
-                        ctx->vsorc.vsrc_voltages[idx] = CPLX_10;
-                    }
+                // Apply default voltage if not specified
+                if (cabs(ex->voltage) < 1.e-20) {
+                    ex->voltage = CPLX_10;
                 }
             } else if (i1 == 6) {
-                // EX type 6: current source (4nec2 extension).
-                // Converted to a voltage source on a synthetic dummy segment
-                // connected to the target via an NT admittance network.
-                // Set excitation_type = 0 (voltage source) because the
-                // underlying mechanism is a synthesised EX 0 on the dummy.
+                // EX type 6: current source (process immediately, 4nec2 extension)
                 ctx->fpat.excitation_type = 0;
                 ctx->netcx.network_type = 0;
                 int i3_resolved = resolve_pct_segment(ctx, card, 3, i2);
                 complex double I_desired = f1 + I * f2;
                 if (cabs(I_desired) < 1.e-20) {
-                    I_desired = CPLX_10;  /* default to 1 A if zero */
+                    I_desired = CPLX_10;
+
                 }
                 if (inject_current_source(ctx, card_idx, i2, i3_resolved, I_desired) != 0) {
                     return -1;
@@ -1249,8 +1345,6 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
                 reset_coupling_buffers(ctx);
                 ctx->iflow = 2;
             }
-            
-            ctx->yparm.coupling_flag = 0;
             
             // First antenna
             ctx->yparm.num_pairs++;

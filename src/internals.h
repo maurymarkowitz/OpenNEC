@@ -619,6 +619,25 @@ typedef struct loading_outputs_t {
     loading_output_t *entries;
 } loading_outputs_t;
 
+/* EX card data structure for batch processing */
+typedef struct {
+    int type;              /* EX type (0, 5, 6, etc.) */
+    int tag;               /* Wire/patch tag */
+    int seg_index;         /* Segment index (relative) */
+    complex double voltage; /* Applied voltage (f1 + if2) */
+    int iped;              /* IPED flag (i4 % 10) */
+    double zpnorm;         /* Impedance normalize (f3) */
+    int masym;             /* Symmetry flag (i4 / 10) */
+    int card_line;         /* Source deck line number */
+} ex_card_t;
+
+/* EX card queue structure for deferred processing */
+typedef struct {
+    int flow;              /* Flow control (matches iflow=5 when in EX section) */
+    int num_queued;        /* Number of queued EX cards */
+    ex_card_t queued[150]; /* Queued EX cards (max ~150) */
+} ex_queue_t;
+
 /* context_t structure containing all context variables */
 struct context_t
 {
@@ -652,6 +671,7 @@ struct context_t
 	symmetry_matrix_t smat;
 	wire_e_integration_t tmi;
 	voltage_sources_t vsorc;
+	ex_queue_t ex_queue;     /* NEW: EX card queuing system */
 	coupling_params_t yparm;
 	impedance_loading_t zload;
 	loading_outputs_t loading_outputs;
