@@ -1238,6 +1238,7 @@ int main(int argc, char **argv)
       if (process_single_file("", out, error_fp) != 0)
       {
         fprintf(error_fp, "Error processing stdin\n");
+        fflush(error_fp);
         if (error_fp != stderr)
           fclose(error_fp);
         return EXIT_FAILURE;
@@ -1247,6 +1248,7 @@ int main(int argc, char **argv)
     {
       // No input files specified and stdin not redirected
       fprintf(error_fp, "onec: missing file operand\nTry 'onec --help' for more information.\n");
+      fflush(error_fp);
       if (error_fp != stderr)
         fclose(error_fp);
       return EXIT_FAILURE;
@@ -1312,11 +1314,13 @@ int main(int argc, char **argv)
           {
             fprintf(error_fp, "Warning: cannot access directory '%s' from pattern '%s': %s\n",
                     glob_dir, argv[i], strerror(errno));
+            fflush(error_fp);
           }
         }
         else
         {
           fprintf(error_fp, "Warning: cannot access '%s': %s\n", argv[i], strerror(errno));
+          fflush(error_fp);
         }
       }
     }
@@ -1329,6 +1333,7 @@ int main(int argc, char **argv)
       {
         fprintf(error_fp, "onec: '-o' cannot be used with a directory argument (multiple output files would be produced)\n");
         fprintf(error_fp, "Try 'onec --help' for more information.\n");
+        fflush(error_fp);
         if (error_fp != stderr)
           fclose(error_fp);
         return EXIT_FAILURE;
@@ -1337,6 +1342,7 @@ int main(int argc, char **argv)
       {
         fprintf(error_fp, "onec: '-o' cannot be used with multiple input files\n");
         fprintf(error_fp, "Try 'onec --help' for more information.\n");
+        fflush(error_fp);
         if (error_fp != stderr)
           fclose(error_fp);
         return EXIT_FAILURE;
@@ -1351,6 +1357,7 @@ int main(int argc, char **argv)
       {
         fprintf(error_fp, "onec: '-w' with a full path cannot be used with multiple input files\n");
         fprintf(error_fp, "      Use a bare extension (e.g. -w .maa) to convert many files.\n");
+        fflush(error_fp);
         if (error_fp != stderr)
           fclose(error_fp);
         return EXIT_FAILURE;
@@ -1367,6 +1374,7 @@ int main(int argc, char **argv)
       if (!d)
       {
         fprintf(error_fp, "Warning: cannot open directory '%s': %s\n", current_dir, strerror(errno));
+        fflush(error_fp);
         continue;
       }
 
@@ -1405,7 +1413,7 @@ int main(int argc, char **argv)
           }
         }
       }
-      // closedir(d);
+      closedir(d);
 
       // Add subdirs to our BFS queue — inherit the same extension filter
       for (int i = 0; i < subdir_count; i++)
@@ -1431,6 +1439,7 @@ int main(int argc, char **argv)
     if (num_files == 0)
     {
       fprintf(error_fp, "No compatible files found to process.\n");
+      fflush(error_fp);
       if (error_fp != stderr)
         fclose(error_fp);
       return EXIT_FAILURE;
@@ -1447,6 +1456,7 @@ int main(int argc, char **argv)
       if (num_files > 1)
       {
         fprintf(error_fp, "Found %d files to process\n", num_files);
+        fflush(error_fp);
       }
       for (int i = 0; i < num_files; i++)
       {
