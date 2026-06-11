@@ -403,14 +403,26 @@ int run_simulation(context_t *ctx, deck_t *deck)
                     }
                 }
             } else {
+                /* Reset frequency output flags for each new batch to ensure
+                   output is written for all FR-RP pairs, not just the first. */
+                ctx->freq_step_output_written = false;
+                
                 /* Process queued EX cards one at a time, executing frequency loop
                    after each. This allows coupling_flag to increment properly
                    across multiple XQ commands for multi-source coupling. */
-                while (ctx->ex_queue.num_queued > 0) {
-                    if (process_ex_batch(ctx) != 0) {
-                        return -1;
+                if (ctx->ex_queue.num_queued > 0) {
+                    while (ctx->ex_queue.num_queued > 0) {
+                        if (process_ex_batch(ctx) != 0) {
+                            return -1;
+                        }
+                        
+                        ctx->frequency_loop_ran = true;
+                        if (execute_frequency_loop(ctx, ctx->save.num_freq, ctx->save.freq_step_type, ctx->save.freq_step, deck) != 0) {
+                            return -1;
+                        }
                     }
-                    
+                } else {
+                    /* No EX cards queued: execute frequency loop once for this batch */
                     ctx->frequency_loop_ran = true;
                     if (execute_frequency_loop(ctx, ctx->save.num_freq, ctx->save.freq_step_type, ctx->save.freq_step, deck) != 0) {
                         return -1;

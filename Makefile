@@ -116,7 +116,13 @@ else ifeq ($(BACKEND),openblas)
     else ifneq (,$(filter MINGW%,$(UNAME_S)))
         # Windows/MINGW64: the MSYS2 OpenBLAS DLL bundles the Fortran runtime
         # internally, so no separate -lgfortran is needed or available.
-        $(info MINGW64: OpenBLAS bundles Fortran runtime; no extra flags needed)
+        # Optionally static-link pthread for portability: STATIC_BLAS=1
+        ifeq ($(STATIC_BLAS),1)
+            LDFLAGS += -Wl,-Bstatic -lpthread -Wl,-Bdynamic
+            $(info MINGW64 Static: pthread linked statically; OpenBLAS/LAPACK remain dynamic)
+        else
+            $(info MINGW64: OpenBLAS bundles Fortran runtime; no extra flags needed)
+        endif
     endif
     $(info OpenBLAS backend: LDFLAGS=$(LDFLAGS))
 

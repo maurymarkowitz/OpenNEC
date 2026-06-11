@@ -250,7 +250,7 @@ jobs:
         shell: msys2 {0}
         run: |
           make clean
-          make RELEASE=1 LDFLAGS="-static" CC=x86_64-w64-mingw32-gcc BACKEND=openblas
+          make RELEASE=1 STATIC_BLAS=1 CC=x86_64-w64-mingw32-gcc BACKEND=openblas
       - name: Package
         shell: bash -l {0}
         run: |
