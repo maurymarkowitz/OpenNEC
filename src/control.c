@@ -409,9 +409,13 @@ int run_simulation(context_t *ctx, deck_t *deck)
                 
                 /* Process queued EX cards one at a time, executing frequency loop
                    after each. This allows coupling_flag to increment properly
-                   across multiple XQ commands for multi-source coupling. */
+                   across multiple XQ commands for multi-source coupling.
+                   IMPORTANT: Save base frequency before loop and reset it on each iteration,
+                   otherwise frequency sweep will not work correctly for multiple EX cards. */
                 if (ctx->ex_queue.num_queued > 0) {
+                    double base_freq_mhz = ctx->save.freq_mhz;  /* Save base frequency */
                     while (ctx->ex_queue.num_queued > 0) {
+                        ctx->save.freq_mhz = base_freq_mhz;  /* Reset to base frequency before each EX */
                         if (process_ex_batch(ctx) != 0) {
                             return -1;
                         }
