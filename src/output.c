@@ -2770,7 +2770,7 @@ static void write_network_excitation(FILE *file, const context_t *ctx)
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
     fprintf(file, "\n\n\n"
-                  "                          "
+                  "                           "
                   "- - - STRUCTURE EXCITATION DATA AT NETWORK CONNECTION POINTS - - -\n");
 
     fprintf(file, "\n"
@@ -2796,7 +2796,7 @@ static void write_network_excitation(FILE *file, const context_t *ctx)
   else
   {
     fprintf(file, "\n\n\n"
-                  "                          "
+                  "                           "
                   "--------- STRUCTURE EXCITATION DATA AT NETWORK CONNECTION POINTS --------");
 
     fprintf(file, "\n"

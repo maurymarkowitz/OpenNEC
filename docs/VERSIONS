@@ -1,7 +1,8 @@
 OpenNEC version history
 
 Version 2.1.1 - 2026 June 6
-- trying to fix massive regression issue
+- trying to fix massive regression issues
+- fixed indentation on STRUCTURE EXCITATION
 
 Version 2.1.0 - 2026 June 6
 - the output format now defaults to "original" on all platforms, you can still override with --format (but you won't)
