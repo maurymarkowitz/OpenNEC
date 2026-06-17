@@ -1684,7 +1684,7 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
     }
 
     fprintf(ctx->output_fp, "\n\n"
-                            "   TOTAL SEGMENTS USED=   %d     NO. SEG. IN A SYMMETRIC CELL=   %d     SYMMETRY FLAG=  %d",
+                            "   TOTAL SEGMENTS USED=%5d     NO. SEG. IN A SYMMETRIC CELL=%5d     SYMMETRY FLAG=%3d",
             ctx->geometry.num_segs, ctx->geometry.num_segs_sym, ctx->geometry.symmetry_flag);
   }
   else
