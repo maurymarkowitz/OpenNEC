@@ -111,9 +111,11 @@ static int process_ex_batch(context_t *ctx)
        With one-at-a-time processing, frequency loop is called after each XQ,
        which allows coupling_flag to increment properly for multi-source coupling. 
        
-       KEY: EX cards REPLACE the active source, not accumulate! Clear previous sources first. */
+       KEY: EX cards REPLACE the active source (not accumulate) since we solve the 
+       matrix separately for each source. However, coupling_flag persists across
+       frequency loops to accumulate Y-parameters for the coupling calculation.*/
     
-    /* Clear previous voltage sources before adding new one */
+    /* Clear previous voltage sources before adding new one (solve for one source at a time) */
     ctx->vsorc.num_vsrcs = 0;
     if (ctx->vsorc.vsrc_segs != NULL) free(ctx->vsorc.vsrc_segs);
     if (ctx->vsorc.vsrc_voltages != NULL) free(ctx->vsorc.vsrc_voltages);
@@ -138,15 +140,15 @@ static int process_ex_batch(context_t *ctx)
         ctx->vsorc.qdsrc_voltages[idx] = ex->voltage;
         
     } else if (ex->type == 0) {
-        /* Type 0: Applied voltage source - REPLACES previous, not accumulates */
-        ctx->vsorc.num_vsrcs = 1;  /* SET to 1, not increment */
+        /* Type 0: Applied voltage source - REPLACES previous (solve one source at a time) */
+        ctx->vsorc.num_vsrcs = 1;  /* SET to 1 */
         size_t mreq = sizeof(int);
         mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_segs, mreq);
         
         mreq = sizeof(complex double);
         mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_voltages, mreq);
         
-        /* Always store at index 0 since we cleared before */
+        /* Store at index 0 */
         ctx->vsorc.vsrc_segs[0] = ex->seg_index;
         ctx->vsorc.vsrc_voltages[0] = ex->voltage;
     }
@@ -1084,11 +1086,13 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
         // Process based on card type
         if (strcmp(code, "FR") == 0) {
             // FR card - Frequency specification
-            // Reset vsorc and coupling when starting a new frequency
+            // Reset voltage sources for new frequency (each frequency gets fresh sources from EX cards)
+            // Reset coupling_flag to restart accumulation for new frequency
+            // BUT: Do NOT reset num_pairs - CP definitions persist across frequency sweeps in same batch
             ctx->vsorc.num_vsrcs = 0;
             ctx->vsorc.num_qdsrcs = 0;
-            ctx->yparm.num_pairs = 0;      /* Reset coupling pairs for new frequency */
-            ctx->yparm.coupling_flag = 0;  /* Reset coupling flag for new frequency */
+            ctx->yparm.coupling_flag = 0;  /* Reset flag to restart Y-param accumulation for this frequency */
+            // NOTE: Removed ctx->yparm.num_pairs = 0; (was destroying CP definitions for multi-freq batches)
             
             if (ctx->iflow != 1) {
                 ctx->iflow = 1;
@@ -1356,8 +1360,15 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
                 continue;
             }
             
-            // First CP in batch resets coupling (iflow transition to 2)
-            if (ctx->iflow != 2 && ctx->yparm.num_pairs == 0) {
+            // Reset coupling for new frequency batch when coupling_flag was reset by FR
+            // This allows CP to be re-encountered for each new frequency in a multi-freq batch
+            if (ctx->yparm.coupling_flag == 0 && ctx->yparm.num_pairs > 0) {
+                /* New frequency (FR reset coupling_flag to 0), so reset Y-parameter buffers for this frequency */
+                reset_coupling_buffers(ctx);
+                ctx->yparm.num_pairs = 0;  /* Will be re-accumulated by this CP card */
+                ctx->iflow = 2;
+            } else if (ctx->iflow != 2 && ctx->yparm.num_pairs == 0) {
+                /* First CP in first batch */
                 reset_coupling_buffers(ctx);
                 ctx->iflow = 2;
             }

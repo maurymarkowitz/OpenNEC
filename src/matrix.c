@@ -738,7 +738,8 @@ void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, compl
 	  for( ij = 0; ij < ctx->segj.num_junction_segs; ij++ )
 	  {
 		jx= ctx->segj.junction_segs[ij]-1;
-		cm[jx+ipr*nr] += etk* ctx->segj.coeff_const[ij]+ ets* ctx->segj.coeff_sine[ij]+ etc* ctx->segj.coeff_cos[ij];
+		complex double elem = etk* ctx->segj.coeff_const[ij]+ ets* ctx->segj.coeff_sine[ij]+ etc* ctx->segj.coeff_cos[ij];
+		cm[jx+ipr*nr] += elem;
 	  }
 	  continue;
 	}
@@ -1121,6 +1122,8 @@ void factor_matrix(const context_t *restrict ctx, int n, complex double *restric
 			buf[j + i * lda] = tmp;
 		}
 	}
+	
+
 
 	/* Factorize local buffer: buf = P*L*U. */
 	zgetrf_(&m, &m, (double _Complex *)buf, &lda, ipiv, &info);

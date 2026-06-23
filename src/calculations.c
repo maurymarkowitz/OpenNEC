@@ -156,10 +156,17 @@ void compute_coupling(context_t *ctx, complex double *cur, double wlam )
   
   /* Allow coupling calculation with EXACTLY 1 source (like Fortran COUPLE subroutine).
      The Fortran check is: IF(NSANT.NE.1.OR.NVQD.NE.0) RETURN
-     This ensures coupling is only computed when processing one source at a time. */
+     This ensures coupling is only computed when processing one source at a time.
+     However, coupling_flag persists across frequency loops to accumulate Y-parameters. */
   
   if( ctx->vsorc.num_vsrcs != 1 )
     return;
+  
+  /* If coupling_flag >= num_pairs, all sources already processed, do final calculation */
+  if( ctx->yparm.coupling_flag >= ctx->yparm.num_pairs ) {
+    /* All sources processed, calculate coupling in the main calculation section below */
+    /* (will be handled after the initial return check) */
+  }
   
   /* Find the segment being analyzed for coupling_flag */
   j = segment_number(ctx, ctx->yparm.pair_tags[ctx->yparm.coupling_flag], 
@@ -183,6 +190,7 @@ void compute_coupling(context_t *ctx, complex double *cur, double wlam )
   mreq *= sizeof(complex double);
   mem_realloc(ctx, (void *)&ctx->yparm.y11, mreq);
   ctx->yparm.y11[ctx->yparm.coupling_flag-1] = y11_calc;
+
   
   l1 = (ctx->yparm.coupling_flag-1)*(ctx->yparm.num_pairs-1);
   for (i = 0; i < ctx->yparm.num_pairs; i++) {
@@ -205,8 +213,6 @@ void compute_coupling(context_t *ctx, complex double *cur, double wlam )
   /* Accumulate coupling rows; write_nec_output() will render them. */
   npm1 = ctx->yparm.num_pairs - 1;
   
-
-
   for (i = 0; i < npm1; i++) {
     itt1 = ctx->yparm.pair_tags[i];
     its1 = ctx->yparm.pair_segs[i];
@@ -226,7 +232,6 @@ void compute_coupling(context_t *ctx, complex double *cur, double wlam )
       dbc = cabs(yin);
       /* Use real parts like Fortran (now with only 1 source active) */
       c = dbc / (2.0 * creal(y11) * creal(y22) - creal(yin));
-      
 
 
       coupling_row_t row;
