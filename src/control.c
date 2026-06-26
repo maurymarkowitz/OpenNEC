@@ -405,9 +405,13 @@ int run_simulation(context_t *ctx, deck_t *deck)
                     }
                 }
             } else {
-                /* Reset frequency output flags for each new batch to ensure
-                   output is written for all FR-RP pairs, not just the first. */
-                ctx->freq_step_output_written = false;
+                /* Reset frequency output flags only when a NEW FR card appears.
+                   Do NOT reset for every batch - only for new frequencies.
+                   This prevents duplicate frequency headers when multiple EX cards
+                   are processed separately for coupling calculations. */
+                if (batch_has_fr) {
+                    ctx->freq_step_output_written = false;
+                }
                 
                 /* Process queued EX cards one at a time, executing frequency loop
                    after each. This allows coupling_flag to increment properly
@@ -617,7 +621,11 @@ static int calculation_defaults(context_t *ctx)
     ctx->dataj.use_extended_kernel = 0;   // Extended thin-wire kernel off by default
     ctx->gnd.far_field_type = -1;
     ctx->frequency_loop_ran = false;
-    ctx->freq_step_output_written = false;
+    /* NOTE: Do NOT reset freq_step_output_written here - it should persist across
+       EX/XQ boundaries within a frequency batch to prevent duplicate frequency
+       output when multiple EX cards are processed separately.
+       Only reset when a new FR card is encountered. */
+    /* ctx->freq_step_output_written = false;  REMOVED */
     ctx->preamble_written = false;
     
     // Note: The following old main.c local variables are not stored in ctx
@@ -1734,9 +1742,10 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
     if (ctx->output_fp != NULL && !ctx->preamble_written) {
         write_nec_preamble(ctx, deck, ctx->output_fp);
         ctx->preamble_written = true;
-    } else if (ctx->output_fp != NULL) {
+    } else if (ctx->output_fp != NULL && !ctx->freq_step_output_written) {
         /* Subsequent batches: echo this batch's FR/RP cards before its output,
-         * mirroring Fortran's card-by-card read-and-echo loop. */
+         * mirroring Fortran's card-by-card read-and-echo loop.
+         * Skip for subsequent EX cards within the same batch (freq_step_output_written flag). */
         write_batch_card_echo(ctx->output_fp, ctx, deck);
     }
 
@@ -1919,7 +1928,8 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
         }
 
         // Write per-frequency-step output after all calculations are done
-        if (ctx->output_fp != NULL) {
+        // Skip on subsequent EX cards within the same batch (freq_step_output_written flag)
+        if (ctx->output_fp != NULL && !ctx->freq_step_output_written) {
             write_frequency_step_output(ctx->output_fp, ctx);
             ctx->freq_step_output_written = true;
             ctx->patterns_output_for_freq = true;  // Mark that RP/NE/NH output has been written
