@@ -2,6 +2,7 @@ OpenNEC version history
 
 Version 2.1.1 - 2026 June 6
 - trying to fix massive regression issues due to EX handling
+- found and fixed (longstanding!) bug in nec2c somnec calculations
 - fixed indentation on STRUCTURE EXCITATION
 - fixed spacing in the TOTAL SEGMENTS USED footer
 

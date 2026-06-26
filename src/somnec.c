@@ -444,6 +444,7 @@ void norton_attenuation_factor(context_t *ctx, complex double p, complex double 
 	}
 
 	*fbar=1.-(1.- sum* TOSP)* z* cexp( zs)* SP;
+	return;
 
   } /* if( cabs( z) <= 3.) */
 
