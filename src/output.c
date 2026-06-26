@@ -2345,13 +2345,16 @@ static void write_loading_data(FILE *file, const context_t *ctx)
 {
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    fprintf(file, "\n\n\n"
+    /* Fortran FORMAT 146: (///,...) = 3 slashes = 3 blank lines before the header.
+       The preceding APPROX INTEGRATION line has no trailing \n, so:
+       \n ends that line, then 3 more \n produce 3 blank lines. */
+    fprintf(file, "\n\n\n\n"
                   "                               "
                   "- - - STRUCTURE IMPEDANCE LOADING - - -\n");
   }
   else
   {
-    fprintf(file, "\n\n\n"
+    fprintf(file, "\n\n\n\n"
                   "                          "
                   "------ STRUCTURE IMPEDANCE LOADING ------\n");
   }

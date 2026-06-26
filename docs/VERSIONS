@@ -1,10 +1,11 @@
 OpenNEC version history
 
-Version 2.1.1 - 2026 June 26
-- trying to fix massive regression issues due to EX handling
-- found and fixed (longstanding!) bug in nec2c somnec calculations
+Version 2.2.0 - 2026 June 26
+- found and fixed (longstanding!) bug in nec2c somnec
+- more work on getting the sections to come out in the original fortran order
 - fixed indentation on STRUCTURE EXCITATION
 - fixed spacing in the TOTAL SEGMENTS USED footer
+- fixed some minor vertical whitespacing issues
 
 Version 2.1.0 - 2026 June 6
 - the output format now defaults to "original" on all platforms, you can still override with --format (but you won't)
