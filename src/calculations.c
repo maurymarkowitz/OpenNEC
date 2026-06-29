@@ -34,8 +34,7 @@ static void add_loading_output(context_t *ctx, int tag, int tagf, int tagt, doub
     entry->conductivity = conductivity;
     entry->f1 = f1;
     entry->f2 = f2;
-    strncpy(entry->type, type, sizeof(entry->type) - 1);
-    entry->type[sizeof(entry->type) - 1] = '\0';
+    snprintf(entry->type, sizeof(entry->type), "%s", type);
 }
 
 /*-----------------------------------------------------------------------*/
