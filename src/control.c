@@ -985,7 +985,7 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
     // Set batch start from current position
     *batch_start = ctx->current_card_idx;
     
-    // Find end of batch (next XQ, EN, or XT card)
+    // Find end of batch (next XQ, EN, or XT card, or FR if already processed cards at this frequency)
     *batch_end = ctx->current_card_idx;
     bool found_batch_end = false;
     bool found_fr = false;  // track whether an FR card is in this batch
@@ -1002,6 +1002,12 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
 
         // Track FR card appearances in this batch
         if (strcmp(code, "FR") == 0) {
+            // If this is a second FR in the batch (after we've seen XQ), end batch here
+            if (found_batch_end) {
+                *batch_end = card_idx - 1;
+                ctx->current_card_idx = card_idx;
+                break;
+            }
             found_fr = true;
         }
         
@@ -1010,10 +1016,32 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
             strcmp(code, "RP") == 0 ||
             strcmp(code, "NE") == 0 ||
             strcmp(code, "NH") == 0) {
-            *batch_end = card_idx;  // Include this card in the batch
-            ctx->current_card_idx = card_idx + 1;  // Next batch starts after
-            found_batch_end = true;
-            break;
+            
+            // Look ahead to see if EX follows this card (skip comments/ignored)
+            bool has_following_ex = false;
+            for (int lookahead_idx = card_idx + 1; lookahead_idx < deck->num_cards; lookahead_idx++) {
+                card_t *lookahead = &deck->cards[lookahead_idx];
+                if (lookahead->ignore || is_comment(lookahead)) {
+                    continue;  // Skip comments and ignored cards
+                }
+                // Found next real card
+                if (strcmp(lookahead->card_code, "EX") == 0) {
+                    has_following_ex = true;
+                }
+                break;  // Stop after first non-comment card
+            }
+            
+            // If EX follows, continue batch. Otherwise, end batch here.
+            if (has_following_ex) {
+                *batch_end = card_idx;
+                found_batch_end = true;  // Mark that we've seen an output card
+                // Continue to next iteration to pick up the EX card
+            } else {
+                *batch_end = card_idx;  // Include this card in the batch
+                ctx->current_card_idx = card_idx + 1;  // Next batch starts after
+                found_batch_end = true;
+                break;
+            }
         }
         else if (strcmp(code, "EN") == 0 || strcmp(code, "XT") == 0 || strcmp(code, "NX") == 0) {
             // EN/XT/NX should be a separate batch by itself
@@ -1368,18 +1396,22 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
                 continue;
             }
             
-            // Reset coupling for new frequency batch when coupling_flag was reset by FR
-            // This allows CP to be re-encountered for each new frequency in a multi-freq batch
-            if (ctx->yparm.coupling_flag == 0 && ctx->yparm.num_pairs > 0) {
-                /* New frequency (FR reset coupling_flag to 0), so reset Y-parameter buffers for this frequency */
+            // Match Fortran NEC-2 logic exactly:
+            //   IF(IFLOW.NE.2)NCOUP=0  <- Only reset if not in coupling mode
+            //   ICOUP=0                 <- Always reset counter
+            //   IFLOW=2                 <- Set to coupling mode
+            //
+            // This ensures CP definitions persist across XQ boundaries within the same
+            // frequency (iflow==2), but reset when a new frequency starts (FR sets iflow=1).
+            if (ctx->iflow != 2) {
+                /* Not in coupling mode (new frequency or first CP), reset buffers */
                 reset_coupling_buffers(ctx);
                 ctx->yparm.num_pairs = 0;  /* Will be re-accumulated by this CP card */
-                ctx->iflow = 2;
-            } else if (ctx->iflow != 2 && ctx->yparm.num_pairs == 0) {
-                /* First CP in first batch */
-                reset_coupling_buffers(ctx);
-                ctx->iflow = 2;
             }
+            // Always reset coupling_flag (Fortran ICOUP) to restart source iteration
+            ctx->yparm.coupling_flag = 0;
+            // Always set to coupling mode
+            ctx->iflow = 2;
             
             // First antenna
             ctx->yparm.num_pairs++;
