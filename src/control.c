@@ -411,17 +411,26 @@ int run_simulation(context_t *ctx, deck_t *deck)
                    are processed separately for coupling calculations. */
                 if (batch_has_fr) {
                     ctx->freq_step_output_written = false;
+                    ctx->batch_cards_echoed = false;  /* Reset for new frequency so cards are echoed again */
                 }
                 
                 /* Process queued EX cards one at a time, executing frequency loop
                    after each. This allows coupling_flag to increment properly
                    across multiple XQ commands for multi-source coupling.
                    IMPORTANT: Save base frequency before loop and reset it on each iteration,
-                   otherwise frequency sweep will not work correctly for multiple EX cards. */
+                   otherwise frequency sweep will not work correctly for multiple EX cards.
+                   Reset freq_step_output_written BETWEEN EX cards so each gets its own
+                   frequency/antenna/power output section. Card echo printed only once per frequency.
+                   Coupling data is printed after all sources are processed at the same frequency. */
                 if (ctx->ex_queue.num_queued > 0) {
                     double base_freq_mhz = ctx->save.freq_mhz;  /* Save base frequency */
                     while (ctx->ex_queue.num_queued > 0) {
                         ctx->save.freq_mhz = base_freq_mhz;  /* Reset to base frequency before each EX */
+                        /* Reset freq_step_output_written BEFORE processing each EX so each EX
+                           gets its own frequency/antenna/power output section */
+                        ctx->freq_step_output_written = false;
+                        /* Do NOT reset batch_cards_echoed - it prints once per frequency batch,
+                           not once per EX card within the batch */
                         if (process_ex_batch(ctx) != 0) {
                             return -1;
                         }
@@ -1253,8 +1262,11 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
         // Continue processing other cards...
         else if (strcmp(code, "EX") == 0) {
             // EX card - Excitation
-            // Queue the card for batch processing instead of immediate processing
-            // This allows multiple EX cards to be compared for coupling calculations
+            // Queue the card for batch processing instead of immediate processing.
+            // This allows multiple EX cards to be processed one-at-a-time through
+            // separate frequency loop executions at the SAME frequency, which is
+            // the correct Fortran NEC-2 behavior. Coupling calculation accumulates
+            // Y-parameters across these multiple solves at the same frequency.
             
             ctx->fpat.excitation_type = i1;
             ctx->netcx.check_asymmetry = i4 / 10;
@@ -1774,11 +1786,13 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
     if (ctx->output_fp != NULL && !ctx->preamble_written) {
         write_nec_preamble(ctx, deck, ctx->output_fp);
         ctx->preamble_written = true;
-    } else if (ctx->output_fp != NULL && !ctx->freq_step_output_written) {
-        /* Subsequent batches: echo this batch's FR/RP cards before its output,
-         * mirroring Fortran's card-by-card read-and-echo loop.
-         * Skip for subsequent EX cards within the same batch (freq_step_output_written flag). */
+        ctx->batch_cards_echoed = false;  /* Reset for next batch */
+    }
+    
+    /* Echo batch cards (FR/CP/EX/XQ) only once per frequency, on first EX execution */
+    if (ctx->output_fp != NULL && !ctx->batch_cards_echoed && !ctx->freq_step_output_written) {
         write_batch_card_echo(ctx->output_fp, ctx, deck);
+        ctx->batch_cards_echoed = true;
     }
 
     // Frequency loop
