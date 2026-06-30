@@ -2,7 +2,8 @@ OpenNEC version history
 
 Version 2.2.0 - 2026 June 26
 - found and fixed (longstanding!) bug in nec2c somnec
-- more work on getting the sections to come out in the original fortran order
+- fixed an issue with the PT flag
+- working on batching up calculations when XQs, CPs, EXs and similar cards are used
 - fixed indentation on STRUCTURE EXCITATION
 - fixed spacing in the TOTAL SEGMENTS USED footer
 - fixed some minor vertical whitespacing issues

@@ -1700,6 +1700,17 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
         return -1;
     }
     
+    /* Track frequency to detect when we move to a new frequency for multi-frequency simulations.
+       When frequency changes, reset the first-output tracking so full FREQUENCY section is printed. */
+    static double last_frequency = -1.0;
+    static bool first_output_for_frequency = false;
+    
+    if (last_frequency != ctx->save.freq_mhz) {
+        /* New frequency detected - reset the first-output flag */
+        first_output_for_frequency = false;
+        last_frequency = ctx->save.freq_mhz;
+    }
+    
     // If no FR card was processed, default to a single frequency run at
     // the context default frequency (CVEL MHz => wavelength = 1 m), matching
     // NEC-2 behaviour when FR is absent.
@@ -1789,7 +1800,7 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
         ctx->batch_cards_echoed = false;  /* Reset for next batch */
     }
     
-    /* Echo batch cards (FR/CP/EX/XQ) only once per frequency, on first EX execution */
+    /* Echo batch cards (PT/FR/CP/EX/XQ) once per batch, before frequency loop */
     if (ctx->output_fp != NULL && !ctx->batch_cards_echoed && !ctx->freq_step_output_written) {
         write_batch_card_echo(ctx->output_fp, ctx, deck);
         ctx->batch_cards_echoed = true;
@@ -1976,7 +1987,15 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
         // Write per-frequency-step output after all calculations are done
         // Skip on subsequent EX cards within the same batch (freq_step_output_written flag)
         if (ctx->output_fp != NULL && !ctx->freq_step_output_written) {
-            write_frequency_step_output(ctx->output_fp, ctx);
+            /* Use first_output_for_frequency to determine if this is first output at this frequency.
+             * First output: output full FREQUENCY section
+             * Subsequent outputs at same frequency: skip FREQUENCY header (Fortran behavior) */
+            if (first_output_for_frequency && ctx->preamble_written) {
+                write_subsequent_excitation_output(ctx->output_fp, ctx);
+            } else {
+                write_frequency_step_output(ctx->output_fp, ctx);
+                first_output_for_frequency = true;  /* Mark that we've output frequency section at this frequency */
+            }
             ctx->freq_step_output_written = true;
             ctx->patterns_output_for_freq = true;  // Mark that RP/NE/NH output has been written
         }

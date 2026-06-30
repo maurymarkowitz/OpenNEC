@@ -54,6 +54,17 @@ void write_frequency_step_output(FILE *file, context_t *ctx);
 void write_extra_pattern_output(FILE *file, context_t *ctx);
 
 /**
+ * @brief Writes only the excitation output section (no frequency header).
+ *
+ * Used when processing a subsequent EX card at the same frequency — skips
+ * the frequency header and loading sections, jumping straight to antenna
+ * input, currents, power budget, and radiation patterns. This mirrors
+ * Fortran behavior where the frequency header is output only once per
+ * unique frequency.
+ */
+void write_subsequent_excitation_output(FILE *file, context_t *ctx);
+
+/**
  * @brief Echoes the current batch's control cards before its frequency output.
  *
  * Writes the DATA CARD echo lines for ctx->batch_start_card through

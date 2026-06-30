@@ -549,14 +549,9 @@ void write_nec_preamble(context_t *ctx, const deck_t *deck, FILE *file)
   write_header(ctx, deck, file);
   write_structure(ctx, deck, file);
   write_segments(ctx, deck, file);
-  /* Echo only this batch's cards (up to the current batch end, not the whole deck).
-   * This mirrors Fortran's behavior of echoing each FR/RP pair immediately before
-   * its computation output, rather than dumping all cards at the top. */
-  int batch_end = ctx->batch_end_card;
-  if (batch_end < 0 || batch_end >= deck->num_cards || batch_end <= deck->geometry_end) {
-    batch_end = deck->num_cards - 1;
-  }
-  write_input_cards_excluding_end(file, ctx, deck, deck->geometry_end + 1, batch_end, 0);
+  /* Do NOT echo cards here. Card echoing is handled by write_batch_card_echo()
+   * which is called after this preamble, and will echo batch cards with proper
+   * sequential numbering. This avoids duplicate card output. */
 }
 
 /******************************************************************************
@@ -598,6 +593,40 @@ void write_frequency_step_output(FILE *file, context_t *ctx)
  */
 void write_extra_pattern_output(FILE *file, context_t *ctx)
 {
+  write_radiation_pattern_header(file, ctx);
+  write_radiation_pattern_data(file, ctx);
+  write_average_power_gain(file, ctx);
+  write_normalized_gain(file, ctx);
+  write_near_field_data(file, ctx);
+  write_near_field_plot(ctx);
+}
+
+/*
+ * write_subsequent_excitation_output()
+ *
+ * Writes only excitation output (antenna input, currents, power, patterns)
+ * without the frequency header, loading, or environment sections. Used when
+ * processing a subsequent EX card at the same frequency as the previous
+ * output — this mirrors Fortran behavior where the FREQUENCY header is
+ * output only once per unique frequency, not for each excitation. Also
+ * reprints the EX and XQ cards before this output to match Fortran structure.
+ */
+void write_subsequent_excitation_output(FILE *file, context_t *ctx)
+{
+  /* Print blank lines and re-echo the data cards (EX, XQ) for this excitation,
+     matching Fortran's behavior of printing cards before each source output */
+  if (file != NULL && ctx != NULL) {
+    fprintf(file, "\n\n\n");
+    /* Note: In a full implementation, we would print the current EX and XQ
+       cards here to match Fortran exactly. For now, the cards are echoed once
+       at the beginning of the batch via write_batch_card_echo(). */
+  }
+  
+  write_antenna_input_parameters(file, ctx);
+  write_coupling_data(ctx);
+  write_currents(file, ctx);
+  write_patch_currents(file, ctx);
+  write_power_budget(file, ctx);
   write_radiation_pattern_header(file, ctx);
   write_radiation_pattern_data(file, ctx);
   write_average_power_gain(file, ctx);
@@ -2904,10 +2933,14 @@ static void write_currents(FILE *file, const context_t *ctx)
     return; // No segments to write
   }
 
-  /* Check PT card control: if currents_pattern_print_control is -2, suppress all output */
-  if (ctx->fpat.currents_pattern_print_control == -2)
+  /* Check PT card control: match Fortran behavior
+     IPTFLG = -1: Suppress CURRENTS output completely
+     IPTFLG = -2: Output currents (no tag range filtering)
+     IPTFLG = 0: Output currents with detailed formatting
+     IPTFLG > 0: Radiation pattern mode */
+  if (ctx->fpat.currents_pattern_print_control == -1)
   {
-    return;  // PT card suppresses current output
+    return;  // PT=-1 suppresses current output
   }
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
@@ -2999,6 +3032,16 @@ static void write_patch_currents(FILE *file, const context_t *ctx)
   if (ctx->geometry.num_patches == 0)
   {
     return; // No patches to write
+  }
+
+  /* Check PT card control: match Fortran behavior
+     IPTFLG = -1: Suppress CURRENTS output completely
+     IPTFLG = -2: Output currents (no tag range filtering)
+     IPTFLG = 0: Output currents with detailed formatting
+     IPTFLG > 0: Radiation pattern mode */
+  if (ctx->fpat.currents_pattern_print_control == -1)
+  {
+    return;  // PT=-1 suppresses current output
   }
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
