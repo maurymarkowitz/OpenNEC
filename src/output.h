@@ -62,7 +62,7 @@ void write_extra_pattern_output(FILE *file, context_t *ctx);
  * Fortran behavior where the frequency header is output only once per
  * unique frequency.
  */
-void write_subsequent_excitation_output(FILE *file, context_t *ctx);
+void write_subsequent_excitation_output(FILE *file, context_t *ctx, const deck_t *deck);
 
 /**
  * @brief Echoes the current batch's control cards before its frequency output.

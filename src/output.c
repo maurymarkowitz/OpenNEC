@@ -34,6 +34,7 @@ static void write_matrix_asymmetry(FILE *file, const context_t *ctx);
 static void write_network_excitation(FILE *file, const context_t *ctx);
 static void write_antenna_input_parameters(FILE *file, const context_t *ctx);
 static void write_coupling_data(context_t *ctx);
+static void write_remaining_execution_cards(FILE *file, const context_t *ctx, const deck_t *deck);
 static void write_currents(FILE *file, const context_t *ctx);
 static void write_patch_currents(FILE *file, const context_t *ctx);
 static void write_power_budget(FILE *file, const context_t *ctx);
@@ -87,8 +88,8 @@ static const output_format_spec_t format_specs[] = {
         .length_units = "METERS",
         .freq_units = "MHZ",
         .matrix_sep = "- - - MATRIX TIMING - - -",
-        .matrix_fill_format = "FILL=%8.3f SEC.,",
-        .matrix_factor_format = "FACTOR=%8.3f SEC.",
+        .matrix_fill_format = "FILL=%9.3f SEC.,",
+        .matrix_factor_format = "FACTOR=%9.3f SEC.",
         .use_seconds_for_timing = 1,
         .loading_all_tag = "ALL",
         .pre_freq_blank_lines = 4
@@ -485,40 +486,37 @@ void write_deck_onec(const context_t *ctx, const deck_t *deck, FILE *file)
  */
 static void write_coupling_data(context_t *ctx)
 {
-  if (ctx->yparm.num_coupling_rows == 0)
-    return;
+  /* Only output header if there is coupling data */
+  if (ctx->yparm.num_coupling_rows > 0) {
+    fprintf(ctx->output_fp, "\n\n\n"
+                            "                                    - - - ISOLATION DATA - - -\n"
+                            "\n"
+                            "      - - COUPLING BETWEEN - -        MAXIMUM               - - - FOR MAXIMUM COUPLING - - -\n"
+                            "            SEG.              SEG.   COUPLING    LOAD IMPEDANCE (2ND SEG.)         INPUT IMPEDANCE\n"
+                            "  TAG/SEG.   NO.    TAG/SEG.   NO.      (DB)        REAL         IMAG.         REAL         IMAG.");
 
-  fprintf(ctx->output_fp, "\n\n\n"
-                          "                        -----------"
-                          " ISOLATION DATA -----------\n\n"
-                          " ------- COUPLING BETWEEN ------     MAXIMUM    "
-                          " ---------- FOR MAXIMUM COUPLING ----------\n"
-                          "            SEG              SEG    COUPLING  LOAD"
-                          " IMPEDANCE (2ND SEG)         INPUT IMPEDANCE \n"
-                          " TAG  SEG   No:   TAG  SEG   No:      (DB)       "
-                          " REAL     IMAGINARY         REAL       IMAGINARY");
-
-  for (int i = 0; i < ctx->yparm.num_coupling_rows; i++)
-  {
-    coupling_row_t *r = &ctx->yparm.coupling_rows[i];
-    if (!r->is_error)
+    for (int i = 0; i < ctx->yparm.num_coupling_rows; i++)
     {
-      fprintf(ctx->output_fp, "\n"
-                              " %4d %4d %5d  %4d %4d %5d  %9.3f"
-                              "  %12.5E %12.5E  %12.5E %12.5E",
-              r->tag1, r->seg1, r->segno1,
-              r->tag2, r->seg2, r->segno2,
-              r->coupling_db,
-              r->zl_real, r->zl_imag, r->zin_real, r->zin_imag);
-    }
-    else
-    {
-      fprintf(ctx->output_fp, "\n"
-                              " %4d %4d %5d   %4d %4d %5d  **ERROR** "
-                              "COUPLING IS NOT BETWEEN 0 AND 1. (= %12.5E)",
-              r->tag1, r->seg1, r->segno1,
-              r->tag2, r->seg2, r->segno2,
-              r->c_value);
+      coupling_row_t *r = &ctx->yparm.coupling_rows[i];
+      if (!r->is_error)
+      {
+        fprintf(ctx->output_fp, "\n"
+                                " %4d %4d %5d  %4d %4d %5d  %9.3f"
+                                "  %12.5E %12.5E  %12.5E %12.5E",
+                r->tag1, r->seg1, r->segno1,
+                r->tag2, r->seg2, r->segno2,
+                r->coupling_db,
+                r->zl_real, r->zl_imag, r->zin_real, r->zin_imag);
+      }
+      else
+      {
+        fprintf(ctx->output_fp, "\n"
+                                " %4d %4d %5d   %4d %4d %5d  **ERROR** "
+                                "COUPLING IS NOT BETWEEN 0 AND 1. (= %12.5E)",
+                r->tag1, r->seg1, r->segno1,
+                r->tag2, r->seg2, r->segno2,
+                r->c_value);
+      }
     }
   }
   
@@ -566,7 +564,13 @@ void write_frequency_step_output(FILE *file, context_t *ctx)
   write_frequency_data(file, ctx);
   write_loading_data(file, ctx);
   write_environment_data(file, ctx);
-  write_matrix_timing(file, ctx);
+  
+  /* MATRIX TIMING is output in the original Fortran NEC-2D format */
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    write_matrix_timing(file, ctx);
+  }
+  
   write_network_data(file, ctx);
   write_matrix_asymmetry(file, ctx);
   write_network_excitation(file, ctx);
@@ -611,15 +615,15 @@ void write_extra_pattern_output(FILE *file, context_t *ctx)
  * output only once per unique frequency, not for each excitation. Also
  * reprints the EX and XQ cards before this output to match Fortran structure.
  */
-void write_subsequent_excitation_output(FILE *file, context_t *ctx)
+void write_subsequent_excitation_output(FILE *file, context_t *ctx, const deck_t *deck)
 {
-  /* Print blank lines and re-echo the data cards (EX, XQ) for this excitation,
-     matching Fortran's behavior of printing cards before each source output */
-  if (file != NULL && ctx != NULL) {
+  /* For the Fortran format, when processing subsequent EX/XQ pairs at the same
+     frequency, we re-echo the execution cards that follow the first XQ
+     in the batch, matching Fortran's behavior of printing cards before each
+     source output. */
+  if (file != NULL && ctx != NULL && deck != NULL && ctx->output_format == OUTPUT_FORMAT_ORIGINAL) {
     fprintf(file, "\n\n\n");
-    /* Note: In a full implementation, we would print the current EX and XQ
-       cards here to match Fortran exactly. For now, the cards are echoed once
-       at the beginning of the batch via write_batch_card_echo(). */
+    write_remaining_execution_cards(file, ctx, deck);
   }
   
   write_antenna_input_parameters(file, ctx);
@@ -1414,8 +1418,8 @@ static void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    /* Original Fortran format: 2 blank lines */
-    fprintf(file, "\n\n");
+    /* Original Fortran format: blank line padded to 101 chars, then blank lines */
+    fprintf(file, "%-101s\n\n\n", "");
   }
 }
 
@@ -2144,9 +2148,56 @@ void write_batch_card_echo(FILE *file, const context_t *ctx, const deck_t *deck)
   /* Number cards in this batch sequentially after all previous batches. */
   int offset = count_echoed_cards_in_range(deck, deck->geometry_end + 1,
                                             ctx->batch_start_card - 1);
+  
+  /* Find the first XQ in the batch to echo only up to there */
+  int first_xq_pos = -1;
+  for (int i = ctx->batch_start_card; i <= ctx->batch_end_card && i < deck->num_cards; i++) {
+    if (strncmp(deck->cards[i].card_code, "XQ", 2) == 0) {
+      first_xq_pos = i;
+      break;
+    }
+  }
+  
+  /* Echo from batch start to first XQ (or to batch_end if no XQ found) */
+  int echo_end = (first_xq_pos >= 0) ? first_xq_pos : ctx->batch_end_card;
   write_input_cards_excluding_end(file, ctx, deck,
-                                   ctx->batch_start_card, ctx->batch_end_card,
+                                   ctx->batch_start_card, echo_end,
                                    offset);
+}
+
+/******************************************************************************
+ * write_remaining_execution_cards()
+ *
+ * Echoes any execution cards (EX/XQ pairs) that come after the first XQ
+ * in the batch. Used when multiple executions are processed at the same
+ * frequency to match Fortran's behavior of echoing cards before each
+ * execution's output.
+ */
+static void write_remaining_execution_cards(FILE *file, const context_t *ctx, const deck_t *deck)
+{
+  if (file == NULL || ctx == NULL || deck == NULL)
+    return;
+
+  /* Find the first XQ in the batch */
+  int first_xq_pos = -1;
+  for (int i = ctx->batch_start_card; i <= ctx->batch_end_card && i < deck->num_cards; i++) {
+    if (strncmp(deck->cards[i].card_code, "XQ", 2) == 0) {
+      first_xq_pos = i;
+      break;
+    }
+  }
+
+  /* If there are cards after the first XQ, echo them */
+  if (first_xq_pos >= 0 && first_xq_pos < ctx->batch_end_card) {
+    /* Count cards echoed so far up to and including first XQ */
+    int offset = count_echoed_cards_in_range(deck, deck->geometry_end + 1,
+                                              first_xq_pos);
+    
+    /* Echo from after first XQ to batch end */
+    write_input_cards_excluding_end(file, ctx, deck,
+                                     first_xq_pos + 1, ctx->batch_end_card,
+                                     offset);
+  }
 }
 
 /******************************************************************************
@@ -2860,35 +2911,32 @@ static void write_network_excitation(FILE *file, const context_t *ctx)
  */
 static void write_antenna_input_parameters(FILE *file, const context_t *ctx)
 {
-  if (ctx->netcx.ninp == 0)
-  {
-    return; // No input data to write
-  }
-
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
     fprintf(file, "\n\n\n\n"
                   "                                          "
                   "- - - ANTENNA INPUT PARAMETERS - - -\n");
 
-    fprintf(file, "\n"
-                  "   TAG   SEG.    VOLTAGE (VOLTS)         "
-                  "CURRENT (AMPS)         IMPEDANCE (OHMS)        "
-                  "ADMITTANCE (MHOS)      POWER\n"
-                  "   NO.   NO.    REAL        IMAG.       "
-                  "REAL        IMAG.       REAL        IMAG.       "
-                  "REAL        IMAG.     (WATTS)");
-
-    for (int i = 0; i < ctx->netcx.ninp; i++)
-    {
+    if (ctx->netcx.ninp > 0) {
       fprintf(file, "\n"
-                    " %5d %5d% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E",
-              ctx->netcx.inp_tag[i], ctx->netcx.inp_seg[i],
-              creal(ctx->netcx.inp_v[i]), cimag(ctx->netcx.inp_v[i]),
-              creal(ctx->netcx.inp_i[i]), cimag(ctx->netcx.inp_i[i]),
-              creal(ctx->netcx.inp_z[i]), cimag(ctx->netcx.inp_z[i]),
-              creal(ctx->netcx.inp_y[i]), cimag(ctx->netcx.inp_y[i]),
-              ctx->netcx.inp_pwr[i]);
+                    "   TAG   SEG.    VOLTAGE (VOLTS)         "
+                    "CURRENT (AMPS)         IMPEDANCE (OHMS)        "
+                    "ADMITTANCE (MHOS)      POWER\n"
+                    "   NO.   NO.    REAL        IMAG.       "
+                    "REAL        IMAG.       REAL        IMAG.       "
+                    "REAL        IMAG.     (WATTS)");
+
+      for (int i = 0; i < ctx->netcx.ninp; i++)
+    {
+        fprintf(file, "\n"
+                      " %5d %5d% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E% 12.5E",
+                ctx->netcx.inp_tag[i], ctx->netcx.inp_seg[i],
+                creal(ctx->netcx.inp_v[i]), cimag(ctx->netcx.inp_v[i]),
+                creal(ctx->netcx.inp_i[i]), cimag(ctx->netcx.inp_i[i]),
+                creal(ctx->netcx.inp_z[i]), cimag(ctx->netcx.inp_z[i]),
+                creal(ctx->netcx.inp_y[i]), cimag(ctx->netcx.inp_y[i]),
+                ctx->netcx.inp_pwr[i]);
+      }
     }
   }
   else
@@ -2897,25 +2945,28 @@ static void write_antenna_input_parameters(FILE *file, const context_t *ctx)
                   "                        "
                   "--------- ANTENNA INPUT PARAMETERS ---------");
 
-    fprintf(file, "\n"
-                  "  TAG   SEG       VOLTAGE (VOLTS)         "
-                  "CURRENT (AMPS)         IMPEDANCE (OHMS)    "
-                  "    ADMITTANCE (MHOS)     POWER\n"
-                  "  No:   No:     REAL      IMAGINARY"
-                  "     REAL      IMAGINARY     REAL      "
-                  "IMAGINARY    REAL       IMAGINARY   (WATTS)");
+    if (ctx->netcx.ninp > 0) {
 
-    for (int i = 0; i < ctx->netcx.ninp; i++)
-    {
       fprintf(file, "\n"
-                    " %4d %5d %11.4E %11.4E %11.4E %11.4E"
-                    " %11.4E %11.4E %11.4E %11.4E %11.4E",
-              ctx->netcx.inp_tag[i], ctx->netcx.inp_seg[i],
-              creal(ctx->netcx.inp_v[i]), cimag(ctx->netcx.inp_v[i]),
-              creal(ctx->netcx.inp_i[i]), cimag(ctx->netcx.inp_i[i]),
-              creal(ctx->netcx.inp_z[i]), cimag(ctx->netcx.inp_z[i]),
-              creal(ctx->netcx.inp_y[i]), cimag(ctx->netcx.inp_y[i]),
-              ctx->netcx.inp_pwr[i]);
+                    "  TAG   SEG       VOLTAGE (VOLTS)         "
+                    "CURRENT (AMPS)         IMPEDANCE (OHMS)    "
+                    "    ADMITTANCE (MHOS)     POWER\n"
+                    "  No:   No:     REAL      IMAGINARY"
+                    "     REAL      IMAGINARY     REAL      "
+                    "IMAGINARY    REAL       IMAGINARY   (WATTS)");
+
+      for (int i = 0; i < ctx->netcx.ninp; i++)
+      {
+        fprintf(file, "\n"
+                      " %4d %5d %11.4E %11.4E %11.4E %11.4E"
+                      " %11.4E %11.4E %11.4E %11.4E %11.4E",
+                ctx->netcx.inp_tag[i], ctx->netcx.inp_seg[i],
+                creal(ctx->netcx.inp_v[i]), cimag(ctx->netcx.inp_v[i]),
+                creal(ctx->netcx.inp_i[i]), cimag(ctx->netcx.inp_i[i]),
+                creal(ctx->netcx.inp_z[i]), cimag(ctx->netcx.inp_z[i]),
+                creal(ctx->netcx.inp_y[i]), cimag(ctx->netcx.inp_y[i]),
+                ctx->netcx.inp_pwr[i]);
+      }
     }
   }
 }
@@ -3151,7 +3202,7 @@ static void write_power_budget(FILE *file, const context_t *ctx)
   // Only write for standard radiation pattern types
   if ((ctx->fpat.excitation_type != 0) && (ctx->fpat.excitation_type != 5))
   {
-    return;
+    return;  // Skip power budget for non-standard excitation types
   }
 
   double tmp1 = ctx->netcx.power_in - ctx->netcx.power_net_loss - ctx->fpat.ohmic_loss;

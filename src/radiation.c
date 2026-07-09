@@ -676,6 +676,10 @@ void compute_radiation_pattern(context_t *ctx)
     } /* for kth */
   } /* for kph */
   
+  /* Update num_points to the actual number of computed points
+     (some may have been skipped if they exceeded 90 degrees) */
+  ctx->rpat.num_points = point_idx;
+  
   /* Calculate average power if requested */
   if (ctx->fpat.avg_power_flag != 0) {
     tmp3 = ctx->fpat.theta_start * TA;

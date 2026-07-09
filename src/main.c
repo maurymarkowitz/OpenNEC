@@ -703,51 +703,41 @@ static int process_single_file(const char *input_filename, const char *output_fi
   }
 
   // Refine line ending decision after reading deck
-  // Priority: explicit user flag > detected input on Unix > default CRLF
-  // Only use LF if: (1) not explicitly set, (2) on non-Windows platform, and (3) input is LF
+  // ALWAYS default to CRLF unless -l lf is explicitly specified
   int effective_line_ending = line_ending_choice;
   if (!line_ending_explicitly_set) {
-    if (deck.line_endings == LINE_ENDING_LF) {
-      /* On non-Windows platforms with LF input, use LF */
-#if !defined(_WIN32) && !defined(__MINGW32__)
-      effective_line_ending = LINE_ENDING_LF;
-#else
-      /* On Windows, always use CRLF regardless of input */
-      effective_line_ending = LINE_ENDING_CRLF;
-#endif
-    } else {
-      /* For CRLF input or undetermined: use CRLF (default) */
-      effective_line_ending = LINE_ENDING_CRLF;
+    /* Always use CRLF as default, regardless of input or platform */
+    effective_line_ending = LINE_ENDING_CRLF;
+  }
+
+  // If we initially didn't use temp file but now need CRLF, set it up
+  if (effective_line_ending == LINE_ENDING_CRLF && !using_temp_output) {
+    // Need to close existing file and reopen with temp if it was a real file
+    if (output_fp != NULL && output_fp != stdout) {
+      fclose(output_fp);
     }
-    // If we initially didn't use temp file but now need CRLF, set it up
-    if (effective_line_ending == LINE_ENDING_CRLF && !using_temp_output) {
-      // Need to close existing file and reopen with temp if it was a real file
-      if (output_fp != NULL && output_fp != stdout) {
-        fclose(output_fp);
-      }
-      if (strlen(output_filename) > 0 && strcmp(output_filename, "-") != 0) {
-        temp_output_fp = tmpfile();
-        if (temp_output_fp != NULL) {
-          output_fp = temp_output_fp;
-          using_temp_output = true;
-        } else {
-          // Fall back to writing directly
-          if ((output_fp = fopen(output_filename, "w")) == NULL) {
-            char mesg[88] = "onec: ";
-            strcat(mesg, output_filename);
-            perror(mesg);
-            if (input_fp != stdin) fclose(input_fp);
-            destroy_context(ctx);
-            return -1;
-          }
-        }
+    if (strlen(output_filename) > 0 && strcmp(output_filename, "-") != 0) {
+      temp_output_fp = tmpfile();
+      if (temp_output_fp != NULL) {
+        output_fp = temp_output_fp;
+        using_temp_output = true;
       } else {
-        // stdout case
-        temp_output_fp = tmpfile();
-        if (temp_output_fp != NULL) {
-          output_fp = temp_output_fp;
-          using_temp_output = true;
+        // Fall back to writing directly
+        if ((output_fp = fopen(output_filename, "w")) == NULL) {
+          char mesg[88] = "onec: ";
+          strcat(mesg, output_filename);
+          perror(mesg);
+          if (input_fp != stdin) fclose(input_fp);
+          destroy_context(ctx);
+          return -1;
         }
+      }
+    } else {
+      // stdout case
+      temp_output_fp = tmpfile();
+      if (temp_output_fp != NULL) {
+        output_fp = temp_output_fp;
+        using_temp_output = true;
       }
     }
   }

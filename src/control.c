@@ -33,7 +33,6 @@ static int count_tag_segments(const context_t *ctx, int tag);
 static int resolve_pct_segment(const context_t *ctx, const card_t *card, int field_idx, int tag);
 static void validate_geometry_post_calculation(context_t *ctx, errors_list_t *errors);
 static int inject_current_source(context_t *ctx, int card_idx, int tag, int seg_idx, complex double I_desired);
-static int process_ex_batch(context_t *ctx);  /* NEW: Process queued EX cards */
 
 /******************************************************************************
  * count_tag_segments()
@@ -101,7 +100,7 @@ static int resolve_pct_segment(const context_t *ctx, const card_t *card,
  * @param ctx  The NEC context with queued EX cards
  * @return 0 on success, -1 on error
  */
-static int process_ex_batch(context_t *ctx)
+int process_ex_batch(context_t *ctx)
 {
     if (ctx->ex_queue.num_queued == 0) {
         return 0;  /* Nothing to process */
@@ -151,6 +150,7 @@ static int process_ex_batch(context_t *ctx)
         /* Store at index 0 */
         ctx->vsorc.vsrc_segs[0] = ex->seg_index;
         ctx->vsorc.vsrc_voltages[0] = ex->voltage;
+        /* Voltage source added */;
     }
     
     /* Remove first card from queue and shift remaining cards */
@@ -389,14 +389,55 @@ int run_simulation(context_t *ctx, deck_t *deck)
         // currents, without re-filling the matrix or re-printing power budget.
         // This also covers a bare XQ after an RP+XQ pair (where RP already ran the
         // full solve): XQ alone with no new FR is a no-op / already handled.
+        // ALSO: A batch ending with RP/NE/NH card should output patterns even if
+        // patterns_output_for_freq is true, because each RP card represents a new
+        // pattern request with different parameters.
+        // IMPORTANT: RP/NE/NH cards are only valid if they immediately follow XQ (in same
+        // frequency batch) or if they are in a separate batch with their own FR card.
+        // If there's no FR and no XQ before the pattern card, the batch is invalid (like CMono2D).
+        bool batch_ends_with_pattern_card = (batch_end >= 0 && 
+                                              (strcmp(deck->cards[batch_end].card_code, "RP") == 0 ||
+                                               strcmp(deck->cards[batch_end].card_code, "NE") == 0 ||
+                                               strcmp(deck->cards[batch_end].card_code, "NH") == 0));
+        
+        // Check if pattern card is preceded by an orphaned EX (EX without corresponding XQ).
+        // Find the card immediately before batch_end (skip comments/ignored cards).
+        bool has_orphaned_ex_before_pattern = false;
+        if (batch_ends_with_pattern_card && batch_end > batch_start) {
+            for (int i = batch_end - 1; i >= batch_start; i--) {
+                if (!deck->cards[i].ignore && !is_comment(&deck->cards[i])) {
+                    // Found previous real card
+                    if (strcmp(deck->cards[i].card_code, "EX") == 0) {
+                        has_orphaned_ex_before_pattern = true;
+                    }
+                    break;
+                }
+            }
+        }
+        
+        /* For extra_patterns_only: require XQ in batch if no FR card present.
+           Pattern cards (RP/NE/NH) are only valid if:
+           1. Batch has FR card (normal frequency batch), OR
+           2. Batch has XQ and patterns requested (RP follows frequency calculation) */
         bool extra_patterns_only = (!batch_has_fr &&
                                     ctx->frequency_loop_ran &&
-                                    !ctx->patterns_output_for_freq &&
+                                    (!ctx->patterns_output_for_freq || batch_ends_with_pattern_card) &&
                                     (ctx->gnd.far_field_type != -1 || ctx->fpat.is_near_field != -1 ||
                                      has_xq) &&
                                     !ctx->wg_after_cmset);
 
+        /* Skip invalid patterns: if RP/NE/NH appears after orphaned EX (EX without XQ),
+           treat as invalid and flag to skip pattern output (but still run frequency loop) */
+        bool skip_pattern_output_this_batch = (has_orphaned_ex_before_pattern && 
+                                               batch_ends_with_pattern_card);
+
         if (!is_termination && has_output_request) {
+            /* If we're skipping pattern output due to orphaned EX, clear the pattern flags
+               so patterns won't be computed */
+            if (skip_pattern_output_this_batch) {
+                ctx->gnd.far_field_type = -1;
+                ctx->fpat.is_near_field = -1;
+            }
             if (extra_patterns_only) {
                 // XQ alone with no new FR: nothing new to compute, skip
                 if (!has_xq) {
@@ -1991,7 +2032,7 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
              * First output: output full FREQUENCY section
              * Subsequent outputs at same frequency: skip FREQUENCY header (Fortran behavior) */
             if (first_output_for_frequency && ctx->preamble_written) {
-                write_subsequent_excitation_output(ctx->output_fp, ctx);
+                write_subsequent_excitation_output(ctx->output_fp, ctx, deck);
             } else {
                 write_frequency_step_output(ctx->output_fp, ctx);
                 first_output_for_frequency = true;  /* Mark that we've output frequency section at this frequency */
