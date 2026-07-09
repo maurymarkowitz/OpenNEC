@@ -17,15 +17,11 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v4
 
-      - name: Download release tarball
+      - name: Create deterministic tarball from tag
         run: |
           TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
-          if [ -n "${{ github.event.release.tarball_url }}" ]; then
-            URL="${{ github.event.release.tarball_url }}"
-          else
-            URL="https://github.com/maurymarkowitz/OpenNEC/archive/refs/tags/${TAG}.tar.gz"
-          fi
-          curl -L -o source.tar.gz "${URL}"
+          git fetch origin refs/tags/${TAG}:refs/tags/${TAG}
+          git archive --prefix=OpenNEC-${TAG}/ --format=tar.gz refs/tags/${TAG} > source.tar.gz
 
       - name: Compute SHA256
         id: sha
