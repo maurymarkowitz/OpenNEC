@@ -1742,15 +1742,8 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
     }
     
     /* Track frequency to detect when we move to a new frequency for multi-frequency simulations.
-       When frequency changes, reset the first-output tracking so full FREQUENCY section is printed. */
-    static double last_frequency = -1.0;
-    static bool first_output_for_frequency = false;
-    
-    if (last_frequency != ctx->save.freq_mhz) {
-        /* New frequency detected - reset the first-output flag */
-        first_output_for_frequency = false;
-        last_frequency = ctx->save.freq_mhz;
-    }
+       Note: This is tracked PER-CALL, not across calls. Use context variables for cross-call state. */
+    bool first_output_for_frequency = false;
     
     // If no FR card was processed, default to a single frequency run at
     // the context default frequency (CVEL MHz => wavelength = 1 m), matching
@@ -1851,6 +1844,12 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
     for (int mhz = 1; mhz <= nfrq; mhz++) {
         // Clear loading outputs from previous frequency iteration
         ctx->loading_outputs.count = 0;
+        
+        // Reset per-frequency output flag so each frequency generates its output
+        ctx->freq_step_output_written = false;
+        
+        // Reset first-output flag for each new frequency (for handling multiple EX at same freq)
+        first_output_for_frequency = false;
         
         // Update frequency
         if (mhz > 1) {
