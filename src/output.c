@@ -2001,7 +2001,15 @@ static void write_input_cards_excluding_end(FILE *file, const context_t *ctx, co
     return;
   }
 
-  fprintf(file, "\n\n\n\n\n\n");
+  /* First batch (after structure spec) needs more spacing than subsequent batches */
+  if (!ctx->batch_cards_echoed)
+  {
+    fprintf(file, "\n\n\n\n\n\n\n");  // 7 newlines for first batch
+  }
+  else
+  {
+    fprintf(file, "\n\n\n\n");  // 4 newlines for subsequent batches
+  }
 
   /* Iterate through cards in this batch only, skipping EN and NX cards. */
   int card_number = card_number_offset;
@@ -2299,7 +2307,7 @@ void write_end_cards(FILE *file, const deck_t *deck)
       fprintf(file, "\n\n\n\n");
       if (found_rp && card->ints_used == 0 && card->flts_used == 0)
       {
-        fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d     %d  %d",
+        fprintf(file, " ***** DATA CARD NO. %2d   EN %3d%6d%6d%6d",
                 current_card_number,
                 last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
         for (int j = 1; j <= 6; j++)
@@ -2310,7 +2318,7 @@ void write_end_cards(FILE *file, const deck_t *deck)
       }
       else
       {
-        fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d     %d  %d",
+        fprintf(file, " ***** DATA CARD NO. %2d   EN %3d%6d%6d%6d",
                 current_card_number,
                 card->i[1], card->i[2], card->i[3], card->i[4]);
         for (int j = 1; j <= 6; j++)
@@ -2693,6 +2701,7 @@ static void write_matrix_timing(FILE *file, const context_t *ctx)
     fprintf(file, "  ");
     fprintf(file, fmt->matrix_factor_format, (int)(ctx->mat_factor_time * 1000.0));
   }
+  fprintf(file, "\n");  // Add newline after matrix timing
 }
 
 /******************************************************************************
@@ -2916,7 +2925,7 @@ static void write_antenna_input_parameters(FILE *file, const context_t *ctx)
 {
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    fprintf(file, "\n\n\n\n"
+    fprintf(file, "\n\n\n"
                   "                                          "
                   "- - - ANTENNA INPUT PARAMETERS - - -\n");
 
