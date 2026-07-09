@@ -163,9 +163,10 @@ void compute_coupling(context_t *ctx, complex double *cur, double wlam )
     return;
   
   /* If coupling_flag >= num_pairs, all sources already processed, do final calculation */
-  if( ctx->yparm.coupling_flag >= ctx->yparm.num_pairs ) {
-    /* All sources processed, calculate coupling in the main calculation section below */
-    /* (will be handled after the initial return check) */
+  if( ctx->yparm.coupling_flag >= ctx->yparm.num_pairs || ctx->yparm.num_pairs == 0 ) {
+    /* All sources processed, or no coupling pairs defined - skip early segment processing */
+    /* (coupling finalization will be handled separately if needed) */
+    return;
   }
   
   /* Find the segment being analyzed for coupling_flag */

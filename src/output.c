@@ -488,11 +488,11 @@ static void write_coupling_data(context_t *ctx)
 {
   /* Only output header if there is coupling data */
   if (ctx->yparm.num_coupling_rows > 0) {
-    fprintf(ctx->output_fp, "\n\n\n"
+    fprintf(ctx->output_fp, "\n\n"
                             "                                    - - - ISOLATION DATA - - -\n"
                             "\n"
                             "      - - COUPLING BETWEEN - -        MAXIMUM               - - - FOR MAXIMUM COUPLING - - -\n"
-                            "            SEG.              SEG.   COUPLING    LOAD IMPEDANCE (2ND SEG.)         INPUT IMPEDANCE\n"
+                            "            SEG.              SEG.   COUPLING    LOAD IMPEDANCE (2ND SEG.)       INPUT IMPEDANCE\n"
                             "  TAG/SEG.   NO.    TAG/SEG.   NO.      (DB)        REAL         IMAG.         REAL         IMAG.");
 
     for (int i = 0; i < ctx->yparm.num_coupling_rows; i++)
@@ -501,8 +501,8 @@ static void write_coupling_data(context_t *ctx)
       if (!r->is_error)
       {
         fprintf(ctx->output_fp, "\n"
-                                " %4d %4d %5d  %4d %4d %5d  %9.3f"
-                                "  %12.5E %12.5E  %12.5E %12.5E",
+                                " %4d %4d %5d   %4d %4d %5d  %9.3f"
+                                "    %12.5E %12.5E   %12.5E %12.5E",
                 r->tag1, r->seg1, r->segno1,
                 r->tag2, r->seg2, r->segno2,
                 r->coupling_db,
@@ -518,6 +518,8 @@ static void write_coupling_data(context_t *ctx)
                 r->c_value);
       }
     }
+    /* Add newline after all coupling rows */
+    fprintf(ctx->output_fp, "\n");
   }
   
   /* Clear coupling rows after output so they don't accumulate between frequencies */
@@ -575,10 +577,10 @@ void write_frequency_step_output(FILE *file, context_t *ctx)
   write_matrix_asymmetry(file, ctx);
   write_network_excitation(file, ctx);
   write_antenna_input_parameters(file, ctx);
-  write_coupling_data(ctx);
   write_currents(file, ctx);
   write_patch_currents(file, ctx);
   write_power_budget(file, ctx);
+  write_coupling_data(ctx);
   write_radiation_pattern_header(file, ctx);
   write_radiation_pattern_data(file, ctx);
   write_average_power_gain(file, ctx);
@@ -622,15 +624,15 @@ void write_subsequent_excitation_output(FILE *file, context_t *ctx, const deck_t
      in the batch, matching Fortran's behavior of printing cards before each
      source output. */
   if (file != NULL && ctx != NULL && deck != NULL && ctx->output_format == OUTPUT_FORMAT_ORIGINAL) {
-    fprintf(file, "\n\n\n");
+    fprintf(file, "\n\n");
     write_remaining_execution_cards(file, ctx, deck);
   }
   
   write_antenna_input_parameters(file, ctx);
-  write_coupling_data(ctx);
   write_currents(file, ctx);
   write_patch_currents(file, ctx);
   write_power_budget(file, ctx);
+  write_coupling_data(ctx);
   write_radiation_pattern_header(file, ctx);
   write_radiation_pattern_data(file, ctx);
   write_average_power_gain(file, ctx);
@@ -1467,7 +1469,7 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
   // print the header
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    fprintf(file, "\n\n\n"
+    fprintf(file, "\n\n"
                   "                                 "
                   "- - - STRUCTURE SPECIFICATION - - -\n"
                   "\n"
@@ -2294,6 +2296,7 @@ void write_end_cards(FILE *file, const deck_t *deck)
 
     if (strncmp(card->card_code, "EN", 2) == 0)
     {
+      fprintf(file, "\n\n\n\n");
       if (found_rp && card->ints_used == 0 && card->flts_used == 0)
       {
         fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d     %d  %d",
@@ -3223,7 +3226,7 @@ static void write_power_budget(FILE *file, const context_t *ctx)
                   "                                           "
                   "NETWORK LOSS  = %10.4E WATTS\n"
                   "                                           "
-                  "EFFICIENCY    = %6.2f PERCENT",
+                  "EFFICIENCY    = %6.2f PERCENT\n",
             ctx->netcx.power_in, tmp1, ctx->fpat.ohmic_loss, ctx->netcx.power_net_loss, tmp2);
   }
   else

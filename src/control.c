@@ -452,6 +452,7 @@ int run_simulation(context_t *ctx, deck_t *deck)
                    are processed separately for coupling calculations. */
                 if (batch_has_fr) {
                     ctx->freq_step_output_written = false;
+                    ctx->first_output_for_frequency = false;  /* Reset so new frequency can output its header */
                     ctx->batch_cards_echoed = false;  /* Reset for new frequency so cards are echoed again */
                 }
                 
@@ -460,16 +461,17 @@ int run_simulation(context_t *ctx, deck_t *deck)
                    across multiple XQ commands for multi-source coupling.
                    IMPORTANT: Save base frequency before loop and reset it on each iteration,
                    otherwise frequency sweep will not work correctly for multiple EX cards.
-                   Reset freq_step_output_written BETWEEN EX cards so each gets its own
-                   frequency/antenna/power output section. Card echo printed only once per frequency.
-                   Coupling data is printed after all sources are processed at the same frequency. */
+                   DO NOT reset freq_step_output_written between EX cards - each frequency
+                   gets ONE frequency header, shared by all EX cards at that frequency.
+                   Card echo printed only once per frequency. Coupling data is printed after
+                   all sources are processed at the same frequency. */
                 if (ctx->ex_queue.num_queued > 0) {
                     double base_freq_mhz = ctx->save.freq_mhz;  /* Save base frequency */
                     while (ctx->ex_queue.num_queued > 0) {
                         ctx->save.freq_mhz = base_freq_mhz;  /* Reset to base frequency before each EX */
-                        /* Reset freq_step_output_written BEFORE processing each EX so each EX
-                           gets its own frequency/antenna/power output section */
-                        ctx->freq_step_output_written = false;
+                        /* Do NOT reset freq_step_output_written here - it must persist across
+                           EX cards at the same frequency to prevent duplicate FREQUENCY headers.
+                           Only write frequency header once per unique frequency. */
                         /* Do NOT reset batch_cards_echoed - it prints once per frequency batch,
                            not once per EX card within the batch */
                         if (process_ex_batch(ctx) != 0) {
@@ -1741,10 +1743,6 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
         return -1;
     }
     
-    /* Track frequency to detect when we move to a new frequency for multi-frequency simulations.
-       Note: This is tracked PER-CALL, not across calls. Use context variables for cross-call state. */
-    bool first_output_for_frequency = false;
-    
     // If no FR card was processed, default to a single frequency run at
     // the context default frequency (CVEL MHz => wavelength = 1 m), matching
     // NEC-2 behaviour when FR is absent.
@@ -1848,8 +1846,12 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
         // Reset per-frequency output flag so each frequency generates its output
         ctx->freq_step_output_written = false;
         
-        // Reset first-output flag for each new frequency (for handling multiple EX at same freq)
-        first_output_for_frequency = false;
+        // Reset first-output flag only when moving to NEW frequency within loop (mhz > 1)
+        // Do NOT reset at mhz==1: if this is a fresh call from a 2nd EX card, first_output
+        // may already be true from the 1st EX card's previous frequency output
+        if (mhz > 1) {
+            ctx->first_output_for_frequency = false;
+        }
         
         // Update frequency
         if (mhz > 1) {
@@ -2030,11 +2032,11 @@ static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double del
             /* Use first_output_for_frequency to determine if this is first output at this frequency.
              * First output: output full FREQUENCY section
              * Subsequent outputs at same frequency: skip FREQUENCY header (Fortran behavior) */
-            if (first_output_for_frequency && ctx->preamble_written) {
+            if (ctx->first_output_for_frequency && ctx->preamble_written) {
                 write_subsequent_excitation_output(ctx->output_fp, ctx, deck);
             } else {
                 write_frequency_step_output(ctx->output_fp, ctx);
-                first_output_for_frequency = true;  /* Mark that we've output frequency section at this frequency */
+                ctx->first_output_for_frequency = true;  /* Mark that we've output frequency section at this frequency */
             }
             ctx->freq_step_output_written = true;
             ctx->patterns_output_for_freq = true;  // Mark that RP/NE/NH output has been written
