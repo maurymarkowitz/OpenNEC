@@ -1,9 +1,0 @@
-TEST DECK - SIMPLE DIPOLE
-CM Simple half-wave dipole at 100 MHz
-CM
-GW      1       11      0.0     0.0    -0.75   0.0     0.0     0.75    0.001
-GE       0        0
-FR       0        1        0       0      100.0   1.0
-EX       0        1        6
-RP       0       10       10        1       0.0     0.0     1.0     1.0
-EN
