@@ -257,6 +257,12 @@ jobs:
           DIST="onec-windows-x86_64-openblas"
           mkdir -p "dist/${DIST}/lib" "dist/${DIST}/include" "dist/${DIST}/bin"
           cp onec.exe "dist/${DIST}/bin/"
+          # Copy libopenblas.dll from MSYS2
+          if [ -f "D:/a/_temp/msys64/mingw64/bin/libopenblas.dll" ]; then
+            cp "D:/a/_temp/msys64/mingw64/bin/libopenblas.dll" "dist/${DIST}/bin/"
+          else
+            echo "WARNING: libopenblas.dll not found at expected path"
+          fi
           cp README.MD "dist/${DIST}/"
           cp examples/example5.nec "dist/${DIST}/"
           cp libonec.a "dist/${DIST}/lib/"

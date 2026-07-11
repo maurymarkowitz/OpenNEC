@@ -116,14 +116,21 @@ else ifeq ($(BACKEND),openblas)
     else ifneq (,$(filter MINGW%,$(UNAME_S)))
         # Windows/MINGW64: the MSYS2 OpenBLAS DLL bundles the Fortran runtime
         # internally, so no separate -lgfortran is needed or available.
-        # Static link OpenBLAS and pthread for portability
+        # Gracefully fall back to dynamic linking if static library not available
         ifeq ($(STATIC_BLAS),1)
-            # Replace -lopenblas with direct path to static library
-            LDFLAGS := $(filter-out -lopenblas,$(LDFLAGS))
-            LDFLAGS += $(MINGW_OPENBLAS_PREFIX)/lib/libopenblas.a -Wl,-Bstatic -lpthread -Wl,-Bdynamic
-            $(info MINGW64 Static: OpenBLAS and pthread linked statically)
+            STATIC_OPENBLAS_LIB := $(MINGW_OPENBLAS_PREFIX)/lib/libopenblas.a
+            ifneq ($(wildcard $(STATIC_OPENBLAS_LIB)),)
+                # Static library exists - use it
+                LDFLAGS := $(filter-out -lopenblas,$(LDFLAGS))
+                LDFLAGS += $(STATIC_OPENBLAS_LIB) -Wl,-Bstatic -lpthread -Wl,-Bdynamic
+                $(info MINGW64 Static: libopenblas.a found - linking statically)
+            else
+                # Static library not available (MSYS2 only provides DLL)
+                # Fall back to dynamic linking
+                $(info MINGW64: libopenblas.a not found, falling back to dynamic -lopenblas)
+            endif
         else
-            $(info MINGW64: OpenBLAS bundles Fortran runtime; no extra flags needed)
+            $(info MINGW64: OpenBLAS bundles Fortran runtime; using dynamic linking)
         endif
     endif
     $(info OpenBLAS backend: LDFLAGS=$(LDFLAGS))
