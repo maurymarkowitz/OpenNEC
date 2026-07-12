@@ -1319,7 +1319,7 @@ static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
         if (tag < 0) return;
         char cseg[64];
         centre_seg(seg, cseg, sizeof cseg);
-        char R[256], X[256];
+        char R[64], X[64];
         expand_expr(args[1], R, sizeof R);
         expand_expr(args[2], X, sizeof X);
         char buf[512];
@@ -1372,8 +1372,8 @@ static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
 
     /* ---- frequency --------------------------------------------------- */
     if (strcmp(func, "setFrequency") == 0) {
-        char f[256]; expand_expr(argbuf, f, sizeof f);
-        char buf[256];
+        char f[64]; expand_expr(argbuf, f, sizeof f);
+        char buf[128];
         snprintf(buf, sizeof buf, "FR 0, 1, 0, 0, %s, 0", f);
         post_add(post, np, maxp, buf);
         s->first_freq = false;
@@ -1381,8 +1381,8 @@ static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
         return;
     }
     if (strcmp(func, "addFrequency") == 0) {
-        char f[256]; expand_expr(argbuf, f, sizeof f);
-        char buf[256];
+        char f[64]; expand_expr(argbuf, f, sizeof f);
+        char buf[128];
         snprintf(buf, sizeof buf, "FR 0, 1, 0, 0, %s, 0", f);
         post_add(post, np, maxp, buf);
         s->have_fr = true;

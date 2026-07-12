@@ -322,7 +322,7 @@ void write_deck_onec(const context_t *ctx, const deck_t *deck, FILE *file)
         {
           const char *fsep = (field_num++ == 0) ? fsep_first : fsep_rest;
           // Look up formula for this float field
-          char key[8];
+          char key[16];
           snprintf(key, sizeof(key), "F%d", j);
           const char *formula = lookup_formula(card, key);
 
