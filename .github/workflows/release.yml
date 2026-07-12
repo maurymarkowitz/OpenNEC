@@ -243,23 +243,18 @@ jobs:
           update: true
           install: |
             mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-cmake
             pkgconf
             make
             git
-      - name: Build OpenBLAS from source
+      - name: Build OpenBLAS from source (Make)
         shell: bash -l {0}
         run: |
           cd /tmp
           git clone --depth 1 https://github.com/OpenMathLib/OpenBLAS.git
           cd OpenBLAS
-          cmake -G "Unix Makefiles" \
-            -DCMAKE_INSTALL_PREFIX=/mingw64 \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_Fortran_COMPILER=gfortran
-          make -j$(nproc)
-          make install
+          # Use Make build system (faster than CMake for OpenBLAS)
+          make BINARY=64 ONLY_CBLAS=1 NO_SHARED=1 -j$(nproc)
+          make PREFIX=/mingw64 install
       - name: Verify OpenBLAS installation
         shell: bash -l {0}
         run: |
