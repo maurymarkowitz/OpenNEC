@@ -243,14 +243,34 @@ jobs:
           update: true
           install: |
             mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-openblas
+            mingw-w64-x86_64-cmake
             pkgconf
             make
+            git
+      - name: Build OpenBLAS from source
+        shell: bash -l {0}
+        run: |
+          cd /tmp
+          git clone --depth 1 https://github.com/OpenMathLib/OpenBLAS.git
+          cd OpenBLAS
+          cmake -G "Unix Makefiles" \
+            -DCMAKE_INSTALL_PREFIX=/mingw64 \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_Fortran_COMPILER=gfortran
+          make -j$(nproc)
+          make install
+      - name: Verify OpenBLAS installation
+        shell: bash -l {0}
+        run: |
+          ls -lh /mingw64/lib/libopenblas*
+          pkg-config --exists openblas && echo "pkg-config found openblas" || echo "pkg-config did not find openblas"
+          pkg-config --cflags --libs openblas 2>/dev/null || echo "pkg-config failed"
       - name: Build (MINGW64, openblas)
-        shell: msys2 {0}
+        shell: bash -l {0}
         run: |
           make clean
-          make RELEASE=1 STATIC_BLAS=1 CC=x86_64-w64-mingw32-gcc BACKEND=openblas
+          make RELEASE=1 CC=x86_64-w64-mingw32-gcc BACKEND=openblas STATIC_BLAS=1
       - name: Package
         shell: bash -l {0}
         run: |
