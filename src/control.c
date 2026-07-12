@@ -1138,6 +1138,14 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
         is_final_batch = true;  // Implicit EN at end of deck
     }
     
+    /* CRITICAL FIX for multi-case (multi-frequency) decks:
+     * Reset network buffers at the start of each batch before processing NT cards.
+     * This ensures that if NT cards appear BEFORE FR in the batch, they will be
+     * processed as fresh network data for this frequency, not accumulated from
+     * previous frequencies. This fixes bugs where network admittance matrices
+     * from one frequency were being reused in subsequent frequencies. */
+    ctx->netcx.num_networks = 0;
+    
     // Now process the control cards in this batch to configure ctx
     for (int card_idx = *batch_start; card_idx <= *batch_end; card_idx++) {
         card_t *card = &deck->cards[card_idx];
