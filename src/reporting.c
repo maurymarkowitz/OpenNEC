@@ -1,12 +1,19 @@
 /*
- * reporting.c - Card-by-Card Sequential Processing for OpenNEC
+ * reporting.c - produces NEC-2 style output reports for OpenNEC
  *
- * Implements sequential (one-at-a-time) card processing following the
- * original Fortran NEC-2 / nec2c design pattern.
+ * This code replaces the implementation found in output.c, although
+ * it also uses many of the work methods found there. The key difference
+ * here is that it processes the entire instruction section of the deck
+ * in a single loop, instead of trying to break the instructions up into
+ * batches. It turns out that certain cards (like EX) can be repeated
+ * across frequency steps, so getting the batch processing correct is tricky.
+ * This version returns to the original Fortran layout, and differs mostly
+ * in the names of the functions and status variables to make them more
+ * obvious than things like "igo" and "iflow".
  *
  * References:
- * - Fortran NEC: ~/Downloads/Nec2dXS_src/nec2dxs.f (lines 14, 40-120, 293-307)
- * - C port nec2c: ~/Developer/nec2c-1.3/main.c (lines 241, 306-580, 607-2025)
+ * - Fortran NEC: nec2dxs.f (lines 14, 40-120, 293-307)
+ * - C port nec2c: main.c (lines 241, 306-580, 607-2025)
  */
 
 #include "reporting.h"
@@ -340,9 +347,6 @@ static void free_frequency_loop_storage(context_t *ctx)
 }
 
 /**
- * Setup excitation - call excitation setup for current frequency
- */
-/**
  * Calculate input power delivered to the antenna
  */
 static double calculate_input_power(context_t *ctx)
@@ -377,10 +381,6 @@ static double calculate_radiated_power(context_t *ctx)
     return 0.0;  /* TODO: integrate with radiation pattern calculation */
 }
 
-/* ============================================================================
- * Card Dispatcher
- * ========================================================================== */
-
 /**
  * Calculate coupling parameters (wrapper)
  */
@@ -395,6 +395,9 @@ static int calculate_coupling_parameters(context_t *ctx)
     return 0;
 }
 
+/* ============================================================================
+ * Card Dispatcher
+ * ========================================================================== */
 static int dispatch_card(context_t *ctx, deck_t *deck, int card_idx,
                         card_state_t *state)
 {
