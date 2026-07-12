@@ -908,7 +908,17 @@ static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
     }
     
     /* Execute frequency loop */
-    return execute_frequency_loop_sequential(ctx, deck, card_idx, state);
+    int result = execute_frequency_loop_sequential(ctx, deck, card_idx, state);
+    
+    /* CRITICAL FIX: Reset card_sequence_state after XQ execution so that
+     * the next XQ block's NT cards will properly reset network buffers.
+     * Without this, multi-case decks (multiple FR/NT/XQ blocks) reuse stale
+     * network data from the first XQ block instead of reloading for each case. */
+    if (result == 0) {
+        state->card_sequence_state = 5;  /* Reset to allow next NT block to initialize */
+    }
+    
+    return result;
 }
 
 /**
