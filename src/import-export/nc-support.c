@@ -338,7 +338,7 @@ int write_deck_nc(const deck_t *deck, FILE *fp)
 
     /* ---- GW wire calls ----------------------------------------------- */
 
-    char sx1[64], sy1[64], sz1[64], sx2[64], sy2[64], sz2[64], sr[64];
+    char sx1[128], sy1[128], sz1[128], sx2[128], sy2[128], sz2[128], sr[128];
     for (int i = 0; i < deck->num_cards; i++) {
         const card_t *c = &deck->cards[i];
         if (strcmp(c->card_code, "GW") != 0) continue;
@@ -890,8 +890,8 @@ static int nc_extract_identifiers(const char *expr, char idents[][64], int max)
             if (strcmp(idents[i], ident) == 0) { already = true; break; }
         }
         if (!already && count < max) {
-            strncpy(idents[count++], ident, 63);
-            idents[count-1][63] = '\0';
+            strncpy(idents[count++], ident, sizeof(idents[0]) - 1);
+            idents[count-1][sizeof(idents[0]) - 1] = '\0';
         }
     }
     
