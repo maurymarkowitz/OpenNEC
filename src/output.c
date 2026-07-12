@@ -300,7 +300,7 @@ void write_deck_onec(const context_t *ctx, const deck_t *deck, FILE *file)
         {
           const char *fsep = (field_num++ == 0) ? fsep_first : fsep_rest;
           // Look up formula for this integer field (fields are 1-based: I1..I4)
-          char key[8];
+          char key[16];
           snprintf(key, sizeof(key), "I%d", j);
           const char *formula = lookup_formula(card, key);
 
