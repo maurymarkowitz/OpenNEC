@@ -612,7 +612,7 @@ void write_extra_pattern_output(FILE *file, context_t *ctx)
  * output only once per unique frequency, not for each excitation. Also
  * reprints the EX and XQ cards before this output to match Fortran structure.
  */
-void write_subsequent_excitation_output(FILE *file, context_t *ctx)
+void write_subsequent_excitation_output(FILE *file, context_t *ctx, const deck_t *deck)
 {
   /* Print blank lines and re-echo the data cards (EX, XQ) for this excitation,
      matching Fortran's behavior of printing cards before each source output */
