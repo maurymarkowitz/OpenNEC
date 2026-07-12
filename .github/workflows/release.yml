@@ -255,15 +255,30 @@ jobs:
           # Use Make build system (faster than CMake for OpenBLAS)
           make BINARY=64 ONLY_CBLAS=1 NO_SHARED=1 -j$(nproc)
           make PREFIX=/mingw64 install
+          # Manually create pkg-config file if not present
+          mkdir -p /mingw64/lib/pkgconfig
+          cat > /mingw64/lib/pkgconfig/openblas.pc << 'EOF'
+          prefix=/mingw64
+          libdir=${prefix}/lib
+          includedir=${prefix}/include
+          
+          Name: OpenBLAS
+          Description: An optimized BLAS library
+          Version: 0.3.30
+          Libs: -L${libdir} -lopenblas
+          Cflags: -I${includedir}
+          EOF
       - name: Verify OpenBLAS installation
         shell: bash -l {0}
         run: |
           ls -lh /mingw64/lib/libopenblas*
-          pkg-config --exists openblas && echo "pkg-config found openblas" || echo "pkg-config did not find openblas"
-          pkg-config --cflags --libs openblas 2>/dev/null || echo "pkg-config failed"
+          ls -lh /mingw64/lib/pkgconfig/openblas.pc
+          export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:$PKG_CONFIG_PATH"
+          pkg-config --cflags --libs openblas
       - name: Build (MINGW64, openblas)
         shell: bash -l {0}
         run: |
+          export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:$PKG_CONFIG_PATH"
           make clean
           make RELEASE=1 CC=x86_64-w64-mingw32-gcc BACKEND=openblas STATIC_BLAS=1
       - name: Package
