@@ -56,30 +56,12 @@ jobs:
           update: true
           install: |
             mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-openblas
-            pkgconf
             make
-      - name: Debug MSYS2 environment
-        shell: bash -l {0}
-        run: |
-          echo "=== MSYS2 Environment ==="
-          echo "MSYSTEM: $MSYSTEM"
-          echo "MSYSTEM_PREFIX: $MSYSTEM_PREFIX"
-          echo "PATH: $PATH"
-          echo ""
-          echo "=== pkg-config test ==="
-          pkg-config --list-all | grep -i openblas || echo "No openblas in pkg-config"
-          echo ""
-          echo "=== pkg-config OpenBLAS flags ==="
-          pkg-config --cflags --libs openblas 2>/dev/null || echo "pkg-config failed"
-          echo ""
-          echo "=== Search for libopenblas ==="
-          find /mingw64 -name "libopenblas*" 2>/dev/null | head -5
-      - name: Build (MINGW64 with OpenBLAS)
+      - name: Build (MINGW64)
         shell: bash -l {0}
         run: |
           make clean
-          make RELEASE=1 BACKEND=openblas CC=x86_64-w64-mingw32-gcc
+          make RELEASE=1 BACKEND=original CC=x86_64-w64-mingw32-gcc
       - name: Smoke test (MINGW64)
         shell: bash -l {0}
         run: |
