@@ -527,16 +527,13 @@ void calculate_geometry(context_t *ctx, deck_t *deck, errors_list_t *errors, out
               (deck_dir_len == 0 || strncmp(ctx->source_filename, ngf_filename, deck_dir_len) == 0)) {
             /* Same directory: show basename only */
             const char *base = ngf_slash ? ngf_slash + 1 : ngf_filename;
-            strncpy(ngf_display, base, sizeof(ngf_display) - 1);
-            ngf_display[sizeof(ngf_display) - 1] = '\0';
+            strncpy(ngf_display, base, sizeof(ngf_display));
           } else {
             /* Different directory: show full resolved path */
-            strncpy(ngf_display, ngf_filename, sizeof(ngf_display) - 1);
-            ngf_display[sizeof(ngf_display) - 1] = '\0';
+            strncpy(ngf_display, ngf_filename, sizeof(ngf_display));
           }
         } else {
-          strncpy(ngf_display, ngf_filename, sizeof(ngf_display) - 1);
-          ngf_display[sizeof(ngf_display) - 1] = '\0';
+          strncpy(ngf_display, ngf_filename, sizeof(ngf_display));
         }
 
         FILE *gfp = fopen(ngf_filename, "rb");
@@ -551,6 +548,7 @@ void calculate_geometry(context_t *ctx, deck_t *deck, errors_list_t *errors, out
           /* error already recorded by read_greens_binary */
           return;
         }
+        char msg[512];  /* Increased from 255 to accommodate long filename paths */
         snprintf(msg, sizeof(msg),
            "GF card on line %d: loaded %d segments from '%s'.",
            i + 1, ctx->ngf_n_segs, ngf_display);

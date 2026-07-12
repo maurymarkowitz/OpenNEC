@@ -801,7 +801,7 @@ void test_deck_structure(const context_t *ctx, const deck_t *deck, errors_list_t
             g.total_len = sqrt(dx * dx + dy * dy + dz * dz);
             g.segs = deck->cards[i].i[2];
             g.radius = deck->cards[i].f[7];
-            strncpy(g.code, "GW", sizeof(g.code) - 1);
+            strncpy(g.code, "GW", sizeof(g.code));
             captured = 1;
           }
           else if (strcmp(code, "GA") == 0)
@@ -811,7 +811,7 @@ void test_deck_structure(const context_t *ctx, const deck_t *deck, errors_list_t
             g.total_len = radius * theta;
             g.segs = deck->cards[i].i[2];
             g.radius = deck->cards[i].f[4];
-            strncpy(g.code, "GA", sizeof(g.code) - 1);
+            strncpy(g.code, "GA", sizeof(g.code));
             captured = 1;
           }
           else if (strcmp(code, "GH") == 0)
@@ -819,7 +819,7 @@ void test_deck_structure(const context_t *ctx, const deck_t *deck, errors_list_t
             g.total_len = estimate_helix_length(deck->cards[i].f[1], deck->cards[i].f[2], deck->cards[i].f[3], deck->cards[i].f[4], deck->cards[i].f[5], deck->cards[i].f[6]);
             g.segs = deck->cards[i].i[2];
             g.radius = deck->cards[i].f[7];
-            strncpy(g.code, "GH", sizeof(g.code) - 1);
+            strncpy(g.code, "GH", sizeof(g.code));
             captured = 1;
           }
 

@@ -1408,7 +1408,10 @@ static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
                      "FR 0, %ld, 0, 0, %.8g, %.8g", vn, v0, step);
         } else {
             /* fall back: emit only the start frequency */
-            snprintf(buf, sizeof buf, "FR 0, 1, 0, 0, %s, 0", f0);
+            char buf2[512];  /* Increased from 256 to safely accommodate format string */
+            snprintf(buf2, sizeof buf2, "FR 0, 1, 0, 0, %s, 0", f0);
+            post_add(post, np, maxp, buf2);
+            return;
         }
         post_add(post, np, maxp, buf);
         s->first_freq = false;
@@ -1452,7 +1455,7 @@ static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
         char eps[256], sig[256];
         expand_expr(args[0], eps, sizeof eps);
         expand_expr(args[1], sig, sizeof sig);
-        char buf[256];
+        char buf[512];  /* Increased from 256 to safely accommodate format string */
         int gn_type = s->sommerfeld ? 2 : 0;
         snprintf(buf, sizeof buf, "GN %d, 0, 0, 0, %s, %s", gn_type, eps, sig);
         if (!s->have_gn) { post_add(post, np, maxp, buf); s->have_gn = true; }
@@ -1534,15 +1537,13 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
                         if (strcmp(s->sy_vars[i], name) == 0) { already = true; break; }
                     }
                     if (!already) {
-                        memcpy(s->sy_vars[s->n_syv], name, 63);
-                        s->sy_vars[s->n_syv][63] = '\0';
+                        strncpy(s->sy_vars[s->n_syv], name, sizeof(s->sy_vars[s->n_syv]));
                         s->sy_assigned[s->n_syv] = false;
                         s->n_syv++;
                     }
                 }
                 if (is_elem && s->n_elv < NCR_MAX_VARS) {
-                    memcpy(s->el_vars[s->n_elv], name, 63);
-                    s->el_vars[s->n_elv][63] = '\0';
+                    strncpy(s->el_vars[s->n_elv], name, sizeof(s->el_vars[s->n_elv]));
                     s->el_tags[s->n_elv] = 0;
                     s->el_segs[s->n_elv][0] = '\0';
                     s->n_elv++;
@@ -1595,7 +1596,7 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
                 int tag = ncr_wire(s, wargs, deck, seg, sizeof seg);
                 if (tag >= 0) {
                     s->el_tags[ei] = tag;
-                    strncpy(s->el_segs[ei], seg, 63);
+                    strncpy(s->el_segs[ei], seg, sizeof(s->el_segs[ei]));
                 }
             } else {
                 /* skip to semicolon */
@@ -1637,8 +1638,8 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
                     }
                 }
                 if (!already && s->n_used_vars < NCR_MAX_VARS) {
-                    strncpy(s->used_vars[s->n_used_vars++], expr_idents[i], 63);
-                    s->used_vars[s->n_used_vars-1][63] = '\0';
+                    strncpy(s->used_vars[s->n_used_vars], expr_idents[i], sizeof(s->used_vars[s->n_used_vars]));
+                    s->n_used_vars++;
                 }
             }
         }
@@ -1653,16 +1654,14 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
         }
         if (assigned_index < 0 && s->n_syv < NCR_MAX_VARS) {
             assigned_index = s->n_syv;
-            strncpy(s->sy_vars[s->n_syv], ident, 63);
-            s->sy_vars[s->n_syv][63] = '\0';
+            strncpy(s->sy_vars[s->n_syv], ident, sizeof(s->sy_vars[s->n_syv]));
             s->sy_assigned[s->n_syv] = false;
             s->sy_values[s->n_syv][0] = '\0';
             s->n_syv++;
         }
         if (assigned_index >= 0) {
             s->sy_assigned[assigned_index] = true;
-            strncpy(s->sy_values[assigned_index], expr, 255);
-            s->sy_values[assigned_index][255] = '\0';
+            strncpy(s->sy_values[assigned_index], expr, sizeof(s->sy_values[assigned_index]));
         }
 
         /* check if 'c' constant is needed */
@@ -1745,8 +1744,7 @@ int read_deck_nc(context_t *ctx, deck_t *deck, FILE *fp, errors_list_t *errors)
                         if (strcmp(s.sy_vars[i], name) == 0) { already = true; break; }
                     }
                     if (!already) {
-                        memcpy(s.sy_vars[s.n_syv], name, 63);
-                        s.sy_vars[s.n_syv][63] = '\0';
+                        strncpy(s.sy_vars[s.n_syv], name, sizeof(s.sy_vars[s.n_syv]));
                         s.sy_assigned[s.n_syv] = false;
                         s.n_syv++;
                     }
@@ -1868,11 +1866,12 @@ int read_deck_nc(context_t *ctx, deck_t *deck, FILE *fp, errors_list_t *errors)
             
             /* Warn if used in model() but only assigned in control() */
             if (!assigned_in_model && assigned_in_control) {
-                size_t mlen = strlen(used_var) * 2 + 128;
+                size_t mlen = strlen(used_var) * 2 + 256;  /* Increased buffer for safe formatting */
                 char *msg = malloc(mlen);
                 if (msg) {
                     snprintf(msg, mlen, "WARNING: variable '%s' is used in model() but only assigned in control(); the generated NEC output will have SY %s=0 and requires user initialization.", used_var, used_var);
                     add_error(ctx, errors, msg, WARNING);
+                    free(msg);
                 }
             }
         }

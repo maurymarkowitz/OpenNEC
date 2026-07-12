@@ -473,30 +473,24 @@ void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors)
     // If the line is empty or entirely whitespace, mark as comment
     if (first >= line_len) {
       strcpy(type_buff, "!");
-      memcpy(card->card_code, type_buff, 2);
-      card->card_code[2] = '\0';
+      strncpy(card->card_code, type_buff, sizeof(card->card_code));
     }
     // Check for comment markers (CM, CE, !, #, ')
     else if (toupper(card->orig_str[first]) == 'C' && first + 1 < line_len && toupper(card->orig_str[first+1]) == 'M') {
       strcpy(type_buff, "CM");
-      memcpy(card->card_code, type_buff, 2);
-      card->card_code[2] = '\0';
+      strncpy(card->card_code, type_buff, sizeof(card->card_code));
     } else if (toupper(card->orig_str[first]) == 'C' && first + 1 < line_len && toupper(card->orig_str[first+1]) == 'E') {
       strcpy(type_buff, "CE");
-      memcpy(card->card_code, type_buff, 2);
-      card->card_code[2] = '\0';
+      strncpy(card->card_code, type_buff, sizeof(card->card_code));
     } else if (card->orig_str[first] == '!') {
       strcpy(type_buff, "!");
-      memcpy(card->card_code, type_buff, 2);
-      card->card_code[2] = '\0';
+      strncpy(card->card_code, type_buff, sizeof(card->card_code));
     } else if (card->orig_str[first] == '#') {
       strcpy(type_buff, "#");
-      memcpy(card->card_code, type_buff, 2);
-      card->card_code[2] = '\0';
+      strncpy(card->card_code, type_buff, sizeof(card->card_code));
     } else if (card->orig_str[first] == '\'') {
       strcpy(type_buff, "'");
-      memcpy(card->card_code, type_buff, 2);
-      card->card_code[2] = '\0';
+      strncpy(card->card_code, type_buff, sizeof(card->card_code));
     } else {
       // not a comment marker, extract up to 2 chars for card code
       if (line_len - first == 1) {
@@ -508,8 +502,7 @@ void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors)
         type_buff[2] = '\0';
         if (isspace(type_buff[1])) type_buff[1] = '\0';
       }
-      memcpy(card->card_code, type_buff, 2);
-      card->card_code[2] = '\0';  // Ensure null termination
+      strncpy(card->card_code, type_buff, sizeof(card->card_code));
     }
     
     // see if we can find out what sort of card it is
@@ -616,8 +609,7 @@ void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors)
       
       if(isHidden) {
         // set card_code to the real code, not the comment marker
-        memcpy(card->card_code, hidden_type_buff, 2);
-        card->card_code[2] = '\0';
+        strncpy(card->card_code, hidden_type_buff, sizeof(card->card_code));
         // save the leading comment marker character
         card->cmt_code[0] = card->orig_str[first];
         // mark as ignored (commented out); processing will skip it
