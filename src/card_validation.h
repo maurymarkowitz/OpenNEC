@@ -28,7 +28,7 @@
 /* MAX_ERROR_LEN is normally defined in opennec.h; guard here in case this
  * header is included before opennec.h (e.g. from within opennec.h itself). */
 #ifndef MAX_ERROR_LEN
-#define MAX_ERROR_LEN 255
+#define MAX_ERROR_LEN 512
 #endif
 
 /*

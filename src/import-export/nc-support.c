@@ -788,7 +788,7 @@ static int nc_split(const char *s, char out[][256], int max)
             while (di > 0 && isspace((unsigned char)cur[di-1])) di--;
             cur[di] = '\0';
             const char *t = cur; while (*t && isspace((unsigned char)*t)) t++;
-            strncpy(out[n++], t, 255); out[n-1][255] = '\0';
+            strncpy(out[n++], t, sizeof(out[0]) - 1); out[n-1][sizeof(out[0]) - 1] = '\0';
             di = 0;
         } else {
             if (di < 510) cur[di++] = c;
@@ -799,7 +799,7 @@ static int nc_split(const char *s, char out[][256], int max)
     while (di > 0 && isspace((unsigned char)cur[di-1])) di--;
     cur[di] = '\0';
     const char *t = cur; while (*t && isspace((unsigned char)*t)) t++;
-    if (*t && n < max) { strncpy(out[n++], t, 255); out[n-1][255] = '\0'; }
+    if (*t && n < max) { strncpy(out[n++], t, sizeof(out[0]) - 1); out[n-1][sizeof(out[0]) - 1] = '\0'; }
     return n;
 }
 
@@ -1169,8 +1169,8 @@ static int ncr_wire(ncr_t *s, const char *argstr, deck_t *deck,
                 }
             }
             if (!already && s->n_used_vars < NCR_MAX_VARS) {
-                strncpy(s->used_vars[s->n_used_vars++], wire_idents[j], 63);
-                s->used_vars[s->n_used_vars-1][63] = '\0';
+                strncpy(s->used_vars[s->n_used_vars++], wire_idents[j], sizeof(s->used_vars[0]) - 1);
+                s->used_vars[s->n_used_vars-1][sizeof(s->used_vars[0]) - 1] = '\0';
             }
         }
     }

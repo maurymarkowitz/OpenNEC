@@ -49,7 +49,7 @@
  */
 #define	MAX_LINE_LEN 255   /**< Maximum length of an input line */
 #define MAX_PATH_LEN 255   /**< Maximum length of a file path */
-#define MAX_ERROR_LEN 255  /**< Maximum length of an error message string */
+#define MAX_ERROR_LEN 512  /**< Maximum length of an error message string */
 #define MAX_UNIT_LEN 5     /**< Maximum length of a unit suffix (e.g., "mm") */
 /** @} */
 

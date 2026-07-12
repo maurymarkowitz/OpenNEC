@@ -216,10 +216,8 @@ int read_deck_yo(deck_t *deck, FILE *fp)
         char *t = yo_trim(line);
         if (t[0] == '\0') continue;       /* skip blank lines at top */
         /* title is the first non-blank line */
-        size_t tl = strlen(t);
-        if (tl > sizeof title - 1) tl = sizeof title - 1;
-        strncpy(title, t, tl);
-        title[tl] = '\0';
+        strncpy(title, t, sizeof(title));
+        title[sizeof(title) - 1] = '\0';
         break;
     }
 
