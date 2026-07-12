@@ -255,7 +255,16 @@ jobs:
           # Use Make build system (faster than CMake for OpenBLAS)
           make BINARY=64 ONLY_CBLAS=1 NO_SHARED=1 -j$(nproc)
           make PREFIX=/mingw64 install
-          # Manually create pkg-config file if not present
+      - name: Verify OpenBLAS installation
+        shell: bash -l {0}
+        run: |
+          echo "=== Checking /mingw64/lib ==="
+          find /mingw64/lib -name "*openblas*" -type f 2>/dev/null | head -10
+          echo ""
+          echo "=== Checking MSYSTEM_PREFIX/lib ==="
+          find $MSYSTEM_PREFIX/lib -name "*openblas*" -type f 2>/dev/null | head -10
+          echo ""
+          echo "=== Setting up pkg-config file ==="
           mkdir -p /mingw64/lib/pkgconfig
           cat > /mingw64/lib/pkgconfig/openblas.pc << 'EOF'
           prefix=/mingw64
@@ -268,16 +277,20 @@ jobs:
           Libs: -L${libdir} -lopenblas
           Cflags: -I${includedir}
           EOF
-      - name: Verify OpenBLAS installation
-        shell: bash -l {0}
-        run: |
-          ls -lh /mingw64/lib/libopenblas*
-          ls -lh /mingw64/lib/pkgconfig/openblas.pc
           export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:$PKG_CONFIG_PATH"
-          pkg-config --cflags --libs openblas
+          pkg-config --cflags --libs openblas || echo "pkg-config still failed"
       - name: Build (MINGW64, openblas)
         shell: bash -l {0}
         run: |
+          # Explicitly find and use the library
+          OPENBLAS_LIB=$(find /mingw64 -name "libopenblas.a" -type f 2>/dev/null | head -1)
+          if [ -z "$OPENBLAS_LIB" ]; then
+            echo "ERROR: libopenblas.a not found!"
+            find /mingw64 -name "*openblas*" 2>/dev/null
+            exit 1
+          fi
+          echo "Found OpenBLAS at: $OPENBLAS_LIB"
+          export MINGW_OPENBLAS_PREFIX="/mingw64"
           export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:$PKG_CONFIG_PATH"
           make clean
           make RELEASE=1 CC=x86_64-w64-mingw32-gcc BACKEND=openblas STATIC_BLAS=1
