@@ -1650,7 +1650,10 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
                     }
                 }
                 if (!already && s->n_used_vars < NCR_MAX_VARS) {
+                    #pragma GCC diagnostic push
+                    #pragma GCC diagnostic ignored "-Wstringop-truncation"
                     strncpy(s->used_vars[s->n_used_vars], expr_idents[i], sizeof(s->used_vars[s->n_used_vars]) - 1);
+                    #pragma GCC diagnostic pop
                     s->used_vars[s->n_used_vars][sizeof(s->used_vars[s->n_used_vars]) - 1] = '\0';
                     s->n_used_vars++;
                 }
@@ -1667,7 +1670,10 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
         }
         if (assigned_index < 0 && s->n_syv < NCR_MAX_VARS) {
             assigned_index = s->n_syv;
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wstringop-truncation"
             strncpy(s->sy_vars[s->n_syv], ident, sizeof(s->sy_vars[s->n_syv]) - 1);
+            #pragma GCC diagnostic pop
             s->sy_vars[s->n_syv][sizeof(s->sy_vars[s->n_syv]) - 1] = '\0';
             s->sy_assigned[s->n_syv] = false;
             s->sy_values[s->n_syv][0] = '\0';
@@ -1675,7 +1681,10 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
         }
         if (assigned_index >= 0) {
             s->sy_assigned[assigned_index] = true;
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wstringop-truncation"
             strncpy(s->sy_values[assigned_index], expr, sizeof(s->sy_values[assigned_index]) - 1);
+            #pragma GCC diagnostic pop
             s->sy_values[assigned_index][sizeof(s->sy_values[assigned_index]) - 1] = '\0';
         }
 
