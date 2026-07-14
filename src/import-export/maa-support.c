@@ -378,7 +378,7 @@ int read_deck_maa(deck_t *deck, FILE *fp)
             }
             char *nl = strchr(t, '\n'); if (nl) *nl = '\0';
             while (*t && isspace((unsigned char)*t)) t++;
-            char buf[512];  /* Increased from 300 to safely accommodate "! " + long comment */
+            char buf[520];  /* "! " (2) + 511 max bytes from t + null = 514; using 520 to be safe */
             snprintf(buf, sizeof buf, "! %s", t);
             /* defer: emit after EN */
             if (n_pending < 256) pending_comments[n_pending++] = strdup(buf);
@@ -480,7 +480,7 @@ int read_deck_maa(deck_t *deck, FILE *fp)
             /* trim newline and leading whitespace */
             char *nl = strchr(t, '\n'); if (nl) *nl = '\0';
             while (*t && isspace((unsigned char)*t)) t++;
-            char buf[512];  /* Increased from 300 to safely accommodate "! " + long comment */
+            char buf[520];  /* "! " (2) + 511 max bytes from t + null = 514; using 520 to be safe */
             snprintf(buf, sizeof buf, "! %s", t);
             if (n_pending < 256) pending_comments[n_pending++] = strdup(buf);
             continue;
