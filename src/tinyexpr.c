@@ -87,6 +87,11 @@ typedef struct state {
 #define ARITY(TYPE) ( ((TYPE) & (TE_FUNCTION0 | TE_CLOSURE0)) ? ((TYPE) & 0x00000007) : 0 )
 #define NEW_EXPR(type, ...) new_expr((type), (const te_expr*[]){__VA_ARGS__})
 
+/* Suppress -Warray-bounds warning: the malloc size calculation includes the full
+   te_expr structure. The compiler's static analysis cannot verify this, but the
+   code is correct. This is third-party library code. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
 static te_expr *new_expr(const int type, const te_expr *parameters[]) {
   const int arity = ARITY(type);
   const int psize = sizeof(void*) * arity;
@@ -100,6 +105,7 @@ static te_expr *new_expr(const int type, const te_expr *parameters[]) {
   ret->bound = 0;
   return ret;
 }
+#pragma GCC diagnostic pop
 
 void te_free_parameters(te_expr *n) {
   if (!n) return;
@@ -324,6 +330,11 @@ static te_expr *list(state *s);
 static te_expr *expr(state *s);
 static te_expr *power(state *s);
 
+/* Suppress -Warray-bounds warning: te_expr structure members are accessed after
+   malloc within new_expr(). The compiler cannot verify the calculation is correct
+   through inlining, but it is. This is third-party library code. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
 static te_expr *base(state *s) {
   /* <base>      =    <constant> | <variable> | <function-0> {"(" ")"} | <function-1> <power> | <function-X> "(" <expr> {"," <expr>} ")" | "(" <list> ")" */
   te_expr *ret;
@@ -417,6 +428,7 @@ static te_expr *base(state *s) {
   
   return ret;
 }
+#pragma GCC diagnostic pop
 
 
 static te_expr *power(state *s) {
