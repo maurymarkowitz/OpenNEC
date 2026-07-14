@@ -34,6 +34,7 @@ static void write_matrix_asymmetry(FILE *file, const context_t *ctx);
 static void write_network_excitation(FILE *file, const context_t *ctx);
 static void write_antenna_input_parameters(FILE *file, const context_t *ctx);
 static void write_coupling_data(context_t *ctx);
+static void write_remaining_execution_cards(FILE *file, const context_t *ctx, const deck_t *deck);
 static void write_currents(FILE *file, const context_t *ctx);
 static void write_patch_currents(FILE *file, const context_t *ctx);
 static void write_power_budget(FILE *file, const context_t *ctx);
@@ -87,8 +88,8 @@ static const output_format_spec_t format_specs[] = {
         .length_units = "METERS",
         .freq_units = "MHZ",
         .matrix_sep = "- - - MATRIX TIMING - - -",
-        .matrix_fill_format = "FILL=%8.3f SEC.,",
-        .matrix_factor_format = "FACTOR=%8.3f SEC.",
+        .matrix_fill_format = "FILL=%9.3f SEC.,",
+        .matrix_factor_format = "FACTOR=%9.3f SEC.",
         .use_seconds_for_timing = 1,
         .loading_all_tag = "ALL",
         .pre_freq_blank_lines = 4
@@ -485,23 +486,23 @@ void write_deck_onec(const context_t *ctx, const deck_t *deck, FILE *file)
  */
 static void write_coupling_data(context_t *ctx)
 {
-  fprintf(ctx->output_fp, "\n\n\n"
-                          "                                    - - - ISOLATION DATA - - -\n"
-                          "\n"
-                          "      - - COUPLING BETWEEN - -        MAXIMUM               - - - FOR MAXIMUM COUPLING - - -\n"
-                          "            SEG.              SEG.   COUPLING    LOAD IMPEDANCE (2ND SEG.)         INPUT IMPEDANCE\n"
-                          "  TAG/SEG.   NO.    TAG/SEG.   NO.      (DB)        REAL         IMAG.         REAL         IMAG.");
-
+  /* Only output header if there is coupling data */
   if (ctx->yparm.num_coupling_rows > 0) {
+    fprintf(ctx->output_fp, "\n\n"
+                            "                                    - - - ISOLATION DATA - - -\n"
+                            "\n"
+                            "      - - COUPLING BETWEEN - -        MAXIMUM               - - - FOR MAXIMUM COUPLING - - -\n"
+                            "            SEG.              SEG.   COUPLING    LOAD IMPEDANCE (2ND SEG.)       INPUT IMPEDANCE\n"
+                            "  TAG/SEG.   NO.    TAG/SEG.   NO.      (DB)        REAL         IMAG.         REAL         IMAG.");
 
-  for (int i = 0; i < ctx->yparm.num_coupling_rows; i++)
+    for (int i = 0; i < ctx->yparm.num_coupling_rows; i++)
     {
       coupling_row_t *r = &ctx->yparm.coupling_rows[i];
       if (!r->is_error)
       {
         fprintf(ctx->output_fp, "\n"
-                                " %4d %4d %5d  %4d %4d %5d  %9.3f"
-                                "  %12.5E %12.5E  %12.5E %12.5E",
+                                " %4d %4d %5d   %4d %4d %5d  %9.3f"
+                                "    %12.5E %12.5E   %12.5E %12.5E",
                 r->tag1, r->seg1, r->segno1,
                 r->tag2, r->seg2, r->segno2,
                 r->coupling_db,
@@ -517,6 +518,8 @@ static void write_coupling_data(context_t *ctx)
                 r->c_value);
       }
     }
+    /* Add newline after all coupling rows */
+    fprintf(ctx->output_fp, "\n");
   }
   
   /* Clear coupling rows after output so they don't accumulate between frequencies */
@@ -564,18 +567,20 @@ void write_frequency_step_output(FILE *file, context_t *ctx)
   write_loading_data(file, ctx);
   write_environment_data(file, ctx);
   
-  /* MATRIX TIMING is not output in the original Fortran NEC-2D format */
-  if (ctx->output_format != OUTPUT_FORMAT_ORIGINAL)
+  /* MATRIX TIMING is output in the original Fortran NEC-2D format */
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
     write_matrix_timing(file, ctx);
+  }
   
   write_network_data(file, ctx);
   write_matrix_asymmetry(file, ctx);
   write_network_excitation(file, ctx);
   write_antenna_input_parameters(file, ctx);
-  write_coupling_data(ctx);
   write_currents(file, ctx);
   write_patch_currents(file, ctx);
   write_power_budget(file, ctx);
+  write_coupling_data(ctx);
   write_radiation_pattern_header(file, ctx);
   write_radiation_pattern_data(file, ctx);
   write_average_power_gain(file, ctx);
@@ -614,20 +619,20 @@ void write_extra_pattern_output(FILE *file, context_t *ctx)
  */
 void write_subsequent_excitation_output(FILE *file, context_t *ctx, const deck_t *deck)
 {
-  /* Print blank lines and re-echo the data cards (EX, XQ) for this excitation,
-     matching Fortran's behavior of printing cards before each source output */
-  if (file != NULL && ctx != NULL) {
-    fprintf(file, "\n\n\n");
-    /* Note: In a full implementation, we would print the current EX and XQ
-       cards here to match Fortran exactly. For now, the cards are echoed once
-       at the beginning of the batch via write_batch_card_echo(). */
+  /* For the Fortran format, when processing subsequent EX/XQ pairs at the same
+     frequency, we re-echo the execution cards that follow the first XQ
+     in the batch, matching Fortran's behavior of printing cards before each
+     source output. */
+  if (file != NULL && ctx != NULL && deck != NULL && ctx->output_format == OUTPUT_FORMAT_ORIGINAL) {
+    fprintf(file, "\n\n");
+    write_remaining_execution_cards(file, ctx, deck);
   }
   
   write_antenna_input_parameters(file, ctx);
-  write_coupling_data(ctx);
   write_currents(file, ctx);
   write_patch_currents(file, ctx);
   write_power_budget(file, ctx);
+  write_coupling_data(ctx);
   write_radiation_pattern_header(file, ctx);
   write_radiation_pattern_data(file, ctx);
   write_average_power_gain(file, ctx);
@@ -1415,8 +1420,8 @@ static void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    /* Original Fortran format: 2 blank lines */
-    fprintf(file, "\n\n");
+    /* Original Fortran format: blank line padded to 101 chars, then blank lines */
+    fprintf(file, "%-101s\n\n\n", "");
   }
 }
 
@@ -1464,7 +1469,7 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
   // print the header
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    fprintf(file, "\n\n\n"
+    fprintf(file, "\n\n"
                   "                                 "
                   "- - - STRUCTURE SPECIFICATION - - -\n"
                   "\n"
@@ -1996,7 +2001,15 @@ static void write_input_cards_excluding_end(FILE *file, const context_t *ctx, co
     return;
   }
 
-  fprintf(file, "\n\n\n\n\n\n");
+  /* First batch (after structure spec) needs more spacing than subsequent batches */
+  if (!ctx->batch_cards_echoed)
+  {
+    fprintf(file, "\n\n\n\n\n\n\n");  // 7 newlines for first batch
+  }
+  else
+  {
+    fprintf(file, "\n\n\n\n");  // 4 newlines for subsequent batches
+  }
 
   /* Iterate through cards in this batch only, skipping EN and NX cards. */
   int card_number = card_number_offset;
@@ -2145,9 +2158,56 @@ void write_batch_card_echo(FILE *file, const context_t *ctx, const deck_t *deck)
   /* Number cards in this batch sequentially after all previous batches. */
   int offset = count_echoed_cards_in_range(deck, deck->geometry_end + 1,
                                             ctx->batch_start_card - 1);
+  
+  /* Find the first XQ in the batch to echo only up to there */
+  int first_xq_pos = -1;
+  for (int i = ctx->batch_start_card; i <= ctx->batch_end_card && i < deck->num_cards; i++) {
+    if (strncmp(deck->cards[i].card_code, "XQ", 2) == 0) {
+      first_xq_pos = i;
+      break;
+    }
+  }
+  
+  /* Echo from batch start to first XQ (or to batch_end if no XQ found) */
+  int echo_end = (first_xq_pos >= 0) ? first_xq_pos : ctx->batch_end_card;
   write_input_cards_excluding_end(file, ctx, deck,
-                                   ctx->batch_start_card, ctx->batch_end_card,
+                                   ctx->batch_start_card, echo_end,
                                    offset);
+}
+
+/******************************************************************************
+ * write_remaining_execution_cards()
+ *
+ * Echoes any execution cards (EX/XQ pairs) that come after the first XQ
+ * in the batch. Used when multiple executions are processed at the same
+ * frequency to match Fortran's behavior of echoing cards before each
+ * execution's output.
+ */
+static void write_remaining_execution_cards(FILE *file, const context_t *ctx, const deck_t *deck)
+{
+  if (file == NULL || ctx == NULL || deck == NULL)
+    return;
+
+  /* Find the first XQ in the batch */
+  int first_xq_pos = -1;
+  for (int i = ctx->batch_start_card; i <= ctx->batch_end_card && i < deck->num_cards; i++) {
+    if (strncmp(deck->cards[i].card_code, "XQ", 2) == 0) {
+      first_xq_pos = i;
+      break;
+    }
+  }
+
+  /* If there are cards after the first XQ, echo them */
+  if (first_xq_pos >= 0 && first_xq_pos < ctx->batch_end_card) {
+    /* Count cards echoed so far up to and including first XQ */
+    int offset = count_echoed_cards_in_range(deck, deck->geometry_end + 1,
+                                              first_xq_pos);
+    
+    /* Echo from after first XQ to batch end */
+    write_input_cards_excluding_end(file, ctx, deck,
+                                     first_xq_pos + 1, ctx->batch_end_card,
+                                     offset);
+  }
 }
 
 /******************************************************************************
@@ -2244,9 +2304,10 @@ void write_end_cards(FILE *file, const deck_t *deck)
 
     if (strncmp(card->card_code, "EN", 2) == 0)
     {
+      fprintf(file, "\n\n\n\n");
       if (found_rp && card->ints_used == 0 && card->flts_used == 0)
       {
-        fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d     %d  %d",
+        fprintf(file, " ***** DATA CARD NO. %2d   EN %3d%6d%6d%6d",
                 current_card_number,
                 last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
         for (int j = 1; j <= 6; j++)
@@ -2257,7 +2318,7 @@ void write_end_cards(FILE *file, const deck_t *deck)
       }
       else
       {
-        fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d     %d  %d",
+        fprintf(file, " ***** DATA CARD NO. %2d   EN %3d%6d%6d%6d",
                 current_card_number,
                 card->i[1], card->i[2], card->i[3], card->i[4]);
         for (int j = 1; j <= 6; j++)
@@ -2640,6 +2701,7 @@ static void write_matrix_timing(FILE *file, const context_t *ctx)
     fprintf(file, "  ");
     fprintf(file, fmt->matrix_factor_format, (int)(ctx->mat_factor_time * 1000.0));
   }
+  fprintf(file, "\n");  // Add newline after matrix timing
 }
 
 /******************************************************************************
@@ -2863,7 +2925,7 @@ static void write_antenna_input_parameters(FILE *file, const context_t *ctx)
 {
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
-    fprintf(file, "\n\n\n\n"
+    fprintf(file, "\n\n\n"
                   "                                          "
                   "- - - ANTENNA INPUT PARAMETERS - - -\n");
 
@@ -3173,7 +3235,7 @@ static void write_power_budget(FILE *file, const context_t *ctx)
                   "                                           "
                   "NETWORK LOSS  = %10.4E WATTS\n"
                   "                                           "
-                  "EFFICIENCY    = %6.2f PERCENT",
+                  "EFFICIENCY    = %6.2f PERCENT\n",
             ctx->netcx.power_in, tmp1, ctx->fpat.ohmic_loss, ctx->netcx.power_net_loss, tmp2);
   }
   else

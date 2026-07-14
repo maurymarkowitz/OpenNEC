@@ -1,21 +1,21 @@
 /*
- * reporting.h - produces NEC-2 style output reports for OpenNEC
+ * reporting.h - Card-by-Card Sequential Processing for OpenNEC
  *
- * This code replaces the implementation found in output.c, although
- * it also uses many of the work methods found there. The key difference
- * here is that it processes the entire instruction section of the deck
- * in a single loop, instead of trying to break the instructions up into
- * batches. It turns out that certain cards (like EX) can be repeated
- * across frequency steps, so getting the batch processing correct is tricky.
- * This version returns to the original Fortran layout, and differs mostly
- * in the names of the functions and status variables to make them more
- * obvious than things like "igo" and "iflow".
+ * Implements sequential (one-at-a-time) card processing following the
+ * original Fortran NEC-2 / nec2c design pattern. This replaces the batch-based
+ * approach in control.c with a simpler state machine that processes control
+ * cards in order until EN (end of deck).
  *
- * References:
- * - Fortran NEC: nec2dxs.f (lines 14, 40-120, 293-307)
- * - C port nec2c: main.c (lines 241, 306-580, 607-2025)
+ * Primary References:
+ * - Fortran NEC: ~/Downloads/Nec2dXS_src/nec2dxs.f
+ * - C port nec2c: ~/Developer/nec2c-1.3/main.c
+ *
+ * Key Differences from Batch Mode:
+ * - Card handlers only set state, no output
+ * - Frequency loop contains all fprintf inline
+ * - Simpler state management driven by card order
+ * - Output format uses Fortran style (OUTPUT_FORMAT_ORIGINAL)
  */
-
 
 #ifndef REPORTING_H
 #define REPORTING_H
@@ -28,10 +28,10 @@
  * @brief State variables maintained during card-by-card sequential processing.
  *
  * Corresponds to Fortran NEC-2 state variables:
- * - processing_stage (formerly IGO): Processing stage (1-5)
- * - card_sequence_state (formerly IFLOW): Card sequence flow (1-12)
- * - num_frequencies (formerly NFRQ): Number of frequencies
- * - current_frequency_mhz (formerly MHZ): Current frequency index
+ * - IGO: Processing stage (1-5)
+ * - IFLOW: Card sequence flow (1-12)
+ * - NFRQ: Number of frequencies
+ * - MHZ: Current frequency index
  * - etc.
  *
  * This structure persists across the entire deck (EN card), with some fields
