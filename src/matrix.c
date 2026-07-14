@@ -37,7 +37,7 @@ static void fill_patch_wire_matrix(context_t *restrict ctx, int j1, int j2, int 
 /* Formerly nec2c: cmws */
 static void fill_wire_patch_matrix(context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int itrp);
 /* Formerly nec2c: cmww */
-static void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int nw, int itrp);
+static void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *cw, int nw, int itrp);
 /* Formerly nec2c: qdsrc */
 void charge_discontinuity_source(context_t *restrict ctx, int is, complex double v, complex double *restrict e);
 
@@ -572,7 +572,7 @@ void fill_wire_patch_matrix(context_t *restrict ctx, int j, int i1, int i2, comp
 /* cmww computes matrix elements for wire-wire interactions */
 /* Formerly nec2c: cmww */
 void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
-    int nr, complex double *restrict cw, int nw, int itrp)
+    int nr, complex double *cw, int nw, int itrp)
  {
   int ipr, iprx, i, ij, jx;
   double xi, yi, zi, ai, cabi, sabi, salpi;
