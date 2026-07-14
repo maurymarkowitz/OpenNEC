@@ -994,8 +994,8 @@ static void nc_track_expr_vars(ncr_t *s, const char *expr)
             }
         }
         if (!already && s->n_used_vars < NCR_MAX_VARS) {
-            strncpy(s->used_vars[s->n_used_vars++], expr_idents[i], 63);
-            s->used_vars[s->n_used_vars-1][63] = '\0';
+            strncpy(s->used_vars[s->n_used_vars++], expr_idents[i], sizeof(s->used_vars[0]) - 1);
+            s->used_vars[s->n_used_vars-1][sizeof(s->used_vars[0]) - 1] = '\0';
         }
     }
 }
@@ -1175,7 +1175,7 @@ static int ncr_wire(ncr_t *s, const char *argstr, deck_t *deck,
         }
     }
 
-    char buf[512];
+    char buf[2100];  /* Large enough for 8 expressions of 256 bytes each + format string */
     snprintf(buf, sizeof buf,
              "GW %d, %s, %s, %s, %s, %s, %s, %s, %s",
              tag, xa[7],
@@ -1455,7 +1455,7 @@ static void ncr_func(ncr_t *s, const char *func, const char *argbuf,
         char eps[256], sig[256];
         expand_expr(args[0], eps, sizeof eps);
         expand_expr(args[1], sig, sizeof sig);
-        char buf[512];  /* Increased from 256 to safely accommodate format string */
+        char buf[600];  /* Increased to safely accommodate two 256-byte expressions */
         int gn_type = s->sommerfeld ? 2 : 0;
         snprintf(buf, sizeof buf, "GN %d, 0, 0, 0, %s, %s", gn_type, eps, sig);
         if (!s->have_gn) { post_add(post, np, maxp, buf); s->have_gn = true; }
@@ -1638,7 +1638,8 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
                     }
                 }
                 if (!already && s->n_used_vars < NCR_MAX_VARS) {
-                    strncpy(s->used_vars[s->n_used_vars], expr_idents[i], sizeof(s->used_vars[s->n_used_vars]));
+                    strncpy(s->used_vars[s->n_used_vars], expr_idents[i], sizeof(s->used_vars[s->n_used_vars]) - 1);
+                    s->used_vars[s->n_used_vars][sizeof(s->used_vars[s->n_used_vars]) - 1] = '\0';
                     s->n_used_vars++;
                 }
             }
@@ -1654,14 +1655,16 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
         }
         if (assigned_index < 0 && s->n_syv < NCR_MAX_VARS) {
             assigned_index = s->n_syv;
-            strncpy(s->sy_vars[s->n_syv], ident, sizeof(s->sy_vars[s->n_syv]));
+            strncpy(s->sy_vars[s->n_syv], ident, sizeof(s->sy_vars[s->n_syv]) - 1);
+            s->sy_vars[s->n_syv][sizeof(s->sy_vars[s->n_syv]) - 1] = '\0';
             s->sy_assigned[s->n_syv] = false;
             s->sy_values[s->n_syv][0] = '\0';
             s->n_syv++;
         }
         if (assigned_index >= 0) {
             s->sy_assigned[assigned_index] = true;
-            strncpy(s->sy_values[assigned_index], expr, sizeof(s->sy_values[assigned_index]));
+            strncpy(s->sy_values[assigned_index], expr, sizeof(s->sy_values[assigned_index]) - 1);
+            s->sy_values[assigned_index][sizeof(s->sy_values[assigned_index]) - 1] = '\0';
         }
 
         /* check if 'c' constant is needed */
