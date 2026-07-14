@@ -771,6 +771,8 @@ static void nc_semi(const char **pp)
  * Split a balanced-comma-separated argument string into out[0..max-1].
  * Respects nested parentheses.  Returns argument count.
  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 static int nc_split(const char *s, char out[][256], int max)
 {
     int n = 0, depth = 0, di = 0;
@@ -802,6 +804,7 @@ static int nc_split(const char *s, char out[][256], int max)
     if (*t && n < max) { strncpy(out[n++], t, sizeof(out[0]) - 1); out[n-1][sizeof(out[0]) - 1] = '\0'; }
     return n;
 }
+#pragma GCC diagnostic pop
 
 /* -------------------------------------------------------------------------
  * NC reader state definitions
@@ -849,6 +852,8 @@ typedef struct {
  * Extract all identifiers from an expression string into the given array.
  * Returns count of unique identifiers found.
  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 static int nc_extract_identifiers(const char *expr, char idents[][64], int max)
 {
     int count = 0;
@@ -897,6 +902,7 @@ static int nc_extract_identifiers(const char *expr, char idents[][64], int max)
     
     return count;
 }
+#pragma GCC diagnostic pop
 
 /**
  * Scan the control() block text (starting at first 'control') and extract
@@ -979,6 +985,8 @@ static int nc_scan_control_vars(const char *text, char vars[][64], int max)
 /**
  * Helper: add identifiers from an expression to the used_vars list
  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 static void nc_track_expr_vars(ncr_t *s, const char *expr)
 {
     if (!expr || !*expr) return;
@@ -999,6 +1007,7 @@ static void nc_track_expr_vars(ncr_t *s, const char *expr)
         }
     }
 }
+#pragma GCC diagnostic pop
 
 /* -------------------------------------------------------------------------
  * Expression transformation: NC → tinyexpr-compatible
@@ -1140,6 +1149,8 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp);
  * Returns the assigned tag number, or -1 on error.
  * *seg_out receives the (expanded) segment-count expression.
  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 static int ncr_wire(ncr_t *s, const char *argstr, deck_t *deck,
                     char *seg_out, int seg_sz)
 {
@@ -1185,6 +1196,7 @@ static int ncr_wire(ncr_t *s, const char *argstr, deck_t *deck,
     append_card_from_text(deck, buf);
     return tag;
 }
+#pragma GCC diagnostic pop
 
 /* -------------------------------------------------------------------------
  * Resolve an element-or-inline-wire argument
@@ -1685,6 +1697,8 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
 /**
  * @copydoc read_deck_nc
  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 int read_deck_nc(context_t *ctx, deck_t *deck, FILE *fp, errors_list_t *errors)
 {
     if (!deck || !fp) return -1;
@@ -1990,3 +2004,4 @@ int read_deck_nc(context_t *ctx, deck_t *deck, FILE *fp, errors_list_t *errors)
     free(buf);
     return 0;
 }
+#pragma GCC diagnostic pop
