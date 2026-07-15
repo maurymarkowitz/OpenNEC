@@ -12,9 +12,11 @@ This software is released under the MIT license. See [LICENSE](LICENSE) for deta
 Introduction
 ------------
 
-OpenNEC is an implementation of the NEC-2 code written in the C programming language. It is used to simulate the reception and transmission patterns of radio frequency antennas. The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". Decks are stored in text files with a `.nec` extension, or more rarely, `.deck`.
+OpenNEC is an implementation of the NEC2 code written in the C programming language. It is used to simulate the reception and transmission patterns of radio frequency antennas. The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". Decks are stored in text files with a `.nec` extension, or more rarely, `.deck`.
 
-OpenNEC will read the design in the deck and can run a number of calculations to determine the antenna's performance. The output can be read directly, or exported to a text file, normally with an `.out` extension. It can also provide warnings about common design problems, and import and export decks to and from other common antenna file formats. OpenNEC uses the latest features of modern computers and runs much faster than older implementations.
+OpenNEC will read the design in the deck and can run a number of calculations to determine the antenna's performance. The output can be read directly, or exported to a text file, normally with an `.out` extension. It can also provide warnings about common design problems, and import and export decks to and from other common antenna file formats.
+
+OpenNEC uses the latest features of modern computers and runs much faster than older implementations.
 
 Installing OpenNEC
 ------------------
@@ -23,16 +25,16 @@ The latest source code and binaries can be found at:
 
 https://github.com/maurymarkowitz/OpenNEC/releases
 
-Binaries are built for macOS, Linux and Windows. On Linux and Windows they are built in versions that use the original built-in math code, as well as versions using the much faster OpenBLAS code. The macOS version always uses BLAS, through Apple's Accelerate framework. The programs be installed by downloading the appropriate .zip file and unzipping into any convenient location.
+Binaries are available for macOS, Linux and Windows. The programs be installed by downloading the appropriate .zip file and unzipping into any convenient location. On Linux and Windows they are built in versions that use the original built-in math code, as well as versions using the much faster BLAS code. The macOS version always uses BLAS, using Apple's built-in Accelerate framework.
 
-On macOS and Linux, you can use homebrew:
+On macOS and Linux, you can also use homebrew to install:
 
 ```
 brew tap maurymarkowitz/tap https://github.com/maurymarkowitz/homebrew-tap
 brew install maurymarkowitz/tap/onec
 ```
 
-On Apple Silicon, the executable will be installed to `/opt/homebrew` instead of `/usr/local` in keeping with Homebrew standards.
+On Apple Silicon systems, the executable will be installed to `/opt/homebrew` instead of `/usr/local` in keeping with Homebrew standards.
 
 On Windows, you can use scoop:
 
@@ -44,18 +46,18 @@ scoop install onec
 Building OpenNEC
 ----------------
 
-You can also easily build the project from source. It is a makefile project that does not require `autoconfig` or other steps. A simple `make` in the root directory should produce a working executable on practically any unix-like system. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](docs/BUILD.md).
+You can also build the project from source. It is a makefile project that does not require `autoconfig` or other steps. A simple `make` in the root directory should produce a working executable on practically any unix-like system. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](docs/BUILD.md).
 
 Windows compatibility is provided using MinGW, which needs to be installed manually. The same makefile is used for both Unix and Windows, and the `make` utility supplied with MinGW works perfectly. See [BUILD-WINDOWS](docs/BUILD-WINDOWS.md) for details.
 
-Both platforms support `make install` which adds the manuals to the proper locations, and `make uninstall` to cleanly remove all the parts.
+Both platforms support `make install` which adds the documentation and example files to the proper locations, and `make uninstall` to cleanly remove all the parts.
 
 Running OpenNEC
 ---------------
 
 OpenNEC includes a command-line interace, `onec`, that can be used to parse decks from the shell, and will write the calculated results to `stdout` or to a specific file using the `-o` flag.
 
-It is normally invoked from your unix shell, `Terminal` on macOS, or `CMD` on Windows. To run it, use a command similar to this example, replacing the "<FILE/PATH>" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
+It is normally invoked from your unix shell, Terminal on macOS, or CMD or PowerShell on Windows. To run it, use a command similar to the following example, replacing the "<FILE/PATH>" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
 
 ```./onec [options] <FILE/PATH>...```
 
@@ -123,7 +125,7 @@ OpenNEC has built-in readers and writers for various 3rd party file formats. For
 
 ```./onec example.maa```
 
-This will read the MMANA-GAL format `example.maa` file, convert it to NEC format, and then run the simulations.
+This will read the MMANA-GAL format `example.maa` file, convert it to NEC format, and then run the simulations and produce a .out file.
 
 OpenNEC can also write files in various formats using the `-w` option. This is normally used with a "bare" extension like `.nec`, but you can also provide a complete filename if you wish to rename the converted deck. In most cases, you use something like:
 
@@ -160,7 +162,7 @@ There are a number of limitations in these importers as the various formats supp
 
 OpenNEC concept
 ---------------
-OpenNEC's code ultimately traces its history to the NEC-2 Fortran code released by Lawrence Livermore in the early 1980s. A port from Fortran to C using an automated conversion tool was made by Neoklis Kyriazis in the nec2c program which was first released on 20 August 2003. OpenNEC was originally forked from the 1.3 version of nec2c, which Kyriazis released in 2014. Although initially conceived a simple update to nec2c, OpenNEC was eventually completely re-written, but an effort was made to keep the overall layout of the nec2c project for familiarity.
+OpenNEC's code ultimately traces its history to the NEC2 Fortran code released by Lawrence Livermore in the early 1980s. A port from Fortran to C using an automated conversion tool was made by Neoklis Kyriazis in the nec2c program which was first released on 20 August 2003. OpenNEC was originally forked from the 1.3 version of nec2c, which Kyriazis released in 2014. Although initially conceived a simple update to nec2c, OpenNEC was eventually completely re-written, but an effort was made to keep the overall layout of the nec2c project for familiarity.
 
 The primary difference between OpenNEC and nec2c is its form; nec2c is a command-line program, while most of the OpenNEC code is in the form of a static library. This allows OpenNEC to be embedded in any program written in a language that provides access to C libraries, like Rust, Java, or Swift. The optional `main.c` included in the project wraps the library to provide a command line tool similar to the original nec2c, but adds a number of new command line switches to provide finer control over execution and many new options.
 
@@ -174,8 +176,7 @@ OpenNEC also adds many of the features found in the popular 4nec2 program on Win
 
 Known limitations
 -----------------
-* OpenNEC does not currently implement the IT and OP cards from 4nec2.
-* NEC-4 cards like CW and IS are not currently supported.
+* NEC4 cards like CW and IS are not currently supported.
 
 Acknowledgements
 ----------------
