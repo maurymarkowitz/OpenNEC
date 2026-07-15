@@ -22,17 +22,6 @@ Summary of findings
 Key findings
 ------------
 
-### Headers are effectively required
-
-934 of 935 files contain `***Wires***` and other `***…***` section headers.
-The single headerless file (`40m 2E Wire Beam.maa`) is in fact a valid NEC deck
-saved with the wrong extension — it contains CM/CE/SY/GW/GE/EX/FR/EN cards and
-is not a MMANA file at all.
-
-The `MMA file format.md` grammar says headers are optional ("purely cosmetic").
-**The data shows headers should be treated as expected** and the grammar should
-be revised accordingly.
-
 ### Two distinct file variants
 
 **Variant A** (729 files, ≈ 78 %):
