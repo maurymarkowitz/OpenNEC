@@ -7,17 +7,17 @@ Introduction
 [cocoaNEC](https://www.w7ay.net/site/Applications/cocoaNEC/index.html) is a macOS antenna modeling system written starting in 2002 by Kok Chen (W7AY). It provides  a GUI interface to the nec2c engine, and allows the antenna description to be entered  in three formats:
 
 * "spreadsheet" mode, which saves an XML document with a `.nec` extension
-* "deck" mode, which saves a traditional NEC-2 file with a `.deck` extension
+* "deck" mode, which saves a traditional NEC2 file with a `.deck` extension
 * "NC" mode, short for "NEC C", which saves a *program* with a `.nc` extension
 
 This document describes the NC format and how it can be used in a traditional NEC engine like OpenNEC. OpenNEC includes both an importer and an exporter for the cocoaNEC `.nc` scripting language; the implementation covers a practical subset sufficient to round-trip the example `.nc` files included with this repository. In contrast to some other formats, like `.EZ`, NC maps 1 to 1 onto NEC constructs, and conversion is always possible with no loss of information.
 
-The choice of `.nec` for a non-NEC file, and `.deck` for those that *are* NEC format, is unfortunate as it means the default behaviour when opening one of these files may result in the wrong internal code being called.
+The choice of `.nec` for a non-NEC file and `.deck` for those that *are* NEC format is unfortunate as it means the default behaviour when opening one of these files may result in the wrong internal code being called.
 
 Format overview
 ---------------
 
-An NC file is plain text. It is compiled by cocoaNEC into a NEC-2 card deck before being sent to the solver. The structure is:
+An NC file is plain text. It is compiled by cocoaNEC into a NEC2 card deck before being sent to the solver. The structure is:
 
 ```
 [global comments]
