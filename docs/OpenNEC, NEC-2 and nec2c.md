@@ -32,6 +32,10 @@ Changes from nec2c
 Other basic changes
 -------------------
 
+- onec fixes a notorious bug in the geometry system that caused NEC to go into an infinite loop when segments were connected improperly. The program exits gracefully in this case, with a clear error message.
+
+- onec also fixes a number of other bugs in nec2c, including known issues in the somnec calculations.
+
 - onec adds a generic extension system that allows arbitrary data to be stored in cards in a compatible fashion. See the [OpenNEC file format](OpenNEC%20file%20format.md) document for details.
 
 - onec has extensively updated error reporting that, wherever possible, reports the card and tag that caused the issue. This makes debugging stacks much easier.
@@ -43,8 +47,6 @@ Other basic changes
 Note: Most validations are emitted as warnings (non-fatal) to preserve compatibility with existing decks while highlighting potential issues.
 
 - onec also includes per-field validations that can be used by a GUI program to graphically indicate problems. For instance, if the user makes a new FR card, the validation functions will indicate that the base frequency value in the F1 field needs to be entered. If they enter a value in I2, which indicates steps, it will then indicate that a step value has to be entered in F2. There is an extensive suite of these validations that can be tied to fields in the GUI and updated in real-time.
-
-- onec fixes a notorious bug in the geometry system that caused the program to go into an infinite loop when segments were connected improperly. The program exits gracefully in this case, with a clear error message.
 
 - onec adds a simple timing function inspired by the original NEC-2 user manual that can be used to estimate the time it will take to run a calculation. This can be used in a GUI program to decide whether it can run these in real-time as the user edits the layout.
 
