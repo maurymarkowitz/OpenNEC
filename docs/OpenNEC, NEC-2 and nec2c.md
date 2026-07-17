@@ -74,7 +74,9 @@ Many of the alternative calculation engines available are modified versions of t
 
 4nec2 is a powerful GUI program for Windows machines by Arie Voors, started in the 1990s and seeing continual development since then. Over time, it added a number of features like formulas and additional NEC options like EX 6.
 
-4nec2 uses external engines to perform the calculations. These are built using various options based on the original Fortran code, changing the amount of memory or the way it is used. nec2d-XS is a further extended version that adds an Extended Sommerfeld option allows users to compute more accurate near-field results in certain scenarios by using a more rigorous treatment of the ground plane effects.
+4nec2 uses external engines to perform the calculations. The 4nec2 package comes with several compiled versions of the original Fortran code, each changing the number of segments it can support with the tradeoff that the "larger" versions require more memory to run. This was an important feature at the time 4nec2 was first written, although today any machine can run the largest models and the "smaller" versions offer little utility.
+
+The current nec2d-XS versions are further modified to add the eXtended Sommerfeld option that allows users to compute more accurate near-field results in certain scenarios by using a more rigorous treatment of the ground plane effects. These modifications are also supported in OpenNEC.
 
 The nec2d-XS source code can be found here:
 
@@ -82,7 +84,7 @@ https://www.qsl.net/4nec2/supfiles.htm
 
 ### NEC2/MP
 
-NEC2/MP was a version of the original code that was re-written to run on multi-processor systems and designed to be used as a replacement for nec2d on 4nec2. It was released only in binary form. The last known update was from 2012, and the author's web page - the only source for downloads - has since disappeared. Nevertheless, there are many references to this software on the 'net, so for completeness here is an archive link to the original page:
+NEC2/MP was a version of the original code that was re-written to run on multi-processor systems and designed to be used as a replacement for nec2d in 4nec2. It was released only in binary form. The last known update was from 2012, and the author's web page - the only source for downloads - has since disappeared. Nevertheless, there are many references to this software on the 'net, so for completeness here is an archive link to the original page:
 
 https://web.archive.org/web/20130502013310/http://users.otenet.gr/~jmsp/
 

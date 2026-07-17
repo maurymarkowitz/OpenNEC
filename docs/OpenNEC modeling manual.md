@@ -49,14 +49,22 @@ OpenNEC is a modern C re-implementation of NEC-2, designed to run on macOS, Linu
 
 ### How a simulation works
 
-A simulation runs in four phases:
+NEC-2 was originally written for multi-million dollar machines that had a maximum of 128 kW of memory and could operate under perfect conditions at 3 MFLOP. When it was released to the public in the 1980s, the average high-end desktop system had perhaps 256 kB of memory and offered 1 MFLOP. 
 
-1. **Geometry calculation:** the wire segment endpoints, midpoints, half-lengths, and connection data are computed from the GW (and GA, GH, GM, GR, GX, GS) cards.
+In order to use as little memory as possible, and thus be able to process larger models, the original code operated in several stages, each one deliberately "forgetting" any intermediate calculations to free up that space for the next stage. For instance, the system was designed to read in the comment cards at the top of the deck, print them to the line printer, and then forget it ever saw them - even the tiny amount of memory used to store the comment strings cost hundreds of dollars and could not be wasted.
+
+The simulation itself runs in four phases:
+
+1. **Geometry calculation:** the wire segment endpoints, midpoints, half-lengths, and connection data are computed from the GW (and GA, GH, GM, GR, GX, GS) cards and stored in a compact intermediate format.
 2. **Matrix fill and factor:** the impedance matrix **Z** is assembled from contributions between all pairs of segments, then factored (LU decomposition). This is the most time-consuming step and scales as O(N³) in the number of segments N.
 3. **Frequency loop:** for each requested frequency, the excitation vector **V** is assembled from EX cards, **Z**·**I** = **V** is solved for **I**, and the requested output (currents, near fields, radiation pattern) is computed from **I**.
 4. **Output:** Unlike most NEC engines, which output values as they run, OpenNEC gathers up all data and outputs it in a single step.
 
-A key difference between OpenNEC and other engines is that step 4 can be skipped if it is being used as an embedded library. Instead, the wrapper program can simply read the numeric data directly, elimintaing the need to parse the output back into numeric format.
+NEC used a loop for stage 3 as it was often the case that designers would want to see how their design operated across a range of frequencies, and the calculations for this stage are all based on the same original geometry and matrix so there is no need to recalculate them. This simplification can dramatically improve overall performance of common simulation runs. Other changes, like trying to find the optimal element length or changing a matching inductor, require some or all of these values to be updated, and could not be automated in the same fashion. Modern NEC-based programs generally offer these features by running multiple modified decks and then collecting the results.
+
+As this is being written, the current base-model iPhone 17 ships with 8 GB of memory and runs at just under 3 TFLOP, that is, 62 thousand times as much memory and 1 million times faster. Many of the earlier simplifications are no longer nessesary and OpenNEC removes any hard-coded limitations that are no longer needed. For instance, OpenNEC parses the deck all at once and then converts that into a detailed in-memory representation which it retains. This has a minor effect on performance, but has the major advantage that the calculation code can refer to the original cards if problems are encountered, which offers much better error reporting.
+
+In terms of the simulation loop, the only major difference between OpenNEC and other engines is that step 4 can be skipped if it is being used as an embedded library. Instead, the wrapper program can simply read the resulting numeric data directly, elimintaing the need to parse the output back into numeric format. This can greatly speed the round-trip of sending in a deck, running the simulation, and parsing the output, to the point where OpenNEC can be used real-time on most real-world designs.
 
 II. Units, symbols, and formulas
 --------------------------------
@@ -217,7 +225,7 @@ When a number of radial wires are specified in the GN card, their effect is appr
 
 #### Two-medium ground / cliff edge (GD card)
 
-A linear or circular cliff may be defined using the GD card, specifying different ground parameters and height on opposite sides. The cliff is applied during far-field computation only; it does not affect the near-field interaction matrix. This option is suitable for coastal or terrain-discontinuity studies.
+A linear or circular cliff can be defined using the GD card, specifying different ground parameters and height on opposite sides. The cliff is applied during far-field computation only; it does not affect the near-field interaction matrix. This option is suitable for coastal or terrain-discontinuity studies.
 
 IV. Program input
 -----------------
@@ -251,7 +259,7 @@ Marks the boundary between the comment block and the geometry section. An option
 
 #### !, ' and #: alternative comment formats
 
-As NEC-2 became more common, various authors added new cards to allow comments to be inserted anywhere in the deck. These were simply dropped from the list of cards as they were fed into the various pre-existing NEC functions. There was no standard for these, so different authors added whatever was most familiar to them; the original LLNL team used `!` because that was what is normally used in Fortran, PC authors generally used `'`, the short-form marker for `REM` in MS BASIC, and nec2c used `#`. OpenNEC supports all of these markers.
+As NEC-2 became more common, various authors added new cards to allow comments to be inserted anywhere in the deck. These were simply dropped from the list of cards as they were fed into the various pre-existing NEC functions. There was no standard for these, so different authors added whatever was most familiar to them; the original LLNL team used `!` because that was what is normally used in Fortran, PC authors generally used `'`, the short-form marker for `REM` in MS BASIC, and nec2c used `#`, which is common in many scripting engines. OpenNEC supports all of these markers.
 
 It is also common to allow these extended markers to be used at the end of a card, to document anything interesting on that card. However, nec2c's `#` is more commonly used in other engines to indicate an AWG wire gauge. For that reason, OpenNEC only treats a `#` as a comment marker if it is at the start of the line. `'` or `!` should generally be used instead, and judging by the decks found on the internet, `'` seems to be most common.
 
