@@ -771,8 +771,10 @@ static void nc_semi(const char **pp)
  * Split a balanced-comma-separated argument string into out[0..max-1].
  * Respects nested parentheses.  Returns argument count.
  */
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
+#endif
 static int nc_split(const char *s, char out[][256], int max)
 {
     int n = 0, depth = 0, di = 0;
@@ -804,7 +806,9 @@ static int nc_split(const char *s, char out[][256], int max)
     if (*t && n < max) { strncpy(out[n++], t, sizeof(out[0]) - 1); out[n-1][sizeof(out[0]) - 1] = '\0'; }
     return n;
 }
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 
 /* -------------------------------------------------------------------------
  * NC reader state definitions
@@ -852,8 +856,10 @@ typedef struct {
  * Extract all identifiers from an expression string into the given array.
  * Returns count of unique identifiers found.
  */
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
+#endif
 static int nc_extract_identifiers(const char *expr, char idents[][64], int max)
 {
     int count = 0;
@@ -902,7 +908,9 @@ static int nc_extract_identifiers(const char *expr, char idents[][64], int max)
     
     return count;
 }
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 
 /**
  * Scan the control() block text (starting at first 'control') and extract
@@ -985,8 +993,10 @@ static int nc_scan_control_vars(const char *text, char vars[][64], int max)
 /**
  * Helper: add identifiers from an expression to the used_vars list
  */
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
+#endif
 static void nc_track_expr_vars(ncr_t *s, const char *expr)
 {
     if (!expr || !*expr) return;
@@ -1007,7 +1017,9 @@ static void nc_track_expr_vars(ncr_t *s, const char *expr)
         }
     }
 }
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 
 /* -------------------------------------------------------------------------
  * Expression transformation: NC → tinyexpr-compatible
@@ -1149,8 +1161,10 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp);
  * Returns the assigned tag number, or -1 on error.
  * *seg_out receives the (expanded) segment-count expression.
  */
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
+#endif
 static int ncr_wire(ncr_t *s, const char *argstr, deck_t *deck,
                     char *seg_out, int seg_sz)
 {
@@ -1196,7 +1210,9 @@ static int ncr_wire(ncr_t *s, const char *argstr, deck_t *deck,
     append_card_from_text(deck, buf);
     return tag;
 }
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 
 /* -------------------------------------------------------------------------
  * Resolve an element-or-inline-wire argument
@@ -1650,10 +1666,14 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
                     }
                 }
                 if (!already && s->n_used_vars < NCR_MAX_VARS) {
+                    #if defined(__GNUC__) && !defined(__clang__)
                     #pragma GCC diagnostic push
                     #pragma GCC diagnostic ignored "-Wstringop-truncation"
+                    #endif
                     strncpy(s->used_vars[s->n_used_vars], expr_idents[i], sizeof(s->used_vars[s->n_used_vars]) - 1);
+                    #if defined(__GNUC__) && !defined(__clang__)
                     #pragma GCC diagnostic pop
+                    #endif
                     s->used_vars[s->n_used_vars][sizeof(s->used_vars[s->n_used_vars]) - 1] = '\0';
                     s->n_used_vars++;
                 }
@@ -1670,10 +1690,14 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
         }
         if (assigned_index < 0 && s->n_syv < NCR_MAX_VARS) {
             assigned_index = s->n_syv;
+            #if defined(__GNUC__) && !defined(__clang__)
             #pragma GCC diagnostic push
             #pragma GCC diagnostic ignored "-Wstringop-truncation"
+            #endif
             strncpy(s->sy_vars[s->n_syv], ident, sizeof(s->sy_vars[s->n_syv]) - 1);
+            #if defined(__GNUC__) && !defined(__clang__)
             #pragma GCC diagnostic pop
+            #endif
             s->sy_vars[s->n_syv][sizeof(s->sy_vars[s->n_syv]) - 1] = '\0';
             s->sy_assigned[s->n_syv] = false;
             s->sy_values[s->n_syv][0] = '\0';
@@ -1681,10 +1705,14 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
         }
         if (assigned_index >= 0) {
             s->sy_assigned[assigned_index] = true;
+            #if defined(__GNUC__) && !defined(__clang__)
             #pragma GCC diagnostic push
             #pragma GCC diagnostic ignored "-Wstringop-truncation"
+            #endif
             strncpy(s->sy_values[assigned_index], expr, sizeof(s->sy_values[assigned_index]) - 1);
+            #if defined(__GNUC__) && !defined(__clang__)
             #pragma GCC diagnostic pop
+            #endif
             s->sy_values[assigned_index][sizeof(s->sy_values[assigned_index]) - 1] = '\0';
         }
 
@@ -1706,8 +1734,10 @@ static void ncr_stmt(ncr_t *s, deck_t *deck, char **post, int *np, int maxp)
 /**
  * @copydoc read_deck_nc
  */
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
+#endif
 int read_deck_nc(context_t *ctx, deck_t *deck, FILE *fp, errors_list_t *errors)
 {
     if (!deck || !fp) return -1;
@@ -2013,4 +2043,6 @@ int read_deck_nc(context_t *ctx, deck_t *deck, FILE *fp, errors_list_t *errors)
     free(buf);
     return 0;
 }
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
+#endif

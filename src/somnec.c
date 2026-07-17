@@ -909,8 +909,10 @@ void romberg_integrate_1d(context_t *ctx, int n, complex double *sum, int nx )
 /* Formerly nec2c: saoa */
 /* Suppress -Wmaybe-uninitialized: b0 and b0p are always initialized by either
    bessel() or hankel(), exactly as in the original Fortran SAOA subroutine. */
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 void sommerfeld_asymptotic(context_t *ctx, double t, complex double *ans)
 {
   double xlr;
@@ -1005,4 +1007,6 @@ void sommerfeld_asymptotic(context_t *ctx, double t, complex double *ans)
 
   return;
 }
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
