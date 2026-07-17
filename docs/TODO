@@ -16,7 +16,7 @@ Items still to be implemented:
 
 * add handlers for ITeration and OPtimization cards, which produce multiple output runs from a single deck. in onec these should be processed out into some sort of "run" or "simulate" object with any differences from the original definitions. It is not clear whether these are really used in the wild, or if this is entirely in the 4nec2 UI.
 
-* Add NEC-4 cards:
+* Add NEC4 cards:
 ** 4nec2's NEC4 examples (see Catenary.nec), has "CW", "IS", "VC" and "UM"
 ** cebik's NEC4 files have "VC", "CW", "UM", "IS", "LE", "LH" and "PS" cards
 ** nec2++ examples/medium_test.nec has an "MP" card type

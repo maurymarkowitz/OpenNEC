@@ -1,4 +1,4 @@
-EZNEC ".EZ" File Format
+EZNEC `.EZ` File Format
 =======================
 
 Introduction

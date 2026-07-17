@@ -7,17 +7,19 @@ Introduction
 [cocoaNEC](https://www.w7ay.net/site/Applications/cocoaNEC/index.html) is a macOS antenna modeling system written starting in 2002 by Kok Chen (W7AY). It provides  a GUI interface to the nec2c engine, and allows the antenna description to be entered  in three formats:
 
 * "spreadsheet" mode, which saves an XML document with a `.nec` extension
-* "deck" mode, which saves a traditional NEC-2 file with a `.deck` extension
+* "deck" mode, which saves a traditional NEC2 file with a `.deck` extension
 * "NC" mode, short for "NEC C", which saves a *program* with a `.nc` extension
 
-This document describes the NC format and how it can be used in a traditional NEC engine like OpenNEC. OpenNEC includes both an importer and an exporter for the cocoaNEC `.nc` scripting language; the implementation covers a practical subset sufficient to round-trip the example `.nc` files included with this repository. In contrast to some other formats, like `.EZ`, NC maps 1 to 1 onto NEC constructs, and conversion is always possible with no loss of information.
+The choice of `.nec` for a non-NEC file and `.deck` for those that *are* NEC format is unfortunate as it means the default behaviour when opening one of these files may result in the wrong internal code being called.
 
-The choice of `.nec` for a non-NEC file, and `.deck` for those that *are* NEC format, is unfortunate as it means the default behaviour when opening one of these files may result in the wrong internal code being called.
+In contrast to some other formats, like `.EZ`, NC antenna descriptions map 1 to 1 onto NEC constructs, and conversion is always possible with no loss of information. However, the purpose of NC is to allow certain values to be scripted, for instance by changing the length of one of the elements, and this cannot be directly converted into NEC.
+
+This document describes the NC format and how it can be used in a traditional NEC engine like OpenNEC. OpenNEC includes both an importer and an exporter for the cocoaNEC `.nc` scripting language; the implementation covers a practical subset sufficient to round-trip the example `.nc` files included with this repository.
 
 Format overview
 ---------------
 
-An NC file is plain text. It is compiled by cocoaNEC into a NEC-2 card deck before being sent to the solver. The structure is:
+An NC file is plain text. It is compiled by cocoaNEC into a NEC2 card deck before being sent to the solver. The structure is:
 
 ```
 [global comments]
@@ -36,11 +38,11 @@ model ( "model name" ) {
 - Whitespace (space, tab, newline) is ignored.
 - Every statement ends with a semicolon `;`.
 - Braces `{ }` group compound statements.
-- The model name string (e.g. `"dipole"`) becomes the NEC-2 `CM` / `CE` comment card.
+- The model name string (e.g. `"dipole"`) becomes the NEC2 `CM` / `CE` comment card.
 
 ## Syntax example
 
-The simplest possible NC file that produces input...
+The simplest possible NC file that produces output...
 
 ```
 model ( "dipole" )
@@ -48,14 +50,12 @@ model ( "dipole" )
     voltageFeed( wire( 0, -5, 12, 0, 5, 12, 0.01, 21 ), 1, 0 ) ;
 }
 ```
-Comments
---------
 
-The `model()` directive includes a title. If such a name is present, it is inserted into the output deck as a leading `CM` line. NC also allows comments at any point in the deck, and the conversion treats these differently depending on where they appear:
+The `model()` directive includes a title. If such a name is present, it is inserted into the output NEC deck as a leading `CM` line. NC also allows comments at any point in the deck, and the conversion treats these differently depending on where they appear:
 
-- if the comment appears before the `model`, it will be added to the comment block at the top of the deck. If there is also a title in the `model`, an empty CM will be added to make it more readable.
+- if the comment appears before the `model`, it will be added to the comment block at the top of the deck. If there is also a title in the `model`, an empty CM will be added after it and before other comments to make it more readable.
 - if the comment appears within `model` section, on its own line, a new `!` type comment card will be inserted at that same point in the output deck.
-- if the comment is within `model` section and is at the end of a non-comment line, it will be insertedas a `!` comment at the end of that line.
+- if the comment is within `model` section and is at the end of a non-comment line, it will be inserted as a `!` comment at the end of that line.
 - comments found in parts of the NC we do not read are not retained.
 
 Variable Declarations
@@ -64,7 +64,7 @@ Variable Declarations
 Variables must be declared before use. A declaration names a type followed by one or
 more comma-separated identifiers, ending with `;`.
 
-| NC type     | NEC-2 equivalent | Notes |
+| NC type     | NEC2 equivalent | Notes |
 |-------------|-----------------|-------|
 | `int`       | integer constant | Boolean true = 1, false = 0 |
 | `real`      | floating-point constant | |
@@ -81,7 +81,7 @@ Variables declared at global scope map directly to `SY` (symbol) cards when thei
 
 cocoaNEC uses unit suffixes in a fashion similar to OpenNEC and 4nec2, that is, one can add a unit to a measurement like "10in" in any field or formula.
 
-cocoaNEC differs from OpenNEC in that it also supports the alternative way of writing feet and inches, using the `'` and `"` characters. These are both used for other purposes in NEC decks, and cannot be easily converter in-place. When these are encountered the input file, they will be converted to `ft` and `in`. No examples of "mixed measurements" like `10'6"` were found, and this format is not supported.
+cocoaNEC differs from OpenNEC in that it also supports the alternative way of writing feet and inches, using the `'` and `"` characters. Both of these characters are used for other purposes in NEC decks, and cannot be easily converter in-place. When these are encountered the input file, they will be converted to `ft` and `in`. No examples of "mixed measurements" like `10'6"` were found, so this format is not supported.
 
 NC also adds `u`, `n` and `p` units for entering small values. These will be converted to `uH`, `nH` and `pH`, respectively.
 
@@ -104,12 +104,12 @@ Examples: `1.35"` becomes `1.35in`; `12'` becomes `12ft`; `#14` becomes
 Geometry Functions
 ------------------
 
-NEC-2 requires coordinates in **metres**. Expressions using unit suffixes (e.g. `12ft`) evaluate to metres at runtime. Returned values are of type `element`.
+NEC2 requires coordinates in **metres**. Expressions using unit suffixes (e.g. `12ft`) evaluate to metres at runtime. Returned values are of type `element`.
 
 ### `wire( x0, y0, z0, x1, y1, z1, radius, segments )`
 Defines a straight wire from `(x0,y0,z0)` to `(x1,y1,z1)` with the given radius and
 segment count. NC automatically makes `segments` odd (adds 1 if even) so that a
-feed can sit at the exact centre segment. Generates a NEC-2 **GW** card.
+feed can sit at the exact centre segment. Generates a NEC2 **GW** card.
 
 ```nc
 element fedWire ;
@@ -134,9 +134,9 @@ wirev( t, v0, v1, radius, segments )
 Use `nil` as the transform argument when no transformation is needed.
 
 ### Low-level card functions (deprecated but valid)
-These emit NEC-2 cards directly and bypass the element reference system:
+These emit NEC2 cards directly and bypass the element reference system:
 
-| NC call | NEC-2 card |
+| NC call | NEC2 card |
 |---------|-----------|
 | `gwCard( i1, i2, f1…f7 )` | GW |
 | `gaCard( i1, i2, f1…f4 )` | GA (arc) |
@@ -155,7 +155,7 @@ splice a short native wire between them.
 Excitations (Feeds)
 -------------------
 
-All excitation functions target an `element` variable. They generate NEC-2 **EX** cards.
+All excitation functions target an `element` variable. They generate NEC2 **EX** cards.
 
 ### Voltage feed
 ```nc
@@ -183,7 +183,7 @@ Loading
 -------
 
 Loading functions apply impedance or distributed R/L/C values to wire elements and
-generate NEC-2 **LD** cards.
+generate NEC2 **LD** cards.
 
 ### Impedance load
 ```nc
@@ -223,12 +223,12 @@ conductivityAtSegments( element, sigma, fromSeg, toSeg )
 ```nc
 insulate( element, permittivity, conductivity, radius )
 ```
-Uses NEC-4 IS card when available; falls back to the Yurkov approximation on NEC-2.
+Uses NEC-4 IS card when available; falls back to the Yurkov approximation on NEC2.
 
 Frequency
 ---------
 
-Frequency functions generate NEC-2 **FR** cards. All frequencies are in **MHz**.
+Frequency functions generate NEC2 **FR** cards. All frequencies are in **MHz**.
 
 ```nc
 setFrequency( f )           // single frequency; clears any previously set frequencies
@@ -242,7 +242,7 @@ inserts `FR 0,1,0,0,14.0,0` (14 MHz) so the deck is always runnable.
 Ground
 ------
 
-Ground functions generate NEC-2 **GN** cards. Only one ground definition is active.
+Ground functions generate NEC2 **GN** cards. Only one ground definition is active.
 
 ```nc
 freespace()
@@ -265,7 +265,7 @@ radials( x, y, z, length, wireRadius, numRadials )  // centred at (x,y,z)
 Radiation Pattern Requests
 --------------------------
 
-These generate NEC-2 **RP** cards.
+These generate NEC2 **RP** cards.
 
 ```nc
 azimuthPlotForElevationAngle( angle )   // elevation angle in degrees
@@ -281,7 +281,7 @@ generated.
 Networks and Transmission Lines
 -------------------------------
 
-NC network functions generate NEC-2 **NT** and **TL** cards.
+NC network functions generate NEC2 **NT** and **TL** cards.
 
 ```nc
 network( element1, element2, y11r, y11i, y12r, y12i, y22r, y22i )
@@ -306,10 +306,10 @@ Miscellaneous Control Functions
 useExtendedKernel( 1 )      // enable NEC extended thin-wire kernel (EK card)
 ```
 
-Mapping NC to NEC-2 Cards
+Mapping NC to NEC2 Cards
 -------------------------
 
-| NC construct | NEC-2 card(s) |
+| NC construct | NEC2 card(s) |
 |---|---|
 | `model( "name" )` | `CM name` / `CE` comment block |
 | `wire()` / `line()` / `taperedWire()` | `GW` |
@@ -342,7 +342,7 @@ Mapping NC to NEC-2 Cards
 ### Variables to SY cards
 
 Global `int` and `real` scalar variables whose values are known at compile time map to
-NEC-2 `SY` (symbol) cards. For example:
+NEC2 `SY` (symbol) cards. For example:
 
 ```nc
 real length, height ;
