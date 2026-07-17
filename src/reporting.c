@@ -265,7 +265,19 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
     
     /* Start processing cards after geometry section */
     int start_idx = (deck->geometry_end >= 0) ? deck->geometry_end + 1 : 0;
-    int end_idx = (deck->deck_end >= 0) ? deck->deck_end : deck->num_cards;
+    int end_idx;
+    
+    /* Determine end index: use deck_end if set, otherwise process all cards.
+     * If deck_end is 0 (EN card not found or at position 0), process all available cards.
+     * This handles .inp files that don't have explicit EN cards. */
+    if (deck->deck_end > 0) {
+        end_idx = deck->deck_end;  /* EN card was found at this index */
+    } else if (deck->deck_end == 0 && deck->num_cards > 0) {
+        /* deck_end is 0 - process all cards up to num_cards */
+        end_idx = deck->num_cards;
+    } else {
+        end_idx = (deck->num_cards > 0) ? deck->num_cards : 0;
+    }
     
     if (start_idx >= end_idx) {
         /* No control cards to process */
@@ -274,6 +286,7 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
     }
     
     /* Main card processing loop - Fortran line 14 */
+    int en_card_found = 0;
     for (int i = start_idx; i < end_idx; i++) {
         card_t *card = &deck->cards[i];
         
@@ -294,7 +307,28 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
         
         /* Check for EN (end of deck) card */
         if (strcmp(card->card_code, "EN") == 0) {
+            en_card_found = 1;
             break;
+        }
+    }
+    
+    /* Implicit XQ: If no EN card found and frequency loop not yet executed,
+     * execute it now. This matches batch mode behavior (control.c).
+     * (Fortran line 40-78: implicit GOTO 40 at end of deck if loop not executed) */
+    if (!en_card_found && state.num_frequencies > 0 && state.processing_stage < 4) {
+        /* Find the last real card index to pass to execute_frequency_loop_sequential */
+        int last_card_idx = end_idx - 1;
+        while (last_card_idx >= start_idx && 
+               (deck->cards[last_card_idx].ignore || is_comment(&deck->cards[last_card_idx]))) {
+            last_card_idx--;
+        }
+        
+        if (last_card_idx >= start_idx) {
+            int result = execute_frequency_loop_sequential(ctx, deck, last_card_idx, &state);
+            if (result != 0) {
+                free_card_state(&state);
+                return result;
+            }
         }
     }
     
@@ -1009,6 +1043,25 @@ static int process_pt_card(context_t *ctx, const card_t *card, card_state_t *sta
     
     state->currents_print_control = card->i[1];  /* iptflg */
     state->card_sequence_state = 7;  /* iflow - PT card */
+    
+    /* Transfer to ctx->fpat for use in write_currents() - match control.c behavior */
+    int i1 = card->i[1];  /* iptflg */
+    int i3 = card->i[3];  /* segment first */
+    int i4 = card->i[4];  /* segment last */
+    
+    ctx->fpat.currents_pattern_print_control = i1;
+    ctx->fpat.pattern_print_tag = card->i[2];
+    ctx->fpat.pattern_print_segment_first = i3;
+    ctx->fpat.pattern_print_segment_last = i4;
+    
+    /* Apply Fortran logic: if segment range not specified, suppress output */
+    if (i3 == 0 && i1 != -1) {
+        ctx->fpat.currents_pattern_print_control = -2;
+    }
+    /* If last segment is 0, set it to first segment */
+    if (i4 == 0) {
+        ctx->fpat.pattern_print_segment_last = i3;
+    }
     
     return 0;
 }
