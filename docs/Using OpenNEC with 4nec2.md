@@ -3,7 +3,7 @@ Using OpenNEC (onec) with 4nec2
 
 ## Overview
 
-OpenNEC (`onec`) can be used as a drop-in replacement for the traditional NEC-2 calculation engines in 4nec2, providing better performance, cross-platform compatibility, and supporting models with large numbers of segments. This guide explains how to configure 4nec2 to use `onec` instead of the older Fortran-based executables.
+OpenNEC (`onec`) can be used as a drop-in replacement for the traditional NEC-2 calculation engines in 4nec2, providing better performance, cross-platform compatibility, and supporting models with large numbers of segments. This guide explains how to configure 4nec2 to use `onec` instead of the older Fortran-based executables that are supplied with 4nec2.
 
 Setting Up OpenNEC with 4nec2
 =============================

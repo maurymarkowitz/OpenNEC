@@ -16,14 +16,14 @@ Items still to be implemented:
 
 * add handlers for ITeration and OPtimization cards, which produce multiple output runs from a single deck. in onec these should be processed out into some sort of "run" or "simulate" object with any differences from the original definitions. It is not clear whether these are really used in the wild, or if this is entirely in the 4nec2 UI.
 
-* Add NEC4 cards:
-** 4nec2's NEC4 examples (see Catenary.nec), has "CW", "IS", "VC" and "UM"
-** cebik's NEC4 files have "VC", "CW", "UM", "IS", "LE", "LH" and "PS" cards
+* Add NEC-4 cards:
+** 4nec2's NEC-4 examples (see Catenary.nec), has "CW", "IS", "VC" and "UM"
+** cebik's NEC-4 files have "VC", "CW", "UM", "IS", "LE", "LH" and "PS" cards
 ** nec2++ examples/medium_test.nec has an "MP" card type
 
 * at some point, handle 4nec2 current sources, EX 6 (UA3SFH.nec, W2EEY.NEC, calvin.nec, class.NEC)
 
-* CVEL constant: currently set to 299.8 (matching the original NEC2 Fortran and nec2c) for numerical compatibility with reference outputs. The exact SI value is 299.792458 m/μs. Investigate whether to use the exact value and document the tradeoff: using 299.8 suppresses ~0.1-0.2% differences vs nec2c but is technically less accurate.
+* CVEL constant: currently set to 299.8 (matching the original NEC-2 Fortran and nec2c) for numerical compatibility with reference outputs. The exact SI value is 299.792458 m/μs. Investigate whether to use the exact value and document the tradeoff: using 299.8 suppresses ~0.1-0.2% differences vs nec2c but is technically less accurate.
 
 * test files with differences with nec2c:
 - 4nec2/VHFbeams/BIQDFEED.nec: 63% power difference. EX 0 tag=9 with all GW tag=0 — the source gets auto-assigned to segment 1143 correctly, but the matrix solve gives a different impedance (49.6-59.6j vs 44+0.6j). Root cause unknown; likely related to all-tag-0 wire auto-numbering affecting the GM-replicated mesh.
