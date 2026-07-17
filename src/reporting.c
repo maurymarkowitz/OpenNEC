@@ -260,6 +260,7 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
      * This should happen once at the very start, before any frequency processing */
     if (ctx->output_fp) {
         write_nec_preamble(ctx, deck, ctx->output_fp);
+        ctx->preamble_written = true;  /* Mark preamble as written for sequential mode */
     }
     
     /* Start processing cards after geometry section */
@@ -686,6 +687,9 @@ static int process_fr_card(context_t *ctx, const card_t *card, card_state_t *sta
     
     state->processing_stage = 1;    /* igo - Need matrix */
     state->card_sequence_state = 1;  /* iflow - Frequency mode */
+    
+    /* Reset first_output_for_frequency flag on new FR card (Fortran line 267 sets IGO=1) */
+    ctx->first_output_for_frequency = false;
     
     return 0;
 }
@@ -1275,6 +1279,8 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
                 /* Linear frequency stepping */
                 state->current_frequency_mhz = fmhz1 + (state->freq_iteration - 1) * state->frequency_delta;
             }
+            /* Reset flag when moving to next frequency within same loop - Fortran behavior */
+            ctx->first_output_for_frequency = false;
         }
         
         double fr = state->current_frequency_mhz / CVEL;  /* fr - Frequency in 1/meters */
@@ -1394,7 +1400,15 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         
         /* Write all frequency-dependent output (antenna input, currents, power, patterns) */
         if (state->processing_stage >= 4 && ctx->output_fp) {
-            write_frequency_step_output(ctx->output_fp, ctx);
+            /* Check if we've already output frequency section at this frequency (Fortran behavior) */
+            if (ctx->first_output_for_frequency && ctx->preamble_written) {
+                /* Subsequent source at same frequency: skip FREQUENCY header, output only excitation results */
+                write_subsequent_excitation_output(ctx->output_fp, ctx, deck);
+            } else {
+                /* First output at this frequency: output full FREQUENCY section */
+                write_frequency_step_output(ctx->output_fp, ctx);
+                ctx->first_output_for_frequency = true;  /* Mark that FREQUENCY header has been output at this frequency */
+            }
         }
         
     } /* End frequency loop - Fortran line 120 */
