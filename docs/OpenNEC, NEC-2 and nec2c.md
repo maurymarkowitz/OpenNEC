@@ -66,7 +66,9 @@ A number of features commonly found in other popular NEC-based programs have bee
 Other NEC engines
 =================
 
-In addition to nec2c, there have been many other NEC-2 adaptations over the years. Here are some of the better-known ones, in no particular order:
+Fortran-based
+-------------
+Many of the alternative calculation engines available are modified versions of the original 1980s Fortran source code, addressing one issue or another. Here are some of the better-known ones, in no particular order:
 
 ### nec2d and nec2d-XS
 
@@ -78,6 +80,12 @@ The nec2d-XS source code can be found here:
 
 https://www.qsl.net/4nec2/supfiles.htm
 
+### NEC2/MP
+
+NEC2/MP was a version of the original code that was re-written to run on multi-processor systems and designed to be used as a replacement for nec2d on 4nec2. It was released only in binary form. The last known update was from 2012, and the author's web page - the only source for downloads - has since disappeared. Nevertheless, there are many references to this software on the 'net, so for completeness here is an archive link to the original page:
+
+https://web.archive.org/web/20130502013310/http://users.otenet.gr/~jmsp/
+
 ### NEC2
 
 An updated version of the original Fortran code by Ulrich Steinmann so it works better on Unix:
@@ -88,13 +96,18 @@ https://github.com/yeti01/nec2
 
 aegnec2 is a version of the original Fortran code that has been broken out into smaller, more managable files. It also adds a manually-controlled memory allocation feature, which allows a single binary to support different sizes of models, whereas earlier Fortran codes were generally supplied in multiple versions with different hard-coded segment limits. For instance, one can run aegnec2 with the `-s` flag set to 4000 in order to allow it to support models with up to 4000 segments. This sort of allocation is automatic in OpenNEC, which can support very small to very large models.
 
-The aegnec2 home page can ge found here:
+The aegnec2 home page can be found here:
 
 https://github.com/flintoftid/aegnec2
 
+C-based
+-------
+
+While nec2c was the best known C-language port of the original code, several others have appeared since it was released:
+
 ### xnec2c
 
-A further development of nec2c by Neoklis Kyriazis to add an X Windows-based GUI. This version of the system was extended to include multi-threaded capabilities and support for math libraries like BLAS. The xnec2c project appears to be moribund.
+xnec2c is an X-Windows based GUI modelling program that runs on top of nec2c. For use in xnec2c, Kyriazis further modified the original nec2c code to include multi-threaded capabilities and support for math libraries like BLAS. The xnec2c project appears to be moribund.
 
 The xnec2c code can be found here:
 
@@ -102,9 +115,9 @@ https://github.com/KJ7LNW/xnec2c
 
 ### nec2++
 
-Another re-factoring of the original NEC-2 code, this time as a re-implementation in C++, as opposed to a port. nec2++ is very similar to OpenNEC in concept, including threading support, math library support, an object-oriented structure (based on structs in OpenNEC), and so forth. It also includes some deck and card validation functionality.
+Another re-factoring of the original NEC-2 code, this time as a re-implementation in C++, as opposed to a port based on the original Fortran code. nec2++ is very similar to OpenNEC in concept, including threading support, math library support, an object-oriented structure (based on structs in OpenNEC), and so forth. It also includes some deck and card validation functionality.
 
-So why make OpenNEC if nec2++ does many of the same things? The main reason is that pure-C implementations generally integrate with other languages more cleanly. In particular, the original target for OpenNEC is a Swift GUI, and integrating C code with Swift is *much* easier than using C++ code.
+So why make OpenNEC if nec2++ does many of the same things? The main reason is that pure-C implementations generally integrate with other languages more cleanly. In particular, the original target for OpenNEC is a Swift GUI, and integrating C code with Swift is *much* easier than using C++ code. When nec2++ was written, C++ was the primary language for applications, but the introduction of new platforms and languages has seen a resurgence of pure-C.
 
 OpenNEC also expands the system in several ways that nec2++ didn't, including measurement units, symbols and formulas, and import/export. nec2++ also retained a number of bugs from the older systems which have been addressed in OpenNEC. All of these could be easily ported back to nec2++.
 

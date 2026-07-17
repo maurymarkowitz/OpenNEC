@@ -110,6 +110,7 @@ int fill_interaction_matrix(context_t *restrict ctx, int nrow, complex double *r
 	{
 	  if (compute_all_basis_funcs_on_seg(ctx, j) != 0)
 	    return -1;
+	  
 	  for( i = 0; i < ctx->segj.num_junction_segs; i++ )
 	  {
 		ij = ctx->segj.junction_segs[i];
@@ -117,7 +118,9 @@ int fill_interaction_matrix(context_t *restrict ctx, int nrow, complex double *r
 	  }
 
 	  if( i1 <= in2)
+	  {
 		fill_wire_wire_matrix(ctx, j, i1, in2, cm, nrow, cm, nrow, 1);
+	  }
 
 	  if( im1 <= im2)
 		fill_wire_patch_matrix(ctx, j, im1, im2, &cm[(ist - 1) * nrow], nrow, cm, 1);
@@ -1387,6 +1390,7 @@ void solve(const context_t *restrict ctx, int n, complex double *restrict a, int
 			buf[i + j * lda] = a[i + j * ndim];
 		}
 	}
+	
 	for (int i = 0; i < n; i++) {
 		rhs[i] = b[i];
 		ipiv[i] = ip[i];
@@ -1397,7 +1401,7 @@ void solve(const context_t *restrict ctx, int n, complex double *restrict a, int
 					ipiv, (double _Complex *)rhs, &ldb, &info);
 
 	if (info != 0) {
-		report(ctx, ONEC_SEV_ERROR, "ZGETRS ERROR: Illegal argument %d", -info);
+		report(ctx, ONEC_SEV_ERROR, "ZGETRS ERROR: info=%d", info);
 	}
 
 	/* Copy solution back to b */
@@ -1430,7 +1434,10 @@ void solve(const context_t *restrict ctx, int n, complex double *restrict a, int
 
 	if( ip1 < n)
 	  for( j = ip1; j < n; j++ )
-		b[j] -= a[j+i*ndim]* scm[i];
+      {
+        complex double aval = a[j+i*ndim];
+        b[j] -= aval * scm[i];
+      }
   }
 
   /* backward substitution */

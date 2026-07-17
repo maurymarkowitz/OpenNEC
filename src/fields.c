@@ -104,6 +104,7 @@ void e_field_segment(context_t *restrict ctx, double xi, double yi, double zi, d
     
     /* lumped current element approx. for large separations */
     r= sqrt( zp* zp+ rh* rh);
+    
     if( r >= ctx->dataj.k_half_len)
     {
       rmag= TP* r;
@@ -227,6 +228,7 @@ void e_field_segment(context_t *restrict ctx, double xi, double yi, double zi, d
     ctx->dataj.e_const_x= txk;
     ctx->dataj.e_const_y= tyk;
     ctx->dataj.e_const_z= tzk;
+    
     ctx->dataj.e_sin_x= txs;
     ctx->dataj.e_sin_y= tys;
     ctx->dataj.e_sin_z= tzs;
@@ -371,6 +373,7 @@ void e_field_thin_wire(context_t *ctx, double s, double z, double rh, double xk,
   *ezc= -CONST1*(( gz2+ gz1)* ss* xk+( gzp2- gzp1)* cs);
   *erk= CONST1*( gp2- gp1)* rh;
   romberg_integrate_wire_e(ctx, - shk, shk, rhk, ij, &cint, &sint);
+  
   *ezk= -CONST1*( gzp2- gzp1+ xk* xk* cmplx( cint,- sint));
   gzp1= gzp1* z1a;
   gzp2= gzp2* z2a;
@@ -588,6 +591,7 @@ void wire_end_contrib_thin(context_t *ctx, double zz, double rh, double xk,
   r2= zz* zz+ rh* rh;
   r= sqrt( r2);
   rkz= xk* r;
+  
   *gz= cmplx( cos( rkz),- sin( rkz))/ r;
   *gzp= -cmplx(1.0, rkz)* *gz/ r2;
   
