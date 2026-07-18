@@ -18,6 +18,26 @@ OpenNEC will read the design in the deck and can run a number of calculations to
 
 OpenNEC uses the latest features of modern computers and runs much faster than older implementations.
 
+Why OpenNEC?
+------------
+
+There are many NEC-2 engines available, why should you use OpenNEC?
+
+- OpenNEC is fully threaded and takes full advantage of modern multi-core processors. Some NEC engines are also threaded.
+- OpenNEC uses the fast BLAS math code, when available. A number of other NEC engines also support BLAS.
+- OpenNEC includes fixes for all common NEC issues. Other engines fix some of these as well.
+- OpenNEC allows models limited only by the system size. Other engines often have hard-coded limits, some fix this.
+- OpenNEC uses identical code on Windows, macOS and Linux. Most engines require you to roll your own when changing OS.
+- OpenNEC has a robust deck parser that can read input files from practically any source. Older engines generally demand a specific format.
+- OpenNEC can also read and write files from other antenna programs.
+- OpenNEC can produce reports in both nec2d and nec2c format. This allows it to be used with almost any front-end.
+- OpenNEC fully supports extensions from 4nec2 and other systems.
+- OpenNEC can be compiled directly into your program.
+
+So why use OpenNEC when most of these features are available in other engines? Because OpenNEC has all of these in one package. Not this fix or that extension, *all of them*.
+
+It will quickly calculate almost any deck ever made, from any engine, using any extensions, on any platform, and those results will work in practically every front-end program from xnec to 4nec2 to cocoaNEC, and also called directly from your programs and languages like Python.
+
 Installing OpenNEC
 ------------------
 

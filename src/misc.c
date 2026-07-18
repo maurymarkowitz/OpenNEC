@@ -311,7 +311,6 @@ field_sep_t detect_field_separator(const char *card_str) {
 }
 
 
-
 /******************************************************************************
  * convert_awg_to_meters
  *
@@ -503,7 +502,6 @@ char *preprocess_awg(const char *formula) {
   
   return result;
 }
-
 
 
 /******************************************************************************

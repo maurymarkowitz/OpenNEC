@@ -1127,7 +1127,6 @@ void factor_matrix(const context_t *restrict ctx, int n, complex double *restric
 	}
 	
 
-
 	/* Factorize local buffer: buf = P*L*U. */
 	zgetrf_(&m, &m, (double _Complex *)buf, &lda, ipiv, &info);
 

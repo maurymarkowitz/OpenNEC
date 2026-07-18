@@ -200,7 +200,6 @@ void calculate_geometry(context_t *ctx, deck_t *deck, errors_list_t *errors, out
             ys1 = pow((zs1 / ys1), (1.0 / (segs - 1.0)));
 
           
-
             // move up a card so we don't process the GC separately
             i = next_idx;
         }

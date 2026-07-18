@@ -44,7 +44,6 @@ static field_validation_t ok(void)
 }
 
 
-
 /* Stubs for geometry segment warnings
  *
  * The earlier implementation made a best-effort to compute a warning based on

@@ -147,8 +147,11 @@ int process_ex_batch(context_t *ctx)
         mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_voltages, mreq);
         mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_voltages_saved, mreq);
         
+        /* Convert (tag, seg) pair to global segment number */
+        int global_seg_num = segment_number(ctx, ex->tag, ex->seg_index);
+        
         int idx = ctx->vsorc.num_qdsrcs - 1;
-        ctx->vsorc.qdsrc_segs[idx] = ex->seg_index;
+        ctx->vsorc.qdsrc_segs[idx] = global_seg_num;
         ctx->vsorc.qdsrc_voltages[idx] = ex->voltage;
         
     } else if (ex->type == 0) {
@@ -160,8 +163,11 @@ int process_ex_batch(context_t *ctx)
         mreq = sizeof(complex double);
         mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_voltages, mreq);
         
+        /* Convert (tag, seg) pair to global segment number */
+        int global_seg_num = segment_number(ctx, ex->tag, ex->seg_index);
+        
         /* Store at index 0 */
-        ctx->vsorc.vsrc_segs[0] = ex->seg_index;
+        ctx->vsorc.vsrc_segs[0] = global_seg_num;
         ctx->vsorc.vsrc_voltages[0] = ex->voltage;
         /* Voltage source added */;
     }

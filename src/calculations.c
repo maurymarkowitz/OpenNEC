@@ -253,7 +253,6 @@ void compute_coupling(context_t *ctx, complex double *cur, double wlam )
         dbc = db10(ctx, gmax);
         
 
-
         row.is_error = false;
         row.coupling_db = dbc;
         row.zl_real = creal(zl);  row.zl_imag = cimag(zl);

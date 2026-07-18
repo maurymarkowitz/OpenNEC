@@ -647,8 +647,26 @@ static int add_coupling_pair(context_t *ctx, int tag1, int seg1, int tag2, int s
 {
     if (!ctx) return -1;
     
-    /* Coupling is stored differently - just mark that we have coupling */
-    ctx->yparm.coupling_flag = 1;  /* Mark that coupling is requested */
+    /* Match control.c behavior: each CP card creates two entries in the pair arrays
+     * (one for each antenna in the coupling pair) */
+    
+    /* First antenna */
+    ctx->yparm.num_pairs++;
+    size_t mreq = (size_t)ctx->yparm.num_pairs * sizeof(int);
+    mem_realloc(ctx, (void **)&ctx->yparm.pair_tags, mreq);
+    mem_realloc(ctx, (void **)&ctx->yparm.pair_segs, mreq);
+    ctx->yparm.pair_tags[ctx->yparm.num_pairs - 1] = tag1;
+    ctx->yparm.pair_segs[ctx->yparm.num_pairs - 1] = seg1;
+    
+    /* Second antenna (if tag2 != 0) */
+    if (tag2 != 0) {
+        ctx->yparm.num_pairs++;
+        mreq = (size_t)ctx->yparm.num_pairs * sizeof(int);
+        mem_realloc(ctx, (void **)&ctx->yparm.pair_tags, mreq);
+        mem_realloc(ctx, (void **)&ctx->yparm.pair_segs, mreq);
+        ctx->yparm.pair_tags[ctx->yparm.num_pairs - 1] = tag2;
+        ctx->yparm.pair_segs[ctx->yparm.num_pairs - 1] = seg2;
+    }
     
     return 0;
 }
@@ -1447,6 +1465,11 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         if (state->processing_stage >= 3) {
             /* Solve for currents using network solver */
             network(ctx, cm, ctx->save.pivot, ctx->crnt.surface_cur);
+            
+            /* Calculate coupling parameters (isolation data) - same as control.c */
+            if (ctx->yparm.num_pairs > 0) {
+                compute_coupling(ctx, ctx->crnt.surface_cur, ctx->geometry.wavelength);
+            }
             
             state->processing_stage = 4;  /* igo - Done */
         }
