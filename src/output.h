@@ -46,32 +46,42 @@ void write_frequency_step_output(FILE *file, context_t *ctx);
 /**
  * @brief Writes only the radiation-pattern (or near-field) output section.
  *
- * Used by execute_extra_patterns() when a second RP/NE/NH card follows with
- * no new FR card — mirrors nec2c's igo==4→5→6 path that skips the frequency
- * header, loading, matrix timing, and power budget and jumps straight to
- * the pattern computation.
+ * DEPRECATED - BATCH MODE ONLY: Used by execute_extra_patterns() when a
+ * second RP/NE/NH card follows with no new FR card — mirrors nec2c's
+ * igo==4→5→6 path that skips the frequency header, loading, matrix timing,
+ * and power budget and jumps straight to the pattern computation.
+ *
+ * This function is only called from control.c (batch mode). The active
+ * sequential processing pathway in reporting.c does not use this.
  */
 void write_extra_pattern_output(FILE *file, context_t *ctx);
 
 /**
  * @brief Writes only the excitation output section (no frequency header).
  *
- * Used when processing a subsequent EX card at the same frequency — skips
- * the frequency header and loading sections, jumping straight to antenna
- * input, currents, power budget, and radiation patterns. This mirrors
- * Fortran behavior where the frequency header is output only once per
- * unique frequency.
+ * DEPRECATED - BATCH MODE ONLY: Used when processing a subsequent EX card at
+ * the same frequency — skips the frequency header and loading sections,
+ * jumping straight to antenna input, currents, power budget, and radiation
+ * patterns. This mirrors Fortran behavior where the frequency header is
+ * output only once per unique frequency.
+ *
+ * This function is only called from control.c (batch mode). The active
+ * sequential processing pathway in reporting.c does not use this.
  */
 void write_subsequent_excitation_output(FILE *file, context_t *ctx, const deck_t *deck);
 
 /**
  * @brief Echoes the current batch's control cards before its frequency output.
  *
- * Writes the DATA CARD echo lines for ctx->batch_start_card through
- * ctx->batch_end_card with correct sequential numbering, accounting for all
- * previously echoed batches.  Called before each non-first batch's frequency
- * output to mirror Fortran behavior: each FR/RP pair is echoed immediately
- * before its own output section rather than all cards appearing at the top.
+ * DEPRECATED - BATCH MODE ONLY: Writes the DATA CARD echo lines for
+ * ctx->batch_start_card through ctx->batch_end_card with correct sequential
+ * numbering, accounting for all previously echoed batches.  Called before
+ * each non-first batch's frequency output to mirror Fortran behavior: each
+ * FR/RP pair is echoed immediately before its own output section rather
+ * than all cards appearing at the top.
+ *
+ * This function is only called from control.c (batch mode). The active
+ * sequential processing pathway in reporting.c does not use this.
  *
  * @param file Output file pointer.
  * @param ctx  The simulation context (provides batch_start_card/batch_end_card).

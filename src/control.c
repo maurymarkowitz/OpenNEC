@@ -5,23 +5,12 @@
  * cards (FR, LD, GN, EX, NT, TL, XQ, GD, RP, NX, PT, KH, NE, NH, PQ, EK, 
  * CP, PL, EN) that configure the calculation parameters in the context.
  *
- * DEPRECATED: Batch-mode processing functions in this file are deprecated.
- * All code now uses sequential processing from reporting.c.
- *
- * Only the following functions are still actively used:
- * - run_simulation() - main entry point (now calls process_deck_sequential)
- * - process_ex_batch() - excitation queue processing (used by sequential processor)
- * - calculation_defaults() - initialization (called by run_simulation)
- * - validate_geometry_post_calculation() - validation (called by run_simulation)
- *
- * All batch-mode functions (process_next_batch, execute_frequency_loop,
- * execute_extra_patterns, reset_*_buffers) are DEPRECATED and should not be called.
+ * This is extracted from the old main.c card input loop (lines 365-940).
  *
  *****************************************************************************/
 
 #include "internals.h"
 #include "control.h"
-#include "reporting.h"
 #include "geometry.h"
 #include "matrix.h"
 #include "network.h"
@@ -33,19 +22,17 @@
 
 // Forward declarations for static functions
 static int calculation_defaults(context_t *ctx);
-static void validate_geometry_post_calculation(context_t *ctx, errors_list_t *errors);
-static int inject_current_source(context_t *ctx, int card_idx, int tag, int seg_idx, complex double I_desired);
-
-/* DEPRECATED BATCH-MODE FUNCTIONS - DO NOT USE - Use sequential processing in reporting.c */
-static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double delfrq, const deck_t *deck) __attribute__((deprecated("Use sequential processing in reporting.c")));
-static void reset_loading_buffers(context_t *ctx) __attribute__((deprecated("Use sequential processing in reporting.c")));
-static void reset_network_buffers(context_t *ctx) __attribute__((deprecated("Use sequential processing in reporting.c")));
-static void reset_coupling_buffers(context_t *ctx) __attribute__((deprecated("Use sequential processing in reporting.c")));
-static void reset_vsorc_buffers(context_t *ctx) __attribute__((deprecated("Use sequential processing in reporting.c")));
-static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, int *batch_end, bool *batch_has_fr) __attribute__((deprecated("Use sequential processing in reporting.c")));
-static int execute_extra_patterns(context_t *ctx, const deck_t *deck, int batch_start, int batch_end) __attribute__((deprecated("Use sequential processing in reporting.c")));
+static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double delfrq, const deck_t *deck);
+static void reset_loading_buffers(context_t *ctx);
+static void reset_network_buffers(context_t *ctx);
+static void reset_coupling_buffers(context_t *ctx);
+static void reset_vsorc_buffers(context_t *ctx);
+static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, int *batch_end, bool *batch_has_fr);
+static int execute_extra_patterns(context_t *ctx, const deck_t *deck, int batch_start, int batch_end);
 static int count_tag_segments(const context_t *ctx, int tag);
 static int resolve_pct_segment(const context_t *ctx, const card_t *card, int field_idx, int tag);
+static void validate_geometry_post_calculation(context_t *ctx, errors_list_t *errors);
+static int inject_current_source(context_t *ctx, int card_idx, int tag, int seg_idx, complex double I_desired);
 
 /******************************************************************************
  * count_tag_segments()
@@ -147,11 +134,8 @@ int process_ex_batch(context_t *ctx)
         mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_voltages, mreq);
         mem_realloc(ctx, (void **)&ctx->vsorc.qdsrc_voltages_saved, mreq);
         
-        /* Convert (tag, seg) pair to global segment number */
-        int global_seg_num = segment_number(ctx, ex->tag, ex->seg_index);
-        
         int idx = ctx->vsorc.num_qdsrcs - 1;
-        ctx->vsorc.qdsrc_segs[idx] = global_seg_num;
+        ctx->vsorc.qdsrc_segs[idx] = ex->seg_index;
         ctx->vsorc.qdsrc_voltages[idx] = ex->voltage;
         
     } else if (ex->type == 0) {
@@ -163,11 +147,8 @@ int process_ex_batch(context_t *ctx)
         mreq = sizeof(complex double);
         mem_realloc(ctx, (void **)&ctx->vsorc.vsrc_voltages, mreq);
         
-        /* Convert (tag, seg) pair to global segment number */
-        int global_seg_num = segment_number(ctx, ex->tag, ex->seg_index);
-        
         /* Store at index 0 */
-        ctx->vsorc.vsrc_segs[0] = global_seg_num;
+        ctx->vsorc.vsrc_segs[0] = ex->seg_index;
         ctx->vsorc.vsrc_voltages[0] = ex->voltage;
         /* Voltage source added */;
     }
@@ -268,15 +249,21 @@ static void validate_geometry_post_calculation(context_t *ctx, errors_list_t *er
 }
 
 /******************************************************************************
- * run_simulation()
+ * run_simulation() [DEPRECATED - BATCH MODE ONLY]
  *
  * Complete wrapper function for running an NEC simulation from a parsed deck.
- * This is the main entry point for library usage (e.g., from Swift).
+ * This is the main entry point for the LEGACY BATCH PROCESSING system.
+ *
+ * DEPRECATED: This function implements batch processing that groups cards into
+ * batches bounded by XQ cards. The active sequential processing pathway uses
+ * process_deck_sequential() in reporting.c instead. This is kept for backward
+ * compatibility but should not be used in new code.
  *
  * Performs all steps in order:
  * 1. Calculate geometry (wires, patches)
  * 2. Initialize calculation defaults
- * 3. Process control cards sequentially (FR, LD, GN, EX, XQ, RP, etc.)
+ * 3. Process control cards (FR, LD, GN, EX, etc.) in batches
+ * 4. Execute frequency loop calculations
  *
  * All errors are accumulated in ctx->errors for the caller to handle.
  *
@@ -346,9 +333,289 @@ int run_simulation(context_t *ctx, deck_t *deck)
         }
     }
 
-    // Step 3: Process cards sequentially using the new reporting.c processor
-    // This replaces the old batch-based processing loop
-    return process_deck_sequential(ctx, deck);
+    // Step 3: Initialize batch processing state
+    ctx->current_card_idx = deck->geometry_end + 1;  // Start after GE card
+    if (ctx->current_card_idx >= deck->num_cards) {
+        // No control cards after GE - deck is complete
+        return 0;
+    }
+    ctx->card_number_offset = 0;  // Card numbering starts at 0
+    ctx->iflow = 0;  // Initial state
+    
+    // Step 4: Process batches in a loop
+    bool deck_complete = false;
+    while (!deck_complete) {
+        int batch_start, batch_end;
+        bool batch_has_fr = false;
+
+        // Process next batch of control cards
+        int batch_result = process_next_batch(ctx, deck, &batch_start, &batch_end, &batch_has_fr);
+        if (batch_result < 0) {
+            // Error occurred
+            return -1;
+        }
+        
+        // Check if we're done before processing the batch
+        if (batch_result == 1) {
+            deck_complete = true;
+            break;
+        }
+        
+        // Save batch boundaries in context for output
+        ctx->batch_start_card = batch_start;
+        ctx->batch_end_card = batch_end;
+        
+        // Check if this batch is EN or XT (no calculations)
+        bool is_termination = false;
+        if (batch_start == batch_end) {
+            card_t *card = &deck->cards[batch_start];
+            if (strcmp(card->card_code, "EN") == 0 || strcmp(card->card_code, "XT") == 0) {
+                is_termination = true;
+            }
+            if (strcmp(card->card_code, "XT") == 0) {
+                ctx->xt_terminated = true;
+            }
+        }
+        
+        // Execute frequency loop only when an output request card is present in the batch.
+        // This matches Fortran/nec2c behavior: the frequency loop (and CALL LOAD) is only
+        // entered when RP, NE, NH, XQ, or WG is encountered. FR/LD/GN/EX-only batches
+        // (e.g., ending with EN) accumulate state but perform no computation.
+        bool has_xq = (!is_termination && batch_end >= 0 &&
+                       strcmp(deck->cards[batch_end].card_code, "XQ") == 0);
+        bool has_output_request = (ctx->gnd.far_field_type != -1 ||
+                                   ctx->fpat.is_near_field != -1 ||
+                                   has_xq ||
+                                   ctx->wg_after_cmset);
+
+        // Determine whether this batch needs a full solve or just extra patterns.
+        // A batch with no FR card and an already-completed prior solve behaves like
+        // nec2c's igo==4 path: compute radiation/near-field patterns with existing
+        // currents, without re-filling the matrix or re-printing power budget.
+        // This also covers a bare XQ after an RP+XQ pair (where RP already ran the
+        // full solve): XQ alone with no new FR is a no-op / already handled.
+        // ALSO: A batch ending with RP/NE/NH card should output patterns even if
+        // patterns_output_for_freq is true, because each RP card represents a new
+        // pattern request with different parameters.
+        // IMPORTANT: RP/NE/NH cards are only valid if they immediately follow XQ (in same
+        // frequency batch) or if they are in a separate batch with their own FR card.
+        // If there's no FR and no XQ before the pattern card, the batch is invalid (like CMono2D).
+        bool batch_ends_with_pattern_card = (batch_end >= 0 && 
+                                              (strcmp(deck->cards[batch_end].card_code, "RP") == 0 ||
+                                               strcmp(deck->cards[batch_end].card_code, "NE") == 0 ||
+                                               strcmp(deck->cards[batch_end].card_code, "NH") == 0));
+        
+        // Check if pattern card is preceded by an orphaned EX (EX without corresponding XQ).
+        // Find the card immediately before batch_end (skip comments/ignored cards).
+        bool has_orphaned_ex_before_pattern = false;
+        if (batch_ends_with_pattern_card && batch_end > batch_start) {
+            for (int i = batch_end - 1; i >= batch_start; i--) {
+                if (!deck->cards[i].ignore && !is_comment(&deck->cards[i])) {
+                    // Found previous real card
+                    if (strcmp(deck->cards[i].card_code, "EX") == 0) {
+                        has_orphaned_ex_before_pattern = true;
+                    }
+                    break;
+                }
+            }
+        }
+        
+        /* For extra_patterns_only: require XQ in batch if no FR card present.
+           Pattern cards (RP/NE/NH) are only valid if:
+           1. Batch has FR card (normal frequency batch), OR
+           2. Batch has XQ and patterns requested (RP follows frequency calculation) */
+        bool extra_patterns_only = (!batch_has_fr &&
+                                    ctx->frequency_loop_ran &&
+                                    (!ctx->patterns_output_for_freq || batch_ends_with_pattern_card) &&
+                                    (ctx->gnd.far_field_type != -1 || ctx->fpat.is_near_field != -1 ||
+                                     has_xq) &&
+                                    !ctx->wg_after_cmset);
+
+        /* Skip invalid patterns: if RP/NE/NH appears after orphaned EX (EX without XQ),
+           treat as invalid and flag to skip pattern output (but still run frequency loop) */
+        bool skip_pattern_output_this_batch = (has_orphaned_ex_before_pattern && 
+                                               batch_ends_with_pattern_card);
+
+        if (!is_termination && has_output_request) {
+            /* If we're skipping pattern output due to orphaned EX, clear the pattern flags
+               so patterns won't be computed */
+            if (skip_pattern_output_this_batch) {
+                ctx->gnd.far_field_type = -1;
+                ctx->fpat.is_near_field = -1;
+            }
+            if (extra_patterns_only) {
+                // XQ alone with no new FR: nothing new to compute, skip
+                if (!has_xq) {
+                    if (execute_extra_patterns(ctx, deck, batch_start, batch_end) != 0) {
+                        return -1;
+                    }
+                }
+            } else {
+                /* Reset frequency output flags only when a NEW FR card appears.
+                   Do NOT reset for every batch - only for new frequencies.
+                   This prevents duplicate frequency headers when multiple EX cards
+                   are processed separately for coupling calculations. */
+                if (batch_has_fr) {
+                    ctx->freq_step_output_written = false;
+                    ctx->first_output_for_frequency = false;  /* Reset so new frequency can output its header */
+                    ctx->batch_cards_echoed = false;  /* Reset for new frequency so cards are echoed again */
+                }
+                
+                /* Process queued EX cards one at a time, executing frequency loop
+                   after each. This allows coupling_flag to increment properly
+                   across multiple XQ commands for multi-source coupling.
+                   IMPORTANT: Save base frequency before loop and reset it on each iteration,
+                   otherwise frequency sweep will not work correctly for multiple EX cards.
+                   DO NOT reset freq_step_output_written between EX cards - each frequency
+                   gets ONE frequency header, shared by all EX cards at that frequency.
+                   Card echo printed only once per frequency. Coupling data is printed after
+                   all sources are processed at the same frequency. */
+                if (ctx->ex_queue.num_queued > 0) {
+                    double base_freq_mhz = ctx->save.freq_mhz;  /* Save base frequency */
+                    while (ctx->ex_queue.num_queued > 0) {
+                        ctx->save.freq_mhz = base_freq_mhz;  /* Reset to base frequency before each EX */
+                        /* Do NOT reset freq_step_output_written here - it must persist across
+                           EX cards at the same frequency to prevent duplicate FREQUENCY headers.
+                           Only write frequency header once per unique frequency. */
+                        /* Do NOT reset batch_cards_echoed - it prints once per frequency batch,
+                           not once per EX card within the batch */
+                        if (process_ex_batch(ctx) != 0) {
+                            return -1;
+                        }
+                        
+                        ctx->frequency_loop_ran = true;
+                        if (execute_frequency_loop(ctx, ctx->save.num_freq, ctx->save.freq_step_type, ctx->save.freq_step, deck) != 0) {
+                            return -1;
+                        }
+                    }
+                } else {
+                    /* No EX cards queued: execute frequency loop once for this batch */
+                    ctx->frequency_loop_ran = true;
+                    if (execute_frequency_loop(ctx, ctx->save.num_freq, ctx->save.freq_step_type, ctx->save.freq_step, deck) != 0) {
+                        return -1;
+                    }
+                }
+            }
+        }
+        
+        // Handle NX restart: flush section output, reset state, restart with next section
+        if (batch_result == 2) {
+            int nx_pos = batch_end;
+
+            /* Step 1: Scan forward from NX+1 for all new section boundaries. */
+            int new_comment_start = -1, new_comment_end = -1;
+            int new_sym_start = -1,     new_sym_end = -1;
+            int new_geom_start = -1,    new_geom_end = -1;
+            int new_deck_end   = -1;
+            bool in_new_geom   = false;
+
+            for (int i = nx_pos + 1; i < deck->num_cards; i++) {
+                card_t *c = &deck->cards[i];
+                if (c->ignore) continue;
+                if (is_comment(c)) {
+                    if (new_comment_start == -1) new_comment_start = i;
+                    new_comment_end = i;
+                    continue;
+                }
+                if (strcmp(c->card_code, "SY") == 0 && !in_new_geom) {
+                    if (new_sym_start == -1) new_sym_start = i;
+                    new_sym_end = i;
+                    continue;
+                }
+                if (is_geometry(c)) {
+                    in_new_geom = true;
+                    if (new_geom_start == -1) new_geom_start = i;
+                    new_geom_end = i;
+                    if (strcmp(c->card_code, "GE") == 0) break;
+                    continue;
+                }
+                if (!in_new_geom) continue; /* skip stray pre-geometry control cards */
+            }
+            if (new_geom_end >= 0) {
+                for (int i = new_geom_end + 1; i < deck->num_cards; i++) {
+                    card_t *c = &deck->cards[i];
+                    if (!c->ignore && strcmp(c->card_code, "EN") == 0)
+                        { new_deck_end = i; break; }
+                }
+            }
+
+            if (new_geom_start == -1 || new_geom_end == -1 ||
+                strcmp(deck->cards[new_geom_end].card_code, "GE") != 0) {
+                /* No geometry follows NX — treat as terminal (like EN).
+                 * This covers:
+                 *   - NX as the last card in the deck
+                 *   - NX followed only by EN (no new geometry section) */
+                if (ctx->output_fp != NULL && ctx->frequency_loop_ran) {
+                    deck->deck_end = nx_pos;
+                    write_nec_output(ctx, deck, ctx->output_fp);
+                    deck->deck_end = -1;
+                    ctx->frequency_loop_ran = false; /* prevent double write in main */
+                }
+                deck_complete = true;
+                break;
+            }
+
+            /* Step 2: Flush output for the completed section.
+             * Temporarily set deck_end to the NX card so write_input_cards
+             * prints section 1's control cards (FR/EX/RP/NX range). */
+            if (ctx->output_fp != NULL && ctx->frequency_loop_ran) {
+                deck->deck_end = nx_pos;
+                write_nec_output(ctx, deck, ctx->output_fp);
+                deck->deck_end = -1;  /* restore: section 1 has no EN */
+            }
+
+            /* Step 3: Reset all per-section simulation state. */
+            reset_loading_buffers(ctx);
+            reset_network_buffers(ctx);
+            reset_coupling_buffers(ctx);
+            reset_vsorc_buffers(ctx);
+
+            if (ctx->rpat.points != NULL) { free(ctx->rpat.points); ctx->rpat.points = NULL; }
+            ctx->rpat.num_points = 0;
+
+            if (ctx->nfr.points != NULL) { free(ctx->nfr.points); ctx->nfr.points = NULL; }
+            ctx->nfr.num_points = 0;
+
+            if (ctx->yparm.coupling_rows != NULL) {
+                free(ctx->yparm.coupling_rows);
+                ctx->yparm.coupling_rows = NULL;
+                ctx->yparm.num_coupling_rows = 0;
+                ctx->yparm.coupling_rows_cap = 0;
+            }
+
+            if (ctx->ngf_cm != NULL) { free(ctx->ngf_cm); ctx->ngf_cm = NULL; }
+            ctx->has_ngf = false; ctx->ngf_n_segs = 0; ctx->ngf_neq = 0; ctx->ngf_fmhz = 0.0;
+
+            /* Step 4: Update deck section pointers to the new section and re-run geometry. */
+            deck->comment_start  = new_comment_start;
+            deck->comment_end    = new_comment_end;
+            deck->symbol_start   = new_sym_start;
+            deck->symbol_end     = new_sym_end;
+            deck->geometry_start = new_geom_start;
+            deck->geometry_end   = new_geom_end;
+            deck->deck_end       = new_deck_end;
+
+            errors_list_t nx_geom_errors = {0};
+            calculate_geometry(ctx, deck, &nx_geom_errors, &ctx->outputs);
+            if (nx_geom_errors.num_errors > 0) {
+                for (int i = 0; i < nx_geom_errors.num_errors; i++)
+                    add_error(ctx, &ctx->errors, nx_geom_errors.errors[i].message,
+                             nx_geom_errors.errors[i].severity);
+                return -1;
+            }
+            if (calculation_defaults(ctx) != 0) {
+                add_error(ctx, &ctx->errors,
+                    "NX: failed to initialize calculation defaults for new section", FATAL);
+                return -1;
+            }
+
+            ctx->current_card_idx = new_geom_end + 1;
+            ctx->iflow = 0;
+            continue;
+        }
+    }
+    
+    return 0;
 }
 
 /******************************************************************************
@@ -435,7 +702,6 @@ static int calculation_defaults(context_t *ctx)
 /******************************************************************************
  * reset_loading_buffers()
  *
- * DEPRECATED: This is a batch-mode function. Use sequential processing in reporting.c.
  * Reset and free loading buffers. Called when starting a new batch.
  */
 static void reset_loading_buffers(context_t *ctx)
@@ -462,7 +728,6 @@ static void reset_loading_buffers(context_t *ctx)
 /******************************************************************************
  * reset_network_buffers()
  *
- * DEPRECATED: This is a batch-mode function. Use sequential processing in reporting.c.
  * Reset and free network buffers. Called when starting a new batch.
  */
 static void reset_network_buffers(context_t *ctx)
@@ -484,7 +749,6 @@ static void reset_network_buffers(context_t *ctx)
 /******************************************************************************
  * reset_coupling_buffers()
  *
- * DEPRECATED: This is a batch-mode function. Use sequential processing in reporting.c.
  * Reset and free coupling buffers. Called when starting a new batch.
  */
 static void reset_coupling_buffers(context_t *ctx)
@@ -507,7 +771,6 @@ static void reset_coupling_buffers(context_t *ctx)
 /******************************************************************************
  * reset_vsorc_buffers()
  *
- * DEPRECATED: This is a batch-mode function. Use sequential processing in reporting.c.
  * Reset and free excitation source (vsorc) buffers. Called on NX restart.
  */
 static void reset_vsorc_buffers(context_t *ctx)
@@ -753,12 +1016,14 @@ static int inject_current_source(context_t *ctx, int card_idx,
 }
 
 /******************************************************************************
- * process_next_batch()
- *
- * DEPRECATED: This is a batch-mode function. Use sequential processing in reporting.c.
+ * process_next_batch() [DEPRECATED - BATCH MODE ONLY]
  *
  * Process control cards from current position up to next XQ, EN, XT, or NX
  * card. Updates batch boundaries in context and handles iflow state transitions.
+ *
+ * DEPRECATED: This function is part of the legacy batch processing system in
+ * control.c (run_simulation). It is NOT used by the active sequential processing
+ * pathway in reporting.c. Do not call from new code.
  *
  * @param ctx          The NEC context
  * @param deck         The deck containing control cards
@@ -1366,15 +1631,17 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
 }
 
 /******************************************************************************
- * execute_extra_patterns()
- *
- * DEPRECATED: This is a batch-mode function. Use sequential processing in reporting.c.
+ * execute_extra_patterns() [DEPRECATED - BATCH MODE ONLY]
  *
  * Handle an RP/NE/NH batch that has no FR card — i.e., nec2c's igo==4/5/6
  * path where the matrix is not refilled and no new power budget is printed.
  * The previously computed currents (from the last execute_frequency_loop call)
  * are reused; only the radiation-pattern (or near-field) calculation and its
  * output section are repeated.
+ *
+ * DEPRECATED: This function is part of the legacy batch processing system in
+ * control.c (run_simulation). It is NOT used by the active sequential processing
+ * pathway in reporting.c. Do not call from new code.
  *
  * This matches nec2c oldmain.c case 4 → case 5 → case 6: after igo is set to
  * 4 (end of excitation section), a subsequent RP with no new FR jumps straight
@@ -1468,13 +1735,17 @@ static int execute_extra_patterns(context_t *ctx, const deck_t *deck, int batch_
 }
 
 /******************************************************************************
- * execute_frequency_loop()
+ * execute_frequency_loop() [DEPRECATED - BATCH MODE ONLY]
  *
- * DEPRECATED: This is a batch-mode function. Use sequential processing in reporting.c.
  * Execute the main frequency loop calculations. This is the core computation
  * that performs matrix fill/factor, network calculations, and field calculations
  * for each frequency point.
  * 
+ * DEPRECATED: This function is part of the legacy batch processing system in
+ * control.c (run_simulation). It is NOT used by the active sequential processing
+ * pathway in reporting.c, which uses execute_frequency_loop_sequential() instead.
+ * Do not call from new code.
+ *
  * This replaces the old main.c frequency do loop (lines 945-1862).
  * Output formatting has been factored out to output.c functions.
  *

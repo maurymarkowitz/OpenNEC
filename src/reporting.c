@@ -260,24 +260,11 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
      * This should happen once at the very start, before any frequency processing */
     if (ctx->output_fp) {
         write_nec_preamble(ctx, deck, ctx->output_fp);
-        ctx->preamble_written = true;  /* Mark preamble as written for sequential mode */
     }
     
     /* Start processing cards after geometry section */
     int start_idx = (deck->geometry_end >= 0) ? deck->geometry_end + 1 : 0;
-    int end_idx;
-    
-    /* Determine end index: use deck_end if set, otherwise process all cards.
-     * If deck_end is 0 (EN card not found or at position 0), process all available cards.
-     * This handles .inp files that don't have explicit EN cards. */
-    if (deck->deck_end > 0) {
-        end_idx = deck->deck_end;  /* EN card was found at this index */
-    } else if (deck->deck_end == 0 && deck->num_cards > 0) {
-        /* deck_end is 0 - process all cards up to num_cards */
-        end_idx = deck->num_cards;
-    } else {
-        end_idx = (deck->num_cards > 0) ? deck->num_cards : 0;
-    }
+    int end_idx = (deck->deck_end >= 0) ? deck->deck_end : deck->num_cards;
     
     if (start_idx >= end_idx) {
         /* No control cards to process */
@@ -286,7 +273,6 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
     }
     
     /* Main card processing loop - Fortran line 14 */
-    int en_card_found = 0;
     for (int i = start_idx; i < end_idx; i++) {
         card_t *card = &deck->cards[i];
         
@@ -307,28 +293,7 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
         
         /* Check for EN (end of deck) card */
         if (strcmp(card->card_code, "EN") == 0) {
-            en_card_found = 1;
             break;
-        }
-    }
-    
-    /* Implicit XQ: If no EN card found and frequency loop not yet executed,
-     * execute it now. This matches batch mode behavior (control.c).
-     * (Fortran line 40-78: implicit GOTO 40 at end of deck if loop not executed) */
-    if (!en_card_found && state.num_frequencies > 0 && state.processing_stage < 4) {
-        /* Find the last real card index to pass to execute_frequency_loop_sequential */
-        int last_card_idx = end_idx - 1;
-        while (last_card_idx >= start_idx && 
-               (deck->cards[last_card_idx].ignore || is_comment(&deck->cards[last_card_idx]))) {
-            last_card_idx--;
-        }
-        
-        if (last_card_idx >= start_idx) {
-            int result = execute_frequency_loop_sequential(ctx, deck, last_card_idx, &state);
-            if (result != 0) {
-                free_card_state(&state);
-                return result;
-            }
         }
     }
     
@@ -380,7 +345,7 @@ static void free_frequency_loop_storage(context_t *ctx)
 /**
  * Calculate input power delivered to the antenna
  */
-static double __attribute__((unused)) calculate_input_power(context_t *ctx)
+static double calculate_input_power(context_t *ctx)
 {
     if (!ctx) return 0.0;
     
@@ -403,7 +368,7 @@ static double __attribute__((unused)) calculate_input_power(context_t *ctx)
 /**
  * Calculate radiated power
  */
-static double __attribute__((unused)) calculate_radiated_power(context_t *ctx)
+static double calculate_radiated_power(context_t *ctx)
 {
     if (!ctx) return 0.0;
     
@@ -419,7 +384,7 @@ static double __attribute__((unused)) calculate_radiated_power(context_t *ctx)
 /**
  * Calculate coupling parameters (wrapper)
  */
-static int __attribute__((unused)) calculate_coupling_parameters(context_t *ctx)
+static int calculate_coupling_parameters(context_t *ctx)
 {
     if (!ctx) return -1;
     
@@ -647,26 +612,8 @@ static int add_coupling_pair(context_t *ctx, int tag1, int seg1, int tag2, int s
 {
     if (!ctx) return -1;
     
-    /* Match control.c behavior: each CP card creates two entries in the pair arrays
-     * (one for each antenna in the coupling pair) */
-    
-    /* First antenna */
-    ctx->yparm.num_pairs++;
-    size_t mreq = (size_t)ctx->yparm.num_pairs * sizeof(int);
-    mem_realloc(ctx, (void **)&ctx->yparm.pair_tags, mreq);
-    mem_realloc(ctx, (void **)&ctx->yparm.pair_segs, mreq);
-    ctx->yparm.pair_tags[ctx->yparm.num_pairs - 1] = tag1;
-    ctx->yparm.pair_segs[ctx->yparm.num_pairs - 1] = seg1;
-    
-    /* Second antenna (if tag2 != 0) */
-    if (tag2 != 0) {
-        ctx->yparm.num_pairs++;
-        mreq = (size_t)ctx->yparm.num_pairs * sizeof(int);
-        mem_realloc(ctx, (void **)&ctx->yparm.pair_tags, mreq);
-        mem_realloc(ctx, (void **)&ctx->yparm.pair_segs, mreq);
-        ctx->yparm.pair_tags[ctx->yparm.num_pairs - 1] = tag2;
-        ctx->yparm.pair_segs[ctx->yparm.num_pairs - 1] = seg2;
-    }
+    /* Coupling is stored differently - just mark that we have coupling */
+    ctx->yparm.coupling_flag = 1;  /* Mark that coupling is requested */
     
     return 0;
 }
@@ -739,9 +686,6 @@ static int process_fr_card(context_t *ctx, const card_t *card, card_state_t *sta
     
     state->processing_stage = 1;    /* igo - Need matrix */
     state->card_sequence_state = 1;  /* iflow - Frequency mode */
-    
-    /* Reset first_output_for_frequency flag on new FR card (Fortran line 267 sets IGO=1) */
-    ctx->first_output_for_frequency = false;
     
     return 0;
 }
@@ -819,11 +763,6 @@ static int process_gn_card(context_t *ctx, const card_t *card, card_state_t *sta
     ctx->gnd.is_perfect = iperf;
     ctx->gnd.num_radials = card->i[2];
     ctx->gnd.has_ground = 2;  /* 2=ground present */
-    
-    /* Store ground parameters in ctx->save for use by somnec() and ground calculations */
-    ctx->save.ground_epsr = card->f[1];  /* Relative permittivity */
-    ctx->save.ground_sigma = card->f[2]; /* Conductivity (S/m) */
-    
     ctx->gnd.impedance_ratio = card->f[1] + I * 0.0;  /* Relative permittivity */
     ctx->gnd.impedance_ratio2 = card->f[2] + I * 0.0; /* Conductivity */
     
@@ -960,15 +899,9 @@ static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
         return 0;  /* Skip single frequency */
     }
     
-    /* Update card_sequence_state to trigger network buffer reset on next batch
-     * Fortran label 37: IFLOW=7 (if IFLOW<=7) or IFLOW=11 (if IFLOW>7)
-     * This ensures next NT card will reset network buffers (NONET=0) */
+    /* If XQ has a parameter, it may set default radiation pattern */
     if (card->i[1] != 0) {
-        state->card_sequence_state = 10;  /* iflow - XQ with parameter */
-    } else if (state->card_sequence_state > 7) {
-        state->card_sequence_state = 11;  /* iflow - XQ after patterns */
-    } else {
-        state->card_sequence_state = 7;   /* iflow - XQ after excitation */
+        state->card_sequence_state = 10;  /* iflow - XQ card */
     }
     
     /* Execute frequency loop */
@@ -1062,25 +995,6 @@ static int process_pt_card(context_t *ctx, const card_t *card, card_state_t *sta
     state->currents_print_control = card->i[1];  /* iptflg */
     state->card_sequence_state = 7;  /* iflow - PT card */
     
-    /* Transfer to ctx->fpat for use in write_currents() - match control.c behavior */
-    int i1 = card->i[1];  /* iptflg */
-    int i3 = card->i[3];  /* segment first */
-    int i4 = card->i[4];  /* segment last */
-    
-    ctx->fpat.currents_pattern_print_control = i1;
-    ctx->fpat.pattern_print_tag = card->i[2];
-    ctx->fpat.pattern_print_segment_first = i3;
-    ctx->fpat.pattern_print_segment_last = i4;
-    
-    /* Apply Fortran logic: if segment range not specified, suppress output */
-    if (i3 == 0 && i1 != -1) {
-        ctx->fpat.currents_pattern_print_control = -2;
-    }
-    /* If last segment is 0, set it to first segment */
-    if (i4 == 0) {
-        ctx->fpat.pattern_print_segment_last = i3;
-    }
-    
     return 0;
 }
 
@@ -1107,7 +1021,6 @@ static int process_kh_card(context_t *ctx, const card_t *card, card_state_t *sta
     if (!ctx || !card || !state) return -1;
     
     state->matrix_integration_limit = card->f[1];  /* rkh - Integration limit in wavelengths */
-    ctx->dataj.k_half_len = card->f[1];  /* Also set in ctx for fill_interaction_matrix */
     
     return 0;
 }
@@ -1121,7 +1034,6 @@ static int process_ek_card(context_t *ctx, const card_t *card, card_state_t *sta
     if (!ctx || !card || !state) return -1;
     
     state->use_extended_kernel = card->i[1];  /* iexk - Extended kernel flag */
-    ctx->dataj.use_extended_kernel = (card->i[1] == -1) ? 0 : 1;  /* Also set in ctx */
     
     return 0;
 }
@@ -1238,23 +1150,6 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
     
     geometry_t *geom = &ctx->geometry;
     
-    /* CRITICAL FIX: Initialize dataj defaults like control.c does (lines 404-405)
-     * These must be set before any matrix operations. KH/EK cards can override these. */
-    ctx->dataj.k_half_len = 1.0;  // Default matrix integration limit
-    ctx->dataj.use_extended_kernel = 0;  // Extended thin-wire kernel off by default
-    
-    /* CRITICAL FIX: Initialize field accumulation variables to zero.
-     * e_field_segment() accumulates into these, so they must start at zero. */
-    ctx->dataj.e_const_x = CPLX_00;
-    ctx->dataj.e_const_y = CPLX_00;
-    ctx->dataj.e_const_z = CPLX_00;
-    ctx->dataj.e_sin_x = CPLX_00;
-    ctx->dataj.e_sin_y = CPLX_00;
-    ctx->dataj.e_sin_z = CPLX_00;
-    ctx->dataj.e_cos_x = CPLX_00;
-    ctx->dataj.e_cos_y = CPLX_00;
-    ctx->dataj.e_cos_z = CPLX_00;
-    
     /* Allocate matrix and other structures for frequency loop */
     if (allocate_frequency_loop_storage(ctx, geom->num_segs + geom->num_patches) != 0) {
         add_error(ctx, &ctx->errors, "Failed to allocate frequency loop storage", FATAL);
@@ -1283,9 +1178,6 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         return -1;
     }
     
-    /* CRITICAL: Zero the matrix to avoid NaN from uninitialized memory */
-    memset(cm, 0, mreq);
-    
     /* Allocate pivot array for LU factorization */
     mreq = ctx->netcx.num_eq * sizeof(int);
     if (!ctx->save.pivot) {
@@ -1311,8 +1203,6 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
             free_frequency_loop_storage(ctx);
             return -1;
         }
-        /* Zero the current vector */
-        memset(ctx->crnt.surface_cur, 0, mreq);
     }
     
     /* Allocate current coefficient arrays if needed */
@@ -1334,11 +1224,6 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         }
     }
     
-    /* Initialize processing stage for frequency loop */
-    if (state->processing_stage < 2) {
-        state->processing_stage = 2;  /* Ready for matrix fill */
-    }
-    
     for (state->freq_iteration = 1; state->freq_iteration <= state->num_frequencies; state->freq_iteration++) {
         
         /* Calculate current frequency - Fortran lines 42-43 */
@@ -1350,15 +1235,10 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
                 /* Linear frequency stepping */
                 state->current_frequency_mhz = fmhz1 + (state->freq_iteration - 1) * state->frequency_delta;
             }
-            /* Reset flag when moving to next frequency within same loop - Fortran behavior */
-            ctx->first_output_for_frequency = false;
         }
         
         double fr = state->current_frequency_mhz / CVEL;  /* fr - Frequency in 1/meters */
         double wlam = CVEL / state->current_frequency_mhz;  /* wlam - Wavelength in meters */
-        
-        /* CRITICAL FIX: Store frequency in context for output writers */
-        ctx->save.freq_mhz = state->current_frequency_mhz;
         
         /* Scale geometry for current frequency - Fortran lines 44-307 */
         scale_geometry_for_frequency(ctx, state, fr);
@@ -1377,40 +1257,6 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
             } */
         }
         
-        /* Set up ground parameters before matrix fill - from control.c lines 1647-1677 */
-        if (state->processing_stage >= 2) {
-            if (ctx->gnd.has_ground != 1) {
-                ctx->gnd.fresnel_ratio = CPLX_10;
-                
-                if (ctx->gnd.is_perfect != 1) {
-                    double sig = ctx->save.ground_sigma;
-                    if (sig < 0.0) {
-                        sig = -sig / (59.96 * ctx->geometry.wavelength);
-                        ctx->save.ground_sigma = sig;
-                    }
-                    
-                    complex double epsc = ctx->save.ground_epsr - I * sig * ctx->geometry.wavelength * 59.96;
-                    ctx->gnd.impedance_ratio = 1.0 / csqrt(epsc);
-                    ctx->gwav.impedance_ratio = ctx->gnd.impedance_ratio;
-                    ctx->gwav.impedance_ratio_sq = ctx->gwav.impedance_ratio * ctx->gwav.impedance_ratio;
-                    
-                    // Handle radial wire ground screen
-                    if (ctx->gnd.num_radials != 0) {
-                        ctx->gnd.screen_wire_len = ctx->save.screen_wire_len / ctx->geometry.wavelength;
-                        ctx->gnd.screen_wire_radius = ctx->save.screen_wire_radius / ctx->geometry.wavelength;
-                        ctx->gnd.screen_impedance = CPLX_01 * 2367.067 / (double)ctx->gnd.num_radials;
-                        ctx->gnd.screen_inner_r = ctx->gnd.screen_wire_radius * (double)ctx->gnd.num_radials;
-                    }
-                    
-                    // Use Sommerfeld ground solution if requested
-                    if (ctx->gnd.is_perfect == 2) {
-                        somnec(ctx, ctx->save.ground_epsr, ctx->save.ground_sigma, ctx->save.freq_mhz);
-                        ctx->gnd.fresnel_ratio = (epsc - 1.0) / (epsc + 1.0);
-                    }
-                }
-            }
-        }
-        
         /* Fill and factor matrix - Fortran lines 50, label 323 */
         if (state->processing_stage >= 2) {
             double tim1, tim2;
@@ -1418,10 +1264,9 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
             /* Get start time for fill operation */
             get_time_ms(ctx, &tim1);
             
-            /* Fill interaction matrix - use ctx->dataj values like control.c does */
-            int fill_result = fill_interaction_matrix(ctx, ctx->netcx.num_eq, 
-                                       cm, ctx->dataj.k_half_len, ctx->dataj.use_extended_kernel);
-            if (fill_result != 0) {
+            /* Fill interaction matrix */
+            if (fill_interaction_matrix(ctx, ctx->netcx.num_eq, 
+                                       cm, state->matrix_integration_limit, state->use_extended_kernel) != 0) {
                 restore_geometry(ctx, (const card_state_t *)state);
                 mem_free(ctx, (void *)&cm);
                 return -1;
@@ -1450,41 +1295,34 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
             /* Process queued EX cards to populate ctx->vsorc (voltage sources) */
             process_ex_batch(ctx);
             
-            /* Zero surface current before filling excitation vector */
-            if (ctx->crnt.surface_cur) {
-                size_t surf_cur_size = (size_t)ctx->geometry.num_segs_3xpatches * sizeof(complex double);
-                memset(ctx->crnt.surface_cur, 0, surf_cur_size);
-            }
+            fprintf(stderr, "[DEBUG-reporting] Before fill_excitation_vector: num_vsrcs=%d, num_qdsrcs=%d\n",
+                    ctx->vsorc.num_vsrcs, ctx->vsorc.num_qdsrcs);
             
             /* Fill excitation vector (right-hand side) */
             fill_excitation_vector(ctx, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
                                   state->excitation_type, ctx->crnt.surface_cur);
+            
+            fprintf(stderr, "[DEBUG-reporting] After fill_excitation_vector: surface_cur[0]=(%.6e,%.6e)\n",
+                    creal(ctx->crnt.surface_cur[0]), cimag(ctx->crnt.surface_cur[0]));
         }
         
         /* Matrix solving - Fortran line 60 */
         if (state->processing_stage >= 3) {
             /* Solve for currents using network solver */
+            fprintf(stderr, "[DEBUG-reporting] Before network(): einc[0]=(%.6e,%.6e)\n",
+                    creal(ctx->crnt.surface_cur[0]), cimag(ctx->crnt.surface_cur[0]));
+            
             network(ctx, cm, ctx->save.pivot, ctx->crnt.surface_cur);
             
-            /* Calculate coupling parameters (isolation data) - same as control.c */
-            if (ctx->yparm.num_pairs > 0) {
-                compute_coupling(ctx, ctx->crnt.surface_cur, ctx->geometry.wavelength);
-            }
+            fprintf(stderr, "[DEBUG-reporting] After network(): einc[0]=(%.6e,%.6e)\n",
+                    creal(ctx->crnt.surface_cur[0]), cimag(ctx->crnt.surface_cur[0]));
             
             state->processing_stage = 4;  /* igo - Done */
         }
         
         /* Write all frequency-dependent output (antenna input, currents, power, patterns) */
         if (state->processing_stage >= 4 && ctx->output_fp) {
-            /* Check if we've already output frequency section at this frequency (Fortran behavior) */
-            if (ctx->first_output_for_frequency && ctx->preamble_written) {
-                /* Subsequent source at same frequency: skip FREQUENCY header, output only excitation results */
-                write_subsequent_excitation_output(ctx->output_fp, ctx, deck);
-            } else {
-                /* First output at this frequency: output full FREQUENCY section */
-                write_frequency_step_output(ctx->output_fp, ctx);
-                ctx->first_output_for_frequency = true;  /* Mark that FREQUENCY header has been output at this frequency */
-            }
+            write_frequency_step_output(ctx->output_fp, ctx);
         }
         
     } /* End frequency loop - Fortran line 120 */

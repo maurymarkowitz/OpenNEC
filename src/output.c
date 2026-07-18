@@ -301,7 +301,7 @@ void write_deck_onec(const context_t *ctx, const deck_t *deck, FILE *file)
         {
           const char *fsep = (field_num++ == 0) ? fsep_first : fsep_rest;
           // Look up formula for this integer field (fields are 1-based: I1..I4)
-          char key[16];
+          char key[8];
           snprintf(key, sizeof(key), "I%d", j);
           const char *formula = lookup_formula(card, key);
 
@@ -323,7 +323,7 @@ void write_deck_onec(const context_t *ctx, const deck_t *deck, FILE *file)
         {
           const char *fsep = (field_num++ == 0) ? fsep_first : fsep_rest;
           // Look up formula for this float field
-          char key[16];
+          char key[8];
           snprintf(key, sizeof(key), "F%d", j);
           const char *formula = lookup_formula(card, key);
 
@@ -590,12 +590,16 @@ void write_frequency_step_output(FILE *file, context_t *ctx)
 }
 
 /*
- * write_extra_pattern_output()
+ * write_extra_pattern_output() [DEPRECATED - BATCH MODE ONLY]
  *
  * Writes only the radiation-pattern or near-field section, without repeating
  * the frequency header, loading, timing, or power budget.  Called when a
  * second RP/NE/NH card appears without an intervening FR — mirrors nec2c's
  * igo==4→5→6 path.
+ *
+ * DEPRECATED: This function is part of the legacy batch processing system.
+ * It is only called from control.c (execute_extra_patterns). The active
+ * sequential processing pathway in reporting.c does not use this function.
  */
 void write_extra_pattern_output(FILE *file, context_t *ctx)
 {
@@ -608,7 +612,7 @@ void write_extra_pattern_output(FILE *file, context_t *ctx)
 }
 
 /*
- * write_subsequent_excitation_output()
+ * write_subsequent_excitation_output() [DEPRECATED - BATCH MODE ONLY]
  *
  * Writes only excitation output (antenna input, currents, power, patterns)
  * without the frequency header, loading, or environment sections. Used when
@@ -616,6 +620,11 @@ void write_extra_pattern_output(FILE *file, context_t *ctx)
  * output — this mirrors Fortran behavior where the FREQUENCY header is
  * output only once per unique frequency, not for each excitation. Also
  * reprints the EX and XQ cards before this output to match Fortran structure.
+ *
+ * DEPRECATED: This function is part of the legacy batch processing system.
+ * It is only called from control.c (run_simulation's batch processing).
+ * The active sequential processing pathway in reporting.c does not use
+ * this function.
  */
 void write_subsequent_excitation_output(FILE *file, context_t *ctx, const deck_t *deck)
 {
@@ -1978,10 +1987,14 @@ static void write_patches(const context_t *ctx, const deck_t *deck, FILE *file)
 }
 
 /**
- * Write input cards echo to output file
+ * Write input cards echo to output file [DEPRECATED - BATCH MODE ONLY]
  * Echoes FR, TL, LD, EX, RP, and other control cards from the current batch.
  * The batch is defined by batch_start and batch_end (inclusive).
  * If batch_end points to EN or XT, that card is included as the final card.
+ *
+ * DEPRECATED: This function is part of the legacy batch processing system.
+ * It is only called from control.c (run_simulation). The active sequential
+ * processing pathway in reporting.c does not use this function.
  *
  * @param file Output file pointer
  * @param deck The deck containing all cards
@@ -1990,9 +2003,13 @@ static void write_patches(const context_t *ctx, const deck_t *deck, FILE *file)
  * @param card_number_offset Starting card number for this batch
  */
 /****************************************************************************
- * write_input_cards_excluding_end()
+ * write_input_cards_excluding_end() [DEPRECATED - BATCH MODE ONLY]
  *
  * Like write_input_cards but skips EN and NX cards (which are output separately).
+ *
+ * DEPRECATED: This function is part of the legacy batch processing system.
+ * It is only called from write_batch_card_echo and related batch functions.
+ * The active sequential processing pathway in reporting.c does not use this.
  */
 static void write_input_cards_excluding_end(FILE *file, const context_t *ctx, const deck_t *deck, int batch_start, int batch_end, int card_number_offset)
 {
@@ -2141,7 +2158,7 @@ static int count_echoed_cards_in_range(const deck_t *deck, int from, int to)
 }
 
 /******************************************************************************
- * write_batch_card_echo()
+ * write_batch_card_echo() [DEPRECATED - BATCH MODE ONLY]
  *
  * Echoes the control cards for the current batch (ctx->batch_start_card to
  * ctx->batch_end_card) with correct sequential numbering, accounting for all
@@ -2149,6 +2166,10 @@ static int count_echoed_cards_in_range(const deck_t *deck, int from, int to)
  * output to mirror Fortran behavior: each FR/RP pair is echoed immediately
  * before its own computation output rather than all cards being dumped at
  * the top of the file.
+ *
+ * DEPRECATED: This function is part of the legacy batch processing system.
+ * It is only called from control.c (run_simulation). The active sequential
+ * processing pathway in reporting.c does not use this function.
  */
 void write_batch_card_echo(FILE *file, const context_t *ctx, const deck_t *deck)
 {
@@ -2176,12 +2197,16 @@ void write_batch_card_echo(FILE *file, const context_t *ctx, const deck_t *deck)
 }
 
 /******************************************************************************
- * write_remaining_execution_cards()
+ * write_remaining_execution_cards() [DEPRECATED - BATCH MODE ONLY]
  *
  * Echoes any execution cards (EX/XQ pairs) that come after the first XQ
  * in the batch. Used when multiple executions are processed at the same
  * frequency to match Fortran's behavior of echoing cards before each
  * execution's output.
+ *
+ * DEPRECATED: This function is part of the legacy batch processing system.
+ * It is only called from control.c batch processing functions. The active
+ * sequential processing pathway in reporting.c does not use this function.
  */
 static void write_remaining_execution_cards(FILE *file, const context_t *ctx, const deck_t *deck)
 {
