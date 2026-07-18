@@ -653,6 +653,7 @@ static void reset_network_buffers(context_t *ctx)
 {
     if (!ctx) return;
     ctx->netcx.num_networks = 0;
+    ctx->netcx.network_type = 0;  /* Force network matrix rebuild (matches Fortran NTSOL=0) */
 }
 
 /**
@@ -899,9 +900,13 @@ static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
         return 0;  /* Skip single frequency */
     }
     
-    /* If XQ has a parameter, it may set default radiation pattern */
+    /* Set card_sequence_state based on XQ parameter (matches Fortran IFLOW logic) */
     if (card->i[1] != 0) {
-        state->card_sequence_state = 10;  /* iflow - XQ card */
+        state->card_sequence_state = 10;  /* iflow=7, XQ with parameter (sets default RP) */
+    } else if (state->card_sequence_state > 7) {
+        state->card_sequence_state = 11;  /* iflow=11, XQ without parameter, after patterns */
+    } else {
+        state->card_sequence_state = 7;   /* iflow=7, XQ without parameter, before patterns */
     }
     
     /* Execute frequency loop */
@@ -1313,6 +1318,7 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
                     creal(ctx->crnt.surface_cur[0]), cimag(ctx->crnt.surface_cur[0]));
             
             network(ctx, cm, ctx->save.pivot, ctx->crnt.surface_cur);
+            ctx->netcx.network_type = 1;  /* Mark network as solved (matches Fortran NTSOL=1) */
             
             fprintf(stderr, "[DEBUG-reporting] After network(): einc[0]=(%.6e,%.6e)\n",
                     creal(ctx->crnt.surface_cur[0]), cimag(ctx->crnt.surface_cur[0]));
