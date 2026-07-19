@@ -744,6 +744,8 @@ static void reset_network_buffers(context_t *ctx)
         mem_free(ctx, (void **)&ctx->netcx.y22_imag);
         ctx->netcx.num_networks = 0;
     }
+    /* Force network matrix rebuild (matches Fortran NTSOL=0) */
+    ctx->netcx.network_type = 0;
 }
 
 /******************************************************************************
@@ -1397,7 +1399,7 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
             }
             
             // First NT/TL in batch resets network (iflow transition to 6)
-            if (ctx->iflow != 6 && ctx->netcx.num_networks == 0) {
+            if (ctx->iflow != 6) {
                 reset_network_buffers(ctx);
                 ctx->iflow = 6;
             }
