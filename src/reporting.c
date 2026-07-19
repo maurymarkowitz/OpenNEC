@@ -910,7 +910,8 @@ static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
     }
     
     /* Execute frequency loop */
-    return execute_frequency_loop_sequential(ctx, deck, card_idx, state);
+    int result = execute_frequency_loop_sequential(ctx, deck, card_idx, state);
+    return result;
 }
 
 /**
@@ -1245,6 +1246,9 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         double fr = state->current_frequency_mhz / CVEL;  /* fr - Frequency in 1/meters */
         double wlam = CVEL / state->current_frequency_mhz;  /* wlam - Wavelength in meters */
         
+        /* Save frequency for output */
+        ctx->save.freq_mhz = state->current_frequency_mhz;
+        
         /* Scale geometry for current frequency - Fortran lines 44-307 */
         scale_geometry_for_frequency(ctx, state, fr);
         
@@ -1300,28 +1304,16 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
             /* Process queued EX cards to populate ctx->vsorc (voltage sources) */
             process_ex_batch(ctx);
             
-            fprintf(stderr, "[DEBUG-reporting] Before fill_excitation_vector: num_vsrcs=%d, num_qdsrcs=%d\n",
-                    ctx->vsorc.num_vsrcs, ctx->vsorc.num_qdsrcs);
-            
             /* Fill excitation vector (right-hand side) */
             fill_excitation_vector(ctx, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
                                   state->excitation_type, ctx->crnt.surface_cur);
-            
-            fprintf(stderr, "[DEBUG-reporting] After fill_excitation_vector: surface_cur[0]=(%.6e,%.6e)\n",
-                    creal(ctx->crnt.surface_cur[0]), cimag(ctx->crnt.surface_cur[0]));
         }
         
         /* Matrix solving - Fortran line 60 */
         if (state->processing_stage >= 3) {
             /* Solve for currents using network solver */
-            fprintf(stderr, "[DEBUG-reporting] Before network(): einc[0]=(%.6e,%.6e)\n",
-                    creal(ctx->crnt.surface_cur[0]), cimag(ctx->crnt.surface_cur[0]));
-            
             network(ctx, cm, ctx->save.pivot, ctx->crnt.surface_cur);
             ctx->netcx.network_type = 1;  /* Mark network as solved (matches Fortran NTSOL=1) */
-            
-            fprintf(stderr, "[DEBUG-reporting] After network(): einc[0]=(%.6e,%.6e)\n",
-                    creal(ctx->crnt.surface_cur[0]), cimag(ctx->crnt.surface_cur[0]));
             
             state->processing_stage = 4;  /* igo - Done */
         }
