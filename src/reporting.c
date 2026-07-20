@@ -72,6 +72,11 @@ void init_card_state(card_state_t *state)
     state->patch_area_saved = NULL;  /* patch_atemp */
     state->wire_geometry_saved = 0;  /* ifrtmw */
     state->patch_geometry_saved = 0;  /* ifrtmp */
+    
+    /* Pattern tracking */
+    state->last_processed_pattern_idx = -1;
+    state->num_rp_cards = 0;
+    state->last_freq_output_mhz = -999.0;  /* Initialize to impossible frequency */
 }
 
 void free_card_state(card_state_t *state)
@@ -281,6 +286,16 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
             if (ctx->output_fp && is_comment(card)) {
                 fprintf(ctx->output_fp, "%s\n", card->card_str ? card->card_str : "");
             }
+            continue;
+        }
+        
+        /* Skip pattern cards that were already processed as part of an XQ look-ahead */
+        if ((strcmp(card->card_code, "RP") == 0 ||
+             strcmp(card->card_code, "NE") == 0 ||
+             strcmp(card->card_code, "NH") == 0 ||
+             strcmp(card->card_code, "PT") == 0 ||
+             strcmp(card->card_code, "PQ") == 0) &&
+            i <= state.last_processed_pattern_idx) {
             continue;
         }
         
@@ -909,6 +924,56 @@ static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
         state->card_sequence_state = 7;   /* iflow=7, XQ without parameter, before patterns */
     }
     
+    /* Look ahead to collect RP/NE/NH cards that follow this XQ */
+    state->num_rp_cards = 0;  /* Reset RP card collection for this XQ */
+    int last_pattern_idx = card_idx;
+    
+    for (int i = card_idx + 1; i < deck->num_cards; i++) {
+        card_t *next_card = &deck->cards[i];
+        
+        /* Skip comments and ignored cards */
+        if (is_comment(next_card) || next_card->ignore) {
+            continue;
+        }
+        
+        /* Collect RP/NE/NH cards */
+        if (strcmp(next_card->card_code, "RP") == 0 && state->num_rp_cards < MAX_RP_CARDS_PER_FREQUENCY) {
+            /* Extract RP card parameters */
+            int n_theta = (next_card->i[2] == 0) ? 1 : next_card->i[2];
+            int n_phi = (next_card->i[3] == 0) ? 1 : next_card->i[3];
+            double theta_start = next_card->f[1];
+            double phi_start = next_card->f[2];
+            double theta_step = next_card->f[3];
+            double phi_step = next_card->f[4];
+            
+            state->rp_cards[state->num_rp_cards].num_theta = n_theta;
+            state->rp_cards[state->num_rp_cards].num_phi = n_phi;
+            state->rp_cards[state->num_rp_cards].theta_start = theta_start;
+            state->rp_cards[state->num_rp_cards].phi_start = phi_start;
+            state->rp_cards[state->num_rp_cards].theta_step = theta_step;
+            state->rp_cards[state->num_rp_cards].phi_step = phi_step;
+            state->num_rp_cards++;
+            
+            last_pattern_idx = i;
+            /* Set far_field_type to 0 if not already set (matches NEC-2 RP card default) */
+            if (ctx->gnd.far_field_type == -1) {
+                ctx->gnd.far_field_type = 0;
+            }
+        } else if (strcmp(next_card->card_code, "NE") == 0 || strcmp(next_card->card_code, "NH") == 0) {
+            /* NE/NH cards are near-field requests, mark but don't collect yet */
+            last_pattern_idx = i;
+        } else if (strcmp(next_card->card_code, "PT") == 0 || strcmp(next_card->card_code, "PQ") == 0) {
+            /* PT/PQ cards follow patterns, mark position */
+            last_pattern_idx = i;
+        } else {
+            /* Any other card type ends the pattern sequence */
+            break;
+        }
+    }
+    
+    /* Store last pattern index so main card loop can skip these cards */
+    state->last_processed_pattern_idx = last_pattern_idx;
+    
     /* Execute frequency loop */
     int result = execute_frequency_loop_sequential(ctx, deck, card_idx, state);
     return result;
@@ -1255,7 +1320,19 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         /* Set wavelength in context for calculations */
         geom->wavelength = wlam;
         
+        /* Progress from stage 1 (need matrix) to stage 2 (ready to fill) */
+        if (state->processing_stage == 1) {
+            state->processing_stage = 2;  /* Ready to fill and factor matrix */
+        }
+        
         /* Process based on processing_stage state - Fortran line 40: GO TO (41,46,53,71,78), processing_stage */
+        
+        /* Skip matrix operations if processing_stage > 4 (already complete from prior frequency/XQ)
+           This happens in sequential mode when multiple XQ cards process the same frequency */
+        if (state->processing_stage > 4) {
+            /* Skip matrix fill, factor, and solve - just output patterns if any */
+            /* processing_stage stays at 5 (complete) */
+        } else {
         
         /* processing_stage=2: Structure loading - Fortran label 46 (line 146) */
         if (state->processing_stage >= 2) {
@@ -1318,9 +1395,46 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
             state->processing_stage = 4;  /* igo - Done */
         }
         
-        /* Write all frequency-dependent output (antenna input, currents, power, patterns) */
-        if (state->processing_stage >= 4 && ctx->output_fp) {
+        } /* End skip matrix operations block */
+        
+        /* Write all frequency-dependent output (antenna input, currents, power) BEFORE patterns
+           Only output once per unique frequency, not for every XQ in that frequency */
+        if (state->processing_stage >= 4 && ctx->output_fp &&
+            fabs(state->current_frequency_mhz - state->last_freq_output_mhz) > 1e-6) {
             write_frequency_step_output(ctx->output_fp, ctx);
+            state->last_freq_output_mhz = state->current_frequency_mhz;
+        }
+        
+        /* Compute and output radiation patterns if collected from look-ahead */
+        if (state->processing_stage >= 4 && state->num_rp_cards > 0 && ctx->gnd.far_field_type != -1) {
+            ctx->fpat.power_in = ctx->netcx.power_in;
+            ctx->fpat.network_loss = ctx->netcx.power_net_loss;
+            
+            /* Process each collected RP card */
+            for (int rp_idx = 0; rp_idx < state->num_rp_cards; rp_idx++) {
+                /* Set up field pattern structure for this RP card */
+                ctx->fpat.num_theta = state->rp_cards[rp_idx].num_theta;
+                ctx->fpat.num_phi = state->rp_cards[rp_idx].num_phi;
+                ctx->fpat.theta_start = state->rp_cards[rp_idx].theta_start;
+                ctx->fpat.phi_start = state->rp_cards[rp_idx].phi_start;
+                ctx->fpat.theta_step = state->rp_cards[rp_idx].theta_step;
+                ctx->fpat.phi_step = state->rp_cards[rp_idx].phi_step;
+                
+                /* Compute radiation pattern */
+                compute_radiation_pattern(ctx);
+                
+                if (ctx->rpat.num_points > 0 && ctx->output_fp) {
+                    /* Output the pattern if computation succeeded */
+                    write_single_radiation_pattern(ctx->output_fp, ctx);
+                    
+                    /* Free pattern points for next RP card */
+                    if (ctx->rpat.points != NULL) {
+                        mem_free(ctx, (void **)&ctx->rpat.points);
+                        ctx->rpat.points = NULL;
+                    }
+                    ctx->rpat.num_points = 0;
+                }
+            }
         }
         
     } /* End frequency loop - Fortran line 120 */

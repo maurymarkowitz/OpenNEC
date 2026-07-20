@@ -16,6 +16,7 @@
 #include "input.h"
 #include "output.h"
 #include "control.h"
+#include "reporting.h"
 #include "deck_validations.h"
 #include "import-export/nec2-support.h"
 #include "import-export/nec4-support.h"
@@ -831,8 +832,8 @@ static int process_single_file(const char *input_filename, const char *output_fi
   // run it if we've been asked to
   if (do_run_simulation)
   {
-    // Run complete simulation with batch processing
-    int sim_result = run_simulation(ctx, &deck);
+    // Run complete simulation with sequential card processing
+    int sim_result = process_deck_sequential(ctx, &deck);
 
     // Check for any errors that occurred during calculation (whether simulation failed or succeeded)
     if (ctx->errors.num_errors > 0 || sim_result != 0)

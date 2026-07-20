@@ -1,10 +1,5 @@
 OpenNEC version history
 
-Version 2.2.1 - 2026 July 19
-- fix an issue with QX cards not resetting NT values
-- some code cleanup
-- some documentation changes
-
 Version 2.2.0 - 2026 June 26
 - found and fixed (longstanding!) bug in nec2c somnec
 - fixed an issue with the PT flag

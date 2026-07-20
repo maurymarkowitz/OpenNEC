@@ -650,6 +650,25 @@ void write_subsequent_excitation_output(FILE *file, context_t *ctx, const deck_t
   write_near_field_plot(ctx);
 }
 
+/*
+ * write_single_radiation_pattern()
+ *
+ * Writes a single radiation pattern's header and data for a specific frequency.
+ * Called from sequential processing (reporting.c) when multiple RP cards follow
+ * an XQ in the same frequency batch. Outputs the pattern without the frequency
+ * header, loading, power budget, or other frequency-step sections.
+ *
+ * This function is used by the active sequential processing pathway in
+ * reporting.c to handle multiple radiation patterns per frequency.
+ */
+void write_single_radiation_pattern(FILE *file, context_t *ctx)
+{
+  if (file == NULL || ctx == NULL) return;
+  
+  write_radiation_pattern_header(file, ctx);
+  write_radiation_pattern_data(file, ctx);
+}
+
 void write_nec_output(context_t *ctx, const deck_t *deck, FILE *file)
 {
   if (ctx->freq_step_output_written) {
@@ -1370,14 +1389,14 @@ static void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
   else
   {
     fprintf(file, "\n\n\n"
-                  "                              "
-                  " __________________________________________\n"
-                  "                              "
-                  "|                                          |\n"
-                  "                              "
-                  "|NUMERICAL ELECTROMAGNETICS CODE (onec %s)|\n"
-                  "                              "
-                  "|__________________________________________|\n", VERSION_STRING);
+                  "                            "
+                  " ______________________________________________\n"
+                  "                            "
+                  "|                                              |\n"
+                  "                            "
+                  "|NUMERICAL ELECTROMAGNETICS CODE (onec %s). |\n"
+                  "                            "
+                  "|______________________________________________|\n", VERSION_STRING);
   }
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
@@ -2241,7 +2260,7 @@ static void write_remaining_execution_cards(FILE *file, const context_t *ctx, co
  * Outputs EN and NX cards as separate batches at the end of the output,
  * each with their own DATA CARD No: line.
  */
-void write_end_cards(FILE *file, const deck_t *deck)
+void write_end_cards(FILE *file, const context_t *ctx, const deck_t *deck)
 {
   if (file == NULL || deck == NULL)
   {
@@ -2332,9 +2351,18 @@ void write_end_cards(FILE *file, const deck_t *deck)
       fprintf(file, "\n\n\n\n");
       if (found_rp && card->ints_used == 0 && card->flts_used == 0)
       {
-        fprintf(file, " ***** DATA CARD NO. %2d   EN %3d%6d%6d%6d",
-                current_card_number,
-                last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
+        if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+        {
+          fprintf(file, " ***** DATA CARD NO. %2d   EN %3d%6d%6d%6d",
+                  current_card_number,
+                  last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
+        }
+        else
+        {
+          fprintf(file, "  DATA CARD No: %3d EN %3d%6d%6d%6d",
+                  current_card_number,
+                  last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
+        }
         for (int j = 1; j <= 6; j++)
         {
           fprintf(file, " %12.5E", last_rp_card.f[j]);
@@ -2343,9 +2371,18 @@ void write_end_cards(FILE *file, const deck_t *deck)
       }
       else
       {
-        fprintf(file, " ***** DATA CARD NO. %2d   EN %3d%6d%6d%6d",
-                current_card_number,
-                card->i[1], card->i[2], card->i[3], card->i[4]);
+        if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+        {
+          fprintf(file, " ***** DATA CARD NO. %2d   EN %3d%6d%6d%6d",
+                  current_card_number,
+                  card->i[1], card->i[2], card->i[3], card->i[4]);
+        }
+        else
+        {
+          fprintf(file, "  DATA CARD No: %3d EN %3d%6d%6d%6d",
+                  current_card_number,
+                  card->i[1], card->i[2], card->i[3], card->i[4]);
+        }
         for (int j = 1; j <= 6; j++)
         {
           fprintf(file, " %12.5E", card->f[j]);
@@ -2355,9 +2392,18 @@ void write_end_cards(FILE *file, const deck_t *deck)
     }
     else if (strncmp(card->card_code, "NX", 2) == 0)
     {
-      fprintf(file, " ***** DATA CARD NO. %2d   NX   %d   %d     %d  %d",
-              current_card_number,
-              card->i[1], card->i[2], card->i[3], card->i[4]);
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+      {
+        fprintf(file, " ***** DATA CARD NO. %2d   NX   %d   %d     %d  %d",
+                current_card_number,
+                card->i[1], card->i[2], card->i[3], card->i[4]);
+      }
+      else
+      {
+        fprintf(file, "  DATA CARD No: %3d NX   %d   %d     %d  %d",
+                current_card_number,
+                card->i[1], card->i[2], card->i[3], card->i[4]);
+      }
       for (int j = 1; j <= 6; j++)
       {
         fprintf(file, " %12.5E", card->f[j]);
@@ -2371,9 +2417,18 @@ void write_end_cards(FILE *file, const deck_t *deck)
     current_card_number++;
     if (found_rp)
     {
-      fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d     %d  %d",
-              current_card_number,
-              last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+      {
+        fprintf(file, " ***** DATA CARD NO. %2d   EN   %d   %d     %d  %d",
+                current_card_number,
+                last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
+      }
+      else
+      {
+        fprintf(file, "  DATA CARD No: %3d EN   %d   %d     %d  %d",
+                current_card_number,
+                last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
+      }
       for (int j = 1; j <= 6; j++)
       {
         fprintf(file, " %12.5E", last_rp_card.f[j]);
@@ -2382,8 +2437,16 @@ void write_end_cards(FILE *file, const deck_t *deck)
     }
     else // there is an EN card
     {
-      fprintf(file, " ***** DATA CARD NO. %2d   EN   0     0     0     0  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00\n",
-              current_card_number);
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+      {
+        fprintf(file, " ***** DATA CARD NO. %2d   EN   0     0     0     0  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00\n",
+                current_card_number);
+      }
+      else
+      {
+        fprintf(file, "  DATA CARD No: %3d EN   0     0     0     0  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00\n",
+                current_card_number);
+      }
     }
   }
 }
@@ -3853,7 +3916,7 @@ static void write_near_field_plot(const context_t *ctx)
 void write_footer(FILE *file, const context_t *ctx, const deck_t *deck)
 {
   /* Output end cards (EN/NX) and implicit EN if needed */
-  write_end_cards(file, deck);
+  write_end_cards(file, ctx, deck);
 
   // Calculate and output total runtime
   if (ctx != NULL)

@@ -79,6 +79,23 @@ typedef struct {
     int wire_geometry_saved;    /**< ifrtmw - Flag: wire geometry saved (1=yes, 0=no) */
     int patch_geometry_saved;   /**< ifrtmp - Flag: patch geometry saved (1=yes, 0=no) */
     
+    /* Pattern card processing - track which pattern cards were processed with XQ */
+    int last_processed_pattern_idx; /**< Index of last RP/NE/NH card processed as part of current XQ */
+    
+    /* Multiple RP card handling - store parameters for all RP cards following current XQ */
+    #define MAX_RP_CARDS_PER_FREQUENCY 20
+    struct {
+        int num_theta;
+        int num_phi;
+        double theta_start;
+        double phi_start;
+        double theta_step;
+        double phi_step;
+    } rp_cards[MAX_RP_CARDS_PER_FREQUENCY];
+    int num_rp_cards;           /**< Number of RP cards collected from look-ahead */
+    
+    double last_freq_output_mhz;  /**< Last frequency for which frequency output was written */
+    
 } card_state_t;
 
 /**

@@ -71,6 +71,18 @@ void write_extra_pattern_output(FILE *file, context_t *ctx);
 void write_subsequent_excitation_output(FILE *file, context_t *ctx, const deck_t *deck);
 
 /**
+ * @brief Writes a single radiation pattern header and data.
+ *
+ * Called from sequential processing (reporting.c) when outputting multiple
+ * radiation patterns per frequency. Outputs the pattern header and data for
+ * the current radiation pattern in ctx->rpat.
+ *
+ * @param file Output file pointer.
+ * @param ctx  The simulation context (provides rpat data).
+ */
+void write_single_radiation_pattern(FILE *file, context_t *ctx);
+
+/**
  * @brief Echoes the current batch's control cards before its frequency output.
  *
  * DEPRECATED - BATCH MODE ONLY: Writes the DATA CARD echo lines for
@@ -98,7 +110,7 @@ void write_batch_card_echo(FILE *file, const context_t *ctx, const deck_t *deck)
  * @param file Output file pointer.
  * @param deck The deck associated with the simulation.
  */
-void write_end_cards(FILE *file, const deck_t *deck);
+void write_end_cards(FILE *file, const context_t *ctx, const deck_t *deck);
 
 /**
  * @brief Writes the output file footer.
