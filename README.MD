@@ -23,10 +23,10 @@ Why OpenNEC?
 
 There are many NEC-2 engines available, why should you use OpenNEC?
 
-- OpenNEC is threaded and takes advantage of multi-core processors. A few NEC engines are also threaded.
+- OpenNEC takes full advantage of multi-core and multi-processor systems. A few NEC engines are also "MP".
 - OpenNEC uses the fast BLAS math code, when available. Some NEC engines also support BLAS.
 - OpenNEC includes fixes for all common NEC issues. Other engines fix some of these as well.
-- OpenNEC models are limited only by the system size. Some engines have hard-coded limits, some fix this.
+- OpenNEC models are limited only by the system size. Older engines have hard-coded limits, some fix this.
 - OpenNEC uses identical code on Windows, macOS and Linux. Most engines require work when changing OS.
 - OpenNEC can read input files from practically any deck. Older engines were more strict.
 - OpenNEC can also read and write files from other antenna programs, like EZNEC.
@@ -34,7 +34,7 @@ There are many NEC-2 engines available, why should you use OpenNEC?
 - OpenNEC fully supports extensions from 4nec2 and other systems.
 - OpenNEC can be compiled directly into your program.
 
-So why use OpenNEC when most of these features are available in other engines? Because OpenNEC has all of these in one package. Not *this* fix or *that* extension, *all of them*. In a single, fast, cross-platform program.
+So why use OpenNEC when most of these features are available in other engines? Because OpenNEC has all of these in one package. Not *this* fix or *that* extension, *all of them*. All in a single, fast, cross-platform program.
 
 Installing OpenNEC
 ------------------
