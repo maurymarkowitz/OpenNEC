@@ -11,6 +11,19 @@ endif
 $(info Using C compiler: $(CC))
 CFLAGS = -I. -Isrc -g -O2 -Wall -Wno-unused-parameter
 LDFLAGS =
+
+# OpenMP-parallel matrix fill (fill_wire_wire_matrix observation loop).
+# Set OPENMP=0 to build the sequential fill. Off by default on macOS,
+# where stock Apple clang has no -fopenmp; a libomp-equipped compiler can
+# opt back in with `make OPENMP=1`.
+OPENMP ?= 1
+ifeq ($(shell uname),Darwin)
+OPENMP ?= 0
+endif
+ifeq ($(OPENMP),1)
+CFLAGS += -fopenmp
+LDFLAGS += -fopenmp
+endif
 AR ?= ar
 RANLIB ?= ranlib
 
