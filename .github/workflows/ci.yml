@@ -32,10 +32,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install OpenMP
+        run: brew install libomp
       - name: Build
         run: |
           make clean
-          make RELEASE=1
+          make RELEASE=1 OPENMP=1 OPENMP_CFLAGS="-I$(brew --prefix libomp)/include -fopenmp" OPENMP_LDFLAGS="-L$(brew --prefix libomp)/lib -lomp"
       - name: Smoke test
         run: |
           ./onec examples/example5.nec

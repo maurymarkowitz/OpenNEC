@@ -108,6 +108,8 @@ jobs:
         backend: [original, accelerate]
     steps:
       - uses: actions/checkout@v4
+      - name: Install OpenMP
+        run: brew install libomp
       - name: Set build vars
         run: |
           if [ "${{ matrix.backend }}" = "original" ]; then
@@ -120,7 +122,7 @@ jobs:
       - name: Build (macOS x86_64, ${{ matrix.backend }})
         run: |
           make clean
-          make RELEASE=1 CC=clang CFLAGS="-I. -Isrc -O2 -Wall -Wno-unused-parameter -arch x86_64 -mmacosx-version-min=11.0" LDFLAGS="-arch x86_64 -mmacosx-version-min=11.0" $MAKE_OPTS
+          make RELEASE=1 CC=clang CFLAGS="-I. -Isrc -O2 -Wall -Wno-unused-parameter -arch x86_64 -mmacosx-version-min=11.0" LDFLAGS="-arch x86_64 -mmacosx-version-min=11.0" OPENMP=1 OPENMP_CFLAGS="-I$(brew --prefix libomp)/include -fopenmp" OPENMP_LDFLAGS="-L$(brew --prefix libomp)/lib -lomp" $MAKE_OPTS
       - name: Package
         run: |
           DIST="onec-macos-x86${DIST_SUFFIX}"
@@ -150,6 +152,8 @@ jobs:
         backend: [original, accelerate]
     steps:
       - uses: actions/checkout@v4
+      - name: Install OpenMP
+        run: brew install libomp
       - name: Show runner arch
         run: |
           uname -m || true
@@ -166,7 +170,7 @@ jobs:
       - name: Build (macOS arm64, ${{ matrix.backend }})
         run: |
           make clean
-          make RELEASE=1 CC=clang CFLAGS="-I. -Isrc -O2 -Wall -Wno-unused-parameter -arch arm64 -mmacosx-version-min=11.0" LDFLAGS="-arch arm64 -mmacosx-version-min=11.0" $MAKE_OPTS
+          make RELEASE=1 CC=clang CFLAGS="-I. -Isrc -O2 -Wall -Wno-unused-parameter -arch arm64 -mmacosx-version-min=11.0" LDFLAGS="-arch arm64 -mmacosx-version-min=11.0" OPENMP=1 OPENMP_CFLAGS="-I$(brew --prefix libomp)/include -fopenmp" OPENMP_LDFLAGS="-L$(brew --prefix libomp)/lib -lomp" $MAKE_OPTS
       - name: Package
         run: |
           DIST="onec-macos-arm64${DIST_SUFFIX}"

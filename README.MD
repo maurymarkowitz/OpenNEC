@@ -23,7 +23,7 @@ Why OpenNEC?
 
 There are many NEC-2 engines available, why should you use OpenNEC?
 
-- OpenNEC takes full advantage of multi-core and multi-processor systems. A few NEC engines are also "MP".
+- OpenNEC takes full advantage of multi-core and multi-processor systems using OpenMP parallelization. A few NEC engines are also "MP".
 - OpenNEC uses the fast BLAS math code, when available. Some NEC engines also support BLAS.
 - OpenNEC includes fixes for all common NEC issues. Other engines fix some of these as well.
 - OpenNEC models are limited only by the system size. Older engines have hard-coded limits, some fix this.

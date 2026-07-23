@@ -15,14 +15,14 @@ LDFLAGS =
 # OpenMP-parallel matrix fill (fill_wire_wire_matrix observation loop).
 # Set OPENMP=0 to build the sequential fill. Off by default on macOS,
 # where stock Apple clang has no -fopenmp; a libomp-equipped compiler can
-# opt back in with `make OPENMP=1`.
-OPENMP ?= 1
-ifeq ($(shell uname),Darwin)
-OPENMP ?= 0
-endif
+# opt back in with `make OPENMP=1 OPENMP_CFLAGS=... OPENMP_LDFLAGS=...`.
+# Default OpenMP flags for GCC/MinGW:
+OPENMP_CFLAGS ?= -fopenmp
+OPENMP_LDFLAGS ?= -fopenmp
+OPENMP ?= $(if $(filter Darwin,$(shell uname)),0,1)
 ifeq ($(OPENMP),1)
-CFLAGS += -fopenmp
-LDFLAGS += -fopenmp
+CFLAGS += $(OPENMP_CFLAGS)
+LDFLAGS += $(OPENMP_LDFLAGS)
 endif
 AR ?= ar
 RANLIB ?= ranlib

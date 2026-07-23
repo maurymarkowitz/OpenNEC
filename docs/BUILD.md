@@ -165,6 +165,47 @@ export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openblas/l
 
 - Accelerate deprecation warnings: you may see CLAPACK deprecation notes when using auto-detected Accelerate; these are benign for builds here.
 
+OpenMP Support
+--------------
+OpenNEC uses OpenMP for parallel matrix fill operations on multi-core systems, which can significantly improve performance on large antenna models.
+
+### Default Behavior
+
+- **Linux**: OpenMP is enabled by default with GCC's `-fopenmp` flag
+- **Windows (MinGW)**: OpenMP is enabled by default with GCC's `-fopenmp` flag
+- **macOS**: OpenMP is disabled by default because Apple's standard clang does not include OpenMP support
+
+### macOS with Libomp
+
+To enable OpenMP on macOS, you need to install the `libomp` package via Homebrew and specify custom compiler flags:
+
+```bash
+# Install libomp
+brew install libomp
+
+# Build with OpenMP enabled
+make clean
+make RELEASE=1 OPENMP=1 \
+  OPENMP_CFLAGS="-I$(brew --prefix libomp)/include -fopenmp" \
+  OPENMP_LDFLAGS="-L$(brew --prefix libomp)/lib -lomp"
+
+./onec examples/example5.nec
+```
+
+### Manual OpenMP Configuration
+
+For any platform, you can explicitly control OpenMP support with:
+
+```bash
+# Disable OpenMP
+make OPENMP=0
+
+# Enable OpenMP with custom compiler flags (e.g., Intel compiler)
+make OPENMP=1 \
+  OPENMP_CFLAGS="-I/custom/path/include -qopenmp" \
+  OPENMP_LDFLAGS="-L/custom/path/lib -liomp5"
+```
+
 Windows Setup
 -------------
 There are two practical ways to build and run OpenNEC on Windows:
