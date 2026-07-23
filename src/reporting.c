@@ -265,6 +265,8 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
      * This should happen once at the very start, before any frequency processing */
     if (ctx->output_fp) {
         write_nec_preamble(ctx, deck, ctx->output_fp);
+        /* Signal to main.c that preamble has been written, so it shouldn't write it again */
+        ctx->freq_step_output_written = true;
     }
     
     /* Start processing cards after geometry section */
@@ -289,7 +291,7 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
             continue;
         }
         
-        /* Skip pattern cards that were already processed as part of an XQ look-ahead */
+        /* Skip pattern cards (RP, NE, NH, PT, PQ) that were already output as part of XQ look-ahead */
         if ((strcmp(card->card_code, "RP") == 0 ||
              strcmp(card->card_code, "NE") == 0 ||
              strcmp(card->card_code, "NH") == 0 ||
@@ -312,10 +314,7 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
         }
     }
     
-    /* Output footer (EN card echo and runtime) */
-    if (ctx->output_fp) {
-        write_footer(ctx->output_fp, ctx, deck);
-    }
+    /* Don't call write_footer here - it will be called by main.c after we return */
     
     free_card_state(&state);
     return 0;
@@ -413,18 +412,23 @@ static int calculate_coupling_parameters(context_t *ctx)
 static int dispatch_card(context_t *ctx, deck_t *deck, int card_idx,
                         card_state_t *state)
 {
+    fflush(stderr);
+    
     if (!ctx || !deck || card_idx < 0 || card_idx >= deck->num_cards || !state) {
+        fflush(stderr);
         return -1;
     }
     
     card_t *card = &deck->cards[card_idx];
     const char *code = card->card_code;
     
+    fflush(stderr);
+    
     /* Write card echo to output if configured */
     if (ctx->output_fp) {
         state->total_cards_processed++;
         fprintf(ctx->output_fp,
-            "\n  DATA CARD No: %3d "
+            "  DATA CARD No: %3d "
             "%s %3d %5d %5d %5d %12.5E %12.5E %12.5E %12.5E %12.5E %12.5E\n",
             state->total_cards_processed, code, card->i[1], card->i[2], card->i[3], card->i[4],
             card->f[1], card->f[2], card->f[3], card->f[4], card->f[5], card->f[6]);
@@ -556,6 +560,8 @@ static int add_current_source(context_t *ctx, int tag, int seg, complex double c
 static int add_loading(context_t *ctx, int ldtyp, int ldtag, int ldtagf, 
                       int ldtagt, double zlr, double zli, double zlc)
 {
+    fflush(stderr);
+    
     if (!ctx) return -1;
     
     /* Validate and add to loading impedance system */
@@ -564,7 +570,37 @@ static int add_loading(context_t *ctx, int ldtyp, int ldtag, int ldtagf,
         return -1;
     }
     
-    int idx = ctx->zload.num_loads++;
+    fflush(stderr);
+    
+    ctx->zload.num_loads++;
+    int idx = ctx->zload.num_loads - 1;
+    
+    fflush(stderr);
+    
+    /* Allocate/reallocate all arrays for this new load */
+    size_t mreq = (size_t)ctx->zload.num_loads * sizeof(int);
+    if (mem_realloc(ctx, (void **)&ctx->zload.load_types, mreq) != 0 ||
+        mem_realloc(ctx, (void **)&ctx->zload.load_tags, mreq) != 0 ||
+        mem_realloc(ctx, (void **)&ctx->zload.load_tag_from, mreq) != 0 ||
+        mem_realloc(ctx, (void **)&ctx->zload.load_tag_to, mreq) != 0 ||
+        mem_realloc(ctx, (void **)&ctx->zload.ldcard_num, mreq) != 0) {
+        fflush(stderr);
+        return -1;
+    }
+    
+    fflush(stderr);
+    
+    mreq = (size_t)ctx->zload.num_loads * sizeof(double);
+    if (mem_realloc(ctx, (void **)&ctx->zload.load_r, mreq) != 0 ||
+        mem_realloc(ctx, (void **)&ctx->zload.load_l, mreq) != 0 ||
+        mem_realloc(ctx, (void **)&ctx->zload.load_c, mreq) != 0 ||
+        mem_realloc(ctx, (void **)&ctx->zload.load_freq, mreq) != 0) {
+        fflush(stderr);
+        return -1;
+    }
+    
+    fflush(stderr);
+    
     ctx->zload.load_types[idx] = ldtyp;
     ctx->zload.load_tags[idx] = ldtag;
     ctx->zload.load_tag_from[idx] = ldtagf;
@@ -573,6 +609,8 @@ static int add_loading(context_t *ctx, int ldtyp, int ldtag, int ldtagf,
     ctx->zload.load_l[idx] = zli;
     ctx->zload.load_c[idx] = zlc;
     ctx->zload.load_freq[idx] = 0.0;  /* Use first FR card frequency */
+    
+    fflush(stderr);
     
     return 0;
 }
@@ -712,13 +750,31 @@ static int process_fr_card(context_t *ctx, const card_t *card, card_state_t *sta
  */
 static int process_ld_card(context_t *ctx, const card_t *card, card_state_t *state)
 {
-    if (!ctx || !card || !state) return -1;
+    fflush(stderr);
+    
+    if (!ctx || !card || !state) {
+        fflush(stderr);
+        return -1;
+    }
+    
+    fflush(stderr);
     
     int ldtyp = card->i[1];
     
+    fflush(stderr);
+    
+    fflush(stderr);
+    
+    fflush(stderr);
+    
     if (state->card_sequence_state != 3) {
         /* First LD card - reset loading buffers */
+        fflush(stderr);
+        
         reset_loading_buffers_seq(ctx);
+        
+        fflush(stderr);
+        
         state->card_sequence_state = 3;  /* iflow - LD cards */
         if (state->processing_stage > 2) state->processing_stage = 2;  /* igo - Reset to need TL */
         
@@ -731,26 +787,43 @@ static int process_ld_card(context_t *ctx, const card_t *card, card_state_t *sta
         return 0;  /* Cancel loading */
     }
     
+    fflush(stderr);
+    
     /* Extract loading parameters */
     int ldtag = card->i[2];
     int ldtagf = card->i[3];
     int ldtagt = card->i[4];
+    
+    fflush(stderr);
+    
     if (ldtagt == 0) ldtagt = ldtagf;
+    
+    fflush(stderr);
     
     double zlr = card->f[1];  /* Resistance */
     double zli = card->f[2];  /* Reactance */
     double zlc = card->f[3];  /* Additional parameter (varies by ldtyp) */
     
+    fflush(stderr);
+    
+    fflush(stderr);
+    
     /* Validate tag range */
     if (ldtagt < ldtagf) {
+        fflush(stderr);
+        
         char msg[MAX_ERROR_LEN];
         snprintf(msg, sizeof(msg),
                 "LD card: tag end (%d) < tag start (%d)", ldtagt, ldtagf);
         add_error(ctx, &ctx->errors, msg, WARNING);
     }
     
+    fflush(stderr);
+    
     /* Add loading to context - use existing add_loading or queue system */
     int result = add_loading(ctx, ldtyp, ldtag, ldtagf, ldtagt, zlr, zli, zlc);
+    
+    fflush(stderr);
     
     return result;
 }
@@ -880,9 +953,21 @@ static int process_nt_tl_card(context_t *ctx, const card_t *card, card_state_t *
     
     int ntyp = (strcmp(card->card_code, "NT") == 0) ? 1 : 2;  /* 1=NT, 2=TL */
     int tag1 = card->i[1];
-    int seg1 = card->i[2];
+    int seg1_within_tag = card->i[2];
     int tag2 = card->i[3];
-    int seg2 = card->i[4];
+    int seg2_within_tag = card->i[4];
+    
+    /* CRITICAL FIX: Convert (tag, segment_within_tag) to global segment numbers */
+    int seg1 = segment_number(ctx, tag1, seg1_within_tag);
+    int seg2 = segment_number(ctx, tag2, seg2_within_tag);
+    
+    if (seg1 <= 0 || seg2 <= 0) {
+        char msg[MAX_ERROR_LEN];
+        snprintf(msg, sizeof(msg), "Network card: Invalid segment reference. Tag1=%d Seg1=%d Tag2=%d Seg2=%d", 
+                 tag1, seg1_within_tag, tag2, seg2_within_tag);
+        add_error(ctx, &ctx->errors, msg, WARNING);
+        return -1;
+    }
     
     double x11r = card->f[1];
     double x11i = card->f[2];
@@ -974,8 +1059,43 @@ static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
     /* Store last pattern index so main card loop can skip these cards */
     state->last_processed_pattern_idx = last_pattern_idx;
     
+    /* Output RP/NE/NH/PT/PQ DATA CARD entries BEFORE frequency loop
+     * These should appear immediately after the XQ card in the output */
+    if (ctx->output_fp) {
+        for (int i = card_idx + 1; i <= last_pattern_idx; i++) {
+            card_t *pattern_card = &deck->cards[i];
+            
+            /* Skip comments and ignored cards */
+            if (is_comment(pattern_card) || pattern_card->ignore) {
+                continue;
+            }
+            
+            /* Output RP, NE, NH, PT, PQ cards with DATA CARD numbers */
+            if (strcmp(pattern_card->card_code, "RP") == 0 ||
+                strcmp(pattern_card->card_code, "NE") == 0 ||
+                strcmp(pattern_card->card_code, "NH") == 0 ||
+                strcmp(pattern_card->card_code, "PT") == 0 ||
+                strcmp(pattern_card->card_code, "PQ") == 0) {
+                
+                state->total_cards_processed++;
+                fprintf(ctx->output_fp,
+                    "  DATA CARD No: %3d "
+                    "%s %3d %5d %5d %5d %12.5E %12.5E %12.5E %12.5E %12.5E %12.5E\n",
+                    state->total_cards_processed, pattern_card->card_code,
+                    pattern_card->i[1], pattern_card->i[2], pattern_card->i[3], pattern_card->i[4],
+                    pattern_card->f[1], pattern_card->f[2], pattern_card->f[3], 
+                    pattern_card->f[4], pattern_card->f[5], pattern_card->f[6]);
+            }
+        }
+    }
+    
     /* Execute frequency loop */
+    fflush(stderr);
+    
     int result = execute_frequency_loop_sequential(ctx, deck, card_idx, state);
+    
+    fflush(stderr);
+    
     return result;
 }
 
@@ -1217,9 +1337,18 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
                                             int xq_card_idx,
                                             card_state_t *state)
 {
-    if (!ctx || !deck || !state) return -1;
+    fflush(stderr);
+    
+    if (!ctx || !deck || !state) {
+        fflush(stderr);
+        return -1;
+    }
+    
+    fflush(stderr);
     
     geometry_t *geom = &ctx->geometry;
+    
+    fflush(stderr);
     
     /* Allocate matrix and other structures for frequency loop */
     if (allocate_frequency_loop_storage(ctx, geom->num_segs + geom->num_patches) != 0) {
@@ -1297,6 +1426,8 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
     
     for (state->freq_iteration = 1; state->freq_iteration <= state->num_frequencies; state->freq_iteration++) {
         
+        fflush(stderr);
+        
         /* Calculate current frequency - Fortran lines 42-43 */
         if (state->freq_iteration > 1) {
             if (state->freq_stepping_mode == 1) {
@@ -1336,11 +1467,20 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         
         /* processing_stage=2: Structure loading - Fortran label 46 (line 146) */
         if (state->processing_stage >= 2) {
-            /* Apply loading to impedance matrix - TODO: integrate with load arrays */
-            /* if (apply_impedance_loading(ctx, ldtyp, ldtag, ldtagf, ldtagt, zlr, zli, zlc) != 0) {
-                restore_geometry(ctx, (const card_state_t *)state);
-                return -1;
-            } */
+            /* Apply loading to impedance matrix */
+            if (ctx->zload.num_loads > 0) {
+                if (apply_impedance_loading(ctx, 
+                    ctx->zload.load_types,
+                    ctx->zload.load_tags,
+                    ctx->zload.load_tag_from,
+                    ctx->zload.load_tag_to,
+                    ctx->zload.load_r,
+                    ctx->zload.load_l,
+                    ctx->zload.load_c) != 0) {
+                    restore_geometry(ctx, (const card_state_t *)state);
+                    return -1;
+                }
+            }
         }
         
         /* Fill and factor matrix - Fortran lines 50, label 323 */

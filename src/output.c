@@ -1394,7 +1394,9 @@ static void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
                   "                            "
                   "|                                              |\n"
                   "                            "
-                  "|NUMERICAL ELECTROMAGNETICS CODE (onec %s). |\n"
+                  "| NUMERICAL ELECTROMAGNETICS CODE (onec %s) |\n"
+                  "                            "
+                  "|     Translated to 'C' (double precision)     |\n"
                   "                            "
                   "|______________________________________________|\n", VERSION_STRING);
   }
@@ -2349,46 +2351,24 @@ void write_end_cards(FILE *file, const context_t *ctx, const deck_t *deck)
     if (strncmp(card->card_code, "EN", 2) == 0)
     {
       fprintf(file, "\n\n\n\n");
-      if (found_rp && card->ints_used == 0 && card->flts_used == 0)
+      /* Always use the actual EN card's parameters when it exists in the deck */
+      if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
       {
-        if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
-        {
-          fprintf(file, " ***** DATA CARD NO. %2d   EN %3d%6d%6d%6d",
-                  current_card_number,
-                  last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
-        }
-        else
-        {
-          fprintf(file, "  DATA CARD No: %3d EN %3d%6d%6d%6d",
-                  current_card_number,
-                  last_rp_card.i[1], last_rp_card.i[2], last_rp_card.i[3], last_rp_card.i[4]);
-        }
-        for (int j = 1; j <= 6; j++)
-        {
-          fprintf(file, " %12.5E", last_rp_card.f[j]);
-        }
-        fprintf(file, "\n");
+        fprintf(file, " ***** DATA CARD NO. %2d   EN %3d%6d%6d%6d",
+                current_card_number,
+                card->i[1], card->i[2], card->i[3], card->i[4]);
       }
       else
       {
-        if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
-        {
-          fprintf(file, " ***** DATA CARD NO. %2d   EN %3d%6d%6d%6d",
-                  current_card_number,
-                  card->i[1], card->i[2], card->i[3], card->i[4]);
-        }
-        else
-        {
-          fprintf(file, "  DATA CARD No: %3d EN %3d%6d%6d%6d",
-                  current_card_number,
-                  card->i[1], card->i[2], card->i[3], card->i[4]);
-        }
-        for (int j = 1; j <= 6; j++)
-        {
-          fprintf(file, " %12.5E", card->f[j]);
-        }
-        fprintf(file, "\n");
+        fprintf(file, "  DATA CARD No: %3d EN %3d%6d%6d%6d",
+                current_card_number,
+                card->i[1], card->i[2], card->i[3], card->i[4]);
       }
+      for (int j = 1; j <= 6; j++)
+      {
+        fprintf(file, " %12.5E", card->f[j]);
+      }
+      fprintf(file, "\n");
     }
     else if (strncmp(card->card_code, "NX", 2) == 0)
     {
@@ -2898,8 +2878,8 @@ static void write_network_data(FILE *file, const context_t *ctx)
         }
 
         fprintf(file, "\n"
-                      "    %5d %5d %5d %5d    %11.4E   %11.4E   "
-                      "%11.4E   %11.4E   %11.4E   %11.4E   %s%s",
+                      "    %d   %d    %d   %d   %10.4E  %10.4E   "
+                      "%10.4E  %10.4E   %10.4E  %10.4E%s%s",
                 ctx->geometry.tag_nums[idx4], itmp4,
                 ctx->geometry.tag_nums[idx5], itmp5,
                 ctx->netcx.y11_real[j], ctx->netcx.y11_imag[j],

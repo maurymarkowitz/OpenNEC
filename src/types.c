@@ -67,7 +67,6 @@ char *onec_codes[NUM_ONEC_CODES] = {
   "XT", "SY", "IT", "OP"
 };
 
-
 /*
  * tinyexpr variable names for NEC field bindings.
  * The first element is a blank string so these arrays are 1-based,

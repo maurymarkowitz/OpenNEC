@@ -43,6 +43,7 @@ static int inject_current_source(context_t *ctx, int card_idx, int tag, int seg_
 static int count_tag_segments(const context_t *ctx, int tag)
 {
     if (tag == 0) return ctx->geometry.num_segs;
+    if (!ctx->geometry.tag_nums) return 0;
     int count = 0;
     for (int i = 0; i < ctx->geometry.num_segs; i++) {
         if (ctx->geometry.tag_nums[i] == tag) count++;
@@ -1227,17 +1228,21 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
             // Reallocate loading buffers
             ctx->zload.num_loads++;
             size_t mreq = (size_t)ctx->zload.num_loads * sizeof(int);
-            mem_realloc(ctx, (void **)&ctx->zload.load_types, mreq);
-            mem_realloc(ctx, (void **)&ctx->zload.load_tags, mreq);
-            mem_realloc(ctx, (void **)&ctx->zload.load_tag_from, mreq);
-            mem_realloc(ctx, (void **)&ctx->zload.load_tag_to, mreq);
-            mem_realloc(ctx, (void **)&ctx->zload.ldcard_num, mreq);
+            if (mem_realloc(ctx, (void **)&ctx->zload.load_types, mreq) != 0 ||
+                mem_realloc(ctx, (void **)&ctx->zload.load_tags, mreq) != 0 ||
+                mem_realloc(ctx, (void **)&ctx->zload.load_tag_from, mreq) != 0 ||
+                mem_realloc(ctx, (void **)&ctx->zload.load_tag_to, mreq) != 0 ||
+                mem_realloc(ctx, (void **)&ctx->zload.ldcard_num, mreq) != 0) {
+                return -1;
+            }
             
             mreq = (size_t)ctx->zload.num_loads * sizeof(double);
-            mem_realloc(ctx, (void **)&ctx->zload.load_r, mreq);
-            mem_realloc(ctx, (void **)&ctx->zload.load_l, mreq);
-            mem_realloc(ctx, (void **)&ctx->zload.load_c, mreq);
-            mem_realloc(ctx, (void **)&ctx->zload.load_freq, mreq);
+            if (mem_realloc(ctx, (void **)&ctx->zload.load_r, mreq) != 0 ||
+                mem_realloc(ctx, (void **)&ctx->zload.load_l, mreq) != 0 ||
+                mem_realloc(ctx, (void **)&ctx->zload.load_c, mreq) != 0 ||
+                mem_realloc(ctx, (void **)&ctx->zload.load_freq, mreq) != 0) {
+                return -1;
+            }
             
             int idx = ctx->zload.num_loads - 1;
             ctx->zload.load_types[idx] = i1;
@@ -1246,7 +1251,7 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
             /* resolve percentage-style segment specifiers against the tag count */
             int start_seg = resolve_pct_segment(ctx, card, 3, i2);
             int end_seg   = resolve_pct_segment(ctx, card, 4, i2);
-            ctx->zload.load_tag_from[idx] = (i4 == 0) ? start_seg : start_seg;
+            ctx->zload.load_tag_from[idx] = start_seg;
             ctx->zload.load_tag_to[idx]   = (i4 == 0) ? start_seg : end_seg;
             
             if (ctx->zload.load_tag_to[idx] < ctx->zload.load_tag_from[idx]) {

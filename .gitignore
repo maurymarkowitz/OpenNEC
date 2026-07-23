@@ -8,6 +8,11 @@ nec2c
 # old code
 old/
 
+# experimental refactoring code (for testing/comparison)
+src/nec2c_report.c
+src/nec2c_report.h
+src/nec2c_report.o
+
 # debug folder (local testing artifacts)
 debug/
 

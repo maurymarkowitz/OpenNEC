@@ -835,34 +835,30 @@ static int process_single_file(const char *input_filename, const char *output_fi
     // Run complete simulation with sequential card processing
     int sim_result = process_deck_sequential(ctx, &deck);
 
-    // Check for any errors that occurred during calculation (whether simulation failed or succeeded)
-    if (ctx->errors.num_errors > 0 || sim_result != 0)
-    {
-      if (sim_result != 0)
+      // Check for any errors that occurred during calculation (whether simulation failed or succeeded)
+      if (ctx->errors.num_errors > 0 || sim_result != 0)
       {
-        // fprintf(ctx->error_fp, "Failed to run simulation for %s.\n",
-        //         strlen(input_filename) > 0 ? input_filename : "stdin");
-      }
+        if (sim_result != 0)
+        {
+          // fprintf(ctx->error_fp, "Failed to run simulation for %s.\n",
+          //         strlen(input_filename) > 0 ? input_filename : "stdin");
+        }
 
-      if (ctx->errors.num_errors > 0)
-      {
-        report(ctx, ONEC_SEV_INFO, "=== Found %d Simulation Errors ===", ctx->errors.num_errors);
-      }
+        if (ctx->errors.num_errors > 0)
+        {
+          report(ctx, ONEC_SEV_INFO, "=== Found %d Simulation Errors ===", ctx->errors.num_errors);
+        }
 
-      if (input_fp != stdin)
-        fclose(input_fp);
-      if (output_fp != stdout)
-        fclose(output_fp);
-      destroy_context(ctx);
-      return -1;
-    }
+        if (input_fp != stdin)
+          fclose(input_fp);
+        if (output_fp != stdout)
+          fclose(output_fp);
+        destroy_context(ctx);
+        return -1;
+      }
   }
 
   // write out the results
-  // According to NEC-2 standard, the output file should contain:
-  // - Always: geometry preamble (header, structure, segments, patches)
-  // - Optional: frequency-specific data (only if output request card present)
-  // Exception: if -n (--no-run) was used, don't write any output at all
   if (do_run_simulation) {
     if (ctx->xt_terminated) {
       // XT card halted execution before any output request — expected, not an error
