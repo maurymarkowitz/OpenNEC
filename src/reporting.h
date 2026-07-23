@@ -138,7 +138,7 @@ int process_deck_sequential(context_t *ctx, deck_t *deck);
  * @return 0 on success, -1 on error.
  */
 static int dispatch_card(context_t *ctx, deck_t *deck, int card_idx,
-                        card_state_t *state);
+                        card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Execute the frequency loop (called when XQ card is encountered).
@@ -156,7 +156,7 @@ static int dispatch_card(context_t *ctx, deck_t *deck, int card_idx,
  */
 static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
                                             int xq_card_idx,
-                                            card_state_t *state);
+                                            card_state_t *state) __attribute__((unused));
 
 /* Card-specific processor functions (Fortran labels 16-39, nec2c cases 0-17) */
 
@@ -167,7 +167,7 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_fr_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_fr_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process LD (loading) card.
@@ -176,7 +176,7 @@ static int process_fr_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_ld_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_ld_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process GN (ground) card.
@@ -185,7 +185,7 @@ static int process_ld_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_gn_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_gn_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process EX (excitation) card.
@@ -194,7 +194,7 @@ static int process_gn_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_ex_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_ex_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process NT/TL (network) card.
@@ -203,7 +203,7 @@ static int process_ex_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_nt_tl_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_nt_tl_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process XQ (execute) card.
@@ -218,7 +218,7 @@ static int process_nt_tl_card(context_t *ctx, const card_t *card, card_state_t *
  * @return 0 on success, -1 on error.
  */
 static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
-                          card_state_t *state);
+                          card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process RP (radiation pattern) card.
@@ -227,7 +227,7 @@ static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_rp_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_rp_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process NE (near-field equatorial) card.
@@ -236,7 +236,7 @@ static int process_rp_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_ne_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_ne_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process NH (near-field horizontal) card.
@@ -245,7 +245,7 @@ static int process_ne_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_nh_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_nh_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process PT (print control - currents) card.
@@ -254,7 +254,7 @@ static int process_nh_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_pt_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_pt_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process PQ (print control - charges) card.
@@ -263,7 +263,7 @@ static int process_pt_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_pq_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_pq_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process KH (matrix limit) card.
@@ -272,7 +272,7 @@ static int process_pq_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_kh_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_kh_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process EK (extended kernel) card.
@@ -281,7 +281,7 @@ static int process_kh_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_ek_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_ek_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process CP (coupling) card.
@@ -290,7 +290,7 @@ static int process_ek_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_cp_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_cp_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process GD (ground detail) card.
@@ -299,7 +299,7 @@ static int process_cp_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_gd_card(context_t *ctx, const card_t *card, card_state_t *state);
+static int process_gd_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process NX (next structure) card.
@@ -310,7 +310,7 @@ static int process_gd_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @return 0 on success, -1 on error.
  */
 static int process_nx_card(context_t *ctx, deck_t *deck, int card_idx,
-                          card_state_t *state);
+                          card_state_t *state) __attribute__((unused));
 
 /* Utility functions for geometry scaling during frequency loop */
 
@@ -320,7 +320,7 @@ static int process_nx_card(context_t *ctx, deck_t *deck, int card_idx,
  * @param state Card state (geometry saved into state).
  * @return 0 on success, -1 on memory allocation failure.
  */
-static int save_geometry_for_scaling(context_t *ctx, card_state_t *state);
+static int save_geometry_for_scaling(context_t *ctx, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Scale geometry to wavelength units for current frequency.
@@ -329,13 +329,13 @@ static int save_geometry_for_scaling(context_t *ctx, card_state_t *state);
  * @param fr Frequency scaling factor (frequency / speed of light).
  */
 static void scale_geometry_for_frequency(context_t *ctx, const card_state_t *state,
-                                        double fr);
+                                        double fr) __attribute__((unused));
 
 /**
  * @brief Restore geometry to original unscaled values.
  * @param ctx The simulation context (geometry restored from state).
  * @param state Card state (contains original unscaled geometry).
  */
-static void restore_geometry(context_t *ctx, const card_state_t *state);
+static void restore_geometry(context_t *ctx, const card_state_t *state) __attribute__((unused));
 
 #endif /* REPORTING_H */

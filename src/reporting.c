@@ -359,7 +359,7 @@ static void free_frequency_loop_storage(context_t *ctx)
 /**
  * Calculate input power delivered to the antenna
  */
-static double calculate_input_power(context_t *ctx)
+static double __attribute__((unused)) calculate_input_power(context_t *ctx)
 {
     if (!ctx) return 0.0;
     
@@ -382,7 +382,7 @@ static double calculate_input_power(context_t *ctx)
 /**
  * Calculate radiated power
  */
-static double calculate_radiated_power(context_t *ctx)
+static double __attribute__((unused)) calculate_radiated_power(context_t *ctx)
 {
     if (!ctx) return 0.0;
     
@@ -398,7 +398,7 @@ static double calculate_radiated_power(context_t *ctx)
 /**
  * Calculate coupling parameters (wrapper)
  */
-static int calculate_coupling_parameters(context_t *ctx)
+static int __attribute__((unused)) calculate_coupling_parameters(context_t *ctx)
 {
     if (!ctx) return -1;
     
