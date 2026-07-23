@@ -701,7 +701,73 @@ void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, compl
 
   } /* if( dataj.use_extended_kernel != 0) */
 
-  /* observation loop */
+  /* observation loop.
+   *
+   * Parallelized over observers (OpenMP): each iteration writes a distinct
+   * row (normal fill) or column (transposed fills) of cm/cw, so the writes
+   * are disjoint. e_field_segment returns its result THROUGH the context's
+   * scratch blocks (dataj/incom/tmi/tmh/intrp — the "formerly static
+   * globals"), so each thread works on a private 16 KB struct copy of the
+   * context; the geometry/ground-grid POINTERS inside the copy alias the
+   * shared arrays, which this loop only reads. segj (the source segment's
+   * junction basis data, including the aliased junction_segs pointer) is
+   * set up before this loop and is read-only inside it. */
+#ifdef _OPENMP
+  #pragma omp parallel default(shared)
+  {
+	context_t tctx = *ctx;
+	#pragma omp for schedule(static)
+	for( i = i1-1; i < i2; i++ )
+	{
+	  int ipr_p = i - (i1-1);
+	  int ij_p = i - j;
+	  double xi_p = tctx.geometry.x_center[i];
+	  double yi_p = tctx.geometry.y_center[i];
+	  double zi_p = tctx.geometry.z_center[i];
+	  double ai_p = tctx.geometry.radius[i];
+	  double cabi_p = tctx.geometry.dir_cos_x[i];
+	  double sabi_p = tctx.geometry.dir_cos_y[i];
+	  double salpi_p = tctx.geometry.dir_cos_z[i];
+
+	  e_field_segment( &tctx, xi_p, yi_p, zi_p, ai_p, ij_p);
+
+	  complex double etk_p = tctx.dataj.e_const_x* cabi_p+ tctx.dataj.e_const_y* sabi_p+ tctx.dataj.e_const_z* salpi_p;
+	  complex double ets_p = tctx.dataj.e_sin_x* cabi_p+ tctx.dataj.e_sin_y* sabi_p+ tctx.dataj.e_sin_z* salpi_p;
+	  complex double etc_p = tctx.dataj.e_cos_x* cabi_p+ tctx.dataj.e_cos_y* sabi_p+ tctx.dataj.e_cos_z* salpi_p;
+
+	  if( itrp == 0)
+	  {
+		for( int ijj = 0; ijj < tctx.segj.num_junction_segs; ijj++ )
+		{
+		  int jxx = tctx.segj.junction_segs[ijj]-1;
+		  cm[ipr_p+jxx*nr] += etk_p* tctx.segj.coeff_const[ijj]+ ets_p* tctx.segj.coeff_sine[ijj]+ etc_p* tctx.segj.coeff_cos[ijj];
+		}
+	  }
+	  else if( itrp != 2)
+	  {
+		for( int ijj = 0; ijj < tctx.segj.num_junction_segs; ijj++ )
+		{
+		  int jxx = tctx.segj.junction_segs[ijj]-1;
+		  cm[jxx+ipr_p*nr] += etk_p* tctx.segj.coeff_const[ijj]+ ets_p* tctx.segj.coeff_sine[ijj]+ etc_p* tctx.segj.coeff_cos[ijj];
+		}
+	  }
+	  else
+	  {
+		for( int ijj = 0; ijj < tctx.segj.num_junction_segs; ijj++ )
+		{
+		  int jxx = tctx.segj.junction_segs[ijj]-1;
+		  if( jxx < nr)
+			cm[jxx+ipr_p*nr] += etk_p* tctx.segj.coeff_const[ijj]+ ets_p* tctx.segj.coeff_sine[ijj]+ etc_p* tctx.segj.coeff_cos[ijj];
+		  else
+		  {
+			jxx -= nr;
+			cw[jxx*ipr_p*nw] += etk_p* tctx.segj.coeff_const[ijj]+ ets_p* tctx.segj.coeff_sine[ijj]+ etc_p* tctx.segj.coeff_cos[ijj];
+		  }
+		}
+	  }
+	} /* omp for */
+  } /* omp parallel */
+#else
   ipr=-1;
   for( i = i1-1; i < i2; i++ )
   {
@@ -761,6 +827,7 @@ void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, compl
 	} /* for( ij = 0; ij < segj.num_junction_segs; ij++ ) */
 
   } /* for( i = i1-1; i < i2; i++ ) */
+#endif
 
   return;
 }
