@@ -158,6 +158,127 @@ static bool is_geometry_tag_ignored(const deck_t *deck, int tag)
 }
 
 /******************************************************************************
+ * validate_section
+ *
+ * Validates a single section of the deck. Each section must have proper
+ * structure: comments (optional), geometry (required), GE card (required),
+ * and proper termination (NX or EN).
+ *
+ * @param ctx the context_t
+ * @param deck the deck_t containing this section
+ * @param section the section_t to validate
+ * @param section_num the section number (1-based) for error messages
+ * @param errors the errors_list_t to add new messages to
+ */
+void validate_section(const context_t *ctx, const deck_t *deck, const section_t *section,
+                     int section_num, errors_list_t *errors)
+{
+  char msg[MAX_ERROR_LEN];
+  
+  if (section == NULL)
+  {
+    snprintf(msg, sizeof(msg), "Section %d: NULL section pointer (internal error)", section_num);
+    add_error(ctx, errors, msg, FATAL);
+    return;
+  }
+  
+  // Validate section has geometry
+  if (section->geometry_start < 0 || section->geometry_end < 0)
+  {
+    snprintf(msg, sizeof(msg), "Section %d (cards %d-%d): missing geometry section",
+             section_num, section->global_start + 1, section->global_end + 1);
+    add_error(ctx, errors, msg, FATAL);
+    return;
+  }
+  
+  // Validate GE card exists
+  if (section->geometry_end < 0)
+  {
+    snprintf(msg, sizeof(msg), "Section %d: missing GE (Geometry End) card",
+             section_num);
+    add_error(ctx, errors, msg, FATAL);
+  }
+  else
+  {
+    // Verify the geometry_end card is actually a GE card
+    if (section->geometry_end < deck->num_cards)
+    {
+      const card_t *ge_card = &deck->cards[section->geometry_end];
+      if (strcmp(ge_card->card_code, "GE") != 0)
+      {
+        snprintf(msg, sizeof(msg), "Section %d: geometry_end points to card %d (%s), not GE (internal error)",
+                 section_num, section->geometry_end + 1, ge_card->card_code);
+        add_error(ctx, errors, msg, FATAL);
+      }
+    }
+  }
+  
+  // Validate proper section termination
+  if (section->global_end >= 0 && section->global_end < deck->num_cards)
+  {
+    const card_t *end_card = &deck->cards[section->global_end];
+    if (section->ends_with_nx)
+    {
+      if (strcmp(end_card->card_code, "NX") != 0)
+      {
+        snprintf(msg, sizeof(msg), "Section %d: marked as ending with NX but card %d is %s (internal error)",
+                 section_num, section->global_end + 1, end_card->card_code);
+        add_error(ctx, errors, msg, FATAL);
+      }
+    }
+    else
+    {
+      if (strcmp(end_card->card_code, "EN") != 0)
+      {
+        snprintf(msg, sizeof(msg), "Section %d: marked as ending with EN but card %d is %s (internal error)",
+                 section_num, section->global_end + 1, end_card->card_code);
+        add_error(ctx, errors, msg, FATAL);
+      }
+    }
+  }
+  
+  // Validate control section exists (should start after GE)
+  if (section->control_start < 0 && section->geometry_end >= 0)
+  {
+    // It's possible to have no control cards between GE and NX/EN (unusual but not fatal)
+    // Check if there's at least one card between GE and section end
+    int cards_after_ge = section->global_end - section->geometry_end;
+    if (cards_after_ge > 1)  // More than just the NX/EN card
+    {
+      // There are cards but control_start wasn't set - this might be a warning
+      snprintf(msg, sizeof(msg), "Section %d: has %d cards between GE and %s but no control section detected",
+               section_num, cards_after_ge - 1, section->ends_with_nx ? "NX" : "EN");
+      add_error(ctx, errors, msg, WARNING);
+    }
+  }
+  
+  // Validate section boundaries are consistent
+  if (section->global_start > section->global_end)
+  {
+    snprintf(msg, sizeof(msg), "Section %d: start (%d) > end (%d) (internal error)",
+             section_num, section->global_start + 1, section->global_end + 1);
+    add_error(ctx, errors, msg, FATAL);
+  }
+  
+  // Validate geometry boundaries within section
+  if (section->geometry_start >= 0 && section->geometry_end >= 0)
+  {
+    if (section->geometry_start > section->geometry_end)
+    {
+      snprintf(msg, sizeof(msg), "Section %d: geometry start (%d) > geometry end (%d) (internal error)",
+               section_num, section->geometry_start + 1, section->geometry_end + 1);
+      add_error(ctx, errors, msg, FATAL);
+    }
+    if (section->geometry_start < section->global_start || section->geometry_end > section->global_end)
+    {
+      snprintf(msg, sizeof(msg), "Section %d: geometry boundaries outside section range (internal error)",
+               section_num);
+      add_error(ctx, errors, msg, FATAL);
+    }
+  }
+}
+
+/******************************************************************************
  * test_deck_structure
  *
  * test_deck_structure runs various tests on the deck and returns a list of
@@ -243,6 +364,21 @@ void test_deck_structure(const context_t *ctx, const deck_t *deck, errors_list_t
     snprintf(msg, sizeof(msg), "A deck has to have at least five cards; one or more comments, one or more Gx cards, a GE, an FX, and an EX.");
     add_error(ctx, errors, msg, 2); // same here, there is no way this will calculate property
     return;
+  }
+
+  // Phase 3: Validate all sections
+  if (deck->num_sections > 0)
+  {
+    for (int s = 0; s < deck->num_sections; s++)
+    {
+      validate_section(ctx, deck, deck->sections[s], s + 1, errors);
+    }
+  }
+  else
+  {
+    // No sections created - this is an error (should have been created during parse_deck)
+    snprintf(msg, sizeof(msg), "Deck has no sections (internal error - deck_create_sections not called)");
+    add_error(ctx, errors, msg, FATAL);
   }
 
   // make sure we can find all the required cards

@@ -15,4 +15,8 @@ void test_duplicate_tags(const context_t *ctx, const deck_t *deck, errors_list_t
 void test_card_inputs(const context_t *ctx, const deck_t *deck, errors_list_t *errors);
 void test_field_separators(const context_t *ctx, const deck_t *deck, errors_list_t *errors);
 
+/* Section-specific validation (Phase 3) */
+void validate_section(const context_t *ctx, const deck_t *deck, const section_t *section, 
+                     int section_num, errors_list_t *errors);
+
 #endif /* DECK_VALIDATIONS_H */
