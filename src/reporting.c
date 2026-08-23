@@ -24,6 +24,10 @@
 #include <math.h>
 #include <time.h>
 
+/* Forward declarations */
+static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
+                                             int card_idx, card_state_t *state);
+
 /* ============================================================================
  * Initialization and State Management
  * ========================================================================== */
@@ -392,6 +396,24 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
                     deck->deck_end = saved_deck_end;
                     return result;
                 }
+            }
+        }
+        
+        /* Auto-execute if FR + EX + pattern cards present but no XQ was encountered */
+        if (state.num_frequencies > 0 && 
+            ctx->ex_queue.num_queued > 0 &&
+            (ctx->fpat.is_near_field >= 0 || ctx->gnd.far_field_type >= 0)) {
+            
+            /* Simulate XQ execution for automatic calculation */
+            card_state_t *exec_state = &state;
+            int exec_result = execute_frequency_loop_sequential(ctx, deck, end_idx, exec_state);
+            
+            if (exec_result != 0) {
+                free_card_state(&state);
+                deck->geometry_start = saved_geometry_start;
+                deck->geometry_end = saved_geometry_end;
+                deck->deck_end = saved_deck_end;
+                return exec_result;
             }
         }
         
