@@ -170,6 +170,86 @@ void recalculate_sections(deck_t *deck)
 }
 
 /******************************************************************************
+ * Section Lifecycle Functions
+ *****************************************************************************/
+
+/******************************************************************************
+ * new_section
+ *
+ * Creates and returns a new empty section_t.
+ */
+section_t *new_section(void)
+{
+  section_t *section = (section_t *)calloc(1, sizeof(section_t));
+  if (section)
+  {
+    // Initialize with invalid/empty markers
+    section->global_start = -1;
+    section->global_end = -1;
+    section->comment_start = -1;
+    section->comment_end = -1;
+    section->symbol_start = -1;
+    section->symbol_end = -1;
+    section->geometry_start = -1;
+    section->geometry_end = -1;
+    section->control_start = -1;
+    section->control_end = -1;
+    section->symbols = NULL;
+    section->num_symbols = 0;
+    section->ends_with_nx = false;
+  }
+  return section;
+}
+
+/******************************************************************************
+ * init_section
+ *
+ * Initializes a section_t to an empty state.
+ */
+void init_section(section_t *section)
+{
+  if (section == NULL)
+    return;
+  memset(section, 0, sizeof(section_t));
+  section->global_start = -1;
+  section->global_end = -1;
+  section->comment_start = -1;
+  section->comment_end = -1;
+  section->symbol_start = -1;
+  section->symbol_end = -1;
+  section->geometry_start = -1;
+  section->geometry_end = -1;
+  section->control_start = -1;
+  section->control_end = -1;
+}
+
+/******************************************************************************
+ * destroy_section
+ *
+ * Frees all heap memory owned by a section_t (symbols pointer array).
+ * Does NOT free the section_t struct itself — the caller controls allocation.
+ */
+void destroy_section(section_t *section)
+{
+  if (section == NULL)
+    return;
+
+  // Only free the symbols array (array of pointers), not the nodes themselves
+  // INVARIANT: All key_value_t nodes referenced by section->symbols are owned
+  //            and freed by the cards, this is a list of them for easy access.
+  if (section->symbols)
+  {
+    free(section->symbols);
+    section->symbols = NULL;
+  }
+  section->num_symbols = 0;
+}
+
+/******************************************************************************
+ * Deck Lifecycle Functions
+ *****************************************************************************/
+
+/******************************************************************************
  * new_deck
  *
  * creates and returns a new empty Deck
@@ -178,6 +258,13 @@ void recalculate_sections(deck_t *deck)
 deck_t *new_deck(void)
 {
   deck_t *deck = (deck_t *)calloc(1, sizeof(deck_t));
+  if (deck)
+  {
+    // Initialize section-related fields
+    deck->sections = NULL;
+    deck->num_sections = 0;
+    memset(&deck->deck_errors, 0, sizeof(errors_list_t));
+  }
   return deck;
 }
 
@@ -221,6 +308,31 @@ void destroy_deck(deck_t *deck)
   if (deck->cards)
     free(deck->cards);
 
+  // Free all sections
+  if (deck->sections)
+  {
+    for (int i = 0; i < deck->num_sections; i++)
+    {
+      if (deck->sections[i])
+      {
+        destroy_section(deck->sections[i]);
+        free(deck->sections[i]);
+      }
+    }
+    free(deck->sections);
+  }
+
+  // Free deck-wide errors
+  if (deck->deck_errors.errors)
+  {
+    for (int i = 0; i < deck->deck_errors.num_errors; i++)
+    {
+      if (deck->deck_errors.errors[i].message)
+        free(deck->deck_errors.errors[i].message);
+    }
+    free(deck->deck_errors.errors);
+  }
+
   // Only free the symbols array (array of pointers), not the nodes themselves
   // INVARIANT: All key_value_t nodes referenced by deck->symbols are owned and
   //            freed by the cards, this is a list of them for easy access.
@@ -228,6 +340,81 @@ void destroy_deck(deck_t *deck)
   {
     free(deck->symbols);
   }
+}
+
+/******************************************************************************
+ * deck_create_sections
+ *
+ * Creates the sections array from the deck's cards. For Phase 1, this creates
+ * a single section representing the entire deck using the legacy boundary fields.
+ * 
+ * This function will be enhanced in Phase 2 to detect NX cards and create
+ * multiple sections.
+ * 
+ * @param deck the deck_t to populate with sections
+ * @return 0 on success, -1 on failure
+ */
+int deck_create_sections(deck_t *deck)
+{
+  if (deck == NULL)
+    return -1;
+
+  // Free any existing sections
+  if (deck->sections)
+  {
+    for (int i = 0; i < deck->num_sections; i++)
+    {
+      if (deck->sections[i])
+      {
+        destroy_section(deck->sections[i]);
+        free(deck->sections[i]);
+      }
+    }
+    free(deck->sections);
+    deck->sections = NULL;
+    deck->num_sections = 0;
+  }
+
+  // For Phase 1, create a single section from the legacy fields
+  // This maintains backward compatibility while setting up the infrastructure
+  section_t *section = new_section();
+  if (section == NULL)
+    return -1;
+
+  // Set global boundaries
+  section->global_start = 0;
+  section->global_end = deck->num_cards > 0 ? deck->num_cards - 1 : -1;
+
+  // Copy legacy boundary fields to section
+  section->comment_start = deck->comment_start;
+  section->comment_end = deck->comment_end;
+  section->symbol_start = deck->symbol_start;
+  section->symbol_end = deck->symbol_end;
+  section->geometry_start = deck->geometry_start;
+  section->geometry_end = deck->geometry_end;
+  section->control_start = deck->geometry_end >= 0 ? deck->geometry_end + 1 : -1;
+  section->control_end = deck->deck_end;
+
+  // Copy symbol references (shallow copy - symbols still owned by cards)
+  section->symbols = deck->symbols;
+  section->num_symbols = deck->num_symbols;
+
+  // Section ends with EN (not NX) in single-section decks
+  section->ends_with_nx = false;
+
+  // Allocate sections array with one element
+  deck->sections = (section_t **)malloc(sizeof(section_t *));
+  if (deck->sections == NULL)
+  {
+    destroy_section(section);
+    free(section);
+    return -1;
+  }
+
+  deck->sections[0] = section;
+  deck->num_sections = 1;
+
+  return 0;
 }
 
 /******************************************************************************

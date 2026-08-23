@@ -208,8 +208,44 @@ typedef struct card_t
 } card_t;
 
 /**
+ * @struct section_t
+ * @brief Represents one calculation section within a deck (terminated by NX or EN).
+ * 
+ * Each section is an independent calculation with its own geometry, symbols,
+ * and control cards. Sections are separated by NX cards and can be processed
+ * in parallel. Most decks contain only one section.
+ */
+typedef struct section_t
+{
+  // Section boundaries (indices into deck->cards)
+  int global_start;        /**< First card in this section (global deck index) */
+  int global_end;          /**< Last card (NX or EN) (global deck index) */
+  
+  // Sub-section boundaries (relative to global_start)
+  int comment_start;       /**< First CM card (-1 if none) */
+  int comment_end;         /**< Last CM or CE card (-1 if none) */
+  int symbol_start;        /**< First SY card after CE (-1 if none) */
+  int symbol_end;          /**< Last SY card before geometry (-1 if none) */
+  int geometry_start;      /**< First geometry card (GW, GA, etc.) */
+  int geometry_end;        /**< GE (Geometry End) card */
+  int control_start;       /**< First control card after GE */
+  int control_end;         /**< Last control card (EN or NX) */
+  
+  // Section-specific metadata
+  key_value_t **symbols;   /**< Symbols defined in this section */
+  int num_symbols;         /**< Number of symbols in this section */
+  
+  // Termination
+  bool ends_with_nx;       /**< True if terminated by NX, false if EN */
+  
+} section_t;
+
+/**
  * @struct deck_t
  * @brief Represents a collection of cards forming a complete simulation input.
+ * 
+ * A deck may contain one or more sections separated by NX (Next Structure) cards.
+ * Each section is processed independently with its own geometry and control flow.
  */
 typedef struct deck_t
 {
@@ -219,21 +255,63 @@ typedef struct deck_t
   field_sep_t field_sep; /**< Separator style shared by all geo/control cards, or FSEP_UNKNOWN if mixed */
   int line_endings; /**< Line ending style detected in input deck: LINE_ENDING_LF, LINE_ENDING_CRLF, or LINE_ENDING_UNDETERMINED */
 
-  int comment_start;  /**< Index of the first continuous CM card */
-  int comment_end;    /**< Index of the last CM or the CE card */
-  int symbol_start;   /**< Index of the first SY card after CE (-1 if none) */
-  int symbol_end;     /**< Index of the last SY card before geometry (-1 if none) */
-  int geometry_start; /**< Index of the first geometry card (usually GW) */
-  int geometry_end;   /**< Index of the GE (Geometry End) card */
+  // Legacy single-section fields (DEPRECATED - use sections[] instead)
+  // These fields are maintained for backward compatibility during migration.
+  // They reference the first section only.
+  int comment_start;  /**< Index of the first continuous CM card (legacy, use sections[0]) */
+  int comment_end;    /**< Index of the last CM or the CE card (legacy, use sections[0]) */
+  int symbol_start;   /**< Index of the first SY card after CE (legacy, use sections[0]) */
+  int symbol_end;     /**< Index of the last SY card before geometry (legacy, use sections[0]) */
+  int geometry_start; /**< Index of the first geometry card (legacy, use sections[0]) */
+  int geometry_end;   /**< Index of the GE (Geometry End) card (legacy, use sections[0]) */
   int deck_end;       /**< Index of the EN (Execution End) card */
   
   char cmt_code;      /**< Default leading marker used to comment out cards (e.g. '!'); 0 if not seen */
   char extn_code;     /**< Default inline/trailing comment marker seen in the deck ('!', or '\'') */
   int unit_val;       /**< GS card scaling value (default 1) */
   int unit_typ;       /**< Recognized index for GS unit type */
-  key_value_t **symbols; /**< Array of symbols (SY) found in the deck */
-  int num_symbols;    /**< Total number of symbols */
+  key_value_t **symbols; /**< Array of symbols (SY) found in the deck (legacy, use sections[]) */
+  int num_symbols;    /**< Total number of symbols (legacy, use sections[]) */
+  
+  // Section-based organization (NEW)
+  section_t **sections;    /**< Array of sections (one per NX boundary) */
+  int num_sections;        /**< Number of sections (usually 1) */
+  
+  // Deck-wide errors (for structural problems not specific to a section)
+  errors_list_t deck_errors;
+  
 } deck_t;
+
+/* Helper macros for section access */
+
+/** 
+ * @brief Get the primary (first) section from a deck.
+ * 
+ * For single-section decks (99% of cases), this provides easy access to the
+ * only section. Use this for migration from legacy code.
+ * 
+ * @param deck Pointer to deck_t
+ * @return Pointer to the first section, or NULL if no sections exist
+ */
+#define DECK_PRIMARY_SECTION(deck) \
+  ((deck) && (deck)->num_sections > 0 ? (deck)->sections[0] : NULL)
+
+/**
+ * @brief Iterate over all sections in a deck.
+ * 
+ * Usage:
+ *   section_t *section;
+ *   FOR_EACH_SECTION(deck, section) {
+ *     // Process section
+ *   }
+ * 
+ * @param deck Pointer to deck_t
+ * @param section Variable name for section_t* to use in loop body
+ */
+#define FOR_EACH_SECTION(deck, section) \
+  for (int _section_idx = 0; \
+       _section_idx < (deck)->num_sections && ((section) = (deck)->sections[_section_idx]); \
+       _section_idx++)
 
 /** @brief Opaque handle to the internal simulation state. 
  *  Forward declared to maintain ABI stability.
