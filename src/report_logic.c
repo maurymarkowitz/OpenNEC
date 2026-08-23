@@ -78,8 +78,9 @@ int run_report(context_t *ctx, deck_t *deck)
         init_report_state(&state);
     
         // start processing the cards after geometry section
-        int start_idx = (deck->geometry_end >= 0) ? deck->geometry_end + 1 : 0;
-        int end_idx = (deck->deck_end >= 0) ? deck->deck_end : deck->num_cards;
+        int start_idx = (DECK_GEOMETRY_END(deck) >= 0) ? DECK_GEOMETRY_END(deck) + 1 : 0;
+        section_t *primary = DECK_PRIMARY_SECTION(deck);
+        int end_idx = (primary && primary->global_end >= 0) ? primary->global_end : deck->num_cards;
     
         if (start_idx >= end_idx) {
             //o control cards to process, we're done

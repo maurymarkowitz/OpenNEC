@@ -195,8 +195,8 @@ void write_comments(const context_t *ctx, const deck_t *deck, FILE *file)
   if (!ctx || !deck || !file) return;
 
   // do we have any comments?
-  int cstart = (deck->comment_start >= 0) ? deck->comment_start : 0;
-  int cend = (deck->comment_end >= 0) ? deck->comment_end : deck->geometry_start - 1;
+  int cstart = (DECK_COMMENT_START(deck) >= 0) ? DECK_COMMENT_START(deck) : 0;
+  int cend = (DECK_COMMENT_END(deck) >= 0) ? DECK_COMMENT_END(deck) : DECK_GEOMETRY_START(deck) - 1;
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
@@ -337,7 +337,7 @@ int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
                             "   Y2         Z2       RADIUS   NO. SEG.   SEG.  NO.");
   }
 
-  for (int i = deck->geometry_start; i <= deck->geometry_end; i++)
+  for (int i = DECK_GEOMETRY_START(deck); i <= DECK_GEOMETRY_END(deck); i++)
   {
     card = deck->cards[i];
 

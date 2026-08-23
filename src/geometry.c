@@ -33,7 +33,7 @@ static void finish_geometry(context_t *ctx);
  * 
  */
 static int peek_next_geometry(deck_t *deck, int current) {
-  for (int j = current + 1; j <= deck->geometry_end; j++) {
+  for (int j = current + 1; j <= DECK_GEOMETRY_END(deck); j++) {
     if (!is_extension(&deck->cards[j]) && !is_comment(&deck->cards[j])) return j;
   }
   return -1;
@@ -82,7 +82,7 @@ void calculate_geometry(context_t *ctx, deck_t *deck, errors_list_t *errors, out
   
   // make sure there's cards to process
   // TODO: should this be an error/warning? or just in test?
-  if(deck->num_cards == 0 || deck->geometry_start == -1 || deck->geometry_end == -1) {
+  if(deck->num_cards == 0 || DECK_GEOMETRY_START(deck) == -1 || DECK_GEOMETRY_END(deck) == -1) {
     return;
   }
   
@@ -90,7 +90,7 @@ void calculate_geometry(context_t *ctx, deck_t *deck, errors_list_t *errors, out
   // Now we evaluate card formulas sequentially as we encounter cards
   
   // loop over the geometry section of the deck, which should be correct by this point
-  for(int i = deck->geometry_start; i <= deck->geometry_end; i++) {
+  for(int i = DECK_GEOMETRY_START(deck); i <= DECK_GEOMETRY_END(deck); i++) {
     card = &deck->cards[i];
     
     // Check if this is a SY card - if so, evaluate its formulas and continue to next card.

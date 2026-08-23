@@ -286,15 +286,6 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
         }
         
         /* Step 1: Calculate geometry for this section */
-        /* Temporarily update legacy deck fields to point to this section's boundaries */
-        int saved_geometry_start = deck->geometry_start;
-        int saved_geometry_end = deck->geometry_end;
-        int saved_deck_end = deck->deck_end;
-        
-        deck->geometry_start = section->geometry_start;
-        deck->geometry_end = section->geometry_end;
-        deck->deck_end = section->global_end;
-        
         /* Clear previous section's geometry */
         if (section_num > 0) {
             /* Reset geometry for new section */
@@ -322,15 +313,16 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
             ctx->geometry.num_patches_sym = 0;
         }
         
+        /* Temporarily make this section the "primary" for legacy code */
+        section_t *saved_primary = deck->sections[0];
+        deck->sections[0] = section;
+        
         errors_list_t geometry_errors = {0};
         calculate_geometry(ctx, deck, &geometry_errors, &ctx->outputs);
         
         if (geometry_errors.num_errors > 0) {
             transfer_errors(&geometry_errors, &ctx->errors);
-            /* Restore legacy fields */
-            deck->geometry_start = saved_geometry_start;
-            deck->geometry_end = saved_geometry_end;
-            deck->deck_end = saved_deck_end;
+            deck->sections[0] = saved_primary;
             return -1;
         }
 
@@ -390,10 +382,7 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
                 int result = dispatch_card(ctx, deck, i, &state);
                 if (result != 0) {
                     free_card_state(&state);
-                    /* Restore legacy fields */
-                    deck->geometry_start = saved_geometry_start;
-                    deck->geometry_end = saved_geometry_end;
-                    deck->deck_end = saved_deck_end;
+                    deck->sections[0] = saved_primary;
                     return result;
                 }
             }
@@ -410,19 +399,15 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
             
             if (exec_result != 0) {
                 free_card_state(&state);
-                deck->geometry_start = saved_geometry_start;
-                deck->geometry_end = saved_geometry_end;
-                deck->deck_end = saved_deck_end;
+                deck->sections[0] = saved_primary;
                 return exec_result;
             }
         }
         
         free_card_state(&state);
         
-        /* Restore legacy fields */
-        deck->geometry_start = saved_geometry_start;
-        deck->geometry_end = saved_geometry_end;
-        deck->deck_end = saved_deck_end;
+        /* Restore original primary section */
+        deck->sections[0] = saved_primary;
     }
     
     /* Don't call write_footer here - it will be called by main.c after we return */

@@ -1228,8 +1228,8 @@ void mark_4nec2_cards_invisible(context_t *ctx, deck_t *deck)
   const int INV_MAX = 9900; // 9900 and up are current sources
 
   if (!deck || deck->num_cards <= 0) return;
-  int start = deck->geometry_start >= 0 ? deck->geometry_start : 0;
-  int end = deck->geometry_end >= 0 ? deck->geometry_end : deck->num_cards - 1;
+  int start = DECK_GEOMETRY_START(deck) >= 0 ? DECK_GEOMETRY_START(deck) : 0;
+  int end = DECK_GEOMETRY_END(deck) >= 0 ? DECK_GEOMETRY_END(deck) : deck->num_cards - 1;
 
   for (int i = start; i <= end; i++) {
     card_t *card = &deck->cards[i];

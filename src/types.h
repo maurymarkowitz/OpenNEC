@@ -313,6 +313,33 @@ typedef struct deck_t
        _section_idx < (deck)->num_sections && ((section) = (deck)->sections[_section_idx]); \
        _section_idx++)
 
+/**
+ * @brief Safe accessors for primary section boundaries (backward compatibility).
+ * 
+ * These macros provide safe access to section boundaries with fallback to -1
+ * if no sections exist. Use these during migration from legacy deck fields.
+ */
+#define DECK_GEOMETRY_START(deck) \
+  (DECK_PRIMARY_SECTION(deck) ? DECK_PRIMARY_SECTION(deck)->geometry_start : -1)
+  
+#define DECK_GEOMETRY_END(deck) \
+  (DECK_PRIMARY_SECTION(deck) ? DECK_PRIMARY_SECTION(deck)->geometry_end : -1)
+  
+#define DECK_COMMENT_START(deck) \
+  (DECK_PRIMARY_SECTION(deck) ? DECK_PRIMARY_SECTION(deck)->comment_start : -1)
+  
+#define DECK_COMMENT_END(deck) \
+  (DECK_PRIMARY_SECTION(deck) ? DECK_PRIMARY_SECTION(deck)->comment_end : -1)
+
+#define DECK_SYMBOL_START(deck) \
+  (DECK_PRIMARY_SECTION(deck) ? DECK_PRIMARY_SECTION(deck)->symbol_start : -1)
+  
+#define DECK_SYMBOL_END(deck) \
+  (DECK_PRIMARY_SECTION(deck) ? DECK_PRIMARY_SECTION(deck)->symbol_end : -1)
+
+#define DECK_CONTROL_START(deck) \
+  (DECK_PRIMARY_SECTION(deck) ? DECK_PRIMARY_SECTION(deck)->control_start : -1)
+
 /** @brief Opaque handle to the internal simulation state. 
  *  Forward declared to maintain ABI stability.
  */

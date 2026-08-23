@@ -1206,7 +1206,7 @@ int max_flt_fields(const card_t *card)
 bool isGeometryEdited(deck_t *deck)
 {
   bool isEdited = false;
-  for (int i = deck->geometry_start; i < deck->geometry_end; i++)
+  for (int i = DECK_GEOMETRY_START(deck); i < DECK_GEOMETRY_END(deck); i++)
   {
     if (deck->cards[i].edited)
     {

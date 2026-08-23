@@ -144,10 +144,10 @@ static void validate_geom_seg_info_list(const context_t *ctx, errors_list_t *err
  */
 static bool is_geometry_tag_ignored(const deck_t *deck, int tag)
 {
-  if (tag <= 0 || deck->geometry_start < 0 || deck->geometry_end < 0)
+  if (tag <= 0 || DECK_GEOMETRY_START(deck) < 0 || DECK_GEOMETRY_END(deck) < 0)
     return false;
 
-  for (int i = deck->geometry_start; i <= deck->geometry_end; i++)
+  for (int i = DECK_GEOMETRY_START(deck); i <= DECK_GEOMETRY_END(deck); i++)
   {
     if (deck->cards[i].i[1] == tag)
     {
@@ -2063,8 +2063,8 @@ void test_duplicate_tags(const context_t *ctx, const deck_t *deck, errors_list_t
   char msg[MAX_ERROR_LEN];
 
   // Only consider duplicates within the geometry section
-  int gstart = deck->geometry_start;
-  int gend = deck->geometry_end; // index of GE card
+  int gstart = DECK_GEOMETRY_START(deck);
+  int gend = DECK_GEOMETRY_END(deck); // index of GE card
   if (gstart < 0 || gend < 0 || gend <= gstart)
   {
     // Fallback: search all cards but restrict to geometry types for both sides
@@ -2432,16 +2432,17 @@ void test_field_separators(const context_t *ctx, const deck_t *deck, errors_list
 
   // helper: scan a range of cards for separator consistency
   // returns false (and adds a warning) if mixed separators are found
-  int geo_end = (deck->geometry_end >= 0) ? deck->geometry_end : deck->num_cards - 1;
-  int ctrl_end = (deck->deck_end >= 0) ? deck->deck_end : deck->num_cards - 1;
+  int geo_end = (DECK_GEOMETRY_END(deck) >= 0) ? DECK_GEOMETRY_END(deck) : deck->num_cards - 1;
+  section_t *primary = DECK_PRIMARY_SECTION(deck);
+  int ctrl_end = (primary && primary->global_end >= 0) ? primary->global_end : deck->num_cards - 1;
   int ctrl_start = geo_end + 1;
 
   // --- geometry section ---
-  if (deck->geometry_start >= 0)
+  if (DECK_GEOMETRY_START(deck) >= 0)
   {
     field_sep_t first_sep = FSEP_UNKNOWN;
     int first_sep_idx = -1;
-    for (int i = deck->geometry_start; i <= geo_end; i++)
+    for (int i = DECK_GEOMETRY_START(deck); i <= geo_end; i++)
     {
       const card_t *c = &deck->cards[i];
       if (!is_geometry(c))

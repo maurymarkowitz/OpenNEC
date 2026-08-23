@@ -680,7 +680,7 @@ static void estimate_setup(const deck_t *deck,
   if (!deck || !deck->cards) return;
 
   /* ---- geometry pass ---- */
-  for (int i = deck->geometry_start; i <= deck->geometry_end; i++) {
+  for (int i = DECK_GEOMETRY_START(deck); i <= DECK_GEOMETRY_END(deck); i++) {
     const card_t *c = &deck->cards[i];
     if (c->ignore) continue;
     const char *code = c->card_code;
@@ -716,8 +716,9 @@ static void estimate_setup(const deck_t *deck,
   }
 
   /* ---- control pass (cards after GE up to EN) ---- */
-  int ctrl_start = deck->geometry_end + 1;
-  int ctrl_end   = (deck->deck_end >= 0) ? deck->deck_end : deck->num_cards - 1;
+  int ctrl_start = DECK_GEOMETRY_END(deck) + 1;
+  section_t *primary = DECK_PRIMARY_SECTION(deck);
+  int ctrl_end = (primary && primary->global_end >= 0) ? primary->global_end : deck->num_cards - 1;
 
   for (int i = ctrl_start; i <= ctrl_end; i++) {
     const card_t *c = &deck->cards[i];
