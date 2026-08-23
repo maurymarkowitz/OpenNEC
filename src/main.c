@@ -15,6 +15,7 @@
 #include "internals.h"
 #include "input.h"
 #include "output.h"
+#include "report_output.h"
 #include "control.h"
 #include "reporting.h"
 #include "deck_validations.h"
@@ -858,27 +859,27 @@ static int process_single_file(const char *input_filename, const char *output_fi
       }
   }
 
-  // write out the results
-  if (do_run_simulation) {
-    if (ctx->xt_terminated) {
-      // XT card halted execution before any output request — expected, not an error
-      report(ctx, ONEC_SEV_WARNING, "Simulation halted by XT card; no output generated.");
-    } else {
-      // Write geometry preamble always (unless already written inside frequency loop)
-      if (!ctx->freq_step_output_written) {
-        write_nec_preamble(ctx, &deck, output_fp);
-      }
+  // // write out the results
+  // if (do_run_simulation) {
+  //   if (ctx->xt_terminated) {
+  //     // XT card halted execution before any output request — expected, not an error
+  //     report(ctx, ONEC_SEV_WARNING, "Simulation halted by XT card; no output generated.");
+  //   } else {
+  //     // Write geometry preamble always (unless already written inside frequency loop)
+  //     if (!ctx->freq_step_output_written) {
+  //       write_nec_preamble(ctx, &deck, output_fp);
+  //     }
       
-      // Write frequency-specific data only if output request card was present
-      // and hasn't been written already inside the frequency loop
-      if (ctx->frequency_loop_ran && !ctx->freq_step_output_written) {
-        write_frequency_step_output(output_fp, ctx);
-      }
+  //     // Write frequency-specific data only if output request card was present
+  //     // and hasn't been written already inside the frequency loop
+  //     if (ctx->frequency_loop_ran && !ctx->freq_step_output_written) {
+  //       write_frequency_step_output(output_fp, ctx);
+  //     }
       
-      // Write footer (which emits EN/NX cards and runtime summary)
-      write_footer(output_fp, ctx, &deck);
-    }
-  }
+  //     // Write footer (which emits EN/NX cards and runtime summary)
+  //     write_footer(output_fp, ctx, &deck);
+  //   }
+  // }
 
   // close greens file if open
   if (ctx->green_fp)

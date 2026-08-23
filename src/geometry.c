@@ -26,7 +26,7 @@ static int connect_segments(context_t *ctx, int ignd, outputs_list_t *outputs);
 static void finish_geometry(context_t *ctx);
 
 /******************************************************************************
- * peek_next_geom
+ * peek_next_geometry
  * 
  * Looks ahead in the deck to find the next geometry card, skipping any
  * continuation cards like SC or similar.

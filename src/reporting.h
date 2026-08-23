@@ -38,15 +38,12 @@
  * resetting when specific card types are encountered.
  */
 typedef struct {
-    /* Card counting (for output reporting) */
     int total_cards_processed;  /**< mpcnt - Total cards processed (for echoing cards) */
     
-    /* Processing stage - Fortran IGO equivalent */
-    int processing_stage;       /**< igo - Stage: 1=need_matrix, 2=have_matrix,
+    int processing_stage;       /**< formerly igo - Stage: 1=need_matrix, 2=have_matrix,
                                     3=excitation_ready, 4=solved, 5=complete */
     
-    /* Card sequence flow - Fortran IFLOW equivalent */
-    int card_sequence_state;    /**< iflow - Flow: 1=FR, 2=CP, 3=LD, 4=GN, 
+    int card_sequence_state;    /**< formerlyiflow - Flow: 1=FR, 2=CP, 3=LD, 4=GN, 
                                     5=EX, 6=NT/TL, 7=XQ/execute, etc. */
     
     /* Frequency loop control */

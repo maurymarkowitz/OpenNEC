@@ -12,23 +12,23 @@
  * It reads a card, processes it, and then forgets it. Any cards that cannot
  * be processed, like comments, are skipped entirely. In contrast, OpenNEC
  * reads the entire deck into memory first. This allows it to easily perform
- * whole-deck checks, like looking for a missing EN, or a GW that's missing
- * its GC. To do this, OpenNEC also keeps every card it finds, even blank
+ * whole-deck checks, like looking for a missing EN, or a GC that's missing
+ * its GW. To do this, OpenNEC also keeps every card it finds, even blank
  * lines and lines that contain only a comment. Keeping all of these also
  * makes it much easier to use as an editor, whereas NEC2 was designed solely
  * to read the deck and run it.
  *
- * Other changes to this code include a wider set of comment markers
- * including CM, !, # and ', whereas nec2c only accepted # outside the
- * comment header. Additionally, this code looks for comment markers *in*
- * a line, and splits that data out to a separate buffer for processing out
- * the (potential) OpenNEC extensions. It keeps track of what the original
- * comment marker was so it can save it back out in the same format.
+ * Other changes to this code include a wider set of comment markers including
+ * CM, !, # and ', whereas nec2c only accepted # outside the comment header.
+ * Additionally, this code looks for comment markers *in* a line, and splits
+ * that data out to a separate buffer for processing out the (potential) 
+ * OpenNEC extensions. It keeps track of what the original comment marker
+ * was so it can save it back out in the same format.
  * 
  * NOTE: due the the # also being used as the marker for AWG wire gauges,
  *       the # character is only treated as a comment marker if it is the first
- *       non-whitespace character on the line. Elsewhere in the line it is treated as normal
- *       text.
+ *       non-whitespace character on the line. Elsewhere in the line it is
+ *       treated as normal text.
  *
  *****************************************************************************/
 
@@ -1189,6 +1189,7 @@ void parse_key_values(context_t *ctx, card_t *card, errors_list_t *errors)
   // comment. by this point we've processed out all the extensions
   // that might have been in there. if there were none, then the
   // entire comment section was a comment text, so save that out
+  // TODO: why is this turned off?
   if(!hasExtensions) {
     if (card->extn_str) {
 

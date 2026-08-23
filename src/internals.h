@@ -641,16 +641,35 @@ typedef struct {
 /* context_t structure containing all context variables */
 struct context_t
 {
-	geometry_t geometry;
-	geometry_t ignored_geometry;
-	current_t crnt;
+	// global switch for whether or not this context is being
+	// used for a report generation, or just for calculations
+	// in a library.
+	bool is_reporting;
+
+	// if we are reporting, which line-end type should we use?
+	// we put this here mainly so we don't have to pass around
+	// the deck
+	int line_end_type;
+
+	// in the original code, data holds all of the geometry and segment data,
+	// and user-facing programs would simply ignore the "ignored" items entirely.
+	// however, this makes it more difficult to use the resulting segments lists
+	// in the UI, as the ignored items would be completely missing. So by sepataring
+	// them out into their own list, the UI can still send them into the rendering
+	// code while the core calculations can ignore them.
+	geometry_t geometry; // this replaces data from the original code, except for...
+	geometry_t ignored_geometry; // ... which holds any items marked as ignored
+
 	segment_t dataj;
+	current_t crnt;
+
+	// various file handles used for input/output/error/green/plot files, as well as the source filename
+	char *source_filename;  /**< Path of the input deck file, used to derive default NGF filenames. NULL when reading stdin. */
 	FILE *input_fp;
 	FILE *output_fp;
 	FILE *error_fp;
 	FILE *green_fp;
 	FILE *plot_fp;
-	char *source_filename;  /**< Path of the input deck file, used to derive default NGF filenames. NULL when reading stdin. */
 
 	/* Numerical Green's Function (NGF) state */
 	bool has_ngf;              /* True if NGF segments were loaded via GF card */
@@ -686,7 +705,10 @@ struct context_t
 	
 	/* Near-field results */
 	near_field_results_t nfr;
-	
+
+	/* Output format selection */
+	int output_format;      /* OUTPUT_FORMAT_NEC2C or OUTPUT_FORMAT_ORIGINAL */
+
 	/* Error and message tracking */
 	errors_list_t errors;
 	outputs_list_t outputs;
@@ -699,9 +721,6 @@ struct context_t
 	double mat_fill_time;   /* Matrix fill time in seconds */
 	double mat_factor_time; /* Matrix factor time in seconds */
 	double start_time;      /* Start time for total runtime calculation */
-	
-	/* Output format selection */
-	int output_format;      /* OUTPUT_FORMAT_NEC2C or OUTPUT_FORMAT_ORIGINAL */
 	
 	/* Batch processing state for XQ command support */
 	int current_card_idx;   /* Current position in deck for batch processing */

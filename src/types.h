@@ -141,7 +141,7 @@ typedef struct key_value_t
 	unsigned int magic;
 	char *key;
 	char *value;
-	double fv; // new field for storing a float value
+	double fv; // calculated value of the formula, if applicable
 	char separator; // what separator was used, a colon or an equals?
 	struct key_value_t* next;
 } key_value_t;
@@ -204,7 +204,7 @@ typedef struct card_t
 
   bool ignore;        /**< true if this card should be skipped during processing */
 
-  bool invisible;     /**< true if geometry should be hidden on-screen (onec extension or tag range) */
+  bool invisible;     /**< true if geometry should be hidden on-screen (due to onec flag or tag range) */
 } card_t;
 
 /**
@@ -216,6 +216,9 @@ typedef struct deck_t
   card_t *cards;      /**< Array of cards in the deck */
   int num_cards;      /**< Total number of cards */
   
+  field_sep_t field_sep; /**< Separator style shared by all geo/control cards, or FSEP_UNKNOWN if mixed */
+  int line_endings; /**< Line ending style detected in input deck: LINE_ENDING_LF, LINE_ENDING_CRLF, or LINE_ENDING_UNDETERMINED */
+
   int comment_start;  /**< Index of the first continuous CM card */
   int comment_end;    /**< Index of the last CM or the CE card */
   int symbol_start;   /**< Index of the first SY card after CE (-1 if none) */
@@ -223,14 +226,13 @@ typedef struct deck_t
   int geometry_start; /**< Index of the first geometry card (usually GW) */
   int geometry_end;   /**< Index of the GE (Geometry End) card */
   int deck_end;       /**< Index of the EN (Execution End) card */
+  
   char cmt_code;      /**< Default leading marker used to comment out cards (e.g. '!'); 0 if not seen */
   char extn_code;     /**< Default inline/trailing comment marker seen in the deck ('!', or '\'') */
   int unit_val;       /**< GS card scaling value (default 1) */
   int unit_typ;       /**< Recognized index for GS unit type */
   key_value_t **symbols; /**< Array of symbols (SY) found in the deck */
   int num_symbols;    /**< Total number of symbols */
-  field_sep_t field_sep; /**< Separator style shared by all geo/control cards, or FSEP_UNKNOWN if mixed */
-  int line_endings; /**< Line ending style detected in input deck: LINE_ENDING_LF, LINE_ENDING_CRLF, or LINE_ENDING_UNDETERMINED */
 } deck_t;
 
 /** @brief Opaque handle to the internal simulation state. 

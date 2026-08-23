@@ -11,19 +11,6 @@ endif
 $(info Using C compiler: $(CC))
 CFLAGS = -I. -Isrc -g -O2 -Wall -Wno-unused-parameter
 LDFLAGS =
-
-# OpenMP-parallel matrix fill (fill_wire_wire_matrix observation loop).
-# Set OPENMP=0 to build the sequential fill. Off by default on macOS,
-# where stock Apple clang has no -fopenmp; a libomp-equipped compiler can
-# opt back in with `make OPENMP=1 OPENMP_CFLAGS=... OPENMP_LDFLAGS=...`.
-# Default OpenMP flags for GCC/MinGW:
-OPENMP_CFLAGS ?= -fopenmp
-OPENMP_LDFLAGS ?= -fopenmp
-OPENMP ?= $(if $(filter Darwin,$(shell uname)),0,1)
-ifeq ($(OPENMP),1)
-CFLAGS += $(OPENMP_CFLAGS)
-LDFLAGS += $(OPENMP_LDFLAGS)
-endif
 AR ?= ar
 RANLIB ?= ranlib
 
@@ -129,22 +116,7 @@ else ifeq ($(BACKEND),openblas)
     else ifneq (,$(filter MINGW%,$(UNAME_S)))
         # Windows/MINGW64: the MSYS2 OpenBLAS DLL bundles the Fortran runtime
         # internally, so no separate -lgfortran is needed or available.
-        # Gracefully fall back to dynamic linking if static library not available
-        ifeq ($(STATIC_BLAS),1)
-            STATIC_OPENBLAS_LIB := $(MINGW_OPENBLAS_PREFIX)/lib/libopenblas.a
-            ifneq ($(wildcard $(STATIC_OPENBLAS_LIB)),)
-                # Static library exists - use it
-                LDFLAGS := $(filter-out -lopenblas,$(LDFLAGS))
-                LDFLAGS += $(STATIC_OPENBLAS_LIB) -Wl,-Bstatic -lpthread -Wl,-Bdynamic
-                $(info MINGW64 Static: libopenblas.a found - linking statically)
-            else
-                # Static library not available (MSYS2 only provides DLL)
-                # Fall back to dynamic linking
-                $(info MINGW64: libopenblas.a not found, falling back to dynamic -lopenblas)
-            endif
-        else
-            $(info MINGW64: OpenBLAS bundles Fortran runtime; using dynamic linking)
-        endif
+        $(info MINGW64: OpenBLAS bundles Fortran runtime; no extra flags needed)
     endif
     $(info OpenBLAS backend: LDFLAGS=$(LDFLAGS))
 
@@ -239,7 +211,7 @@ SOURCES = src/main.c src/input.c src/output.c src/deck.c \
           src/deck_validations.c src/card_validation.c src/geometry.c \
           src/calculations.c src/fields.c src/ground.c src/matrix.c \
           src/network.c src/radiation.c src/somnec.c src/misc.c src/types.c \
-          src/tinyexpr.c src/control.c src/reporting.c \
+          src/tinyexpr.c src/control.c \
           src/import-export/maa-support.c src/import-export/yo-support.c \
           src/import-export/nc-support.c src/import-export/nec2-support.c \
           src/import-export/nec4-support.c src/compat_time.c

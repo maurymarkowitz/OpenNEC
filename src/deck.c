@@ -1121,7 +1121,8 @@ static void add_unit_constants(deck_t *deck)
  *
  * After adding the user-defined symbols from SY cards, this looks to see if
  * pi and c are defined, and if not, adds them with default values.
- * Also adds unit conversion constants (m, cm, mm, ft, in, pF, nF, uF, nH, uH, awg0-awg40).
+ * Also calls add_unit_constants to add the unit conversion constants
+ * m, cm, mm, ft, in, pF, nF, uF, nH, uH and awg0-awg40.
  */
 void add_default_symbols(deck_t *deck)
 {

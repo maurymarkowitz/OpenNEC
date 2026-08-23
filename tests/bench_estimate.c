@@ -151,7 +151,6 @@ static double compute_T(const char *path)
  *
  * Deck load + parse are done before the timer starts so they are excluded.
  * Output is directed to /dev/null so file I/O does not inflate the time.
- * write_nec_output() is NOT called — output formatting is also excluded.
  *
  * Returns sim_ms, or -1.0 on load/parse error.
  */

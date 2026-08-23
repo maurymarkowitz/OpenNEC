@@ -40,6 +40,9 @@ tmp/*
 *.plist
 src/types.h
 
+# VS Code settings
+.vscode/
+
 # cebik files
 *.WGF
 *-VP

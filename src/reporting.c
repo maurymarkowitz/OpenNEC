@@ -10,6 +10,7 @@
  */
 
 #include "reporting.h"
+#include "report_output.h"
 #include "internals.h"
 #include "control.h"
 #include "calculations.h"
@@ -102,6 +103,28 @@ void free_card_state(card_state_t *state)
     state->patch_y_saved = NULL;
     state->patch_z_saved = NULL;
     state->patch_area_saved = NULL;
+}
+
+/******************************************************************************
+ * reset_coupling_buffers()
+ *
+ * Reset and free coupling buffers. Called when starting a new batch.
+ */
+static void reset_coupling_buffers(context_t *ctx)
+{
+    if (ctx->yparm.num_pairs > 0) {
+        mem_free(ctx, (void **)&ctx->yparm.pair_tags);
+        mem_free(ctx, (void **)&ctx->yparm.pair_segs);
+        ctx->yparm.num_pairs = 0;
+    }
+    /* Reset coupling calculation state for new frequency */
+    ctx->yparm.coupling_flag = 0;
+    if (ctx->yparm.y11 != NULL) {
+        mem_free(ctx, (void **)&ctx->yparm.y11);
+    }
+    if (ctx->yparm.y12 != NULL) {
+        mem_free(ctx, (void **)&ctx->yparm.y12);
+    }
 }
 
 /* ============================================================================
@@ -231,9 +254,20 @@ static void restore_geometry(context_t *ctx, const card_state_t *state)
 
 int process_deck_sequential(context_t *ctx, deck_t *deck)
 {
+    // have to have a deck and a context
     if (!ctx || !deck) return -1;
+
+    // and a valid output file
+    if (!ctx->output_fp) return -1;
+
+    // and the deck must have at least one card
+    if (deck->num_cards <= 0) return -1;
+
+
+    /* not sure we need this any more */
+    //ctx->freq_step_output_written = true;
     
-    /* Step 1: Calculate geometry if not already done (like run_simulation does) */
+    /* Step 1: Calculate geometry if not already done */
     if (ctx->geometry.num_segs == 0 && ctx->geometry.num_patches == 0) {
         errors_list_t geometry_errors = {0};
         calculate_geometry(ctx, deck, &geometry_errors, &ctx->outputs);
@@ -243,12 +277,13 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
             return -1;
         }
     }
+
+    // Step 2: Write the structure and segments to the output file
+    write_structure(ctx, deck, ctx->output_fp);
+    write_segments(ctx, deck, ctx->output_fp);
     
-    /* Need to declare and call calculation_defaults after geometry */
-    /* This initializes num_eq_sym and other matrix parameters */
+    /* Setup calculation_defaults after geometry */
     if (ctx->geometry.num_segs > 0 || ctx->geometry.num_patches > 0) {
-        /* This is necessary even though it's also called by run_simulation */
-        /* because process_deck_sequential may be called independently */
         if (ctx->netcx.num_eq_sym == 0) {
             /* Initialize matrix parameters from geometry */
             ctx->netcx.num_eq_sym = ctx->geometry.num_segs_sym + 2 * ctx->geometry.num_patches_sym;
@@ -260,14 +295,6 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
     
     card_state_t state;
     init_card_state(&state);
-    
-    /* Output preamble (header, comments, structure, segmentation data)
-     * This should happen once at the very start, before any frequency processing */
-    if (ctx->output_fp) {
-        write_nec_preamble(ctx, deck, ctx->output_fp);
-        /* Signal to main.c that preamble has been written, so it shouldn't write it again */
-        ctx->freq_step_output_written = true;
-    }
     
     /* Start processing cards after geometry section */
     int start_idx = (deck->geometry_end >= 0) ? deck->geometry_end + 1 : 0;
@@ -672,16 +699,6 @@ static int add_coupling_pair(context_t *ctx, int tag1, int seg1, int tag2, int s
 }
 
 /**
- * Reset coupling buffers (wrapper)
- */
-static void reset_coupling_buffers(context_t *ctx)
-{
-    if (!ctx) return;
-    ctx->yparm.num_pairs = 0;
-    ctx->yparm.coupling_flag = 0;
-}
-
-/**
  * Reset loading buffers (inline simplified version)
  */
 static void reset_loading_buffers_seq(context_t *ctx)
@@ -708,6 +725,31 @@ static void reset_network_buffers(context_t *ctx)
     ctx->netcx.num_networks = 0;
     ctx->netcx.network_type = 0;  /* Force network matrix rebuild (matches Fortran NTSOL=0) */
 }
+
+    // ORIGINAL CODE FROM CONTROL>C
+//     /******************************************************************************
+//  * reset_network_buffers()
+//  *
+//  * Reset and free network buffers. Called when starting a new batch.
+//  */
+// static void reset_network_buffers(context_t *ctx)
+// {
+//     if (ctx->netcx.num_networks > 0) {
+//         mem_free(ctx, (void **)&ctx->netcx.net_types);
+//         mem_free(ctx, (void **)&ctx->netcx.net_seg1);
+//         mem_free(ctx, (void **)&ctx->netcx.net_seg2);
+//         mem_free(ctx, (void **)&ctx->netcx.y11_real);
+//         mem_free(ctx, (void **)&ctx->netcx.y11_imag);
+//         mem_free(ctx, (void **)&ctx->netcx.y12_real);
+//         mem_free(ctx, (void **)&ctx->netcx.y12_imag);
+//         mem_free(ctx, (void **)&ctx->netcx.y22_real);
+//         mem_free(ctx, (void **)&ctx->netcx.y22_imag);
+//         ctx->netcx.num_networks = 0;
+//     }
+//     /* Force network matrix rebuild (matches Fortran NTSOL=0) */
+//     ctx->netcx.network_type = 0;
+// }
+// }
 
 /**
  * Transfer errors from one list to another

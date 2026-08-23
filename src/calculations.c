@@ -210,7 +210,7 @@ void compute_coupling(context_t *ctx, complex double *cur, double wlam )
     return;
   }
   
-  /* Accumulate coupling rows; write_nec_output() will render them. */
+  /* Accumulate coupling rows */
   npm1 = ctx->yparm.num_pairs - 1;
   
   for (i = 0; i < npm1; i++) {

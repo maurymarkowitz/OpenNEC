@@ -108,6 +108,12 @@ void set_log_callback(context_t *ctx, log_callback_t callback, void *user_data)
 void context_init(context_t *ctx)
 {
     memset(ctx, 0, sizeof(context_t));
+
+    // default to reporting enabled; can be overridden by caller
+    ctx->is_reporting = true;
+
+    // and set the type of line endings, which should be set by main
+    ctx->line_end_type = LINE_ENDING_CRLF;  // default to CRLF
     
     // Initialize error list
     ctx->errors.num_errors = 0;
@@ -130,7 +136,7 @@ void context_init(context_t *ctx)
     // Initialize output format (set to default, may be overridden by main.c)
     ctx->output_format = DEFAULT_OUTPUT_FORMAT;
     
-    // Initialize ground grid parameters for somnec (from old main.c lines 145-175)
+    // Initialize ground grid parameters for somnec (from nec2c main.c lines 145-175)
     ctx->ggrid = (green_grid_t){
         .grid_nx = {11, 17, 9},
         .grid_ny = {10, 5, 8},
@@ -140,7 +146,7 @@ void context_init(context_t *ctx)
         .grid_y0 = {0.0, 0.0, 0.3490658504}
     };
     
-    // Allocate ggrid arrays for SOMNEC ground calculations
+    // Allocate ggrid arrays for somnec ground calculations
     size_t mreq;
     mreq = sizeof(complex double) * ctx->ggrid.grid_nx[0] * ctx->ggrid.grid_ny[0] * 4;
     ctx->ggrid.table1 = malloc(mreq);

@@ -177,6 +177,57 @@ void report(const context_t *ctx, int level, const char *format, ...)
     }
 }
 
+// this method is a cover for fprintf that handles line-end conversions as well
+// as short-circuiting if the file pointer is NULL or if the report is disabled.
+// using this function in place of fprintf means you can have 1:1 code with the
+// original nec2c code, but also turn off reporting when you're running in
+// "library mode" and don't want to write to a file.
+static void reportf(context_t *ctx, const char *fmt, ...)
+{
+  // exit now if we're not running a report, for instance when we
+  // are in library mode and don't want to write to a file
+  if (!ctx || !ctx->is_reporting || !ctx->output_fp)
+      return;
+
+    // testing different buffer sizes showed a clear preference for
+    // 4k. 8k also ran well but larger and smaller sizes were all over
+    // the place. whether or not 4k or 8k is faster is unclear, but
+    // likely the differences are testing noise.
+    static _Thread_local char buffer[4096];
+
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buffer, sizeof(buffer), fmt, ap);
+    va_end(ap);
+
+    const char *start = buffer;
+    const char *pos = buffer;
+
+    // fairly simple: walk through the string and look for newlines.
+    // when we find one, write everything up to that point, then write
+    // the requested EOL, and move on
+    while (*pos) {
+        if (*pos == '\n') {
+            // write everything up to the newline
+            fwrite(start, 1, pos - start, ctx->output_fp);
+
+            // write the requested EOL
+            if (ctx->line_end_type == LINE_ENDING_CRLF)
+                fwrite("\r\n", 1, 2, ctx->output_fp);
+            else
+                fwrite("\n", 1, 1, ctx->output_fp);
+
+            start = pos + 1;
+        }
+
+        pos++;
+    }
+
+    // write any text remaining at the end, although it's likely empty
+    if (pos != start)
+        fwrite(start, 1, pos - start, ctx->output_fp);
+}
+
 /***  Various system/app utils ***/
 
 /*------------------------------------------------------------------------*/
@@ -209,11 +260,11 @@ void abort_on_error(const context_t *ctx, int why)
 	  report(ctx, ONEC_SEV_FATAL, "onec: NGF solution option not supported - aborting");
 	  break;
 
-	case -6: /* No convergence in shanks_integration() */
+	case -6 : /* No convergence in shanks_integration() */
 	  report(ctx, ONEC_SEV_FATAL, "onec: No convergence in shanks_integration() - aborting");
 	  break;
 
-	case -7: /* Error in hankel() */
+	case -7 : /* Error in hankel() */
 	  report(ctx, ONEC_SEV_FATAL, "onec: Hankel not valid for z=0. - aborting");
 
   }  /* switch( why ) */
