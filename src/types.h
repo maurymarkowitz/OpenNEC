@@ -221,7 +221,7 @@ typedef struct section_t
   int global_start;        /**< First card in this section (global deck index) */
   int global_end;          /**< Last card (NX or EN) (global deck index) */
   
-  // Sub-section boundaries (relative to global_start)
+  // Sub-section boundaries (absolute indices into deck->cards, -1 if not present)
   int comment_start;       /**< First CM card (-1 if none) */
   int comment_end;         /**< Last CM or CE card (-1 if none) */
   int symbol_start;        /**< First SY card after CE (-1 if none) */

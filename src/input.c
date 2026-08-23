@@ -718,6 +718,15 @@ void parse_deck(context_t *ctx, deck_t *deck, errors_list_t *errors)
 
    // add invisible=true for geometry cards with tag >9000, from 4nec2
   mark_4nec2_cards_invisible(ctx, deck);
+  
+  // Phase 2: Create sections from NX card boundaries
+  // This populates deck->sections[] and also updates legacy deck boundary fields
+  if (deck_create_sections(deck) != 0)
+  {
+    char msg[MAX_ERROR_LEN];
+    snprintf(msg, MAX_ERROR_LEN, "Failed to create deck sections");
+    add_error(ctx, errors, msg, FATAL);
+  }
 } /* end of parse_deck() */
 
 /******************************************************************************

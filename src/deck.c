@@ -345,18 +345,19 @@ void destroy_deck(deck_t *deck)
 /******************************************************************************
  * deck_create_sections
  *
- * Creates the sections array from the deck's cards. For Phase 1, this creates
- * a single section representing the entire deck using the legacy boundary fields.
+ * Creates the sections array from the deck's cards by detecting NX (Next
+ * Structure) card boundaries. Each NX card terminates one section and
+ * begins a new independent section.
  * 
- * This function will be enhanced in Phase 2 to detect NX cards and create
- * multiple sections.
+ * For backward compatibility, this also populates the legacy deck boundary
+ * fields (comment_start, geometry_start, etc.) from the first section.
  * 
  * @param deck the deck_t to populate with sections
  * @return 0 on success, -1 on failure
  */
 int deck_create_sections(deck_t *deck)
 {
-  if (deck == NULL)
+  if (deck == NULL || deck->num_cards == 0)
     return -1;
 
   // Free any existing sections
@@ -375,45 +376,161 @@ int deck_create_sections(deck_t *deck)
     deck->num_sections = 0;
   }
 
-  // For Phase 1, create a single section from the legacy fields
-  // This maintains backward compatibility while setting up the infrastructure
-  section_t *section = new_section();
-  if (section == NULL)
-    return -1;
-
-  // Set global boundaries
-  section->global_start = 0;
-  section->global_end = deck->num_cards > 0 ? deck->num_cards - 1 : -1;
-
-  // Copy legacy boundary fields to section
-  section->comment_start = deck->comment_start;
-  section->comment_end = deck->comment_end;
-  section->symbol_start = deck->symbol_start;
-  section->symbol_end = deck->symbol_end;
-  section->geometry_start = deck->geometry_start;
-  section->geometry_end = deck->geometry_end;
-  section->control_start = deck->geometry_end >= 0 ? deck->geometry_end + 1 : -1;
-  section->control_end = deck->deck_end;
-
-  // Copy symbol references (shallow copy - symbols still owned by cards)
-  section->symbols = deck->symbols;
-  section->num_symbols = deck->num_symbols;
-
-  // Section ends with EN (not NX) in single-section decks
-  section->ends_with_nx = false;
-
-  // Allocate sections array with one element
-  deck->sections = (section_t **)malloc(sizeof(section_t *));
+  // Phase 2: Scan for NX cards to determine section boundaries
+  // Build a list of section end positions (NX or EN cards)
+  int *section_ends = NULL;
+  int num_section_ends = 0;
+  
+  for (int i = 0; i < deck->num_cards; i++)
+  {
+    card_t *card = &deck->cards[i];
+    if (card->ignore) continue;
+    
+    // NX or EN marks a section boundary
+    if (strcmp(card->card_code, "NX") == 0 || strcmp(card->card_code, "EN") == 0)
+    {
+      num_section_ends++;
+      section_ends = (int *)realloc(section_ends, num_section_ends * sizeof(int));
+      if (section_ends == NULL)
+        return -1;
+      section_ends[num_section_ends - 1] = i;
+      
+      // EN is terminal - no more sections after it
+      if (strcmp(card->card_code, "EN") == 0)
+        break;
+    }
+  }
+  
+  // If no EN or NX found, treat entire deck as one section
+  if (num_section_ends == 0)
+  {
+    num_section_ends = 1;
+    section_ends = (int *)malloc(sizeof(int));
+    if (section_ends == NULL)
+      return -1;
+    section_ends[0] = deck->num_cards - 1;  // last card in deck
+  }
+  
+  // Allocate sections array
+  deck->num_sections = num_section_ends;
+  deck->sections = (section_t **)malloc(deck->num_sections * sizeof(section_t *));
   if (deck->sections == NULL)
   {
-    destroy_section(section);
-    free(section);
+    free(section_ends);
     return -1;
   }
-
-  deck->sections[0] = section;
-  deck->num_sections = 1;
-
+  
+  // Create and populate each section
+  int section_start = 0;
+  for (int s = 0; s < deck->num_sections; s++)
+  {
+    section_t *section = new_section();
+    if (section == NULL)
+    {
+      free(section_ends);
+      // Free already allocated sections
+      for (int j = 0; j < s; j++)
+      {
+        destroy_section(deck->sections[j]);
+        free(deck->sections[j]);
+      }
+      free(deck->sections);
+      deck->sections = NULL;
+      deck->num_sections = 0;
+      return -1;
+    }
+    
+    deck->sections[s] = section;
+    section->global_start = section_start;
+    section->global_end = section_ends[s];
+    section->ends_with_nx = (strcmp(deck->cards[section_ends[s]].card_code, "NX") == 0);
+    
+    // Scan this section to find internal boundaries
+    bool sawCM = false, sawCE = false, sawSY = false, sawGx = false, sawGE = false;
+    
+    for (int i = section_start; i <= section_ends[s]; i++)
+    {
+      card_t *card = &deck->cards[i];
+      if (card->ignore) continue;
+      
+      const char *code = card->card_code;
+      
+      // Comment section (CM/CE must be before geometry)
+      if (strcmp(code, "CM") == 0 && !sawCM && !sawCE && !sawGx && !sawGE)
+      {
+        section->comment_start = i;  // absolute index
+        sawCM = true;
+      }
+      if (strcmp(code, "CE") == 0 && !sawCE && !sawGx && !sawGE)
+      {
+        section->comment_end = i;  // absolute index
+        sawCE = true;
+      }
+      
+      // Symbol cards (SY between CE and geometry)
+      if (strcmp(code, "SY") == 0 && !sawGx && !sawGE)
+      {
+        if (!sawSY)
+        {
+          section->symbol_start = i;  // absolute index
+          sawSY = true;
+        }
+        section->symbol_end = i;  // absolute index
+      }
+      
+      // Geometry section
+      if (is_geometry(card) && !sawGx)
+      {
+        section->geometry_start = i;  // absolute index
+        sawGx = true;
+      }
+      if (strcmp(code, "GE") == 0 && !sawGE)
+      {
+        section->geometry_end = i;  // absolute index
+        sawGE = true;
+      }
+    }
+    
+    // Control cards start after GE
+    if (section->geometry_end >= 0)
+    {
+      section->control_start = section->geometry_end + 1;
+      section->control_end = section_ends[s];
+    }
+    
+    // Copy section-specific symbols (shallow copy - symbols owned by cards)
+    // For now, just reference the deck-wide symbols in the first section
+    // Phase 3 will properly scope symbols per-section
+    if (s == 0)
+    {
+      section->symbols = deck->symbols;
+      section->num_symbols = deck->num_symbols;
+    }
+    else
+    {
+      section->symbols = NULL;
+      section->num_symbols = 0;
+    }
+    
+    // Next section starts after current section end
+    section_start = section_ends[s] + 1;
+  }
+  
+  free(section_ends);
+  
+  // Populate legacy deck fields from first section for backward compatibility
+  if (deck->num_sections > 0)
+  {
+    section_t *first = deck->sections[0];
+    deck->comment_start = first->comment_start;
+    deck->comment_end = first->comment_end;
+    deck->symbol_start = first->symbol_start;
+    deck->symbol_end = first->symbol_end;
+    deck->geometry_start = first->geometry_start;
+    deck->geometry_end = first->geometry_end;
+    // deck_end stays as the global EN position (already set by parse_deck)
+  }
+  
   return 0;
 }
 
