@@ -263,87 +263,148 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
     // and the deck must have at least one card
     if (deck->num_cards <= 0) return -1;
 
+    // Phase 4: Process each section independently
+    if (deck->num_sections == 0) {
+        /* No sections created - deck_create_sections() should have been called during parsing */
+        add_error(ctx, &ctx->errors, "Internal error: no sections in deck", FATAL);
+        return -1;
+    }
 
-    /* not sure we need this any more */
-    //ctx->freq_step_output_written = true;
-    
-    /* Step 1: Calculate geometry if not already done */
-    if (ctx->geometry.num_segs == 0 && ctx->geometry.num_patches == 0) {
+    /* Loop over all sections */
+    for (int section_num = 0; section_num < deck->num_sections; section_num++) {
+        section_t *section = deck->sections[section_num];
+        
+        /* Output section header if multi-section deck */
+        if (deck->num_sections > 1) {
+            fprintf(ctx->output_fp, "\n");
+            fprintf(ctx->output_fp, "                             - - - SECTION %d - - -\n", section_num + 1);
+            fprintf(ctx->output_fp, "\n");
+        }
+        
+        /* Step 1: Calculate geometry for this section */
+        /* Temporarily update legacy deck fields to point to this section's boundaries */
+        int saved_geometry_start = deck->geometry_start;
+        int saved_geometry_end = deck->geometry_end;
+        int saved_deck_end = deck->deck_end;
+        
+        deck->geometry_start = section->geometry_start;
+        deck->geometry_end = section->geometry_end;
+        deck->deck_end = section->global_end;
+        
+        /* Clear previous section's geometry */
+        if (section_num > 0) {
+            /* Reset geometry for new section */
+            if (ctx->geometry.end1_x != NULL) { free(ctx->geometry.end1_x); ctx->geometry.end1_x = NULL; }
+            if (ctx->geometry.end1_y != NULL) { free(ctx->geometry.end1_y); ctx->geometry.end1_y = NULL; }
+            if (ctx->geometry.end1_z != NULL) { free(ctx->geometry.end1_z); ctx->geometry.end1_z = NULL; }
+            if (ctx->geometry.end2_x != NULL) { free(ctx->geometry.end2_x); ctx->geometry.end2_x = NULL; }
+            if (ctx->geometry.end2_y != NULL) { free(ctx->geometry.end2_y); ctx->geometry.end2_y = NULL; }
+            if (ctx->geometry.end2_z != NULL) { free(ctx->geometry.end2_z); ctx->geometry.end2_z = NULL; }
+            if (ctx->geometry.x_center != NULL) { free(ctx->geometry.x_center); ctx->geometry.x_center = NULL; }
+            if (ctx->geometry.y_center != NULL) { free(ctx->geometry.y_center); ctx->geometry.y_center = NULL; }
+            if (ctx->geometry.z_center != NULL) { free(ctx->geometry.z_center); ctx->geometry.z_center = NULL; }
+            if (ctx->geometry.half_len != NULL) { free(ctx->geometry.half_len); ctx->geometry.half_len = NULL; }
+            if (ctx->geometry.radius != NULL) { free(ctx->geometry.radius); ctx->geometry.radius = NULL; }
+            if (ctx->geometry.dir_cos_x != NULL) { free(ctx->geometry.dir_cos_x); ctx->geometry.dir_cos_x = NULL; }
+            if (ctx->geometry.dir_cos_y != NULL) { free(ctx->geometry.dir_cos_y); ctx->geometry.dir_cos_y = NULL; }
+            if (ctx->geometry.dir_cos_z != NULL) { free(ctx->geometry.dir_cos_z); ctx->geometry.dir_cos_z = NULL; }
+            if (ctx->geometry.seg_end1_conn != NULL) { free(ctx->geometry.seg_end1_conn); ctx->geometry.seg_end1_conn = NULL; }
+            if (ctx->geometry.seg_end2_conn != NULL) { free(ctx->geometry.seg_end2_conn); ctx->geometry.seg_end2_conn = NULL; }
+            if (ctx->geometry.tag_nums != NULL) { free(ctx->geometry.tag_nums); ctx->geometry.tag_nums = NULL; }
+            if (ctx->geometry.card_nums != NULL) { free(ctx->geometry.card_nums); ctx->geometry.card_nums = NULL; }
+            ctx->geometry.num_segs = 0;
+            ctx->geometry.num_segs_sym = 0;
+            ctx->geometry.num_patches = 0;
+            ctx->geometry.num_patches_sym = 0;
+        }
+        
         errors_list_t geometry_errors = {0};
         calculate_geometry(ctx, deck, &geometry_errors, &ctx->outputs);
         
         if (geometry_errors.num_errors > 0) {
             transfer_errors(&geometry_errors, &ctx->errors);
+            /* Restore legacy fields */
+            deck->geometry_start = saved_geometry_start;
+            deck->geometry_end = saved_geometry_end;
+            deck->deck_end = saved_deck_end;
             return -1;
         }
-    }
 
-    // Step 2: Write the structure and segments to the output file
-    write_structure(ctx, deck, ctx->output_fp);
-    write_segments(ctx, deck, ctx->output_fp);
-    
-    /* Setup calculation_defaults after geometry */
-    if (ctx->geometry.num_segs > 0 || ctx->geometry.num_patches > 0) {
-        if (ctx->netcx.num_eq_sym == 0) {
-            /* Initialize matrix parameters from geometry */
-            ctx->netcx.num_eq_sym = ctx->geometry.num_segs_sym + 2 * ctx->geometry.num_patches_sym;
-            if (ctx->netcx.num_eq == 0) {
+        // Write the structure and segments to the output file for this section
+        write_structure(ctx, deck, ctx->output_fp);
+        write_segments(ctx, deck, ctx->output_fp);
+        
+        /* Setup calculation_defaults after geometry */
+        if (ctx->geometry.num_segs > 0 || ctx->geometry.num_patches > 0) {
+            if (ctx->netcx.num_eq_sym == 0 || section_num > 0) {
+                /* Initialize matrix parameters from geometry */
+                ctx->netcx.num_eq_sym = ctx->geometry.num_segs_sym + 2 * ctx->geometry.num_patches_sym;
                 ctx->netcx.num_eq = ctx->geometry.num_segs + 2 * ctx->geometry.num_patches;
             }
         }
-    }
-    
-    card_state_t state;
-    init_card_state(&state);
-    
-    /* Start processing cards after geometry section */
-    int start_idx = (deck->geometry_end >= 0) ? deck->geometry_end + 1 : 0;
-    int end_idx = (deck->deck_end >= 0) ? deck->deck_end : deck->num_cards;
-    
-    if (start_idx >= end_idx) {
-        /* No control cards to process */
-        free_card_state(&state);
-        return 0;
-    }
-    
-    /* Main card processing loop - Fortran line 14 */
-    for (int i = start_idx; i < end_idx; i++) {
-        card_t *card = &deck->cards[i];
         
-        /* Skip comments and ignored cards (but write them if configured) */
-        if (card->ignore || is_comment(card)) {
-            if (ctx->output_fp && is_comment(card)) {
-                fprintf(ctx->output_fp, "%s\n", card->card_str ? card->card_str : "");
+        card_state_t state;
+        init_card_state(&state);
+        
+        /* Start processing cards after geometry section */
+        int start_idx = (section->geometry_end >= 0) ? section->geometry_end + 1 : section->global_start;
+        int end_idx = section->global_end;
+        
+        if (start_idx < end_idx) {
+            /* Main card processing loop for this section - Fortran line 14 */
+            for (int i = start_idx; i <= end_idx; i++) {
+                card_t *card = &deck->cards[i];
+                
+                /* Skip comments and ignored cards (but write them if configured) */
+                if (card->ignore || is_comment(card)) {
+                    if (ctx->output_fp && is_comment(card)) {
+                        fprintf(ctx->output_fp, "%s\n", card->card_str ? card->card_str : "");
+                    }
+                    continue;
+                }
+                
+                /* Skip pattern cards (RP, NE, NH, PT, PQ) that were already output as part of XQ look-ahead */
+                if ((strcmp(card->card_code, "RP") == 0 ||
+                     strcmp(card->card_code, "NE") == 0 ||
+                     strcmp(card->card_code, "NH") == 0 ||
+                     strcmp(card->card_code, "PT") == 0 ||
+                     strcmp(card->card_code, "PQ") == 0) &&
+                    i <= state.last_processed_pattern_idx) {
+                    continue;
+                }
+                
+                /* Skip NX and EN termination cards */
+                if (strcmp(card->card_code, "NX") == 0 || strcmp(card->card_code, "EN") == 0) {
+                    /* Output the card for documentation */
+                    if (ctx->output_fp) {
+                        fprintf(ctx->output_fp, "%s\n", card->card_str ? card->card_str : "");
+                    }
+                    break;
+                }
+                
+                /* Dispatch to card-specific handler */
+                int result = dispatch_card(ctx, deck, i, &state);
+                if (result != 0) {
+                    free_card_state(&state);
+                    /* Restore legacy fields */
+                    deck->geometry_start = saved_geometry_start;
+                    deck->geometry_end = saved_geometry_end;
+                    deck->deck_end = saved_deck_end;
+                    return result;
+                }
             }
-            continue;
         }
         
-        /* Skip pattern cards (RP, NE, NH, PT, PQ) that were already output as part of XQ look-ahead */
-        if ((strcmp(card->card_code, "RP") == 0 ||
-             strcmp(card->card_code, "NE") == 0 ||
-             strcmp(card->card_code, "NH") == 0 ||
-             strcmp(card->card_code, "PT") == 0 ||
-             strcmp(card->card_code, "PQ") == 0) &&
-            i <= state.last_processed_pattern_idx) {
-            continue;
-        }
+        free_card_state(&state);
         
-        /* Dispatch to card-specific handler */
-        int result = dispatch_card(ctx, deck, i, &state);
-        if (result != 0) {
-            free_card_state(&state);
-            return result;
-        }
-        
-        /* Check for EN (end of deck) card */
-        if (strcmp(card->card_code, "EN") == 0) {
-            break;
-        }
+        /* Restore legacy fields */
+        deck->geometry_start = saved_geometry_start;
+        deck->geometry_end = saved_geometry_end;
+        deck->deck_end = saved_deck_end;
     }
     
     /* Don't call write_footer here - it will be called by main.c after we return */
     
-    free_card_state(&state);
     return 0;
 }
 
