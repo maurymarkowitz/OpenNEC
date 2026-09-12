@@ -39,8 +39,12 @@
 #define NTS		4
 #define	SMIN	1.e-3
 
-/* Replaces the "10000" limit used to identiy segment/patch connections */
-#define	PCHCON  10000
+/*
+ * Keep the patch-connection namespace above practical wire-segment counts.
+ * PCHCON is used to distinguish patch connections from ordinary segment
+ * connections, so it must not overlap valid generated segment numbers.
+ */
+#define PCHCON  1000000000
 
 /* carriage return and line feed */
 #define	CR	0x0d
