@@ -6,7 +6,7 @@ Introduction
 
 Yagi Optimizer is an antenna design program introduced in 1994 by Brian Beezley (K6STI). Files in YO have no consistent extension, but sometimes `.ant` or `.yo` may be found, as well as the semi-official `.yag`. These files were common during the 1990s and 2000s, and examples are still found around the 'net today.
 
-The application is solely for use with Yagi antennas, and uses the MININEC code to run its calculations. A key feature of MININEC is its ability to define explicit tapering dimensions, in contrast to NEC, which uses a formula to calculate a series of taper steps. YO makes extensive use of this MININEC feature and its files are structured to include this data in a way that requires conversion to use with NEC.
+The Yagi Optimizer application is solely for use with Yagi antennas, and uses the MININEC code to run its calculations. A key feature of MININEC is its ability to explicitly define tapering dimensions, in contrast to NEC, which uses a formula to calculate a series of taper steps. YO makes extensive use of this MININEC feature and its files are structured to include this data in a way that requires conversion to use with NEC.
 
 This document outlines the features of the YO format and describes how to convert the file to a canonical NEC or OpenNEC file.
 
@@ -215,11 +215,12 @@ spacing     1.617     1.250     1.125     0.875     0.75
 ```
 There are a number of items to consider:
 
-1. the Height is in feet, and has to be converted to inches
-2. an LD card is needed to convert the material to copper
-3. a second antenna is stacked 50 feet above the first
-4. measurements are given in "spacing" format
-5. tapering is complex
+1. the base measurement unit is inches
+2. the Height is in feet, and has to be converted to inches
+3. an LD card is needed to convert the material to copper
+4. a second antenna is stacked 50 feet above the first
+5. measurements are given in "spacing" format
+6. tapering is complex
 
 The resulting NEC file would be:
 ```

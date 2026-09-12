@@ -5,7 +5,7 @@ Introduction
 ------------
 This manual focuses on how to use the `libopennec.a` library in other programs, and the internal structures and functions that you call from the library in your programs. It also includes guidance on generating and validating NEC decks, controlling simulations, import and export of other formats, and interpreting output.
 
-This manual is aimed at programmers intending to call OpenNEC from their own code. For those looking for instructions on how to use the program from the command line, see the main [README](../README.MD). For instructions on how to build models and decks, see the [OpenNEC modeling manual](OpenNEC%20modeling%20manual.md).
+This manual is aimed at programmers intending to call OpenNEC from their own code. For those looking for instructions on how to use the program from the command line, see the main [README](../README.MD) and the [OpenNEC user manual](OpenNEC%20user%20manual.md). For instructions on how to build models and decks, see the [OpenNEC modeling manual](OpenNEC%20modeling%20manual.md).
 
 Using OpenNEC as a plug-in engine
 ---------------------------------
@@ -18,11 +18,11 @@ The Windows version supports the same switches for input and output, `-i` and `-
 The exact calling proceedure varies among programs, so separate document have been created for each commonly used program. For now, these include:
 
 - [Using OpenNEC with 4nec2](Using&20%OpenNEC&20%with&20%4nec2.md)
-- [Using onec with cocoaNEC](Using&20%OpenNEC&20%with&20%cocoaNEC.md)
+- [Using OpenNEC with cocoaNEC](Using&20%OpenNEC&20%with&20%cocoaNEC.md)
 
 OpenNEC also supports `-f`, `--format` to select the output format for the generated `.out` file, `original` or `nec2c`. The default is `original` on all platforms.
 
-You can use `-l`, `--line-ending` to select the line ending style for output files. Normally files default to CRLF, except on Unix/macOS when the input file used only LF. If you need an LF file regardless of the input format, use this swtich.
+You can use `-l`, `--line-ending` to select the line ending style for output files. Normally files default to CRLF, except on Unix/macOS when the input file used only LF, which is the case in cocoaNEC which expects the output to also be LF-only. If you need an LF file regardless of the input format, use this switch.
 
 Using OpenNEC as a library
 --------------------------

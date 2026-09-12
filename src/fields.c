@@ -526,6 +526,7 @@ void ground_wave_field(context_t *restrict ctx, complex double *restrict erv, co
     cpp2=1.0e-20;
   
   cpp= sqrt( cpp2);
+  
   rk1= -TPJ* ctx->gwav.range1;
   rk2= -TPJ* ctx->gwav.range2;
   t1=1. -ctx->gwav.impedance_ratio_sq* cpp2;

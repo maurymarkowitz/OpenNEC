@@ -18,6 +18,8 @@
 #include "report_output.h"
 #include "control.h"
 #include "reporting.h"
+#include "reporting_direct.h"
+#include "report_logic.h"
 #include "deck_validations.h"
 #include "import-export/nec2-support.h"
 #include "import-export/nec4-support.h"
@@ -39,12 +41,21 @@
 #include <unistd.h>
 #include <limits.h>
 
+/* Line ending constants */
+#define LINE_ENDING_LF 0      /* Unix/Mac: \n only */
+#define LINE_ENDING_CRLF 1    /* Windows: \r\n */
+
+/* Output format defaults */
+#define DEFAULT_OUTPUT_FORMAT OUTPUT_FORMAT_NEC2C  /* Default to nec2c-style output */
+#define DEFAULT_LINE_ENDING LINE_ENDING_LF         /* Default to Unix LF (for nec2c compatibility) */
+
 // various switches for the command line arguments
 static bool do_run_simulation = true;
 static bool run_tests = false;
 static bool run_greens = false;
 static bool recursive = false;
 static bool skip_large = false;
+/* OBSOLETE: use_direct_reporting flag removed - reporting_direct.c is now the only active reporting path */
 static int num_input_files = 1; /* for skip-large group behavior */
 static char *input_file = "";
 static char *output_file = "";
@@ -98,6 +109,7 @@ void print_usage(char *argv[])
   puts("    Pass a bare extension (e.g. -w .maa) to convert multiple input files in place.");
   puts("  -f, --format: output format for .out file: 'nec2c' (modern) or 'original' (Fortran, default on all platforms)");
   puts("  -l, --line-ending: line ending style: 'crlf' (default) or 'lf' (Unix/macOS)");
+  puts("  --direct-reporting: use experimental nec2c-style direct translation (for Phase 7 testing)");
   puts("Multiple input files or folders can be specified; each file will generate a .out file.");
   puts("If no input_file is provided, input is read from stdin and output goes to stdout.");
   exit(0);
@@ -119,6 +131,7 @@ static struct option program_options[] =
         {"skip-large", no_argument, NULL, 's'},
         {"format", required_argument, NULL, 'f'},
         {"line-ending", required_argument, NULL, 'l'},
+        {"direct-reporting", no_argument, NULL, 1000},
         {0, 0, 0, 0}};
 
 /**
@@ -233,6 +246,9 @@ void parse_options(int argc, char *argv[])
         exit(1);
       }
       line_ending_explicitly_set = true;
+      break;
+
+    case 1000:  /* --direct-reporting - OBSOLETE, reporting_direct.c is always used */
       break;
 
     default:
@@ -592,7 +608,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
 
     if (output_fp == NULL)
     {
-      if ((output_fp = fopen(output_filename, "w")) == NULL)
+      if ((output_fp = fopen(output_filename, "wb")) == NULL)
       {
         char mesg[88] = "onec: ";
         strcat(mesg, output_filename);
@@ -705,10 +721,14 @@ static int process_single_file(const char *input_filename, const char *output_fi
   }
 
   // Refine line ending decision after reading deck
-  // ALWAYS default to CRLF unless -l lf is explicitly specified
   int effective_line_ending = line_ending_choice;
-  if (!line_ending_explicitly_set) {
-    /* Always use CRLF as default, regardless of input or platform */
+  
+  // For nec2c format output, ALWAYS use LF (Unix line endings)
+  // This ensures compatibility with nec2c reference implementation
+  if (output_format_choice == OUTPUT_FORMAT_NEC2C) {
+    effective_line_ending = LINE_ENDING_LF;
+  } else if (!line_ending_explicitly_set) {
+    /* Default to CRLF for other formats unless -l lf is explicitly specified */
     effective_line_ending = LINE_ENDING_CRLF;
   }
 
@@ -725,7 +745,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
         using_temp_output = true;
       } else {
         // Fall back to writing directly
-        if ((output_fp = fopen(output_filename, "w")) == NULL) {
+        if ((output_fp = fopen(output_filename, "wb")) == NULL) {
           char mesg[88] = "onec: ";
           strcat(mesg, output_filename);
           perror(mesg);
@@ -833,8 +853,11 @@ static int process_single_file(const char *input_filename, const char *output_fi
   // run it if we've been asked to
   if (do_run_simulation)
   {
-    // Run complete simulation with sequential card processing
-    int sim_result = process_deck_sequential(ctx, &deck);
+    int sim_result;
+    
+    // Use sequential card processing (reporting.c)
+    // This handles both OpenNEC features and nec2c format output
+    sim_result = process_deck_sequential(ctx, &deck);
 
       // Check for any errors that occurred during calculation (whether simulation failed or succeeded)
       if (ctx->errors.num_errors > 0 || sim_result != 0)

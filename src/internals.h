@@ -418,7 +418,8 @@ typedef struct
 		screen_wire_radius, /* scrwrt — Fortran SCRWRT: screen radial wire radius (m) */
 		freq_mhz,           /* fmhz — Fortran FMHZ: current frequency (MHz) */
 		freq_step,          /* delfrq: frequency step size */
-		first_fr_mhz;       /* frequency from the first FR card; used as LD6 design-freq default */
+		first_fr_mhz,       /* frequency from the first FR card; used as LD6 design-freq default */
+		last_output_freq_mhz; /* Track last frequency output for skipping duplicates in multi-excitation scenarios */
 
 } run_params_t;
 

@@ -85,7 +85,7 @@ int fill_interaction_matrix(context_t *restrict ctx, int nrow, complex double *r
   for( i = 0; i < nrow; i++ )
 	for( j = 0; j < it; j++ )
 	  cm[i+j*nrow]= CPLX_00;
-
+  
   i1= 1;
   i2= it;
   in2= i2;
@@ -124,7 +124,7 @@ int fill_interaction_matrix(context_t *restrict ctx, int nrow, complex double *r
 
 	  if( im1 <= im2)
 		fill_wire_patch_matrix(ctx, j, im1, im2, &cm[(ist - 1) * nrow], nrow, cm, 1);
-
+	  
 	  /* matrix elements modified by loading */
 	  if( ctx->zload.num_loads == 0)
 		continue;
@@ -807,8 +807,7 @@ void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, compl
 	  for( ij = 0; ij < ctx->segj.num_junction_segs; ij++ )
 	  {
 		jx= ctx->segj.junction_segs[ij]-1;
-		complex double elem = etk* ctx->segj.coeff_const[ij]+ ets* ctx->segj.coeff_sine[ij]+ etc* ctx->segj.coeff_cos[ij];
-		cm[jx+ipr*nr] += elem;
+		cm[jx+ipr*nr] += etk* ctx->segj.coeff_const[ij]+ ets* ctx->segj.coeff_sine[ij]+ etc* ctx->segj.coeff_cos[ij];
 	  }
 	  continue;
 	}
@@ -1200,7 +1199,7 @@ void factor_matrix(const context_t *restrict ctx, int n, complex double *restric
 	if (info < 0) {
 		report(ctx, ONEC_SEV_ERROR, "ZGETRF ERROR: Illegal argument %d", -info);
 	} else if (info > 0) {
-		report(ctx, ONEC_SEV_WARNING, "ZGETRF WARNING: U(%d,%d) is exactly zero", info, info);
+		report(ctx, ONEC_SEV_WARNING, "ZGETRF WARNING: U(%d,%d) is exactly zero - matrix is singular", info, info);
 	}
 
 	/* Copy LU factors back into the big matrix block. */
@@ -1434,6 +1433,12 @@ void solve(const context_t *restrict ctx, int n, complex double *restrict a, int
 		complex double *restrict b, int ndim )
 {
 #if defined(HAVE_ACCELERATE) || defined(HAVE_OPENBLAS) || defined(HAVE_BLAS) || defined(HAVE_MKL)
+	/* Guard against invalid matrix dimensions */
+	if (n <= 0) {
+		report(ctx, ONEC_SEV_WARNING, "solve(): n=%d is invalid, skipping matrix solve", n);
+		return;
+	}
+
 	/* LAPACK-backed solve using local buffers for matrix and RHS. */
 	int m = n;
 	int lda = n; /* local matrix leading dimension */

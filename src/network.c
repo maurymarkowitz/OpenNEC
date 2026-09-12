@@ -28,7 +28,7 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
   size_t mreq;
   double pwr;
   complex double *vsrc = NULL, *rhs = NULL, *cmn = NULL;
-  complex double *rhnt = NULL, *rhnx = NULL, ymit, vlt, cux=CPLX_00;
+  complex double *rhnt = NULL, *rhnx = NULL, *einc_orig = NULL, ymit, vlt, cux=CPLX_00;
 
   ctx->netcx.power_in=0.;
   ctx->netcx.power_net_loss=0.;
@@ -53,6 +53,7 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
     mreq = (size_t)ctx->geometry.num_segs_3xpatches;
     mreq *= sizeof(complex double);
     mem_alloc(ctx, (void *)&rhs, mreq );
+    mem_alloc(ctx, (void *)&einc_orig, mreq );  /* Save original einc for antenna input calculation */
 
     mreq = (size_t)ndimn;
     mreq *= sizeof(complex double);
@@ -470,6 +471,13 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
     /* solve network equations */
     solve(ctx, nteq, cmn, ipnt, rhnt, ndimn);
 
+    /* Save original einc values before modifying them, for antenna input calculation */
+    if( einc_orig != NULL )
+    {
+      for( i = 0; i < neqt; i++ )
+        einc_orig[i] = einc[i];
+    }
+
     /* add fields due to network voltages to electric fields */
     /* applied to structure and solve for induced current */
     for( i = 0; i < nteq; i++ )
@@ -587,7 +595,9 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
         cux= rhnx[irow1];
         for( j = 0; j < nteq; j++ )
           cux -= cmn[j+irow1*ndimn]*rhnt[j];
-        cux=(einc[isc1]+ cux)* ctx->geometry.wavelength;
+        /* Use original einc (before network correction) for antenna input */
+        complex double einc_src = (einc_orig != NULL) ? einc_orig[isc1] : einc[isc1];
+        cux=(einc_src+ cux)* ctx->geometry.wavelength;
         irow1++;
 
       } /* if( ntsc == 0) */
@@ -649,6 +659,7 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
   mem_free( ctx, (void *)&ntsca );
   mem_free( ctx, (void *)&vsrc );
   mem_free( ctx, (void *)&rhs );
+  mem_free( ctx, (void *)&einc_orig );
   mem_free( ctx, (void *)&cmn );
   mem_free( ctx, (void *)&rhnt );
   mem_free( ctx, (void *)&rhnx );

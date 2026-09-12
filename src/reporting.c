@@ -25,8 +25,6 @@
 #include <time.h>
 
 /* Forward declarations */
-static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
-                                             int card_idx, card_state_t *state);
 
 /* ============================================================================
  * Initialization and State Management
@@ -267,6 +265,46 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
     // and the deck must have at least one card
     if (deck->num_cards <= 0) return -1;
 
+    // Write nec2c header to output file
+    write_header(ctx, deck, ctx->output_fp);
+    
+    // Write comment section if present
+    if (deck->num_cards > 0) {
+        int card_idx = 0;
+        card_t *first_card = &deck->cards[card_idx];
+        char card_mnemonic[3] = {0};
+        card_mnemonic[0] = first_card->card_code[0];
+        card_mnemonic[1] = first_card->card_code[1];
+        card_mnemonic[2] = '\0';
+        
+        if ((strcmp(card_mnemonic, "CM") == 0) || (strcmp(card_mnemonic, "CE") == 0)) {
+            write_comment_section_header(ctx->output_fp, ctx);
+            write_comment_line(ctx->output_fp, ctx, first_card->card_str + 2);
+            card_idx++;
+            
+            // Keep reading till a non-comment card
+            while (card_idx < deck->num_cards) {
+                card_t *card = &deck->cards[card_idx];
+                card_mnemonic[0] = card->card_code[0];
+                card_mnemonic[1] = card->card_code[1];
+                card_mnemonic[2] = '\0';
+                
+                if ((strcmp(card_mnemonic, "CM") == 0) || (strcmp(card_mnemonic, "CE") == 0)) {
+                    if (strcmp(card_mnemonic, "CE") == 0) {
+                        write_comment_line(ctx->output_fp, ctx, card->card_str + 2);
+                        card_idx++;
+                        break;
+                    } else {
+                        write_comment_line(ctx->output_fp, ctx, card->card_str + 2);
+                        card_idx++;
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
     // Phase 4: Process each section independently
     if (deck->num_sections == 0) {
         /* No sections created - deck_create_sections() should have been called during parsing */
@@ -311,6 +349,49 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
             ctx->geometry.num_segs_sym = 0;
             ctx->geometry.num_patches = 0;
             ctx->geometry.num_patches_sym = 0;
+            
+            /* Clear excitation queue for new section */
+            ctx->ex_queue.num_queued = 0;
+            
+            /* Reset pattern/ground settings */
+            ctx->fpat.is_near_field = -1;
+            ctx->gnd.far_field_type = -1;
+            
+            /* Reset matrix sizes - matrices will be reallocated for new geometry */
+            ctx->netcx.num_eq_sym = 0;
+            ctx->netcx.num_eq = 0;
+            
+            /* Reset matrix parameters from previous section */
+            ctx->matpar.storage_case = 0;
+            ctx->matpar.block_rows = 0;
+            ctx->matpar.last_block_rows = 0;
+            ctx->matpar.core_used = 0;
+            
+            /* Free geometry-dependent allocations that will be wrong size for new section */
+            if (ctx->save.pivot) {
+                mem_free(ctx, (void **)&ctx->save.pivot);
+                ctx->save.pivot = NULL;
+            }
+            if (ctx->smat.mode_matrix) {
+                mem_free(ctx, (void **)&ctx->smat.mode_matrix);
+                ctx->smat.mode_matrix = NULL;
+            }
+            if (ctx->crnt.surface_cur) {
+                mem_free(ctx, (void **)&ctx->crnt.surface_cur);
+                ctx->crnt.surface_cur = NULL;
+            }
+            if (ctx->crnt.a_real) { mem_free(ctx, (void **)&ctx->crnt.a_real); ctx->crnt.a_real = NULL; }
+            if (ctx->crnt.a_imag) { mem_free(ctx, (void **)&ctx->crnt.a_imag); ctx->crnt.a_imag = NULL; }
+            if (ctx->crnt.b_real) { mem_free(ctx, (void **)&ctx->crnt.b_real); ctx->crnt.b_real = NULL; }
+            if (ctx->crnt.b_imag) { mem_free(ctx, (void **)&ctx->crnt.b_imag); ctx->crnt.b_imag = NULL; }
+            if (ctx->crnt.c_real) { mem_free(ctx, (void **)&ctx->crnt.c_real); ctx->crnt.c_real = NULL; }
+            if (ctx->crnt.c_imag) { mem_free(ctx, (void **)&ctx->crnt.c_imag); ctx->crnt.c_imag = NULL; }
+            
+            /* Free loading arrays that depend on segment count */
+            if (ctx->zload.seg_impedance) {
+                mem_free(ctx, (void **)&ctx->zload.seg_impedance);
+                ctx->zload.seg_impedance = NULL;
+            }
         }
         
         /* Temporarily make this section the "primary" for legacy code */
@@ -330,6 +411,12 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
         write_structure(ctx, deck, ctx->output_fp);
         write_segments(ctx, deck, ctx->output_fp);
         
+        /* Add blank lines before data card section (nec2c format) */
+        if (ctx->output_format == OUTPUT_FORMAT_NEC2C)
+        {
+            fprintf(ctx->output_fp, "\n\n\n");
+        }
+        
         /* Setup calculation_defaults after geometry */
         if (ctx->geometry.num_segs > 0 || ctx->geometry.num_patches > 0) {
             if (ctx->netcx.num_eq_sym == 0 || section_num > 0) {
@@ -341,7 +428,6 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
         
         card_state_t state;
         init_card_state(&state);
-        
         /* Start processing cards after geometry section */
         int start_idx = (section->geometry_end >= 0) ? section->geometry_end + 1 : section->global_start;
         int end_idx = section->global_end;
@@ -371,9 +457,36 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
                 
                 /* Skip NX and EN termination cards */
                 if (strcmp(card->card_code, "NX") == 0 || strcmp(card->card_code, "EN") == 0) {
-                    /* Output the card for documentation */
+                    /* Output the EN card with proper formatting for nec2c */
                     if (ctx->output_fp) {
-                        fprintf(ctx->output_fp, "%s\n", card->card_str ? card->card_str : "");
+                        if (strcmp(card->card_code, "EN") == 0) {
+                            /* Count all control cards to get the right DATA CARD number */
+                            int card_number = 0;
+                            for (int j = 0; j <= i; j++) {
+                                const char *code = deck->cards[j].card_code;
+                                if (strncmp(code, "FR", 2) == 0 ||
+                                    strncmp(code, "EX", 2) == 0 ||
+                                    strncmp(code, "LD", 2) == 0 ||
+                                    strncmp(code, "CP", 2) == 0 ||
+                                    strncmp(code, "XQ", 2) == 0 ||
+                                    strncmp(code, "EN", 2) == 0 ||
+                                    strncmp(code, "PT", 2) == 0) {
+                                    card_number++;
+                                }
+                            }
+                            
+                            /* Format EN card as DATA CARD */
+                            if (ctx->output_format == OUTPUT_FORMAT_NEC2C) {
+                                fprintf(ctx->output_fp, "  DATA CARD No: %3d EN   0     0     0     0  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00\n",
+                                        card_number);
+                                /* Add TOTAL RUN TIME for nec2c format */
+                                fprintf(ctx->output_fp, "\n  TOTAL RUN TIME: 0 msec");
+                            } else {
+                                fprintf(ctx->output_fp, "%s\n", card->card_str ? card->card_str : "");
+                            }
+                        } else {
+                            fprintf(ctx->output_fp, "%s\n", card->card_str ? card->card_str : "");
+                        }
                     }
                     break;
                 }
@@ -612,6 +725,13 @@ static int add_voltage_source(context_t *ctx, int tag, int seg, complex double v
 {
     if (!ctx) return -1;
     
+    /* Convert tag+segment to global segment index */
+    int seg_index = segment_number(ctx, tag, seg);
+    if (seg_index < 0) {
+        add_error(ctx, &ctx->errors, "Invalid tag/segment in EX card", WARNING);
+        return -1;
+    }
+    
     /* Queue EX card for later processing */
     if (ctx->ex_queue.num_queued >= 150) {
         add_error(ctx, &ctx->errors, "Too many EX cards queued", WARNING);
@@ -621,7 +741,7 @@ static int add_voltage_source(context_t *ctx, int tag, int seg, complex double v
     int idx = ctx->ex_queue.num_queued++;
     ctx->ex_queue.queued[idx].type = 0;  /* Voltage source */
     ctx->ex_queue.queued[idx].tag = tag;
-    ctx->ex_queue.queued[idx].seg_index = seg;
+    ctx->ex_queue.queued[idx].seg_index = seg_index;
     ctx->ex_queue.queued[idx].voltage = voltage;
     
     return 0;
@@ -634,6 +754,13 @@ static int add_current_source(context_t *ctx, int tag, int seg, complex double c
 {
     if (!ctx) return -1;
     
+    /* Convert tag+segment to global segment index */
+    int seg_index = segment_number(ctx, tag, seg);
+    if (seg_index < 0) {
+        add_error(ctx, &ctx->errors, "Invalid tag/segment in EX card", WARNING);
+        return -1;
+    }
+    
     /* Queue EX card as current source */
     if (ctx->ex_queue.num_queued >= 150) {
         add_error(ctx, &ctx->errors, "Too many EX cards queued", WARNING);
@@ -643,7 +770,7 @@ static int add_current_source(context_t *ctx, int tag, int seg, complex double c
     int idx = ctx->ex_queue.num_queued++;
     ctx->ex_queue.queued[idx].type = 5;  /* Current source */
     ctx->ex_queue.queued[idx].tag = tag;
-    ctx->ex_queue.queued[idx].seg_index = seg;
+    ctx->ex_queue.queued[idx].seg_index = seg_index;
     ctx->ex_queue.queued[idx].voltage = current;
     
     return 0;
@@ -760,8 +887,23 @@ static int add_coupling_pair(context_t *ctx, int tag1, int seg1, int tag2, int s
 {
     if (!ctx) return -1;
     
-    /* Coupling is stored differently - just mark that we have coupling */
-    ctx->yparm.coupling_flag = 1;  /* Mark that coupling is requested */
+    /* Add first antenna to coupling pairs */
+    ctx->yparm.num_pairs++;
+    size_t mreq = (size_t)ctx->yparm.num_pairs * sizeof(int);
+    mem_realloc(ctx, (void **)&ctx->yparm.pair_tags, mreq);
+    mem_realloc(ctx, (void **)&ctx->yparm.pair_segs, mreq);
+    ctx->yparm.pair_tags[ctx->yparm.num_pairs - 1] = tag1;
+    ctx->yparm.pair_segs[ctx->yparm.num_pairs - 1] = seg1;
+    
+    /* Add second antenna (if specified) */
+    if (tag2 != 0) {
+        ctx->yparm.num_pairs++;
+        mreq = (size_t)ctx->yparm.num_pairs * sizeof(int);
+        mem_realloc(ctx, (void **)&ctx->yparm.pair_tags, mreq);
+        mem_realloc(ctx, (void **)&ctx->yparm.pair_segs, mreq);
+        ctx->yparm.pair_tags[ctx->yparm.num_pairs - 1] = tag2;
+        ctx->yparm.pair_segs[ctx->yparm.num_pairs - 1] = seg2;
+    }
     
     return 0;
 }
@@ -937,8 +1079,10 @@ static int process_gn_card(context_t *ctx, const card_t *card, card_state_t *sta
     ctx->gnd.is_perfect = iperf;
     ctx->gnd.num_radials = card->i[2];
     ctx->gnd.has_ground = 2;  /* 2=ground present */
-    ctx->gnd.impedance_ratio = card->f[1] + I * 0.0;  /* Relative permittivity */
-    ctx->gnd.impedance_ratio2 = card->f[2] + I * 0.0; /* Conductivity */
+    
+    /* Copy ground parameters to save structure for output and later calculation */
+    ctx->save.ground_epsr = card->f[1];
+    ctx->save.ground_sigma = card->f[2];
     
     if (ctx->gnd.num_radials != 0) {
         /* Radial wire ground screen */
@@ -946,8 +1090,8 @@ static int process_gn_card(context_t *ctx, const card_t *card, card_state_t *sta
             add_error(ctx, &ctx->errors,
                      "Radial wires not allowed with high impedance ground", WARNING);
         }
-        ctx->gnd.screen_wire_len = card->f[3];
-        ctx->gnd.screen_wire_radius = card->f[4];
+        ctx->save.screen_wire_len = card->f[3];
+        ctx->save.screen_wire_radius = card->f[4];
     } else {
         /* Two-medium ground parameters */
         ctx->gnd.cliff_dist = card->f[3];
@@ -1173,6 +1317,10 @@ static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
             }
         }
     }
+    
+    /* Reset frequency output tracker so this XQ produces output even if at same frequency as prior XQ
+     * Each XQ should output because excitations differ */
+    state->last_freq_output_mhz = -999.0;
     
     /* Execute frequency loop */
     fflush(stderr);
@@ -1418,9 +1566,9 @@ static int process_nx_card(context_t *ctx, deck_t *deck, int card_idx,
  * Main frequency loop with inline output formatting (Fortran style)
  * Fortran lines 41-120, nec2c lines 607-2025
  */
-static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
-                                            int xq_card_idx,
-                                            card_state_t *state)
+int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
+                                      int xq_card_idx,
+                                      card_state_t *state)
 {    
     if (!ctx || !deck || !state) {
         return -1;
@@ -1492,6 +1640,14 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
     if (!ctx->crnt.c_real) mem_alloc(ctx, (void **)&ctx->crnt.c_real, mreq);
     if (!ctx->crnt.c_imag) mem_alloc(ctx, (void **)&ctx->crnt.c_imag, mreq);
     
+    /* Allocate symmetry mode matrix - needs to be available before fill_interaction_matrix */
+    ctx->smat.num_sections = ctx->netcx.num_eq / ctx->netcx.num_eq_sym;
+    if (!ctx->smat.mode_matrix) {
+        /* Allocate for maximum possible size (16x16 per Fortran SSX(16,16)) */
+        mreq = 16 * 16 * sizeof(complex double);
+        mem_alloc(ctx, (void **)&ctx->smat.mode_matrix, mreq);
+    }
+    
     /* Set up matrix block structure for symmetry handling (critical for factorization) */
     if (ctx->matpar.core_used == 0) {
         if (factor_block_matrix(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, (int)iresrv, ctx->geometry.symmetry_flag) != 0) {
@@ -1562,6 +1718,37 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         if (state->processing_stage >= 2) {
             double tim1, tim2;
             
+            /* Set up ground parameters for this frequency (wavelength-dependent) */
+            if (ctx->gnd.has_ground != 1) {
+                ctx->gnd.fresnel_ratio = CPLX_10;
+                
+                if (ctx->gnd.is_perfect != 1) {
+                    double sig = ctx->save.ground_sigma;
+                    if (sig < 0.0) {
+                        sig = -sig / (59.96 * geom->wavelength);
+                    }
+                    
+                    complex double epsc = ctx->save.ground_epsr - I * sig * geom->wavelength * 59.96;
+                    ctx->gnd.impedance_ratio = 1.0 / csqrt(epsc);
+                    ctx->gwav.impedance_ratio = ctx->gnd.impedance_ratio;
+                    ctx->gwav.impedance_ratio_sq = ctx->gwav.impedance_ratio * ctx->gwav.impedance_ratio;
+                    
+                    /* Handle radial wire ground screen */
+                    if (ctx->gnd.num_radials != 0) {
+                        ctx->gnd.screen_wire_len = ctx->save.screen_wire_len / geom->wavelength;
+                        ctx->gnd.screen_wire_radius = ctx->save.screen_wire_radius / geom->wavelength;
+                        ctx->gnd.screen_impedance = CPLX_01 * 2367.067 / (double)ctx->gnd.num_radials;
+                        ctx->gnd.screen_inner_r = ctx->gnd.screen_wire_radius * (double)ctx->gnd.num_radials;
+                    }
+                    
+                    /* Use Sommerfeld ground solution if requested */
+                    if (ctx->gnd.is_perfect == 2) {
+                        somnec(ctx, ctx->save.ground_epsr, ctx->save.ground_sigma, ctx->save.freq_mhz);
+                        ctx->gnd.fresnel_ratio = (epsc - 1.0) / (epsc + 1.0);
+                    }
+                }
+            }
+            
             /* Get start time for fill operation */
             get_time_ms(ctx, &tim1);
             
@@ -1601,11 +1788,16 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
                                   state->excitation_type, ctx->crnt.surface_cur);
         }
         
-        /* Matrix solving - Fortran line 60 */
+        /* Matrix solving - Fortran label 60 */
         if (state->processing_stage >= 3) {
             /* Solve for currents using network solver */
             network(ctx, cm, ctx->save.pivot, ctx->crnt.surface_cur);
             ctx->netcx.network_type = 1;  /* Mark network as solved (matches Fortran NTSOL=1) */
+            
+            /* Compute coupling if CP card was present */
+            if (ctx->yparm.num_pairs > 0) {
+                compute_coupling(ctx, ctx->crnt.surface_cur, geom->wavelength);
+            }
             
             state->processing_stage = 4;  /* igo - Done */
         }
@@ -1613,7 +1805,7 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         } /* End skip matrix operations block */
         
         /* Write all frequency-dependent output (antenna input, currents, power) BEFORE patterns
-           Only output once per unique frequency, not for every XQ in that frequency */
+         * Output for each frequency step, skipping duplicate frequencies within same XQ */
         if (state->processing_stage >= 4 && ctx->output_fp &&
             fabs(state->current_frequency_mhz - state->last_freq_output_mhz) > 1e-6) {
             write_frequency_step_output(ctx->output_fp, ctx);

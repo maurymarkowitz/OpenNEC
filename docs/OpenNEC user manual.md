@@ -9,7 +9,7 @@ For instructions on creating and modeling antennas, see the [OpenNEC modeling ma
 
 What is OpenNEC?
 ----------------
-OpenNEC (`onec`) is a high-performance implementation of the NEC-2 antenna simulation code. It reads antenna designs from text files, called "decks", and calculates their electrical properties such as radiation patterns, impedance, and gain.
+OpenNEC (`onec`) is a high-performance implementation of the NEC-2 antenna simulation code. It reads antenna designs from text files called "decks", and calculates their electrical properties such as radiation patterns, impedance, and gain.
 
 **Key features:**
 
@@ -24,13 +24,13 @@ Design concept
 --------------
 OpenNEC was developed to match two common command-line interface styles, as well as modernizing it to make it easier to use for new users.
 
-The original Fortran code used separate `READ` statements to interactively ask the user for the input and output filenames, and does not have any other command line arguments. Engines matching this behaviour are often seen on Windows machines, including the common nec2dx version of the original Fortran code, part of the widely-used 4nec2 package. nec2dx is normally invoked with no parameters, in which case the `READ` statements in the code are automated using batch file that uses redirection to simulate the user typing in these values.
+The original Fortran code used separate `READ` statements to interactively ask the user for the input and output filenames, and does not have any other command line arguments. Engines matching this behaviour are often seen on Windows machines, including the common nec2dx, part of the widely-used 4nec2 package. This is a lightly-updated version of the original Fortran code, and follows its interface. It is normally invoked with no parameters, in which case the `READ` statements in the code are automated using batch file that uses redirection to simulate the user typing in these values.
 
-On Unix machines, and macOS, nec2c is more common. nec2c was modified to work in a somewhat more Unix-like fashion, although it lacks many of the features one might expect in a Unix command-line application. It does not demand interactive values, and instead the input and output filenames to be specified using the `-i` and `-o` command-line switches. This allows you to call the engine without having to provide interactive values, which is an improvement. In contrast to nec2dx, if nec2c is called without any parameters it will print usage notes and exit.
+On Unix machines, and macOS, nec2c is more common. nec2c was modified to work in a somewhat more Unix-like fashion, although it lacks many of the features one might expect in a Unix command-line application. It does not demand interactive values for the input and output filenames, and instead these are specified using the `-i` and `-o` command-line switches. This allows you to call the engine without having to provide interactive values, which is an improvement. In contrast to nec2dx, if nec2c is called without any parameters it will print usage notes and exit.
 
-Neither system operates in a fashion like other applications on their respective platforms. For one, you cannot simply provide the input filename as a "bare" parameter (or "positional parameter"), which is the way most applications work on both platforms. Additionally, on Unix and macOS there is some expectation that you can provide the input and output using redirection or piping, which these older engines don't support.
+Neither system operates in a fashion like other applications on their respective platforms. For one, you cannot provide the input filename as a "bare" parameter (or "positional parameter"), which is the way most applications work on both platforms. Additionally, on Unix and macOS there is some expectation that you can provide the input and output using redirection or piping, which these engines don't support.
 
-OpenNEC supports both of these older interfaces, with the goal being that it can be used as a drop-in replacement for these engines. This does lead to some subtle differences when run on different platforms. However, in general terms, the system should work the same way as any program it might replace, not only when used with existing programs like cocoaNEC or 4nec2, while also working more like native applications on those platforms.
+OpenNEC supports both of these interfaces, with the goal being that it can be used as a drop-in replacement for these engines. This does lead to some subtle differences when run on different platforms. However, in general terms, the system should work the same way as any program it might replace, not only when used with existing programs like cocoaNEC or 4nec2. At the same time, it also adds additional options that make it work more like native applications on these platforms.
 
 Installation
 ------------
@@ -113,7 +113,9 @@ cat example.nec | onec > result.out
 
 Note that in these Unix-like examples there are no parameters being passed to OpenNEC, the shell is handling the redirection. In the case that you invoke OpenNEC without any identifiable input filename, and there is no file being piped or redirected into it, it will report an error and exit. This allows it to remain compatible with nec2c, which will do the same.
 
-The Windows version differs here. If no input filename can be identified it will enter "interactive mode" and prompt for the input and output filenames. This matches the behaviour of the original Fortran code, and more recent versions of that code like nec2dx. At the time of writing, it is not clear how widespread the original code is on the Unix side. If it turns out it is common, then the Unix version will be changed to work the same way.
+The Windows version differs here. If no input filename can be identified it will enter "interactive mode" and prompt for the input and output filenames. This matches the behaviour of the original Fortran code, which always interactively asks for these filenames. This style of interaction has been retained in more recent versions of that code like nec2dx, and various Windows applications rely on it.
+
+At the time of writing, it is not clear how widespread the original Fortran style code is on the Unix side. If it turns out it *is* common, then the Unix version will be changed to work the same way and ask for files if none are provided.
 
 In addition to single-file input and output, OpenNEC also allows you to specify multiple input files. For instance, to run several models you can:
 

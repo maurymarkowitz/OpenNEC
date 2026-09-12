@@ -40,6 +40,15 @@ void write_normalized_gain(FILE *file, const context_t *ctx);
 void write_near_field_data(FILE *file, const context_t *ctx);
 void write_near_field_plot(const context_t *ctx);
 
+/* Helper functions for inline output in reporting_direct.c */
+void write_comment_section_header(FILE *file, const context_t *ctx);
+void write_comment_line(FILE *file, const context_t *ctx, const char *comment);
+void write_data_card_echo(FILE *file, const context_t *ctx,
+                         int card_num, const char *mnemonic,
+                         int i1, int i2, int i3, int i4,
+                         double f1, double f2, double f3, double f4, double f5, double f6);
+void write_total_runtime(FILE *file, const context_t *ctx, double runtime_ms);
+
 /**
  * @brief Writes the output file header.
  *

@@ -151,9 +151,9 @@ static int dispatch_card(context_t *ctx, deck_t *deck, int card_idx,
  * @param state Current card state (updated by loop).
  * @return 0 on success, -1 on error.
  */
-static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
-                                            int xq_card_idx,
-                                            card_state_t *state) __attribute__((unused));
+int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
+                                      int xq_card_idx,
+                                      card_state_t *state);
 
 /* Card-specific processor functions (Fortran labels 16-39, nec2c cases 0-17) */
 

@@ -17,6 +17,7 @@
  *
  * Formats a coordinate value, converting negative zero to positive zero.
  * Uses sprintf to detect and fix -0.00000 format issues.
+ * NOTE: This is for ORIGINAL format only. For nec2c format, use format_coord_nec2c.
  */
 static void format_coord(char *buf, int len, double value, const char *fmt)
 {
@@ -43,6 +44,57 @@ static void format_coord(char *buf, int len, double value, const char *fmt)
         if (all_zero)
         {
             buf[i] = ' ';  // Replace minus with space for proper alignment
+        }
+    }
+}
+
+/******************************************************************************
+ * format_coord_nec2c
+ *
+ * Formats a coordinate value for nec2c format.
+ * Preserves negative zero (does NOT convert -0.0000 to 0.0000).
+ */
+static void format_coord_nec2c(char *buf, int len, double value, const char *fmt)
+{
+    snprintf(buf, len, fmt, value);
+    // No conversion - keep negative zero as-is for nec2c compatibility
+}
+
+/******************************************************************************
+ * format_float
+ *
+ * Formats a floating point value, converting negative zero to positive zero.
+ * Handles negative zero in scientific/decimal notation.
+ */
+static void format_float(char *buf, int len, double value, const char *fmt)
+{
+    snprintf(buf, len, fmt, value);
+    
+    // Find first non-space character
+    int i = 0;
+    while (i < len && buf[i] == ' ')
+        i++;
+    
+    // If we have a minus sign followed by zero
+    if (i < len - 2 && buf[i] == '-' && buf[i+1] == '0')
+    {
+        // Check if this is "-0." (decimal) or "-0.0" etc.
+        if (buf[i+2] == '.' || (buf[i+2] >= '0' && buf[i+2] <= '9'))
+        {
+            // Check if all remaining digits are zero
+            int all_zero = 1;
+            for (int j = i + 1; j < len && buf[j] && buf[j] != '\0'; j++)
+            {
+                if (buf[j] != '0' && buf[j] != '.' && buf[j] != ' ')
+                {
+                    all_zero = 0;
+                    break;
+                }
+            }
+            if (all_zero)
+            {
+                buf[i] = ' ';  // Replace minus with space for proper alignment
+            }
         }
     }
 }
@@ -166,16 +218,16 @@ void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
   else
   {
     fprintf(file, "\n\n\n"
-                  "                            "
-                  " ______________________________________________\n"
-                  "                            "
-                  "|                                              |\n"
-                  "                            "
-                  "| NUMERICAL ELECTROMAGNETICS CODE (onec %s) |\n"
-                  "                            "
-                  "|     Translated to 'C' (double precision)     |\n"
-                  "                            "
-                  "|______________________________________________|\n", VERSION_STRING);
+                  "                               "
+                  "__________________________________________\n"
+                  "                              "
+                  "|                                          |\n"
+                  "                              "
+                  "|  NUMERICAL ELECTROMAGNETICS CODE (nec2c) |\n"
+                  "                              "
+                  "|   Translated to 'C' in Double Precision  |\n"
+                  "                              "
+                  "|__________________________________________|\n");
   }
 }
 
@@ -242,7 +294,9 @@ void write_comments(const context_t *ctx, const deck_t *deck, FILE *file)
       }
       else
       {
-        fprintf(file, "                              %s\n", card->comment);
+        // NEC2C format: 32 leading spaces followed by comment text
+        // Write 32 spaces followed by the comment text
+        fprintf(file, "%32s%s\n", "", comment_text);
       }
     }
   }
@@ -333,8 +387,8 @@ int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
     fprintf(ctx->output_fp, "\n"
                             "  WIRE                                           "
                             "                                      SEG FIRST  LAST  TAG\n"
-                            "   NO.        X1         Y1         Z1         X2      "
-                            "   Y2         Z2       RADIUS   NO. SEG.   SEG.  NO.");
+                            "   No:        X1         Y1         Z1         X2      "
+                            "   Y2         Z2       RADIUS   No:   SEG   SEG  No:");
   }
 
   for (int i = DECK_GEOMETRY_START(deck); i <= DECK_GEOMETRY_END(deck); i++)
@@ -553,6 +607,15 @@ int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
   }
   else
   {
+    // Output messages for nec2c format (e.g., ground plane text) before total segments
+    for (int i = 0; i < ctx->outputs.num_messages; i++)
+    {
+      fprintf(ctx->output_fp, "%s", ctx->outputs.messages[i]);
+      size_t msg_len = strlen(ctx->outputs.messages[i]);
+      if (msg_len == 0 || ctx->outputs.messages[i][msg_len - 1] != '\n')
+        fprintf(ctx->output_fp, "\n");
+    }
+
     fprintf(ctx->output_fp, "\n\n"
                             "     TOTAL SEGMENTS USED: %d   SEGMENTS IN A"
                             " SYMMETRIC CELL: %d   SYMMETRY FLAG: %d",
@@ -600,35 +663,13 @@ int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
     } /* if(ctx->geometry.symmetry_flag < 0 ) */
   } /* if( iseg != 1) */
 
-  /* Output MULTIPLE WIRE JUNCTIONS section (always present when N > 0) */
-  if (ctx->geometry.num_segs > 0)
+  /* Output MULTIPLE WIRE JUNCTIONS section (only for original format) */
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL && ctx->geometry.num_segs > 0)
   {
-    if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
-    {
-      fprintf(ctx->output_fp, "\n\n\n"
-                              "         - MULTIPLE WIRE JUNCTIONS -\n"
-                              " JUNCTION    SEGMENTS  (- FOR END 1, + FOR END 2)\n"
-                              "  NONE\n");
-    }
-    else
-    {
-      fprintf(ctx->output_fp, "\n\n\n"
-                              "        -------- MULTIPLE WIRE JUNCTIONS --------\n"
-                              "  JUNCTION           SEGMENTS  (- FOR END 1, + FOR END 2)\n"
-                              "   NONE");
-    }
-  }
-
-  // Output any informational messages collected during geometry processing
-  if (ctx->output_format != OUTPUT_FORMAT_ORIGINAL)
-  {
-    for (int i = 0; i < ctx->outputs.num_messages; i++)
-    {
-      fprintf(ctx->output_fp, "%s", ctx->outputs.messages[i]);
-      size_t msg_len = strlen(ctx->outputs.messages[i]);
-      if (msg_len == 0 || ctx->outputs.messages[i][msg_len - 1] != '\n')
-        fprintf(ctx->output_fp, "\n");
-    }
+    fprintf(ctx->output_fp, "\n\n\n"
+                            "         - MULTIPLE WIRE JUNCTIONS -\n"
+                            " JUNCTION    SEGMENTS  (- FOR END 1, + FOR END 2)\n"
+                            "  NONE\n");
   }
 
   return 0;
@@ -673,8 +714,8 @@ int write_segments(context_t *ctx, const deck_t *deck, FILE *file)
     fprintf(ctx->output_fp, "\n"
                             "   SEG    COORDINATES OF SEGM CENTER     SEGM    ORIENTATION"
                             " ANGLES    WIRE    CONNECTION DATA   TAG\n"
-                            "   NO.       X         Y         Z      LENGTH     ALPHA     "
-                            " BETA    RADIUS    I-     I    I+   NO.");
+                            "   No:       X         Y         Z      LENGTH     ALPHA     "
+                            " BETA    RADIUS    I-     I    I+   No:");
   }
 
   double xw1, yw1, zw1;
@@ -719,9 +760,9 @@ int write_segments(context_t *ctx, const deck_t *deck, FILE *file)
     else
     {
       char sx[12], sy[12], sz[12];
-      format_coord(sx, sizeof(sx), ctx->geometry.x_center[i], "%9.4f");
-      format_coord(sy, sizeof(sy), ctx->geometry.y_center[i], "%9.4f");
-      format_coord(sz, sizeof(sz), ctx->geometry.z_center[i], "%9.4f");
+      format_coord_nec2c(sx, sizeof(sx), ctx->geometry.x_center[i], "%9.4f");
+      format_coord_nec2c(sy, sizeof(sy), ctx->geometry.y_center[i], "%9.4f");
+      format_coord_nec2c(sz, sizeof(sz), ctx->geometry.z_center[i], "%9.4f");
       fprintf(ctx->output_fp, "\n"
                               " %5d %s %s %s %9.4f"
                               " %9.4f %9.4f %9.4f %5d %5d %5d %5d",
@@ -1250,13 +1291,12 @@ void write_frequency_data(FILE *file, const context_t *ctx)
     /* NEC2C format */
     fprintf(file, "%s"
                   "                               "
-                  "%s%s%s\n"
+                  "--------- FREQUENCY --------\n"
                   "                                "
                   "%s%11.4E %s\n"
                   "                                "
                   "%s%11.4E %s",
             frequency_header_prefix,
-            fmt->header_separator, "FREQUENCY", fmt->header_separator,
             fmt->frequency_label, ctx->save.freq_mhz, fmt->freq_units,
             fmt->wavelength_label, ctx->geometry.wavelength, fmt->length_units);
 
@@ -1417,21 +1457,19 @@ void write_environment_data(FILE *file, const context_t *ctx)
   {
     fprintf(file, "\n\n\n"
                   "                            "
-                  "-------- ANTENNA ENVIRONMENT --------\n\n");
+                  "-------- ANTENNA ENVIRONMENT --------\n");
   }
 
   if (ctx->gnd.has_ground == 1)
   {
-    fprintf(file, "\n\n"
-                  "                                            "
+    fprintf(file, "                            "
                   "FREE SPACE\n");
   }
   else
   {
     if (ctx->gnd.is_perfect == 1)
     {
-      fprintf(file, "\n\n"
-                    "                                            "
+      fprintf(file, "                            "
                     "PERFECT GROUND\n");
     }
     else
@@ -1533,10 +1571,9 @@ void write_matrix_timing(FILE *file, const context_t *ctx)
 {
   const output_format_spec_t *fmt = get_format(ctx);
   
-  fprintf(file, "\n\n\n"
+  fprintf(file, "\n\n"
                 "                                "
                 "%s\n"
-                "\n"
                 "                        ",
           fmt->matrix_sep);
   
@@ -1919,9 +1956,9 @@ void write_currents(FILE *file, const context_t *ctx)
       double ph = carg(curi) * TD; // Convert to degrees (TD = 57.29577951)
 
       char sx[12], sy[12], sz[12];
-      format_coord(sx, sizeof(sx), ctx->geometry.x_center[i], "%9.4f");
-      format_coord(sy, sizeof(sy), ctx->geometry.y_center[i], "%9.4f");
-      format_coord(sz, sizeof(sz), ctx->geometry.z_center[i], "%9.4f");
+      format_coord_nec2c(sx, sizeof(sx), ctx->geometry.x_center[i], "%9.4f");
+      format_coord_nec2c(sy, sizeof(sy), ctx->geometry.y_center[i], "%9.4f");
+      format_coord_nec2c(sz, sizeof(sz), ctx->geometry.z_center[i], "%9.4f");
 
       fprintf(file, "\n"
                     " %5d %4d %s %s %s %8.5f %11.4E %11.4E %11.4E %9.3f",
@@ -2103,7 +2140,7 @@ void write_power_budget(FILE *file, const context_t *ctx)
                   "                               "
                   "NETWORK LOSS  = %11.4E Watts\n"
                   "                               "
-                  "EFFICIENCY    = %7.2f Percent",
+                  "EFFICIENCY    = %7.2f Percent\n\n",
             ctx->netcx.power_in, tmp1, ctx->fpat.ohmic_loss, ctx->netcx.power_net_loss, tmp2);
   }
 }
@@ -2759,19 +2796,28 @@ void write_coupling_data(context_t *ctx)
  */
 void write_frequency_step_output(FILE *file, context_t *ctx)
 {
-  write_frequency_data(file, ctx);
-  write_loading_data(file, ctx);
-  write_environment_data(file, ctx);
+  /* Check if this is a new frequency or a different excitation at the same frequency */
+  int is_new_frequency = (fabs(ctx->save.freq_mhz - ctx->save.last_output_freq_mhz) > 1e-6);
   
-  /* MATRIX TIMING is output in the original Fortran NEC-2D format */
-  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  /* Output frequency-independent sections only for the first excitation at each frequency */
+  if (is_new_frequency)
   {
+    write_frequency_data(file, ctx);
+    write_loading_data(file, ctx);
+    write_environment_data(file, ctx);
+    
+    /* MATRIX TIMING is output in both nec2c and original Fortran NEC-2D formats */
     write_matrix_timing(file, ctx);
+    
+    write_network_data(file, ctx);
+    write_matrix_asymmetry(file, ctx);
+    write_network_excitation(file, ctx);
+    
+    /* Mark this frequency as having been output */
+    ((context_t *)ctx)->save.last_output_freq_mhz = ctx->save.freq_mhz;
   }
   
-  write_network_data(file, ctx);
-  write_matrix_asymmetry(file, ctx);
-  write_network_excitation(file, ctx);
+  /* Output excitation-dependent sections for every excitation */
   write_antenna_input_parameters(file, ctx);
   write_currents(file, ctx);
   write_patch_currents(file, ctx);
@@ -2863,4 +2909,92 @@ void write_single_radiation_pattern(FILE *file, context_t *ctx)
   
   write_radiation_pattern_header(file, ctx);
   write_radiation_pattern_data(file, ctx);
+}
+
+/******************************************************************************
+ * write_total_runtime()
+ *
+ * Writes the total runtime of the simulation in milliseconds.
+ */
+void write_total_runtime(FILE *file, const context_t *ctx, double runtime_ms)
+{
+  if (file == NULL || ctx == NULL) return;
+  
+  fprintf(file, "\n\n"
+                "TOTAL RUN TIME: %10.3f MS\n", runtime_ms);
+}
+
+/******************************************************************************
+ * write_comment_line()
+ *
+ * Writes a single comment line to the output.
+ */
+void write_comment_line(FILE *file, const context_t *ctx, const char *comment)
+{
+  if (file == NULL || ctx == NULL) return;
+  
+  // Strip leading whitespace from comment
+  const char *comment_text = comment;
+  if (comment_text)
+  {
+    while (*comment_text && isspace((unsigned char)*comment_text))
+      comment_text++;
+  }
+  
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    // Fortran format: left-align with specific spacing
+    if (!comment_text || strlen(comment_text) == 0)
+      fprintf(file, "\n");  /* Blank line for empty comments */
+    else
+      fprintf(file, "%s\n", comment);
+  }
+  else
+  {
+    // NEC2C format: 31 leading spaces, then comment text
+    // (nec2c-1.3 uses 31 spaces, not 32)
+    // Even for blank lines, output 31 spaces to match nec2c format
+    fprintf(file, "%31s%s\n", "", comment_text);
+  }
+}
+
+/******************************************************************************
+ * write_comment_section_header()
+ *
+ * Writes the comment section header (used when reading comments inline)
+ */
+void write_comment_section_header(FILE *file, const context_t *ctx)
+{
+  if (!file || !ctx) return;
+
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+  {
+    fprintf(file, "\n\n\n\n"
+                  "                                     "
+                  "- - - - COMMENTS - - - -\n\n\n");
+  }
+  else
+  {
+    fprintf(file, "\n\n\n"
+                  "                               "
+                  "---------------- COMMENTS ----------------\n");
+  }
+}
+
+/******************************************************************************
+ * write_data_card_echo()
+ *
+ * Writes an echoed data card line to the output with its components.
+ */
+void write_data_card_echo(FILE *file, const context_t *ctx,
+                         int card_num, const char *mnemonic,
+                         int i1, int i2, int i3, int i4,
+                         double f1, double f2, double f3, double f4, double f5, double f6)
+{
+  if (file == NULL || ctx == NULL || mnemonic == NULL) return;
+  
+  /* Output the card echo in NEC2C format - matches the format from nec2c-1.3 */
+  fprintf(file, "  DATA CARD No: %3d %s %3d %5d %5d %5d %12.5E %12.5E %12.5E %12.5E %12.5E %12.5E\n",
+          card_num, mnemonic, i1, i2, i3, i4,
+          f1, f2, f3, f4, f5, f6);
 }

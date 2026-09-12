@@ -640,6 +640,7 @@ int connect_segments(context_t *ctx, int ignd, outputs_list_t *outputs)
   ctx->geometry.num_patches_sym = ctx->geometry.num_patches;
   ctx->geometry.symmetry_flag = 0;
 
+  ctx->segj.num_junction_segs = 0;
   ctx->segj.max_connections = 1;
   
   if(ignd != 0) {

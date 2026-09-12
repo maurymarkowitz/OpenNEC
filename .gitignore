@@ -8,6 +8,9 @@ nec2c
 # old code
 old/
 
+# experimental code (unused implementations and artifacts)
+experimental/
+
 # experimental refactoring code (for testing/comparison)
 src/nec2c_report.c
 src/nec2c_report.h
