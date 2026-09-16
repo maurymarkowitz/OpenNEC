@@ -891,6 +891,12 @@ void test_deck_structure(const context_t *ctx, const deck_t *deck, errors_list_t
       snprintf(msg, sizeof(msg), "GD on line %d: but the card above it is not a GN.", i + 1);
       add_error(ctx, errors, msg, 1);
     }
+    // GD cards cannot follow other GD cards (only one GD per GN)
+    if (strcmp(code, "GD") == 0 && strcmp(last_code, "GD") == 0)
+    {
+      snprintf(msg, sizeof(msg), "GD on line %d: but the card above it is also a GD (only one GD per GN).", i + 1);
+      add_error(ctx, errors, msg, 1);
+    }
     // NOTE: GD is optional - GN does not require GD to follow it
 
     // GF cards have to be the first item in the geometry section, which
