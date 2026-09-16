@@ -1379,26 +1379,77 @@ static void write_header(const context_t *ctx, const deck_t *deck, FILE *file)
 {
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
   {
+    // Build the header message with version string
+    char header_msg[128];
+    snprintf(header_msg, sizeof(header_msg), "NUMERICAL ELECTROMAGNETICS CODE (onec %s)", VERSION_STRING);
+    
+    int msg_len = strlen(header_msg);
+    const int box_width = 45;  // Width for asterisk box
+    
+    // Calculate left and right padding
+    int total_padding = box_width - msg_len;
+    int left_padding = total_padding / 2;
+    int right_padding = total_padding - left_padding;  // Extra space on right if odd
+    
+    // Truncate from right if message is too long
+    if (msg_len > box_width) {
+      msg_len = box_width;
+      header_msg[msg_len] = '\0';
+      left_padding = 0;
+      right_padding = 0;
+    }
+    
+    // Build asterisk lines (box_width + 2 for spaces on sides = 47 asterisks)
+    char asterisks[50];
+    for (int i = 0; i < box_width + 2; i++) {
+      asterisks[i] = '*';
+    }
+    asterisks[box_width + 2] = '\0';
+    
     fprintf(file, "\n\n\n"
-                  "                                 *********************************************\n"
+                  "                                 %s\n"
                   "\n"
-                  "                                  NUMERICAL ELECTROMAGNETICS CODE (onec %s)\n"
+                  "                                  %*s%s%*s\n"
                   "\n"
-                  "                                 *********************************************\n", VERSION_STRING);
+                  "                                 %s\n",
+                  asterisks,
+                  left_padding, "", header_msg, right_padding, "",
+                  asterisks);
   }
   else
   {
+    // Build the header message with version string
+    char header_msg[128];
+    snprintf(header_msg, sizeof(header_msg), "NUMERICAL ELECTROMAGNETICS CODE (onec %s)", VERSION_STRING);
+    
+    int msg_len = strlen(header_msg);
+    const int box_width = 46;  // Width available between the pipes
+    
+    // Calculate left and right padding
+    int total_padding = box_width - msg_len;
+    int left_padding = total_padding / 2;
+    int right_padding = total_padding - left_padding;  // Extra space on right if odd
+    
+    // Truncate from right if message is too long
+    if (msg_len > box_width) {
+      msg_len = box_width;
+      header_msg[msg_len] = '\0';
+      left_padding = 0;
+      right_padding = 0;
+    }
+    
     fprintf(file, "\n\n\n"
                   "                            "
-                  " ______________________________________________\n"
+                  "______________________________________________\n"
                   "                            "
                   "|                                              |\n"
                   "                            "
-                  "| NUMERICAL ELECTROMAGNETICS CODE (onec %s) |\n"
+                  "|%*s%s%*s|\n"
                   "                            "
                   "|     Translated to 'C' (double precision)     |\n"
                   "                            "
-                  "|______________________________________________|\n", VERSION_STRING);
+                  "|______________________________________________|\n",
+                  left_padding, "", header_msg, right_padding, "");
   }
 
   if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
