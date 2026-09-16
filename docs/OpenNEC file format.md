@@ -15,18 +15,18 @@ The NEC code traces its history to BRACT, written in Fortran in the 1960s. As wa
 
 Starting in the 1970s the original BRACT code was updated several times, becoming NEC. As part of these modifications, the input was changed to text files by recording each 80-character card into a single line of text in a file. The resulting file was known as a deck, in keeping with it's origins as a deck of cards. The Fortran code for the NEC-2 version was released into the public domain in the early 1980s. A number of ports of this code have been made, most recently in the C or C++ languages. The format of a deck was not formally defined when these ports were being made, and as a result there are a profusion of slightly different versions. Further variations appeared when the original NEC code was updated in NEC-3 and NEC-4.
 
-For example, almost all deck formats allow comments to be placed at the end of a line (or "card") to provide documentation. However, the comment indicator varies across implementations. The original NEC used `CM` only at the start of a line, but later implementations added `!`, `'` and `#`. Additionally, the individual fields, formerly delimited by their column number on the punch cards, are now what the NEC-4 documentation calls "close to free format" - tabs, commas, spaces and even fixed-format versions can be found in use.
+For example, almost all deck formats allow comments to be placed at the end of a line (or "card") to provide documentation. However, the comment indicator varies across implementations. The original NEC used `CM` and `CE` only at the start of a line, but later implementations added `!`, `'` and `#`. Additionally, the individual fields, formerly delimited by their column number on the punch cards, are now what the NEC-4 documentation calls "close to free format" - tabs, commas, spaces and even fixed-format versions can be found in use.
 
 On top of all this, new card types like `SY` have been added by 3rd party software which add useful functionality but make the decks incompatible with other software.
 
 Design decisions
 ----------------
 
-Individual fields on the cards are read using a flexible field separation parser that recognizes things like tabs, single or multiple spaces, and even where spaces are used to produce lined up columns. Likewise, OpenNEC allows both Unix-style LF line-ends, as well as Windows-style CRLF, and will attempt to determine which was used when reading files. This means that if you read a deck and immediately write it, you should get a new file that is significantly similar to the original. This does not work every time, as these decks come in every format you might imagine, but it does work in most cases.
+Individual fields on the cards are read using a flexible field separation parser that recognizes things like tabs, single or multiple spaces, and even where spaces are used to produce lined up columns. During reading, the system attempts to determine which style was used. Likewise, OpenNEC allows both Unix-style LF line-ends, as well as Windows-style CRLF, and tries to determine which was used. This means that if you read a deck and immediately write it, you should get a new file that is significantly similar to the original. This does not work every time, as these decks come in every format you might imagine, but it should work in most cases.
 
 The values in the fields are treated as strings until calculations start. This is used to retain formulas in their original format, both so they can be written back in the same layout, as well as to ensure any other changes in the deck are always reflected in the values. For instance, changing the value on an SY card earlier in the deck will always update the formulas that use it when the calculation runs, without the need for complex change tracking.
 
-The nec2c code allowed the use of `#` as in-line comment markers. This conflicts with the much more widespread use of `#` to indicate AWG wire sizes. As the `#` was used as a comment in some nec2c decks, OpenNEC allows this character, but only at the front of the line. Comments further into the deck will need to use some other marker, with `!` being the most widely used in modern software.
+OpenNEC retains most comment markers as-is, the exception being nec2c's use of `#`. This conflicts with the more widespread use of `#` to indicate AWG wire sizes. As the `#` was found in some nec2c decks, OpenNEC allows this character as a comment marker, but only if it's at the front of the line. Comments further into the card will need to use some other marker, with `!` being the most widely used in modern software.
 
 None of these inline comment systems are compatible with software supporting the original NEC format, which would see them either as extraneous data, or bad data in the last field on the card. Such a deck can be converted to NEC compatible format by simply deleting any characters on a given line from the position of the comment character on. Hiding data behind an end-of-line comment means things like measurements can be defined on the same card, but stripping them off would require the system to convert the numeric values in the NEC fields.
 
@@ -51,6 +51,8 @@ The onec extension system is intended to be largely free-form, edited by the use
 
 - `ignore` indicates whether or not the card should take part in the calculations. Setting this to `true` causes that card to be ignored during processing. This is useful during the development or testing of a deck, as a card can be ignored in the calculations without having to physically remove it or mark it as a comment card.
 
+ **NOTE:** 4nec2 has a similar feature that ignores all cards with tag values between 9800 and 9899, and onec also follows this rule this as well. But the explicit `ignore` tag is more obvious and doesn't require you to change the original tag number. When imported, decks with tag numbers in this range will retain that number, but also set the `ignore` flag.
+
  **NOTE:** One can also cause any card to be ignored by adding a leading comment marker like `!`. However, using the extension reduces the risk of forgetting to uncomment the card when it's needed. A GUI can indicate ignored cards using a different format, whereas it is not always clear what a commented line means.
 
  - `comment` marks everything after that point on the line (and the following separator) to be a comment. This may seem redundant as it would be placed within an in-line comment, but it included to allow key/value pairs and comments to be placed on the same card, although the `comment` has to be the last value on the line.
@@ -58,8 +60,6 @@ The onec extension system is intended to be largely free-form, edited by the use
  Additionally, a number of additional extensions are expected to be supported by programs that provide a graphical display.
  
  - `invisible` indicates whether the geometry on the card should be visible onscreen. The default is `false`. Changing this to `true` indicates it should not be drawn on-screen. This does not remove it from the calculations, it is a visual effect only. This is generally used to limit the bounding box of the resulting design, so the GUI can calculate a useful camera position in the case when there are elements placed a long distance from the "main" antenna.
-
- **NOTE:** 4nec2 has a similar feature that ignores all cards with tag values between 9800 and 9899, and onec also follows this rule this as well. But the explicit `ignore` tag is more obvious and doesn't require you to change the original tag number.
 
 - `shape` is used to change the shape of the geometry for GUI programs. The calculation engine does not care about the shape of the elements, but the user of a GUI program might. By adding something like `name=boom, ignore=true, shape=square`, the boom on a Yagi antenna can be added to the file to make the display of the antenna more accurate without effecting the output. At a minimum, `circle` and `square` should be supported, along with any other shapes the GUI software might wish to add.
 
@@ -118,11 +118,6 @@ NEC does not allow empty cards in the deck, but other formats allow this or some
 8) remove any remaining cards that are not part of the NEC standard. This would include any cards like `IT`.
 
 The resulting deck is now compatible with any known NEC parser.
-
-Other notes
------------
-
-There are other file formats used in the antenna design world that may be of interest as they can easily be converted to onec format. Most of these are historical and no longer used, but examples are still found on the 'net. Most notable among these was Brian Beezley's Yagi Optimizer application. These files do not have a consistent extension, although ".ANT" and ".YO" is sometimes seen. These files look like modified NEC-2 decks lacking card codes, but are quite different in format.
 
 onec format definition
 ----------------------

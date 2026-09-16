@@ -1,5 +1,7 @@
 Items still to be implemented:
 
+* sectionize the deck based on NX cards
+
 * add the examples from https://k6sti.neocities.org
 
 * finish maa support, need to properly handle the loading based on wire and segment

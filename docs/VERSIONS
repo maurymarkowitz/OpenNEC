@@ -1,6 +1,6 @@
 OpenNEC version history
 
-Version 2.2.1 - 2026 July 23
+Version 2.3.0b - 2026 July 24
 - EXPERIMENTAL!
 - more changes in the nec2c reporting chain, but problems persist
 - merged OpenMP code from Steven Burns, offers major performance boost
