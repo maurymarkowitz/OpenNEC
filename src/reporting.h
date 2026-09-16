@@ -227,7 +227,7 @@ static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_rp_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
+static int process_rp_card(context_t *ctx, deck_t *deck, int card_idx, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process NE (near-field equatorial) card.
@@ -236,7 +236,7 @@ static int process_rp_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_ne_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
+static int process_ne_card(context_t *ctx, deck_t *deck, int card_idx, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process NH (near-field horizontal) card.
@@ -245,7 +245,7 @@ static int process_ne_card(context_t *ctx, const card_t *card, card_state_t *sta
  * @param state Card state (updated).
  * @return 0 on success, -1 on error.
  */
-static int process_nh_card(context_t *ctx, const card_t *card, card_state_t *state) __attribute__((unused));
+static int process_nh_card(context_t *ctx, deck_t *deck, int card_idx, card_state_t *state) __attribute__((unused));
 
 /**
  * @brief Process PT (print control - currents) card.
