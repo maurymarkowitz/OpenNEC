@@ -19,6 +19,7 @@
 #include "matrix.h"
 #include "network.h"
 #include "output.h"
+#include "somnec.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -827,8 +828,8 @@ static int process_gn_card(context_t *ctx, const card_t *card, card_state_t *sta
     ctx->gnd.is_perfect = iperf;
     ctx->gnd.num_radials = card->i[2];
     ctx->gnd.has_ground = 2;  /* 2=ground present */
-    ctx->gnd.impedance_ratio = card->f[1] + I * 0.0;  /* Relative permittivity */
-    ctx->gnd.impedance_ratio2 = card->f[2] + I * 0.0; /* Conductivity */
+    ctx->save.ground_epsr = card->f[1];    /* Relative permittivity */
+    ctx->save.ground_sigma = card->f[2];   /* Conductivity */
     
     if (ctx->gnd.num_radials != 0) {
         /* Radial wire ground screen */
@@ -836,8 +837,8 @@ static int process_gn_card(context_t *ctx, const card_t *card, card_state_t *sta
             add_error(ctx, &ctx->errors,
                      "Radial wires not allowed with high impedance ground", WARNING);
         }
-        ctx->gnd.screen_wire_len = card->f[3];
-        ctx->gnd.screen_wire_radius = card->f[4];
+        ctx->save.screen_wire_len = card->f[3];
+        ctx->save.screen_wire_radius = card->f[4];
     } else {
         /* Two-medium ground parameters */
         ctx->gnd.cliff_dist = card->f[3];
@@ -1300,6 +1301,53 @@ static int process_nx_card(context_t *ctx, deck_t *deck, int card_idx,
     return 0;
 }
 
+/**
+ * Set up ground parameters for current frequency
+ * This must be called once per frequency before matrix fill
+ * Mirrors control.c lines 1928-1960 for batch processing
+ */
+static void setup_ground_for_frequency(context_t *ctx)
+{
+    if (!ctx) return;
+    
+    /* Free-space default for all cases */
+    if (ctx->gnd.has_ground != 1) {
+        ctx->gnd.fresnel_ratio = CPLX_10;
+        
+        if (ctx->gnd.is_perfect != 1) {
+            double sig = ctx->save.ground_sigma;
+            
+            /* Normalize negative conductivity (per nec2c convention) */
+            if (sig < 0.0) {
+                sig = -sig / (59.96 * ctx->geometry.wavelength);
+                ctx->save.ground_sigma = sig;
+            }
+            
+            /* Calculate complex dielectric constant */
+            complex double epsc = ctx->save.ground_epsr - I * sig * ctx->geometry.wavelength * 59.96;
+            
+            /* Calculate impedance ratio from complex dielectric */
+            ctx->gnd.impedance_ratio = 1.0 / csqrt(epsc);
+            ctx->gwav.impedance_ratio = ctx->gnd.impedance_ratio;
+            ctx->gwav.impedance_ratio_sq = ctx->gwav.impedance_ratio * ctx->gwav.impedance_ratio;
+            
+            /* Handle radial wire ground screen */
+            if (ctx->gnd.num_radials != 0) {
+                ctx->gnd.screen_wire_len = ctx->save.screen_wire_len / ctx->geometry.wavelength;
+                ctx->gnd.screen_wire_radius = ctx->save.screen_wire_radius / ctx->geometry.wavelength;
+                ctx->gnd.screen_impedance = CPLX_01 * 2367.067 / (double)ctx->gnd.num_radials;
+                ctx->gnd.screen_inner_r = ctx->gnd.screen_wire_radius * (double)ctx->gnd.num_radials;
+            }
+            
+            /* Use Sommerfeld ground solution if requested (GN 2) */
+            if (ctx->gnd.is_perfect == 2) {
+                somnec(ctx, ctx->save.ground_epsr, ctx->save.ground_sigma, ctx->save.freq_mhz);
+                ctx->gnd.fresnel_ratio = (epsc - 1.0) / (epsc + 1.0);
+            }
+        }
+    }
+}
+
 /* ============================================================================
  * Frequency Loop Implementation
  * ========================================================================== */
@@ -1415,6 +1463,9 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         
         /* Set wavelength in context for calculations */
         geom->wavelength = wlam;
+        
+        /* Set up ground parameters for this frequency (must be done after wavelength is set) */
+        setup_ground_for_frequency(ctx);
         
         /* Progress from stage 1 (need matrix) to stage 2 (ready to fill) */
         if (state->processing_stage == 1) {
