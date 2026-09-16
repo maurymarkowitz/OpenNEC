@@ -945,9 +945,9 @@ int connect_segments(context_t *ctx, int ignd, outputs_list_t *outputs)
         if(ic >= 3) {
           if(!ipf) {
             if(ctx->output_format == OUTPUT_FORMAT_ORIGINAL) {
-              snprintf(msg, sizeof(msg), "\n\n         - MULTIPLE WIRE JUNCTIONS -\n JUNCTION    SEGMENTS  (- FOR END 1, + FOR END 2)");
+              snprintf(msg, sizeof(msg), "\n\n         - MULTIPLE WIRE JUNCTIONS -\n JUNCTION    SEGMENTS  (- FOR END 1, + FOR END 2)\n");
             } else {
-              snprintf(msg, sizeof(msg), "\n\n    ---------- MULTIPLE WIRE JUNCTIONS ----------\n    JUNCTION  SEGMENTS (- FOR END 1, + FOR END 2)");
+              snprintf(msg, sizeof(msg), "\n\n    ---------- MULTIPLE WIRE JUNCTIONS ----------\n    JUNCTION  SEGMENTS (- FOR END 1, + FOR END 2)\n");
             }
             add_message(ctx, outputs, msg);
             ipf = true;
@@ -955,9 +955,9 @@ int connect_segments(context_t *ctx, int ignd, outputs_list_t *outputs)
 
           iseg++;
           if(ctx->output_format == OUTPUT_FORMAT_ORIGINAL) {
-            snprintf(msg, sizeof(msg), "\n  %5d      ", iseg);
+            snprintf(msg, sizeof(msg), "  %5d      ", iseg);
           } else {
-            snprintf(msg, sizeof(msg), "\n   %5d      ", iseg);
+            snprintf(msg, sizeof(msg), "   %5d      ", iseg);
           }
 
           for(i = 1; i <= ic; i++)  {
@@ -979,6 +979,12 @@ int connect_segments(context_t *ctx, int ignd, outputs_list_t *outputs)
                 snprintf(msg + len, sizeof(msg) - len, "\n              ");
               }
             }
+          }
+          /* Add newline to junction message */
+          size_t len = strlen(msg);
+          if (len + 1 < sizeof(msg)) {
+            msg[len] = '\n';
+            msg[len + 1] = '\0';
           }
           add_message(ctx, outputs, msg);
           
