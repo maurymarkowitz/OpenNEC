@@ -881,11 +881,17 @@ static int process_ex_card(context_t *ctx, const card_t *card, card_state_t *sta
         if (cabs(voltage) < 1e-20) {
             voltage = 1.0 + 0.0*I;  /* Default to 1 volt */
         }
-        
+
+        /*
+         * EX specifies a segment relative to its tag, but the queued source is
+         * subsequently processed using an absolute/global segment number.
+         */
+        int global_seg = segment_number(ctx, tag, seg);
+
         if (extype == 0) {
-            return add_voltage_source(ctx, tag, seg, voltage);
+            return add_voltage_source(ctx, tag, global_seg, voltage);
         } else {
-            return add_current_source(ctx, tag, seg, voltage);
+            return add_current_source(ctx, tag, global_seg, voltage);
         }
     }
     else if (extype >= 1 && extype <= 4) {
