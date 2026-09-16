@@ -1804,19 +1804,45 @@ static int write_structure(context_t *ctx, const deck_t *deck, FILE *file)
   /* Output MULTIPLE WIRE JUNCTIONS section (always present when N > 0) */
   if (ctx->geometry.num_segs > 0)
   {
+    /* Check if junctions exist by looking for junction messages */
+    int has_junctions = 0;
+    for (int i = 0; i < ctx->outputs.num_messages; i++)
+    {
+      if (strstr(ctx->outputs.messages[i], "MULTIPLE WIRE JUNCTIONS") != NULL)
+      {
+        has_junctions = 1;
+        break;
+      }
+    }
+    
     if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
     {
-      fprintf(ctx->output_fp, "\n\n\n"
-                              "         - MULTIPLE WIRE JUNCTIONS -\n"
-                              " JUNCTION    SEGMENTS  (- FOR END 1, + FOR END 2)\n"
-                              "  NONE\n");
+      if (!has_junctions)
+      {
+        /* No junctions, output NONE */
+        fprintf(ctx->output_fp, "\n\n\n"
+                                "         - MULTIPLE WIRE JUNCTIONS -\n"
+                                " JUNCTION    SEGMENTS  (- FOR END 1, + FOR END 2)\n"
+                                "  NONE\n");
+      }
+      /* If junctions exist, they will be output via messages below (already formatted for original) */
     }
     else
     {
-      fprintf(ctx->output_fp, "\n\n\n"
-                              "        -------- MULTIPLE WIRE JUNCTIONS --------\n"
-                              "  JUNCTION           SEGMENTS  (- FOR END 1, + FOR END 2)\n"
-                              "   NONE");
+      /* nec2c format */
+      if (!has_junctions)
+      {
+        /* No junctions found, output NONE */
+        fprintf(ctx->output_fp, "\n\n\n"
+                                "        -------- MULTIPLE WIRE JUNCTIONS --------\n"
+                                "  JUNCTION           SEGMENTS  (- FOR END 1, + FOR END 2)\n"
+                                "   NONE");
+      }
+      else
+      {
+        /* Junctions exist, they will be output via messages below */
+        fprintf(ctx->output_fp, "\n\n");
+      }
     }
   }
 
