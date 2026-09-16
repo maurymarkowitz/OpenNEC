@@ -1,0 +1,11 @@
+CM 05 axis: LD 5 wire conductivity 2.0E6 mhos/m over the whole wire
+CM pin (nec2c 1.3.1): 82.339 +j47.069 ohm at 30 MHz
+CM 3-way spread |dZ|/|Z|: PyNEC 1.8E-04, momwire sinusoidal 9.6E-03
+CE
+GW 1 9 0. 0. -2.5 0. 0. 2.5 0.005
+GE 0
+LD 5 1 0 0 2.0E6
+FR 0 1 0 0 30. 0.
+EX 0 1 5 0 1. 0.
+XQ
+EN

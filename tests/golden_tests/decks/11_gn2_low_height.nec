@@ -1,0 +1,12 @@
+CM 11 axis: GN 2 close to the ground, 0.02 lambda up -- the issue #14 residual
+CM pin (nec2c 1.3.1): 91.758 +j13.222 ohm at 14 MHz
+CM 3-way spread |dZ|/|Z|: PyNEC 2.0E-04, momwire sinusoidal 7.7E-04
+CM onec at acafb37: 79.228 +j4.256, 1.7E-01 out -- red in golden-open-issues
+CE dipole 0.02 lambda over Sommerfeld/Norton ground er=10 sigma=0.002
+GW 1 21 -5.1 0 0.43 5.1 0 0.43 1e-3
+GE 1
+GN 2 0 0 0 10 0.002
+FR 0 1 0 0 14 0
+EX 0 1 11 0 1 0
+XQ
+EN

@@ -1,0 +1,18 @@
+{
+  "_comment": [
+    "The open-issue lane: decks whose pin onec does not yet meet, one per open",
+    "issue.  Same format as expected.json and read by the same run_golden.py",
+    "via --expected; kept separate so the regression floor in expected.json",
+    "stays green and a red X points at exactly one deck.",
+    "When an issue closes, move its deck's entry into expected.json."
+  ],
+  "tolerance": 1.0e-4,
+  "decks": [
+    {
+      "deck": "11_gn2_low_height.nec",
+      "issue": "#14 -- GN 2 close to the ground. onec 2.2.1 at acafb37 answers 79.228 +j4.256 against this pin, 1.7E-01 out, while echoing the GN card correctly.",
+      "provenance": "nec2c 1.3.1 pin; PyNEC 2.0E-04, momwire sinusoidal 7.7E-04 -- the tightest three-way row in the matrix",
+      "points": [{"freq_mhz": 14.0, "tag": 1, "seg": 11, "r": 91.758, "x": 13.222}]
+    }
+  ]
+}

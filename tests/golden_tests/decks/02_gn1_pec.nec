@@ -1,0 +1,11 @@
+CM 02 axis: GN 1, perfectly conducting ground, horizontal dipole at 10 m
+CM pin (nec2c 1.3.1): 79.313 +j36.226 ohm at 30 MHz
+CM 3-way spread |dZ|/|Z|: PyNEC 1.8E-04, momwire sinusoidal 1.0E-02
+CE
+GW 1 9 -2.5 0. 10. 2.5 0. 10. 0.005
+GE 0
+GN 1
+FR 0 1 0 0 30. 0.
+EX 0 1 5 0 1. 0.
+XQ
+EN
