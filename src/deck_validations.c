@@ -885,20 +885,13 @@ void test_deck_structure(const context_t *ctx, const deck_t *deck, errors_list_t
     //      add_error(errors, msg, 1);
     //    }
 
-    // GD cards have to follow GN cards
+    // GD cards (optional dielectric definition) have to follow GN cards if present
     if (strcmp(code, "GD") == 0 && strcmp(last_code, "GN") != 0)
     {
       snprintf(msg, sizeof(msg), "GD on line %d: but the card above it is not a GN.", i + 1);
       add_error(ctx, errors, msg, 1);
     }
-    if (strcmp(code, "GN") == 0)
-    {
-      if (i + 1 >= deck->num_cards || strcmp(deck->cards[i + 1].card_code, "GD") != 0)
-      {
-        snprintf(msg, sizeof(msg), "GN on line %d: but the card after it is not a GD.", i + 1);
-        add_error(ctx, errors, msg, 1);
-      }
-    }
+    // NOTE: GD is optional - GN does not require GD to follow it
 
     // GF cards have to be the first item in the geometry section, which
     // means they must follow CE cards, or in an onec deck, an SY
