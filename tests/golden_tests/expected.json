@@ -1,0 +1,67 @@
+{
+  "_comment": [
+    "Pinned input impedances for the golden matrix. R and X are ohms, at the",
+    "frequency named, on the (tag, seg) the deck's EX card drives.",
+    "Every pin is nec2c 1.3.1's printed value (five significant digits, so the",
+    "pin itself carries about 1.2E-06 of quantisation -- two orders under the",
+    "1E-04 gate). PROVENANCE.md records the raw number every engine gave and",
+    "how far each stands from the pin."
+  ],
+  "tolerance": 1.0e-4,
+  "decks": [
+    {
+      "deck": "01_dipole_free.nec",
+      "provenance": "nec2c 1.3.1 pin; PyNEC 1.7E-04, momwire sinusoidal 9.7E-03",
+      "points": [{"freq_mhz": 30.0, "tag": 1, "seg": 5, "r": 81.622, "x": 46.462}]
+    },
+    {
+      "deck": "02_gn1_pec.nec",
+      "provenance": "nec2c 1.3.1 pin; PyNEC 1.8E-04, momwire sinusoidal 1.0E-02",
+      "points": [{"freq_mhz": 30.0, "tag": 1, "seg": 5, "r": 79.313, "x": 36.226}]
+    },
+    {
+      "deck": "03_gn2_sommerfeld.nec",
+      "provenance": "nec2c 1.3.1 pin; PyNEC 1.8E-04, momwire sinusoidal 1.0E-02",
+      "points": [{"freq_mhz": 30.0, "tag": 1, "seg": 5, "r": 79.925, "x": 41.227}]
+    },
+    {
+      "deck": "04_ld0_series_rlc.nec",
+      "provenance": "nec2c 1.3.1 pin; PyNEC 1.4E-04, momwire sinusoidal 8.1E-03",
+      "points": [{"freq_mhz": 30.0, "tag": 1, "seg": 5, "r": 100.41, "x": 56.327}]
+    },
+    {
+      "deck": "05_ld5_conductivity.nec",
+      "provenance": "nec2c 1.3.1 pin; PyNEC 1.8E-04, momwire sinusoidal 9.6E-03",
+      "points": [{"freq_mhz": 30.0, "tag": 1, "seg": 5, "r": 82.339, "x": 47.069}]
+    },
+    {
+      "deck": "06_junction_three_wire.nec",
+      "provenance": "nec2c 1.3.1 pin; PyNEC 7.2E-05, momwire sinusoidal 2.3E-03",
+      "points": [{"freq_mhz": 30.0, "tag": 1, "seg": 3, "r": 46.430, "x": -279.35}]
+    },
+    {
+      "deck": "07_tl.nec",
+      "provenance": "nec2c 1.3.1 pin; PyNEC 3.2E-05, momwire sinusoidal 2.1E-03",
+      "points": [{"freq_mhz": 30.0, "tag": 1, "seg": 5, "r": 16.716, "x": -16.401}]
+    },
+    {
+      "deck": "08_nt.nec",
+      "provenance": "nec2c 1.3.1 pin; PyNEC 1.1E-04, momwire sinusoidal 6.5E-03",
+      "points": [{"freq_mhz": 30.0, "tag": 1, "seg": 5, "r": 68.587, "x": 18.922}]
+    },
+    {
+      "deck": "09_fr_sweep.nec",
+      "provenance": "nec2c 1.3.1 pin; PyNEC <=2.1E-04, momwire sinusoidal <=1.2E-02",
+      "points": [
+        {"freq_mhz": 28.0, "tag": 1, "seg": 5, "r": 66.894, "x": -26.070},
+        {"freq_mhz": 29.0, "tag": 1, "seg": 5, "r": 73.920, "x": 10.368},
+        {"freq_mhz": 30.0, "tag": 1, "seg": 5, "r": 81.622, "x": 46.462}
+      ]
+    },
+    {
+      "deck": "10_gx_symmetry.nec",
+      "provenance": "nec2c 1.3.1 pin (GX == its own explicit twin, bit for bit); momwire sinusoidal 1.8E-02; PyNEC's gx_card path excluded, see PROVENANCE.md",
+      "points": [{"freq_mhz": 30.0, "tag": 1, "seg": 5, "r": 24.889, "x": 67.331}]
+    }
+  ]
+}

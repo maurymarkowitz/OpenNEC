@@ -1,0 +1,12 @@
+CM 03 axis: GN 2 Sommerfeld/Norton ground, epsr=10 sigma=0.002 -- issue #14
+CM NEC-2's GN 2 needs no external file; the tables are built in-process
+CM pin (nec2c 1.3.1): 79.925 +j41.227 ohm at 30 MHz
+CM 3-way spread |dZ|/|Z|: PyNEC 1.8E-04, momwire sinusoidal 1.0E-02
+CE
+GW 1 9 -2.5 0. 10. 2.5 0. 10. 0.005
+GE 0
+GN 2 0 0 0 10. 0.002
+FR 0 1 0 0 30. 0.
+EX 0 1 5 0 1. 0.
+XQ
+EN

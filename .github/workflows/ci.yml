@@ -73,3 +73,40 @@ jobs:
         with:
           name: onec-windows
           path: onec.exe
+
+  golden-impedance:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install runtime deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopenblas0 liblapack3
+      - name: Download onec
+        uses: actions/download-artifact@v4
+        with:
+          name: onec-linux-openblas
+      - name: Golden impedance matrix
+        run: |
+          chmod +x onec
+          python3 tests/golden_tests/run_golden.py --onec ./onec
+
+  golden-open-issues:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install runtime deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopenblas0 liblapack3
+      - name: Download onec
+        uses: actions/download-artifact@v4
+        with:
+          name: onec-linux-openblas
+      - name: Decks pinned to an open issue (expected red until #14 closes)
+        run: |
+          chmod +x onec
+          python3 tests/golden_tests/run_golden.py --onec ./onec \
+            --expected tests/golden_tests/expected_open.json

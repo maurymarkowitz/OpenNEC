@@ -1,0 +1,11 @@
+CM 04 axis: LD 0 series RLC on one segment -- R=25 ohm, L=100 nH, C absent
+CM pin (nec2c 1.3.1): 100.41 +j56.327 ohm at 30 MHz
+CM 3-way spread |dZ|/|Z|: PyNEC 1.4E-04, momwire sinusoidal 8.1E-03
+CE
+GW 1 9 0. 0. -2.5 0. 0. 2.5 0.005
+GE 0
+LD 0 1 3 3 25. 1.E-7 0.
+FR 0 1 0 0 30. 0.
+EX 0 1 5 0 1. 0.
+XQ
+EN

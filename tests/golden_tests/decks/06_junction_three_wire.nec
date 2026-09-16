@@ -1,0 +1,12 @@
+CM 06 axis: three wires meeting at one point -- junction current matching
+CM pin (nec2c 1.3.1): 46.430 -j279.35 ohm at 30 MHz
+CM 3-way spread |dZ|/|Z|: PyNEC 7.2E-05, momwire sinusoidal 2.3E-03
+CE
+GW 1 5 -2. 0. 0. 0. 0. 0. 0.002
+GW 2 5 0. 0. 0. 2. 0. 0. 0.002
+GW 3 5 0. 0. 0. 0. 0. 2. 0.002
+GE 0
+FR 0 1 0 0 30. 0.
+EX 0 1 3 0 1. 0.
+XQ
+EN
