@@ -46,6 +46,9 @@ src/types.h
 # VS Code settings
 .vscode/
 
+# Copilot instructions (local to user)
+.copilot-instructions.md
+
 # cebik files
 *.WGF
 *-VP
