@@ -71,11 +71,11 @@
  *  @{
  */
 #ifndef M_PI
-#define M_PI 3.14159265358979323846264338327950288
+#define M_PI 3.141592654  /**< PI - matches Fortran NEC2DXS */
 #endif
 
 #define PI      M_PI            /**< Pi */
-#define TP      (2.0 * M_PI)    /**< Two Pi ($2\pi$) */
+#define TP      6.283185308     /**< Two Pi - matches Fortran NEC2DXS reference */
 #define TA      (M_PI / 180.0)  /**< Degrees to Radians conversion factor */
 #define TD      (180.0 / M_PI)  /**< Radians to Degrees conversion factor */
 #define CVEL    299.8           /**< Speed of light in m/μs, matching the original NEC2 Fortran/nec2c value.

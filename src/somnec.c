@@ -47,6 +47,11 @@ void somnec(context_t *ctx, double epr, double sig, double fmhz )
   int k, nth, ith, irs, ir, nr;
   double tim, wlam, tst, dr, dth=0.0, r, rk, thet, tfac1, tfac2;
   complex double erv, ezv, erh, eph, cl1, cl2, con;
+  FILE *trace_fp = NULL;
+  if (getenv("DEBUG_TRACE_SOMNEC")) {
+    trace_fp = fopen("opennec_somnec_trace.txt", "w");
+    if (trace_fp) fprintf(trace_fp, "=== OPENNEC SOMNEC TRACE ===\n");
+  }
 
   if(sig >= 0.) {
     wlam=CVEL/fmhz;
@@ -54,6 +59,12 @@ void somnec(context_t *ctx, double epr, double sig, double fmhz )
   }
   else
     ctx->ggrid.dielectric=cmplx(epr,sig);
+
+  if (trace_fp) {
+    fprintf(trace_fp, "Input: epr=%.6e sig=%.6e fmhz=%.6e\n", epr, sig, fmhz);
+    fprintf(trace_fp, "Wavelength wlam=%.6e CVEL=%.6e\n", (sig>=0) ? CVEL/fmhz : 0, CVEL);
+    fprintf(trace_fp, "Dielectric cmplx: %.15e %+.15ej\n", creal(ctx->ggrid.dielectric), cimag(ctx->ggrid.dielectric));
+  }
 
   get_time_ms(ctx, &tst);
   ctx->somnec.evlcom.ck2 = TP;
@@ -77,6 +88,15 @@ void somnec(context_t *ctx, double epr, double sig, double fmhz )
   ezv *= ctx->somnec.evlcom.ck2sq;
   ctx->somnec.evlcom.ct3=.0625*(erv-ezv);
 
+  if (trace_fp) {
+    fprintf(trace_fp, "\nConstants:\n");
+    fprintf(trace_fp, "  TP=%.15e ck2=%.15e ck2sq=%.15e\n", TP, ctx->somnec.evlcom.ck2, ctx->somnec.evlcom.ck2sq);
+    fprintf(trace_fp, "  ck1sq=%.15e%+.15ej\n", creal(ctx->somnec.evlcom.ck1sq), cimag(ctx->somnec.evlcom.ck1sq));
+    fprintf(trace_fp, "  ck1=%.15e%+.15ej ck1r=%.15e\n", creal(ctx->somnec.evlcom.ck1), cimag(ctx->somnec.evlcom.ck1), ctx->somnec.evlcom.ck1r);
+    fprintf(trace_fp, "  tkmag=%.15e tsmag=%.15e cksm=%.15e%+.15ej\n", ctx->somnec.evlcom.tkmag, ctx->somnec.evlcom.tsmag, creal(ctx->somnec.evlcom.cksm), cimag(ctx->somnec.evlcom.cksm));
+    fprintf(trace_fp, "  ct1=%.15e%+.15ej ct2=%.15e%+.15ej ct3=%.15e%+.15ej\n", creal(ctx->somnec.evlcom.ct1), cimag(ctx->somnec.evlcom.ct1), creal(ctx->somnec.evlcom.ct2), cimag(ctx->somnec.evlcom.ct2), creal(ctx->somnec.evlcom.ct3), cimag(ctx->somnec.evlcom.ct3));
+  }
+
   /* loop over 3 grid regions */
   for(k = 0; k < 3; k++) {
     nr=ctx->ggrid.grid_nx[k];
@@ -89,6 +109,7 @@ void somnec(context_t *ctx, double epr, double sig, double fmhz )
       r=ctx->ggrid.grid_x0[k];
       irs=2;
     }
+    if (getenv("DEBUG_GRID")) fprintf(stderr, "Grid region k=%d: nr=%d nth=%d irs=%d\n", k, nr, nth, irs);
     
     /*  loop over r.  (r=sqrt(rho**2 + (z+h)**2)) */
     for(ir = irs-1; ir < nr; ir++) {
@@ -107,8 +128,25 @@ void somnec(context_t *ctx, double epr, double sig, double fmhz )
         
         evaluate_sommerfeld_integrals(ctx, &erv, &ezv, &erh, &eph );
         
+        if (trace_fp && k == 0 && ir == 0 && ith == 0) {
+          fprintf(trace_fp, "\nFirst grid point (k=0, ir=0, ith=0):\n");
+          fprintf(trace_fp, "  r=%.15e thet=%.15e\n", r, thet);
+          fprintf(trace_fp, "  rho=%.15e zph=%.15e\n", ctx->somnec.evlcom.rho, ctx->somnec.evlcom.zph);
+          fprintf(trace_fp, "  erv=%.15e%+.15ej\n", creal(erv), cimag(erv));
+          fprintf(trace_fp, "  ezv=%.15e%+.15ej\n", creal(ezv), cimag(ezv));
+          fprintf(trace_fp, "  erh=%.15e%+.15ej\n", creal(erh), cimag(erh));
+          fprintf(trace_fp, "  eph=%.15e%+.15ej\n", creal(eph), cimag(eph));
+        }
+        
         rk=ctx->somnec.evlcom.ck2*r;
         con=-CONST1*r/cmplx(cos(rk),-sin(rk));
+        
+        if (getenv("DEBUG_GRID_STORE") && k==0 && ir==0 && ith==0) {
+          fprintf(stderr, "[GRID_STORE_0] ir=%d ith=%d k=%d: erv=%.6e%+.6ej con=%.6e%+.6ej\n", 
+                  ir, ith, k, creal(erv), cimag(erv), creal(con), cimag(con));
+          fprintf(stderr, "  erv*con=%.6e%+.6ej ezv*con=%.6e%+.6ej\n", 
+                  creal(erv*con), cimag(erv*con), creal(ezv*con), cimag(ezv*con));
+        }
         
         switch( k ) {
           case 0:
@@ -116,6 +154,11 @@ void somnec(context_t *ctx, double epr, double sig, double fmhz )
             ctx->ggrid.table1[ir+ith*11+110]=ezv*con;
             ctx->ggrid.table1[ir+ith*11+220]=erh*con;
             ctx->ggrid.table1[ir+ith*11+330]=eph*con;
+            if (getenv("DEBUG_GRID_DUMP") && k==0 && ir < 2 && ith < 2) {
+              fprintf(stderr, "[GRID1_STORED] ir=%d ith=%d: idx=%d\n", ir, ith, ir+ith*11);
+              fprintf(stderr, "  table1[%d]=erv*con=%.15e%+.15ej\n", ir+ith*11+0, creal(ctx->ggrid.table1[ir+ith*11+0]), cimag(ctx->ggrid.table1[ir+ith*11+0]));
+              fprintf(stderr, "  table1[%d]=ezv*con=%.15e%+.15ej\n", ir+ith*11+110, creal(ctx->ggrid.table1[ir+ith*11+110]), cimag(ctx->ggrid.table1[ir+ith*11+110]));
+            }
             break;
             
           case 1:
@@ -170,6 +213,11 @@ void somnec(context_t *ctx, double epr, double sig, double fmhz )
 
   get_time_ms(ctx, &tim);
   tim -= tst;
+
+  if (trace_fp) {
+    fprintf(trace_fp, "\n=== SOMNEC COMPLETE ===\n");
+    fclose(trace_fp);
+  }
 
   return;
 }
@@ -283,6 +331,14 @@ void evaluate_sommerfeld_integrals(context_t *ctx, complex double *erv, complex 
 	complex double *erh, complex double *eph )
 {
   int i, jump;
+  FILE *trace_fp = NULL;
+  if (getenv("DEBUG_CONTOUR")) {
+    trace_fp = fopen("opennec_contour_trace.txt", "a");
+    if (trace_fp) {
+      fprintf(trace_fp, "\n=== evlua call ===\n");
+      fprintf(trace_fp, "rho=%.15e zph=%.15e\n", ctx->somnec.evlcom.rho, ctx->somnec.evlcom.zph);
+    }
+  }
 
   ctx->somnec.evlua.del=ctx->somnec.evlcom.zph;
   if( ctx->somnec.evlcom.rho > ctx->somnec.evlua.del )
@@ -298,29 +354,66 @@ void evaluate_sommerfeld_integrals(context_t *ctx, complex double *erv, complex 
 	if( ctx->somnec.evlua.del > ctx->somnec.evlcom.tkmag)
 	{
 	  ctx->somnec.cntour.b=cmplx(.1*ctx->somnec.evlcom.tkmag,-.1*ctx->somnec.evlcom.tkmag);
+	  if (trace_fp) {
+	    fprintf(trace_fp, "BESSEL form, del > tkmag\n");
+	    fprintf(trace_fp, "  First: a=%.15e%+.15ej b=%.15e%+.15ej\n", creal(ctx->somnec.cntour.a), cimag(ctx->somnec.cntour.a), creal(ctx->somnec.cntour.b), cimag(ctx->somnec.cntour.b));
+	  }
 	  romberg_integrate_1d(ctx,6,ctx->somnec.evlua.sum,2);
+	  if (trace_fp) {
+	    fprintf(trace_fp, "  After first Romberg - sum: ");
+	    for(i=0; i<6; i++) fprintf(trace_fp, "[%d]=%.6e%+.6ej ", i, creal(ctx->somnec.evlua.sum[i]), cimag(ctx->somnec.evlua.sum[i]));
+	    fprintf(trace_fp, "\n");
+	  }
 	  ctx->somnec.cntour.a=ctx->somnec.cntour.b;
 	  ctx->somnec.cntour.b=cmplx(ctx->somnec.evlua.del,-ctx->somnec.evlua.del);
+	  if (trace_fp) {
+	    fprintf(trace_fp, "  Second: a=%.15e%+.15ej b=%.15e%+.15ej\n", creal(ctx->somnec.cntour.a), cimag(ctx->somnec.cntour.a), creal(ctx->somnec.cntour.b), cimag(ctx->somnec.cntour.b));
+	  }
 	  romberg_integrate_1d (ctx,6,ctx->somnec.evlua.ans,2);
+	  if (trace_fp) {
+	    fprintf(trace_fp, "  After second Romberg - ans: ");
+	    for(i=0; i<6; i++) fprintf(trace_fp, "[%d]=%.6e%+.6ej ", i, creal(ctx->somnec.evlua.ans[i]), cimag(ctx->somnec.evlua.ans[i]));
+	    fprintf(trace_fp, "\n");
+	  }
 	  for( i = 0; i < 6; i++ )
 		ctx->somnec.evlua.sum[i] += ctx->somnec.evlua.ans[i];
 	}
 	else
 	{
 	  ctx->somnec.cntour.b=cmplx(ctx->somnec.evlua.del,-ctx->somnec.evlua.del);
+	  if (trace_fp) {
+	    fprintf(trace_fp, "BESSEL form, del <= tkmag\n");
+	    fprintf(trace_fp, "  a=%.15e%+.15ej b=%.15e%+.15ej\n", creal(ctx->somnec.cntour.a), cimag(ctx->somnec.cntour.a), creal(ctx->somnec.cntour.b), cimag(ctx->somnec.cntour.b));
+	  }
 	  romberg_integrate_1d(ctx,6,ctx->somnec.evlua.sum,2);
 	}
 
 	ctx->somnec.evlua.delta=PTP*ctx->somnec.evlua.del;
 	shanks_integration(ctx,ctx->somnec.cntour.b,ctx->somnec.evlua.delta,ctx->somnec.evlua.ans,6,ctx->somnec.evlua.sum,0,ctx->somnec.cntour.b,ctx->somnec.cntour.b);
+	if (trace_fp) {
+	  fprintf(trace_fp, "  After Shanks - ans: ");
+	  for(i=0; i<6; i++) fprintf(trace_fp, "[%d]=%.6e%+.6ej ", i, creal(ctx->somnec.evlua.ans[i]), cimag(ctx->somnec.evlua.ans[i]));
+	  fprintf(trace_fp, "\n");
+	}
 	ctx->somnec.evlua.ans[5] *= ctx->somnec.evlcom.ck1;
+	if (trace_fp) {
+	  fprintf(trace_fp, "  After ans[5]*=ck1 - ans: ");
+	  for(i=0; i<6; i++) fprintf(trace_fp, "[%d]=%.6e%+.6ej ", i, creal(ctx->somnec.evlua.ans[i]), cimag(ctx->somnec.evlua.ans[i]));
+	  fprintf(trace_fp, "\n");
+	}
 
 	/* conjugate since nec uses exp(+jwt) */
 	*erv=conj(ctx->somnec.evlcom.ck1sq*ctx->somnec.evlua.ans[2]);
 	*ezv=conj(ctx->somnec.evlcom.ck1sq*(ctx->somnec.evlua.ans[1]+ctx->somnec.evlcom.ck2sq*ctx->somnec.evlua.ans[4]));
 	*erh=conj(ctx->somnec.evlcom.ck2sq*(ctx->somnec.evlua.ans[0]+ctx->somnec.evlua.ans[5]));
 	*eph=-conj(ctx->somnec.evlcom.ck2sq*(ctx->somnec.evlua.ans[3]+ctx->somnec.evlua.ans[5]));
+	
+	if (trace_fp) {
+	  fprintf(trace_fp, "  Final fields: erv=%.6e%+.6ej ezv=%.6e%+.6ej erh=%.6e%+.6ej eph=%.6e%+.6ej\n",
+		creal(*erv), cimag(*erv), creal(*ezv), cimag(*ezv), creal(*erh), cimag(*erh), creal(*eph), cimag(*eph));
+	}
 
+	if (trace_fp) fclose(trace_fp);
 	return;
 
   } /* if(zph >= 2.*rho) */
@@ -332,9 +425,16 @@ void evaluate_sommerfeld_integrals(context_t *ctx, complex double *erv, complex 
   ctx->somnec.evlua.cp3=cmplx(1.02*ctx->somnec.evlcom.ck2,-.2*ctx->somnec.evlcom.ck2);
   ctx->somnec.cntour.a=ctx->somnec.evlua.cp1;
   ctx->somnec.cntour.b=ctx->somnec.evlua.cp2;
+  if (trace_fp) {
+    fprintf(trace_fp, "HANKEL form\n");
+    fprintf(trace_fp, "  First: a=%.15e%+.15ej b=%.15e%+.15ej\n", creal(ctx->somnec.cntour.a), cimag(ctx->somnec.cntour.a), creal(ctx->somnec.cntour.b), cimag(ctx->somnec.cntour.b));
+  }
   romberg_integrate_1d(ctx,6,ctx->somnec.evlua.sum,2);
   ctx->somnec.cntour.a=ctx->somnec.evlua.cp2;
   ctx->somnec.cntour.b=ctx->somnec.evlua.cp3;
+  if (trace_fp) {
+    fprintf(trace_fp, "  Second: a=%.15e%+.15ej b=%.15e%+.15ej\n", creal(ctx->somnec.cntour.a), cimag(ctx->somnec.cntour.a), creal(ctx->somnec.cntour.b), cimag(ctx->somnec.cntour.b));
+  }
   romberg_integrate_1d(ctx,6,ctx->somnec.evlua.ans,2);
 
   for( i = 0; i < 6; i++ )
@@ -410,6 +510,15 @@ void evaluate_sommerfeld_integrals(context_t *ctx, complex double *erv, complex 
   *ezv=conj(ctx->somnec.evlcom.ck1sq*(ctx->somnec.evlua.ans[1]+ctx->somnec.evlcom.ck2sq*ctx->somnec.evlua.ans[4]));
   *erh=conj(ctx->somnec.evlcom.ck2sq*(ctx->somnec.evlua.ans[0]+ctx->somnec.evlua.ans[5]));
   *eph=-conj(ctx->somnec.evlcom.ck2sq*(ctx->somnec.evlua.ans[3]+ctx->somnec.evlua.ans[5]));
+  
+  if (trace_fp) {
+    fprintf(trace_fp, "HANKEL final - ans: ");
+    for(i=0; i<6; i++) fprintf(trace_fp, "[%d]=%.6e%+.6ej ", i, creal(ctx->somnec.evlua.ans[i]), cimag(ctx->somnec.evlua.ans[i]));
+    fprintf(trace_fp, "\n");
+    fprintf(trace_fp, "  Final fields: erv=%.6e%+.6ej ezv=%.6e%+.6ej erh=%.6e%+.6ej eph=%.6e%+.6ej\n",
+	  creal(*erv), cimag(*erv), creal(*ezv), cimag(*ezv), creal(*erh), cimag(*erh), creal(*eph), cimag(*eph));
+    fclose(trace_fp);
+  }
 
   return;
 }
@@ -557,14 +666,29 @@ int shanks_integration(context_t *ctx, complex double start, complex double dela
 		  if( (creal(a1) != 0.) || (cimag(a1) != 0.) )
 		  {
 			a2=aa-q1[i][jm];
-			a1=q1[i][jm]-a2*a2/a1;
+			/* Use long double precision for Aitken acceleration */
+			{
+			  complex long double a2_ld = (complex long double)a2;
+			  complex long double a1_ld = (complex long double)a1;
+			  complex long double result_ld = (complex long double)q1[i][jm] - a2_ld*a2_ld/a1_ld;
+			  a1 = (complex double)result_ld;
+			}
 		  }
 		  else
 			a1=q1[i][jm];
 
 		  a2=aa+as2-2.*as1;
 		  if( (creal(a2) != 0.) || (cimag(a2) != 0.) )
-			a2=aa-(as1-aa)*(as1-aa)/a2;
+		  {
+			/* Use long double precision for Aitken acceleration */
+			{
+			  complex long double aa_ld = (complex long double)aa;
+			  complex long double as1_ld = (complex long double)as1;
+			  complex long double a2_ld = (complex long double)a2;
+			  complex long double result_ld = aa_ld - (as1_ld-aa_ld)*(as1_ld-aa_ld)/a2_ld;
+			  a2 = (complex double)result_ld;
+			}
+		  }
 		  else
 			a2=aa;
 
@@ -753,6 +877,11 @@ void sommerfeld_lambda(context_t *ctx, double t, complex double *xlam, complex d
 void romberg_integrate_1d(context_t *ctx, int n, complex double *sum, int nx )
 {
   int jump, lstep, nogo, i, ns, nt;
+  FILE *trace_fp = NULL;
+  if (getenv("DEBUG_ROMBERG")) {
+    trace_fp = fopen("opennec_romberg_trace.txt", "w");
+    if (trace_fp) fprintf(trace_fp, "=== OpenNEC Romberg Integration Trace ===\n");
+  }
 
   lstep=0;
   ctx->somnec.rom1.z=0.;
@@ -765,6 +894,12 @@ void romberg_integrate_1d(context_t *ctx, int n, complex double *sum, int nx )
   ns=nx;
   nt=0;
   sommerfeld_asymptotic(ctx, ctx->somnec.rom1.z, ctx->somnec.rom1.g1);
+  
+  if (trace_fp) {
+    fprintf(trace_fp, "Initial parameters: n=%d nx=%d\n", n, nx);
+    fprintf(trace_fp, "  ep=%.15e zend=%.15e ze=%.15e\n", ctx->somnec.rom1.ep, ctx->somnec.rom1.zend, ctx->somnec.rom1.ze);
+    fprintf(trace_fp, "  Initial g1[0]=%.15e%+.15ej\n", creal(ctx->somnec.rom1.g1[0]), cimag(ctx->somnec.rom1.g1[0]));
+  }
 
   jump = false;
   while( true )
@@ -775,8 +910,10 @@ void romberg_integrate_1d(context_t *ctx, int n, complex double *sum, int nx )
       if( (ctx->somnec.rom1.z+ctx->somnec.rom1.dz) > ctx->somnec.rom1.ze )
       {
         ctx->somnec.rom1.dz=ctx->somnec.rom1.ze-ctx->somnec.rom1.z;
-        if( ctx->somnec.rom1.dz <= ctx->somnec.rom1.ep )
+        if( ctx->somnec.rom1.dz <= ctx->somnec.rom1.ep ) {
+          if (trace_fp) fclose(trace_fp);
           return;
+        }
       }
 
       ctx->somnec.rom1.dzot=ctx->somnec.rom1.dz*.5;
@@ -790,7 +927,25 @@ void romberg_integrate_1d(context_t *ctx, int n, complex double *sum, int nx )
     {
       ctx->somnec.rom1.t00=(ctx->somnec.rom1.g1[i]+ctx->somnec.rom1.g5[i])*ctx->somnec.rom1.dzot;
       ctx->somnec.rom1.t01[i]=(ctx->somnec.rom1.t00+ctx->somnec.rom1.dz*ctx->somnec.rom1.g3[i])*.5;
-      ctx->somnec.rom1.t10[i]=(4.*ctx->somnec.rom1.t01[i]-ctx->somnec.rom1.t00)/3.;
+      /* Use long double precision for Richardson extrapolation */
+      {
+        complex long double t01_ld = (complex long double)ctx->somnec.rom1.t01[i];
+        complex long double t00_ld = (complex long double)ctx->somnec.rom1.t00;
+        complex long double t10_ld = (4.0L * t01_ld - t00_ld) / 3.0L;
+        ctx->somnec.rom1.t10[i] = (complex double)t10_ld;
+      }
+
+      if (trace_fp && nt < 20 && i < 2) {
+        fprintf(trace_fp, "Iteration %d (3-point): z=%.15e dz=%.15e\n", nt, ctx->somnec.rom1.z, ctx->somnec.rom1.dz);
+        fprintf(trace_fp, "  g1[%d]=%.15e%+.15ej g3[%d]=%.15e%+.15ej g5[%d]=%.15e%+.15ej\n",
+            i, creal(ctx->somnec.rom1.g1[i]), cimag(ctx->somnec.rom1.g1[i]),
+            i, creal(ctx->somnec.rom1.g3[i]), cimag(ctx->somnec.rom1.g3[i]),
+            i, creal(ctx->somnec.rom1.g5[i]), cimag(ctx->somnec.rom1.g5[i]));
+        fprintf(trace_fp, "  t00=%.15e%+.15ej t01[%d]=%.15e%+.15ej t10[%d]=%.15e%+.15ej\n",
+            creal(ctx->somnec.rom1.t00), cimag(ctx->somnec.rom1.t00),
+            i, creal(ctx->somnec.rom1.t01[i]), cimag(ctx->somnec.rom1.t01[i]),
+            i, creal(ctx->somnec.rom1.t10[i]), cimag(ctx->somnec.rom1.t10[i]));
+      }
 
       /* test convergence of 3 point romberg result */
       test_romberg_convergence(ctx, creal(ctx->somnec.rom1.t01[i]), creal(ctx->somnec.rom1.t10[i]), &ctx->somnec.rom1.tr, cimag(ctx->somnec.rom1.t01[i]), cimag(ctx->somnec.rom1.t10[i]), &ctx->somnec.rom1.ti, 0. );
@@ -805,8 +960,10 @@ void romberg_integrate_1d(context_t *ctx, int n, complex double *sum, int nx )
       nt += 2;
 
       ctx->somnec.rom1.z += ctx->somnec.rom1.dz;
-      if(ctx->somnec.rom1.z > ctx->somnec.rom1.zend)
+      if(ctx->somnec.rom1.z > ctx->somnec.rom1.zend) {
+        if (trace_fp) fclose(trace_fp);
         return;
+      }
 
       for( i = 0; i < n; i++ )
         ctx->somnec.rom1.g1[i]=ctx->somnec.rom1.g5[i];
@@ -829,7 +986,13 @@ void romberg_integrate_1d(context_t *ctx, int n, complex double *sum, int nx )
     {
       ctx->somnec.rom1.t02=(ctx->somnec.rom1.t01[i]+ctx->somnec.rom1.dzot*(ctx->somnec.rom1.g2[i]+ctx->somnec.rom1.g4[i]))*.5;
       ctx->somnec.rom1.t11=(4.*ctx->somnec.rom1.t02-ctx->somnec.rom1.t01[i])/3.;
-      ctx->somnec.rom1.t20[i]=(16.*ctx->somnec.rom1.t11-ctx->somnec.rom1.t10[i])/15.;
+      /* Use long double precision for Richardson extrapolation */
+      {
+        complex long double t11_ld = (complex long double)ctx->somnec.rom1.t11;
+        complex long double t10_ld = (complex long double)ctx->somnec.rom1.t10[i];
+        complex long double t20_ld = (16.0L * t11_ld - t10_ld) / 15.0L;
+        ctx->somnec.rom1.t20[i] = (complex double)t20_ld;
+      }
 
       /* test convergence of 5 point romberg result */
       test_romberg_convergence(ctx, creal(ctx->somnec.rom1.t11), creal(ctx->somnec.rom1.t20[i]), &ctx->somnec.rom1.tr, cimag(ctx->somnec.rom1.t11), cimag(ctx->somnec.rom1.t20[i]), &ctx->somnec.rom1.ti, 0. );
@@ -844,8 +1007,10 @@ void romberg_integrate_1d(context_t *ctx, int n, complex double *sum, int nx )
 
       nt++;
       ctx->somnec.rom1.z += ctx->somnec.rom1.dz;
-      if(ctx->somnec.rom1.z > ctx->somnec.rom1.zend)
+      if(ctx->somnec.rom1.z > ctx->somnec.rom1.zend) {
+        if (trace_fp) fclose(trace_fp);
         return;
+      }
 
       for( i = 0; i < n; i++ )
         ctx->somnec.rom1.g1[i]=ctx->somnec.rom1.g5[i];
@@ -890,8 +1055,10 @@ void romberg_integrate_1d(context_t *ctx, int n, complex double *sum, int nx )
 
     nt++;
     ctx->somnec.rom1.z += ctx->somnec.rom1.dz;
-    if(ctx->somnec.rom1.z > ctx->somnec.rom1.zend)
+    if(ctx->somnec.rom1.z > ctx->somnec.rom1.zend) {
+      if (trace_fp) fclose(trace_fp);
       return;
+    }
 
     for( i = 0; i < n; i++ )
       ctx->somnec.rom1.g1[i]=ctx->somnec.rom1.g5[i];
@@ -917,16 +1084,37 @@ void sommerfeld_asymptotic(context_t *ctx, double t, complex double *ans)
 {
   double xlr;
   complex double xl, dxl, cgam1, cgam2, b0, b0p, com, dgam, den1, den2;
+  FILE *trace_fp = NULL;
+  static int eval_count = 0;
+  
+  if (getenv("DEBUG_CONTOUR")) {
+    trace_fp = fopen("opennec_integrand_trace.txt", "a");
+    if (trace_fp && eval_count < 20) {
+      fprintf(trace_fp, "Integrand eval %d: t=%.15e\n", eval_count, t);
+      eval_count++;
+    }
+  }
 
   sommerfeld_lambda(ctx, t, &xl, &dxl);
+  if (trace_fp) {
+    fprintf(trace_fp, "  lambda xl=%.15e%+.15ej dxl=%.15e%+.15ej\n", creal(xl), cimag(xl), creal(dxl), cimag(dxl));
+    fprintf(trace_fp, "  ck1sq=%.15e%+.15ej ck2sq=%.15e%+.15ej\n", creal(ctx->somnec.evlcom.ck1sq), cimag(ctx->somnec.evlcom.ck1sq), creal(ctx->somnec.evlcom.ck2sq), cimag(ctx->somnec.evlcom.ck2sq));
+  }
   if( ctx->somnec.evlcom.jh == 0 )
   {
     /* bessel function form */
-    bessel(ctx, xl*ctx->somnec.evlcom.rho, &b0, &b0p);
+    complex double bessel_arg = xl*ctx->somnec.evlcom.rho;
+    bessel(ctx, bessel_arg, &b0, &b0p);
+    if (trace_fp) {
+      fprintf(trace_fp, "  bessel_arg=%.15e%+.15ej b0=%.15e%+.15ej b0p=%.15e%+.15ej\n", creal(bessel_arg), cimag(bessel_arg), creal(b0), cimag(b0), creal(b0p), cimag(b0p));
+    }
     b0  *=2.;
     b0p *=2.;
     cgam1=csqrt(xl*xl-ctx->somnec.evlcom.ck1sq);
     cgam2=csqrt(xl*xl-ctx->somnec.evlcom.ck2sq);
+    if (trace_fp) {
+      fprintf(trace_fp, "  cgam1=%.15e%+.15ej cgam2=%.15e%+.15ej\n", creal(cgam1), cimag(cgam1), creal(cgam2), cimag(cgam2));
+    }
     if(creal(cgam1) == 0.)
       cgam1=cmplx(0.,-fabs(cimag(cgam1)));
     if(creal(cgam2) == 0.)
@@ -989,6 +1177,11 @@ void sommerfeld_asymptotic(context_t *ctx, double t, complex double *ans)
   ans[5]=com*b0*den1/ctx->somnec.evlcom.ck1;
   com *= den2;
 
+  if (trace_fp) {
+    fprintf(trace_fp, "  den1=%.15e%+.15ej den2=%.15e%+.15ej com=%.15e%+.15ej\n", creal(den1), cimag(den1), creal(den2), cimag(den2), creal(com), cimag(com));
+    fprintf(trace_fp, "  rho=%.15e b0p=%.15e%+.15ej b0=%.15e%+.15ej\n", ctx->somnec.evlcom.rho, creal(b0p), cimag(b0p), creal(b0), cimag(b0));
+  }
+
   if(ctx->somnec.evlcom.rho != 0.)
   {
     b0p=b0p/ctx->somnec.evlcom.rho;
@@ -1004,6 +1197,12 @@ void sommerfeld_asymptotic(context_t *ctx, double t, complex double *ans)
   ans[1]=com*cgam2*cgam2*b0;
   ans[2]=-ans[3]*cgam2*ctx->somnec.evlcom.rho;
   ans[4]=com*b0;
+
+  if (trace_fp) {
+    fprintf(trace_fp, "  Computed values (first 3 components): ans[0]=%.6e%+.6ej ans[1]=%.6e%+.6ej ans[2]=%.6e%+.6ej\n",
+        creal(ans[0]), cimag(ans[0]), creal(ans[1]), cimag(ans[1]), creal(ans[2]), cimag(ans[2]));
+    fclose(trace_fp);
+  }
 
   return;
 }

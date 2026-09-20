@@ -16,7 +16,7 @@
 #define ACCS	1.E-12
 #define	SP		1.772453851
 #define	CCJ		(0.0-I*0.01666666667)
-#define	CONST1	(0.0+I*4.771341189)
+#define	CONST1	(0.0+I*4.77147)
 #define	CONST2	4.771341188
 #define	CONST3	(0.0-I*29.97922085)
 #define	CONST4	(0.0+I*188.365)
@@ -264,6 +264,8 @@ typedef struct
 		*table1,     /* ar1 — Fortran AR1(11,10,4): Sommerfeld table 1 */
 		*table2,     /* ar2 — Fortran AR2(17,5,4): Sommerfeld table 2 */
 		*table3;     /* ar3 — Fortran AR3(9,8,4): Sommerfeld table 3 */
+
+	unsigned long grid_generation;  /* Issue #15 fix: generation stamp for cache validation */
 
 } green_grid_t;
 
@@ -522,6 +524,7 @@ typedef struct
 	int nxm2, nym2, nxms, nyms, nd, ndp;
 	double dx, dy, xs, ys, xz, yz;
 	complex double a[4][4], b[4][4], c[4][4], d[4][4];
+	unsigned long cache_generation; /* Issue #15 fix: invalidate cache when grid refilled */
 } intrp_t;
 
 /*common  /tmh/ */
