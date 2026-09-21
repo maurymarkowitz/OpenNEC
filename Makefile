@@ -35,9 +35,48 @@ else ifeq ($(RELEASE),1)
     $(info Building release binary (RELEASE=1); debug symbols omitted)
 endif
 
-# Detect platform
+# Detect platform (before OpenMP setup so we can use it)
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
+
+# OpenMP support for parallel matrix fill operations
+# Usage: make OPENMP=1 (or set OPENMP_CFLAGS and OPENMP_LDFLAGS manually)
+# Disable with: make OPENMP=0
+OPENMP ?= 0
+OPENMP_CFLAGS ?=
+OPENMP_LDFLAGS ?=
+
+ifeq ($(OPENMP),1)
+    ifneq ($(OPENMP_CFLAGS),)
+        CFLAGS += $(OPENMP_CFLAGS)
+    else
+        # Auto-detect OpenMP flags for the current compiler
+        ifeq ($(UNAME_S),Darwin)
+            # macOS: clang doesn't have built-in OpenMP, need explicit flags
+            $(warning OpenMP requested on macOS but no OPENMP_CFLAGS provided. Please provide: make OPENMP=1 OPENMP_CFLAGS="-I/path/to/omp/include -fopenmp" OPENMP_LDFLAGS="-L/path/to/omp/lib -lomp")
+        else
+            # Linux/Windows: GCC/Clang include built-in OpenMP support
+            CFLAGS += -fopenmp
+        endif
+    endif
+    
+    ifneq ($(OPENMP_LDFLAGS),)
+        LDFLAGS += $(OPENMP_LDFLAGS)
+    else
+        # Auto-detect OpenMP linker flags
+        ifeq ($(UNAME_S),Darwin)
+            # macOS: user should provide via OPENMP_LDFLAGS
+        else
+            # Linux/Windows: GCC/Clang include built-in OpenMP
+            LDFLAGS += -fopenmp
+        endif
+    endif
+    
+    $(info OpenMP support enabled (OPENMP=1))
+else
+    $(info OpenMP support disabled (OPENMP=0 or not specified))
+endif
+
 
 # Matrix library backend selection
 # Usage: make BACKEND=<backend>
@@ -313,9 +352,15 @@ help:
 	@echo "Options:"
 	@echo "  DEBUG=1     - Enable AddressSanitizer for memory debugging"
 	@echo "  RELEASE=1   - Build smaller release binary (strips debug symbols)"
+	@echo "  OPENMP=1    - Enable OpenMP parallel matrix fill (default: disabled)"
 	@echo "  PREFIX      - Installation prefix"
 	@echo "                Unix/Linux/macOS: default /usr/local"
 	@echo "                Windows: default %%PROGRAMFILES%%\OpenNEC"
+	@echo ""
+	@echo "OpenMP Configuration:"
+	@echo "  OPENMP=0                 - Disable OpenMP (default)"
+	@echo "  OPENMP=1                 - Enable OpenMP (auto-detect flags on Linux/Windows)"
+	@echo "  OPENMP=1 OPENMP_CFLAGS=... OPENMP_LDFLAGS=... - Manual OpenMP config"
 	@echo ""
 	@echo "Backends:"
 	@echo "  auto        - Auto-detect best available library (default)"
@@ -339,6 +384,8 @@ help:
 	@echo "  make BACKEND=original     # Use original implementation"
 	@echo "  make DEBUG=1              # Build with AddressSanitizer"
 	@echo "  make debug                # Same as make DEBUG=1"
+	@echo "  make OPENMP=1             # Build with OpenMP (auto-detect on Linux/Windows)"
+	@echo "  make OPENMP=1 OPENMP_CFLAGS=\"-I/opt/libomp/include -fopenmp\" OPENMP_LDFLAGS=\"-L/opt/libomp/lib -lomp\"  # macOS with custom libomp"
 	@echo "  make install              # Install to default location"
 	@echo "  make PREFIX=/opt install  # Install to /opt (Unix/Linux/macOS)"
 	@echo "  make PREFIX=D:\MyApps install  # Install to D:\MyApps (Windows)"
