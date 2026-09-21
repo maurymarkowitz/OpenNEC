@@ -1,0 +1,35 @@
+{
+  "_comment": "Registry of all CI test suites. Each suite is auto-discovered and run by run_ci_tests.py. Add new test suites by adding entries here without modifying CI workflows.",
+  
+  "test_suites": [
+    {
+      "id": "golden-impedance",
+      "name": "Golden Impedance Matrix (Regression Floor)",
+      "description": "Core antenna impedance validation against nec2c reference. All 12 points must pass at 1e-4 relative tolerance.",
+      "runner": "tests/golden_tests/run_golden.py",
+      "required": true,
+      "platforms": ["Linux", "Darwin", "Windows"],
+      "args": ["--onec", "{ONEC_BIN}", "--decks", "tests/golden_tests/decks", "--expected", "tests/golden_tests/expected.json"],
+      "timeout_seconds": 300,
+      "cleanup_patterns": [
+        "tests/golden_tests/decks/*.out",
+        "{TMPDIR}/golden-*"
+      ]
+    },
+    {
+      "id": "golden-open-issues",
+      "name": "Golden Impedance Matrix (Open Issues)",
+      "description": "Known failing impedance tests blocked on open issues (e.g., Issue #14). Currently contains deck 11 only. Expected to fail until issue is closed.",
+      "runner": "tests/golden_tests/run_golden.py",
+      "required": false,
+      "platforms": ["Linux", "Darwin", "Windows"],
+      "args": ["--onec", "{ONEC_BIN}", "--decks", "tests/golden_tests/decks", "--expected", "tests/golden_tests/expected_open.json"],
+      "timeout_seconds": 300,
+      "expect_failure": true,
+      "cleanup_patterns": [
+        "tests/golden_tests/decks/*.out",
+        "{TMPDIR}/golden-*"
+      ]
+    }
+  ]
+}

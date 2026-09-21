@@ -35,6 +35,17 @@ thread_safety_refactor_todo.md
 *.onec
 *.ngf
 
+# CI test suite outputs (golden tests, etc.)
+tests/golden_tests/decks/*.out
+tests/*/decks/*.out
+tests/*/*.out
+
+# Temporary test directories
+/tmp/golden-*
+/tmp/freq-sweep-*
+${TMPDIR}/golden-*
+${TMPDIR}/freq-sweep-*
+
 # local test output (use project tmp/ instead of /tmp/)
 tmp/*
 !tmp/.gitkeep

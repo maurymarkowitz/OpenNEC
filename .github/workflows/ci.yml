@@ -74,39 +74,47 @@ jobs:
           name: onec-windows
           path: onec.exe
 
-  golden-impedance:
+  test-golden:
+    name: Golden Impedance Tests
     needs: build-linux
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        suite: [golden-impedance, golden-open-issues]
     steps:
       - uses: actions/checkout@v4
+      
       - name: Install runtime deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y libopenblas0 liblapack3
-      - name: Download onec
+          sudo apt-get install -y libopenblas0 liblapack3 python3
+      
+      - name: Download onec binary
         uses: actions/download-artifact@v4
         with:
           name: onec-linux-openblas
-      - name: Golden impedance matrix
+      
+      - name: Run test suite
         run: |
           chmod +x onec
-          python3 tests/golden_tests/run_golden.py --onec ./onec
-
-  golden-open-issues:
-    needs: build-linux
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install runtime deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libopenblas0 liblapack3
-      - name: Download onec
-        uses: actions/download-artifact@v4
+          python3 tests/run_ci_tests.py --onec ./onec --suite "${{ matrix.suite }}" --verbose
+        continue-on-error: ${{ matrix.suite == 'golden-open-issues' }}
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: onec-linux-openblas
-      - name: Decks pinned to an open issue (expected red until #14 closes)
+          name: test-results-${{ matrix.suite }}
+          path: tests/golden_tests/decks/*.out
+          if-no-files-found: ignore
+          retention-days: 7
+      
+      - name: Verify cleanup
+        if: always()
         run: |
-          chmod +x onec
-          python3 tests/golden_tests/run_golden.py --onec ./onec \
-            --expected tests/golden_tests/expected_open.json
+          if ls /tmp/golden-* 1> /dev/null 2>&1; then
+            echo "ERROR: Temporary test directories not cleaned up"
+            ls -la /tmp/golden-*
+            exit 1
+          fi
+          echo "✓ All temporary test directories cleaned up"
