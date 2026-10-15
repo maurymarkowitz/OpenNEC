@@ -257,11 +257,19 @@ int mem_alloc( const context_t *ctx, void **ptr, size_t req )
 
 int mem_realloc(const context_t *ctx, void **ptr, size_t req)
 {
-  *ptr = realloc(*ptr, req);
-  if(*ptr == NULL) {
+  void *resized;
+
+  if(req == 0) {
+    mem_free(ctx, ptr);
+    return 0;
+  }
+
+  resized = realloc(*ptr, req);
+  if(resized == NULL) {
 	add_error(ctx, (errors_list_t*)&ctx->errors, "Memory reallocation failed", FATAL);
 	return -1;
   }
+  *ptr = resized;
   return 0;
 } /* End of mem_realloc() */
 
@@ -789,4 +797,3 @@ double estimate_time(context_t *ctx, deck_t *deck)
 
   return Nfreq * (T1 + T2 + T3 + T4);
 }
-

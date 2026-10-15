@@ -1101,7 +1101,7 @@ static int process_rp_card(context_t *ctx, deck_t *deck, int card_idx,
     const card_t *card = &deck->cards[card_idx];
     
     /* If RP is the first pattern request (no XQ), treat it as execute card */
-    if (state->num_rp_cards == 0 && state->card_sequence_state < 7) {
+    if (state->card_sequence_state < 7) {
         /* This RP is acting as the execute request card
          * Collect this RP and any following RP/NE/NH cards, then execute */
         
@@ -1179,8 +1179,12 @@ static int process_rp_card(context_t *ctx, deck_t *deck, int card_idx,
             }
         }
         
-        /* Execute frequency loop (this RP triggers execution) */
-        return execute_frequency_loop_sequential(ctx, deck, card_idx, state);
+        /* Execute frequency loop (this RP triggers execution).  NEC-2 leaves
+         * IFLOW at 10 after RP so a following bare XQ does not execute the
+         * same frequency request again. */
+        int result = execute_frequency_loop_sequential(ctx, deck, card_idx, state);
+        if (result == 0) state->card_sequence_state = 10;
+        return result;
     }
     
     /* RP is part of a pattern collection (after XQ), just update parameters
@@ -1805,6 +1809,7 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
             /* Store matrix timing in context for output.c to use */
             ctx->mat_fill_time = fill_time;
             ctx->mat_factor_time = factor_time;
+            ctx->netcx.network_type = 0;
             
             state->processing_stage = 3;
         }

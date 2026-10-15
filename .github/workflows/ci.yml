@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        suite: [golden-impedance, golden-open-issues]
+        suite: [golden-impedance, golden-open-issues, sequential-execution]
     steps:
       - uses: actions/checkout@v4
       

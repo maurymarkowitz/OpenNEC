@@ -1,0 +1,9 @@
+CM RP executes the sweep; trailing XQ must not execute it again
+CE
+GW 1 21 -5.03 0 9.144 5.03 0 9.144 0.001
+GE 0
+EX 0 1 11 0 1 0
+FR 0 3 0 0 14.0 0.1
+RP 0 3 2 1000 0 0 45 180
+XQ 0
+EN

@@ -1,0 +1,11 @@
+CM A TL frequency sweep must rebuild cached network equations at every step
+CE
+GW 1 10 0 0 0 0 0 10 0.003
+GW 2 10 10.5 0 0 10.5 0 10 0.003
+GE 1
+GN 1
+EX 0 1 1 0 1 0
+TL 1 1 2 1 50 8.0 0 0 0 0
+FR 0 13 0 0 7 0.025
+RP 0 37 36 1000 0 0 5 10 0 0
+EN

@@ -30,6 +30,19 @@
         "tests/golden_tests/decks/*.out",
         "{TMPDIR}/golden-*"
       ]
+    },
+    {
+      "id": "sequential-execution",
+      "name": "Sequential FR/RP/XQ Execution",
+      "description": "RP sweeps execute once, repeated standalone FR/RP groups execute, and TL network state rebuilds at every frequency step.",
+      "runner": "tests/sequential_execution/run_sequential_execution_tests.py",
+      "required": true,
+      "platforms": ["Linux", "Darwin", "Windows"],
+      "args": ["--onec", "{ONEC_BIN}"],
+      "timeout_seconds": 120,
+      "cleanup_patterns": [
+        "{TMPDIR}/onec-sequential-*"
+      ]
     }
   ]
 }
