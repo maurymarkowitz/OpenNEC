@@ -1,8 +1,9 @@
 /*
- * reporting.c - Card-by-Card Sequential Processing for OpenNEC
+ * reporting.c - card-by-card sequential processing for OpenNEC
  *
  * Implements sequential (one-at-a-time) card processing following the
- * original Fortran NEC-2 / nec2c design pattern.
+ * original Fortran NEC-2 / nec2c design pattern. This replaces the batch-oriented
+ * version previously used in OpenNEC.
  *
  * References:
  * - Fortran NEC: ~/Downloads/Nec2dXS_src/nec2dxs.f (lines 14, 40-120, 293-307)
@@ -1795,7 +1796,7 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         mem_alloc(ctx, (void **)&ctx->save.pivot, mreq);
         if (!ctx->save.pivot) {
             add_error(ctx, &ctx->errors, "Failed to allocate pivot array", FATAL);
-            mem_free(ctx, (void *)&cm);
+            mem_free(ctx, (void **)&cm);
             free_frequency_loop_storage(ctx);
             return -1;
         }
@@ -1810,7 +1811,7 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         mem_alloc(ctx, (void **)&ctx->crnt.surface_cur, mreq);
         if (!ctx->crnt.surface_cur) {
             add_error(ctx, &ctx->errors, "Failed to allocate surface current array", FATAL);
-            mem_free(ctx, (void *)&cm);
+            mem_free(ctx, (void **)&cm);
             free_frequency_loop_storage(ctx);
             return -1;
         }
@@ -1829,7 +1830,7 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
     if (ctx->matpar.core_used == 0) {
         if (factor_block_matrix(ctx, ctx->netcx.num_eq_sym, ctx->netcx.num_eq, (int)iresrv, ctx->geometry.symmetry_flag) != 0) {
             add_error(ctx, &ctx->errors, "Failed to set up block matrix structure", FATAL);
-            mem_free(ctx, (void *)&cm);
+            mem_free(ctx, (void **)&cm);
             free_frequency_loop_storage(ctx);
             return -1;
         }
@@ -1905,7 +1906,7 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
             if (fill_interaction_matrix(ctx, ctx->netcx.num_eq, 
                                        cm, state->matrix_integration_limit, state->use_extended_kernel) != 0) {
                 restore_geometry(ctx, (const card_state_t *)state);
-                mem_free(ctx, (void *)&cm);
+                mem_free(ctx, (void **)&cm);
                 return -1;
             }
             
@@ -1957,10 +1958,10 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
         
         } /* End skip matrix operations block */
         
-        /* Write all frequency-dependent output (antenna input, currents, power) BEFORE patterns
-           Only output once per unique frequency, not for every XQ in that frequency */
-        if (state->processing_stage >= 4 && ctx->output_fp &&
-            fabs(state->current_frequency_mhz - state->last_freq_output_mhz) > 1e-6) {
+        /* Write all frequency-dependent output (antenna input, currents, power) BEFORE patterns.
+         * This must run for every solved execution step, even when a later XQ reuses a
+         * frequency value that appeared in a prior FR/XQ block (e.g., NEC-2 Example 2). */
+        if (state->processing_stage >= 4 && ctx->output_fp) {
             write_frequency_step_output(ctx->output_fp, ctx);
             state->last_freq_output_mhz = state->current_frequency_mhz;
         }
@@ -2003,7 +2004,7 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
     restore_geometry(ctx, (const card_state_t *)state);
     
     /* Free matrix (keep pivot in context for potential reuse) */
-    mem_free(ctx, (void *)&cm);
+    mem_free(ctx, (void **)&cm);
     
     /* Free frequency loop storage */
     free_frequency_loop_storage(ctx);

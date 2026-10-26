@@ -1,12 +1,17 @@
 Using OpenNEC (onec) with 4nec2
 ===============================
 
-## Overview
+Introduction
+------------
 
-OpenNEC (`onec`) can be used as a drop-in replacement for the traditional NEC-2 calculation engines in 4nec2, providing better performance, cross-platform compatibility, and supporting models with large numbers of segments. This guide explains how to configure 4nec2 to use `onec` instead of the older Fortran-based executables that are supplied with 4nec2.
+The OpenNEC command-line program, `onec`, can be used as a drop-in replacement for the traditional NEC-2 calculation engines in 4nec2. OpenNEC provides much better performance, cross-platform compatibility, and supports models with large numbers of segments. This guide explains how to [configure 4nec2 to use onec](#configuring-4nec2-to-use-opennec) instead of the older Fortran-based executables that are supplied with 4nec2.
 
-Setting Up OpenNEC with 4nec2
-=============================
+4nec2's internal file format is a modified version of the format used by the Fortran code. It works by writing out a temporary deck with those modifications replaced with values the Fortran code can work with. OpenNEC can read these Fortran-style temporary files and produce output like what 4nec2 expects. See the section one [how 4nec2 invokes NEC engines](#how-4nec2-invokes-nec-engines) for details on this process.
+
+OpenNEC is also designed to be able to process 4nec2 files directly, without this conversion. This allows you to run 4nec2 decks on machines where 4nec2 is not available, like macOS and Linux. However, "raw" 4nec2 often lack output cards, so while the deck will be processed and calculated, it often produces no useful output. To deal with this case, `onec` has the `-a` command line switch to generate default output. See the section on [default RP addition](#default-rp-addition) for details.
+
+Configuring 4nec2 to use OpenNEC
+--------------------------------
 
 4nec2 ships with several calculation engines based on variations of the original Fortran code:
 
@@ -52,7 +57,7 @@ To return to the original Fortran-based engines:
 The original engines remain intact and can be selected anytime. You can also simply delete `onec.exe` from the `exe` folder if you no longer need it.
 
 How 4nec2 invokes NEC engines
-=============================
+-----------------------------
 
 The original Fortran code, which ships with the 4nec2 install, is an interactive program which prompts the user for filenames for the input and output files. To drive these programs in an automated fashion, 4nec2 writes the input file to disk with the `.inp` extension and has the Fortran code write the results to a file with the `.out` extension. It then reads the `.out` file and parses it to get the results.
 
@@ -79,7 +84,7 @@ So the overall control flow is:
 3. **Output Handling**: The engine writes results to the `.out` file, which 4nec2 captures for display
 
 Default RP addition
-===================
+-------------------
 
 Many antenna models in 4nec2 don't include explicit radiation pattern (RP) requests in their NEC decks. This is because the 4nec2 GUI (normally) adds one to the .inp file when it's being written out. These RP's (or NH or NE) cards are not added to the .nec deck that 4nec2 saves out, they are only added on-the-fly during processing of the .inp.
 
@@ -92,7 +97,7 @@ If the deck already has reporting cards in it, this option does nothing. This me
 NOTE: this issue only comes up if you're running the file in OpenNEC "by hand" in the terminal or some other program, if you're using it *within* 4nec2, as this document describes, then it will be handed the .inp file that 4nec2 built, and that file *will* have the RP in it.
 
 Technical Considerations
-========================
+------------------------
 
 ### OpenNEC compatibility with nec2d
 
@@ -145,7 +150,7 @@ This allows 4nec2 to work with complex antenna arrays beyond the original NEC-2 
 - OpenNEC implements Sommerfeld-Norton ground calculation identically to the original somnec2d algorithm
 
 Troubleshooting
-===============
+---------------
 
 ### Issue: "Engine not found" or "Access denied"
 
@@ -171,7 +176,7 @@ Troubleshooting
 - Simply select `onec.exe` in 4nec2 Settings and you won't need any Fortran libraries
 
 Performance Comparison
-======================
+----------------------
 
 Typical improvements when using OpenNEC:
 
@@ -185,7 +190,7 @@ Typical improvements when using OpenNEC:
 *Performance depends on CPU and model complexity*
 
 Advanced: Command-Line Mode
-===========================
+---------------------------
 
 4nec2 supports command-line mode (since v5.7.3). This works seamlessly with OpenNEC:
 
@@ -204,7 +209,7 @@ onec.exe < input.tmp > output.txt
 This works because 4nec2 handles all pre/post-processing and simply invokes the selected NEC engine via stdin/stdout.
 
 References
-==========
+----------
 
 - [OpenNEC GitHub Repository](https://github.com/maurymarkowitz/OpenNEC)
 - [4nec2 Home Page](http://www.qsl.net/4nec2/)

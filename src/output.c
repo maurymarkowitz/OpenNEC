@@ -2021,6 +2021,7 @@ static int write_segments(context_t *ctx, const deck_t *deck, FILE *file)
   double xw1, yw1, zw1;
   double xw2, yw2;
 
+  // segment data...
   for (int i = 0; i < ctx->geometry.num_segs; i++)
   {
     xw1 = ctx->geometry.end2_x[i] - ctx->geometry.end1_x[i];
@@ -2085,8 +2086,12 @@ static int write_segments(context_t *ctx, const deck_t *deck, FILE *file)
 
   } /* for( i = 0; i < data.n; i++ ) */
 
+  // and a blank
   fprintf(ctx->output_fp, "\n");
-  
+  if (ctx->output_format == OUTPUT_FORMAT_ORIGINAL)
+    // fprintf(ctx->output_fp, "\n\n\n\n\n\n"); // to match nec2/mp output
+    fprintf(ctx->output_fp, "\n"); // one is sufficient for correct 4nec2 loading .out
+    
   /* Print patch data as final part of geometry output block (matching Fortran flow) */
   write_patches(ctx, deck, file);
   
@@ -2144,6 +2149,8 @@ static void write_patches(const context_t *ctx, const deck_t *deck, FILE *file)
             i + 1, ctx->geometry.patch_x_center[i], ctx->geometry.patch_y_center[i], ctx->geometry.patch_z_center[i], xw1, yw1, zw1, ctx->geometry.patch_area[i],
             ctx->geometry.patch_t1x[i], ctx->geometry.patch_t1y[i], ctx->geometry.patch_t1z[i], ctx->geometry.patch_t2x[i], ctx->geometry.patch_t2y[i], ctx->geometry.patch_t2z[i]);
   } /* for( i = 0; i < data.m; i++ ) */
+
+  // and a blank...
   fprintf(ctx->output_fp, "\n");
 }
 
