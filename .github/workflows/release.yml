@@ -257,24 +257,24 @@ jobs:
           cd OpenBLAS
           # Build static library only, no shared
           make BINARY=64 NO_SHARED=1 -j$(nproc)
-          # Install to a known local location (avoid system paths)
-          mkdir -p /tmp/openblas-build/lib /tmp/openblas-build/include
-          cp libopenblas.a /tmp/openblas-build/lib/
-          cp cblas.h /tmp/openblas-build/include/
-          cp openblas_config.h /tmp/openblas-build/include/
+          # Install to a known local location
+          # On MSYS2, /tmp actually maps to AppData/Local/Temp, but we need to use the Windows path or an absolute location
+          mkdir -p "$HOME/openblas-build/lib" "$HOME/openblas-build/include"
+          cp libopenblas.a "$HOME/openblas-build/lib/"
+          cp cblas.h "$HOME/openblas-build/include/"
+          cp openblas_config.h "$HOME/openblas-build/include/"
           echo "=== OpenBLAS installation ==="
-          ls -lh /tmp/openblas-build/lib/libopenblas.a
-          ls -lh /tmp/openblas-build/include/cblas.h
+          ls -lh "$HOME/openblas-build/lib/libopenblas.a"
+          ls -lh "$HOME/openblas-build/include/cblas.h"
       - name: Build OpenNEC with local OpenBLAS
         shell: bash -l {0}
         run: |
           # Use the locally built OpenBLAS by setting MINGW_OPENBLAS_PREFIX
-          # This makes the Makefile find the library in /tmp/openblas-build instead of /mingw64
           make clean
           make RELEASE=1 \
             CC=x86_64-w64-mingw32-gcc \
             BACKEND=openblas \
-            MINGW_OPENBLAS_PREFIX=/tmp/openblas-build
+            MINGW_OPENBLAS_PREFIX=$HOME/openblas-build
       - name: Package
         shell: bash -l {0}
         run: |
