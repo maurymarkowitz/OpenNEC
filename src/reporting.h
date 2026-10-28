@@ -96,8 +96,6 @@ typedef struct {
     
     bool seen_output_card;      /**< True if RP, NE, NH, or other output card has been seen */
     
-    double last_freq_output_mhz;  /**< Last frequency for which frequency output was written */
-    
 } card_state_t;
 
 /**

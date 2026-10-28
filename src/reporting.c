@@ -79,7 +79,6 @@ void init_card_state(card_state_t *state)
     state->last_processed_pattern_idx = -1;
     state->num_rp_cards = 0;
     state->seen_output_card = false;  /* Track if we've seen an output card (RP/NE/NH) */
-    state->last_freq_output_mhz = -999.0;  /* Initialize to impossible frequency */
 }
 
 void free_card_state(card_state_t *state)
@@ -1963,7 +1962,6 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
          * frequency value that appeared in a prior FR/XQ block (e.g., NEC-2 Example 2). */
         if (state->processing_stage >= 4 && ctx->output_fp) {
             write_frequency_step_output(ctx->output_fp, ctx);
-            state->last_freq_output_mhz = state->current_frequency_mhz;
         }
         
         /* Compute and output radiation patterns if collected from look-ahead */
