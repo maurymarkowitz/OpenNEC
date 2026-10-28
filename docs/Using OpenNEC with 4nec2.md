@@ -8,7 +8,7 @@ The OpenNEC command-line program, `onec`, can be used as a drop-in replacement f
 
 4nec2's internal file format is a modified version of the format used by the Fortran code. It works by writing out a temporary deck with those modifications replaced with values the Fortran code can work with. OpenNEC can read these Fortran-style temporary files and produce output like what 4nec2 expects. See the section one [how 4nec2 invokes NEC engines](#how-4nec2-invokes-nec-engines) for details on this process.
 
-OpenNEC is also designed to be able to process 4nec2 files directly, without this conversion. This allows you to run 4nec2 decks on machines where 4nec2 is not available, like macOS and Linux. However, "raw" 4nec2 often lack output cards, so while the deck will be processed and calculated, it often produces no useful output. To deal with this case, `onec` has the `-a` command line switch to generate default output. See the section on [default RP addition](#default-rp-addition) for details.
+OpenNEC is also designed to be able to process 4nec2 files directly, without this conversion. This allows you to run 4nec2 decks on machines where 4nec2 is not available, like macOS and Linux. However, "raw" 4nec2 decks often lack output cards, so while the deck will be processed and calculated, it often produces no useful output. To deal with this case, `onec` has the `-a` command line switch to generate default output. See the section on [default RP addition](#default-rp-addition) for details.
 
 Configuring 4nec2 to use OpenNEC
 --------------------------------
