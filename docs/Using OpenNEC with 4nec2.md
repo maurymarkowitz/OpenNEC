@@ -86,11 +86,11 @@ So the overall control flow is:
 Default RP addition
 -------------------
 
-Many antenna models in 4nec2 don't include explicit radiation pattern (RP) requests in their NEC decks. This is because the 4nec2 GUI (normally) adds one to the .inp file when it's being written out. These RP's (or NH or NE) cards are not added to the .nec deck that 4nec2 saves out, they are only added on-the-fly during processing of the .inp.
+Many antenna models in 4nec2 don't include explicit radiation pattern (RP) requests in their NEC decks. This is because the 4nec2 GUI (normally) adds one to the `.inp` file when it's being written out. These RP's (or NH or NE) cards are not added to the `.nec` deck that 4nec2 saves out when the user saves their file, they are only added on-the-fly during processing of the `.inp`.
 
-So if you download a deck that was created in 4nec2, it probably doesn't contain any reporting cards. This doesn't break anything in OpenNEC, the deck will run fine, but when you look at the .out report it might seem "odd" to someone expecting a complete report like the .out files that 4nec2 would generate in this case. 
+So if you download a deck that was created in 4nec2, it probably doesn't contain any reporting cards. This doesn't break anything in OpenNEC, the deck will run fine, but when you look at the `.out` report it might seem "odd" to someone expecting a complete report like the `.out` files that 4nec2 would generate in this case. 
 
-To help out in this situation, and especially when batch-running multiple files that may include 4nec2 decks, OpenNEC provides the `--add-rp` (short form `-a`) option to automatically inject a default RP if there are no reporting cards in the deck. This generates a horizontal pattern (slice at 90° elevation) with 1° azimuth resolution, covering the full 360° azimuth range.
+To help out in this situation, and especially when batch-running multiple files that may include 4nec2 decks, OpenNEC provides the `--add-rp` (short form `-a`) option to automatically inject a default RP if there are no reporting cards in the deck. This generates a horizontal pattern (slice at 90° elevation) with 1° azimuth resolution, covering the full 360° slice.
 
 If the deck already has reporting cards in it, this option does nothing. This means it's safe to use with "real" NEC-2 decks which will almost always include one of these cards, 4nec2 with explicit reporting (which is not *that* uncommon), as well as 4nec2 decks lacking the reports. A mixed collection of such files will produce useful output for all of these cases.
 
