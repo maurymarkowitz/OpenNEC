@@ -256,12 +256,15 @@ jobs:
           git clone --depth 1 https://github.com/OpenMathLib/OpenBLAS.git
           cd OpenBLAS
           # Build static library only, no shared
-          make BINARY=64 ONLY_CBLAS=1 NO_SHARED=1 -j$(nproc)
+          make BINARY=64 NO_SHARED=1 -j$(nproc)
           # Install to a known local location (avoid system paths)
-          make PREFIX=/tmp/openblas-build install
+          mkdir -p /tmp/openblas-build/lib /tmp/openblas-build/include
+          cp libopenblas.a /tmp/openblas-build/lib/
+          cp cblas.h /tmp/openblas-build/include/
+          cp openblas_config.h /tmp/openblas-build/include/
           echo "=== OpenBLAS installation ==="
           ls -lh /tmp/openblas-build/lib/libopenblas.a
-          ls -lh /tmp/openblas-build/include/openblas.h
+          ls -lh /tmp/openblas-build/include/cblas.h
       - name: Build OpenNEC with local OpenBLAS
         shell: bash -l {0}
         run: |
