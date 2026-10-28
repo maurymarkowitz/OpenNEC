@@ -1,5 +1,8 @@
 OpenNEC version history
 
+Version 2.3.1 - 2026 October 28
+- final touchups and fixes for release
+
 Version 2.3.0 - 2026 October 23
 - added --add-rp/-a flag for working with 4nec2 decks (see docs)
 - added "type" to deck_t to track the type: unknown, NEC2, NEC4, NEC5 or 4nec2
