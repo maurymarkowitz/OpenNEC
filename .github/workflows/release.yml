@@ -258,9 +258,14 @@ jobs:
           set -e
 
           PREFIX=/mingw64
+          OPENBLAS_INCLUDE_DIR="$PREFIX/include/openblas"
+          if [ ! -d "$OPENBLAS_INCLUDE_DIR" ]; then
+            OPENBLAS_INCLUDE_DIR="$PREFIX/include"
+          fi
+
           test -s "$PREFIX/lib/libopenblas.a"
-          test -s "$PREFIX/include/openblas/cblas.h"
-          test -s "$PREFIX/include/openblas/openblas_config.h"
+          test -s "$OPENBLAS_INCLUDE_DIR/cblas.h"
+          test -s "$OPENBLAS_INCLUDE_DIR/openblas_config.h"
           pkg-config --cflags --libs openblas
 
       - name: Build OpenNEC with packaged static OpenBLAS
@@ -291,6 +296,10 @@ jobs:
 
           DIST="onec-windows-x86_64-openblas"
           PREFIX=/mingw64
+          OPENBLAS_INCLUDE_DIR="$PREFIX/include/openblas"
+          if [ ! -d "$OPENBLAS_INCLUDE_DIR" ]; then
+            OPENBLAS_INCLUDE_DIR="$PREFIX/include"
+          fi
 
           mkdir -p "dist/${DIST}/lib" "dist/${DIST}/include" "dist/${DIST}/bin"
 
@@ -302,8 +311,8 @@ jobs:
 
           # OpenBLAS static library and headers
           cp "$PREFIX/lib/libopenblas.a" "dist/${DIST}/lib/"
-          cp "$PREFIX/include/openblas/cblas.h" "dist/${DIST}/include/"
-          cp "$PREFIX/include/openblas/openblas_config.h" "dist/${DIST}/include/"
+          cp "$OPENBLAS_INCLUDE_DIR/cblas.h" "dist/${DIST}/include/"
+          cp "$OPENBLAS_INCLUDE_DIR/openblas_config.h" "dist/${DIST}/include/"
 
           # OpenNEC headers
           cp src/opennec.h src/types.h src/deck.h src/input.h src/output.h \
