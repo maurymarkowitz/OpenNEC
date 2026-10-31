@@ -212,7 +212,7 @@ jobs:
         run: |
           export PATH="/c/msys64/mingw64/bin:$PATH"
           make clean
-          make RELEASE=1 LDFLAGS="-static" CC=x86_64-w64-mingw32-gcc BACKEND=original
+          make RELEASE=1 STATIC_LINK=1 CC=x86_64-w64-mingw32-gcc BACKEND=original
       - name: Package
         shell: bash -l {0}
         run: |
@@ -248,71 +248,41 @@ jobs:
           update: true
           install: |
             mingw-w64-x86_64-toolchain
-            git
+            mingw-w64-x86_64-openblas
+            pkgconf
             make
 
-      - name: Build OpenBLAS locally
+      - name: Verify packaged static OpenBLAS
         shell: bash -l {0}
         run: |
           set -e
 
-          PREFIX="$HOME/openblas-build"
-
-          echo "=== Toolchain ==="
-          which gcc
-          gcc --version
-          which gfortran
-          gfortran --version
-
-          echo "=== Building OpenBLAS ==="
-          cd "$RUNNER_TEMP"
-
-          git clone --depth 1 https://github.com/OpenMathLib/OpenBLAS.git
-          cd OpenBLAS
-
-          # Build a static 64-bit MinGW library.
-          make BINARY=64 NO_SHARED=1 CC=gcc FC=gfortran HOSTCC=gcc -j$(nproc)
-
-          echo "=== OpenBLAS build outputs ==="
-          ls -lh libopenblas.a
-          ls -lh cblas.h
-          ls -lh openblas_config.h
-
-          # Install manually rather than using OpenBLAS make install.
-          mkdir -p "$PREFIX/lib" "$PREFIX/include"
-
-          cp libopenblas.a "$PREFIX/lib/"
-          cp cblas.h "$PREFIX/include/"
-          cp openblas_config.h "$PREFIX/include/"
-
-          echo "=== OpenBLAS installation ==="
-          ls -lh "$PREFIX/lib/libopenblas.a"
-          ls -lh "$PREFIX/include/cblas.h"
-          ls -lh "$PREFIX/include/openblas_config.h"
-
-          # Fail immediately if any required file is missing.
+          PREFIX=/mingw64
           test -s "$PREFIX/lib/libopenblas.a"
-          test -s "$PREFIX/include/cblas.h"
-          test -s "$PREFIX/include/openblas_config.h"
+          test -s "$PREFIX/include/openblas/cblas.h"
+          test -s "$PREFIX/include/openblas/openblas_config.h"
+          pkg-config --cflags --libs openblas
 
-      - name: Build OpenNEC with local OpenBLAS
+      - name: Build OpenNEC with packaged static OpenBLAS
         shell: bash -l {0}
         run: |
           set -e
-
-          PREFIX="$HOME/openblas-build"
 
           echo "=== OpenNEC BLAS build ==="
           make clean
 
           make RELEASE=1 \
             CC=gcc \
-            LDFLAGS="-static" \
+            STATIC_LINK=1 \
+            STATIC_BLAS=1 \
             BACKEND=openblas \
-            MINGW_OPENBLAS_PREFIX="$PREFIX"
+            MINGW_OPENBLAS_PREFIX=/mingw64
 
           echo "=== Build outputs ==="
           ls -lh onec.exe libonec.a
+
+          # A release must not depend on the OpenBLAS or MinGW runtime DLLs.
+          ! x86_64-w64-mingw32-objdump -p onec.exe | grep -Ei 'DLL Name:.*(openblas|gfortran|gcc|quadmath|winpthread)'
 
       - name: Package
         shell: bash -l {0}
@@ -320,7 +290,7 @@ jobs:
           set -e
 
           DIST="onec-windows-x86_64-openblas"
-          PREFIX="$HOME/openblas-build"
+          PREFIX=/mingw64
 
           mkdir -p "dist/${DIST}/lib" "dist/${DIST}/include" "dist/${DIST}/bin"
 
@@ -332,8 +302,8 @@ jobs:
 
           # OpenBLAS static library and headers
           cp "$PREFIX/lib/libopenblas.a" "dist/${DIST}/lib/"
-          cp "$PREFIX/include/cblas.h" "dist/${DIST}/include/"
-          cp "$PREFIX/include/openblas_config.h" "dist/${DIST}/include/"
+          cp "$PREFIX/include/openblas/cblas.h" "dist/${DIST}/include/"
+          cp "$PREFIX/include/openblas/openblas_config.h" "dist/${DIST}/include/"
 
           # OpenNEC headers
           cp src/opennec.h src/types.h src/deck.h src/input.h src/output.h \

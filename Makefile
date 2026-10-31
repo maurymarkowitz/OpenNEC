@@ -11,6 +11,10 @@ endif
 $(info Using C compiler: $(CC))
 CFLAGS = -I. -Isrc -g -O2 -Wall -Wno-unused-parameter
 LDFLAGS =
+STATIC_LINK ?= 0
+ifeq ($(STATIC_LINK),1)
+    LDFLAGS += -static
+endif
 AR ?= ar
 RANLIB ?= ranlib
 
@@ -83,9 +87,8 @@ endif
 # Valid backends: auto, accelerate, openblas, mkl, atlas, blas, original
 BACKEND ?= auto
 
-# Static BLAS linking (Linux only): wraps BLAS/LAPACK/gfortran in -Wl,-Bstatic
-# to produce a self-contained binary with no runtime dependency on these shared libs.
-# Usage: make BACKEND=openblas STATIC_BLAS=1
+# Static BLAS linking (Linux/Windows): links BLAS and its runtime into the binary.
+# Usage: make BACKEND=openblas STATIC_BLAS=1 STATIC_LINK=1
 STATIC_BLAS ?= 0
 
 ifeq ($(BACKEND),accelerate)
@@ -153,9 +156,16 @@ else ifeq ($(BACKEND),openblas)
             LDFLAGS += -llapack -lgfortran
         endif
     else ifneq (,$(filter MINGW%,$(UNAME_S)))
-        # Windows/MINGW64: the MSYS2 OpenBLAS DLL bundles the Fortran runtime
-        # internally, so no separate -lgfortran is needed or available.
-        $(info MINGW64: OpenBLAS bundles Fortran runtime; no extra flags needed)
+        ifeq ($(STATIC_BLAS),1)
+            # MSYS2 also provides libopenblas.a.  Its LAPACK objects require
+            # the MinGW Fortran, quadmath, OpenMP, and pthread runtimes; append them
+            # after -lopenblas so archive resolution works in a static link.
+            LDFLAGS += -lgfortran -lquadmath -lgomp -lwinpthread
+            $(info MINGW64: linking static OpenBLAS and runtime dependencies)
+        else
+            # The DLL build bundles the Fortran runtime internally.
+            $(info MINGW64: OpenBLAS DLL build; no extra runtime flags needed)
+        endif
     endif
     $(info OpenBLAS backend: LDFLAGS=$(LDFLAGS))
 
