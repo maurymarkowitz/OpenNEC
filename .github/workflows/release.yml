@@ -253,7 +253,7 @@ jobs:
             make
 
       - name: Verify packaged static OpenBLAS
-        shell: bash -l {0}
+        shell: msys2 {0}
         run: |
           set -e
 
@@ -269,7 +269,7 @@ jobs:
           pkg-config --cflags --libs openblas
 
       - name: Build OpenNEC with packaged static OpenBLAS
-        shell: bash -l {0}
+        shell: msys2 {0}
         run: |
           set -e
 
@@ -290,7 +290,7 @@ jobs:
           ! x86_64-w64-mingw32-objdump -p onec.exe | grep -Ei 'DLL Name:.*(openblas|gfortran|gcc|quadmath|winpthread)'
 
       - name: Package
-        shell: bash -l {0}
+        shell: msys2 {0}
         run: |
           set -e
 

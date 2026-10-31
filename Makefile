@@ -39,6 +39,11 @@ else ifeq ($(RELEASE),1)
     $(info Building release binary (RELEASE=1); debug symbols omitted)
 endif
 
+# Have the compiler record every header used by each object.  Without these
+# files, changes to headers (including VERSION_STRING in src/opennec.h) do not
+# cause the corresponding objects to be rebuilt.
+CFLAGS += -MMD -MP
+
 # Detect platform (before OpenMP setup so we can use it)
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
@@ -299,6 +304,7 @@ endif
 
 LIB_SOURCES = $(filter-out src/main.c, $(SOURCES))
 LIB_OBJECTS = $(LIB_SOURCES:.c=.o)
+DEPENDENCIES = $(LIB_OBJECTS:.o=.d) src/main.d
 LIBRARY = libonec.a
 
 EXECUTABLE = onec
@@ -350,8 +356,10 @@ $(EXECUTABLE): src/main.o $(LIBRARY)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+-include $(DEPENDENCIES)
+
 clean:
-	rm -f $(LIB_OBJECTS) src/main.o $(LIBRARY) $(EXECUTABLE)
+	rm -f $(LIB_OBJECTS) src/main.o $(DEPENDENCIES) $(LIBRARY) $(EXECUTABLE)
 
 help:
 	@echo "OpenNEC Build System"

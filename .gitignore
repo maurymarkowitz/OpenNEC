@@ -3,6 +3,7 @@ onec
 opennec
 nec2c
 *.o
+*.d
 *.a
 
 # old code
