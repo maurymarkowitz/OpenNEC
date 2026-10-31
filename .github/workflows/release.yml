@@ -1,3 +1,4 @@
+
 name: Release builds
 
 on:
@@ -237,9 +238,9 @@ jobs:
 
   build-windows-mingw-openblas:
     runs-on: windows-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup MSYS2/MINGW64
         uses: msys2/setup-msys2@v2
         with:
@@ -247,56 +248,111 @@ jobs:
           update: true
           install: |
             mingw-w64-x86_64-toolchain
-            make
             git
+            make
+
       - name: Build OpenBLAS locally
         shell: bash -l {0}
         run: |
-          cd /tmp
+          set -e
+
+          PREFIX="$HOME/openblas-build"
+
+          echo "=== Toolchain ==="
+          which gcc
+          gcc --version
+          which gfortran
+          gfortran --version
+
+          echo "=== Building OpenBLAS ==="
+          cd "$RUNNER_TEMP"
+
           git clone --depth 1 https://github.com/OpenMathLib/OpenBLAS.git
           cd OpenBLAS
-          # Build static library only, no shared
-          make BINARY=64 NO_SHARED=1 -j$(nproc)
-          # Install to a known local location
-          # On MSYS2, /tmp actually maps to AppData/Local/Temp, but we need to use the Windows path or an absolute location
-          mkdir -p "$HOME/openblas-build/lib" "$HOME/openblas-build/include"
-          cp libopenblas.a "$HOME/openblas-build/lib/"
-          cp cblas.h "$HOME/openblas-build/include/"
-          cp openblas_config.h "$HOME/openblas-build/include/"
+
+          # Build a static 64-bit MinGW library.
+          make BINARY=64 NO_SHARED=1 CC=gcc FC=gfortran HOSTCC=gcc -j$(nproc)
+
+          echo "=== OpenBLAS build outputs ==="
+          ls -lh libopenblas.a
+          ls -lh cblas.h
+          ls -lh openblas_config.h
+
+          # Install manually rather than using OpenBLAS make install.
+          mkdir -p "$PREFIX/lib" "$PREFIX/include"
+
+          cp libopenblas.a "$PREFIX/lib/"
+          cp cblas.h "$PREFIX/include/"
+          cp openblas_config.h "$PREFIX/include/"
+
           echo "=== OpenBLAS installation ==="
-          ls -lh "$HOME/openblas-build/lib/libopenblas.a"
-          ls -lh "$HOME/openblas-build/include/cblas.h"
+          ls -lh "$PREFIX/lib/libopenblas.a"
+          ls -lh "$PREFIX/include/cblas.h"
+          ls -lh "$PREFIX/include/openblas_config.h"
+
+          # Fail immediately if any required file is missing.
+          test -s "$PREFIX/lib/libopenblas.a"
+          test -s "$PREFIX/include/cblas.h"
+          test -s "$PREFIX/include/openblas_config.h"
+
       - name: Build OpenNEC with local OpenBLAS
         shell: bash -l {0}
         run: |
-          # Use the locally built OpenBLAS by setting MINGW_OPENBLAS_PREFIX
+          set -e
+
+          PREFIX="$HOME/openblas-build"
+
+          echo "=== OpenNEC BLAS build ==="
           make clean
+
           make RELEASE=1 \
-            CC=x86_64-w64-mingw32-gcc \
+            CC=gcc \
+            LDFLAGS="-static" \
             BACKEND=openblas \
-            MINGW_OPENBLAS_PREFIX=$HOME/openblas-build
+            MINGW_OPENBLAS_PREFIX="$PREFIX"
+
+          echo "=== Build outputs ==="
+          ls -lh onec.exe libonec.a
+
       - name: Package
         shell: bash -l {0}
         run: |
+          set -e
+
           DIST="onec-windows-x86_64-openblas"
+          PREFIX="$HOME/openblas-build"
+
           mkdir -p "dist/${DIST}/lib" "dist/${DIST}/include" "dist/${DIST}/bin"
+
+          # Executable
           cp onec.exe "dist/${DIST}/bin/"
-          # Copy libopenblas.dll from MSYS2
-          if [ -f "D:/a/_temp/msys64/mingw64/bin/libopenblas.dll" ]; then
-            cp "D:/a/_temp/msys64/mingw64/bin/libopenblas.dll" "dist/${DIST}/bin/"
-          else
-            echo "WARNING: libopenblas.dll not found at expected path"
-          fi
-          cp README.MD "dist/${DIST}/"
-          cp examples/example5.nec "dist/${DIST}/"
+
+          # OpenNEC library
           cp libonec.a "dist/${DIST}/lib/"
+
+          # OpenBLAS static library and headers
+          cp "$PREFIX/lib/libopenblas.a" "dist/${DIST}/lib/"
+          cp "$PREFIX/include/cblas.h" "dist/${DIST}/include/"
+          cp "$PREFIX/include/openblas_config.h" "dist/${DIST}/include/"
+
+          # OpenNEC headers
           cp src/opennec.h src/types.h src/deck.h src/input.h src/output.h \
              src/geometry.h src/control.h src/fields.h src/ground.h \
              src/calculations.h src/matrix.h src/network.h src/radiation.h \
              src/somnec.h src/misc.h "dist/${DIST}/include/"
+
+          cp README.MD "dist/${DIST}/"
+          cp examples/example5.nec "dist/${DIST}/"
           cp -r docs "dist/${DIST}/"
           cp -r examples "dist/${DIST}/"
+
+          echo "=== Final package contents ==="
+          ls -lh "dist/${DIST}/bin/"
+          ls -lh "dist/${DIST}/lib/"
+          ls -lh "dist/${DIST}/include/"
+
           powershell.exe -NoProfile -Command "Compress-Archive -Path \"dist/${DIST}/*\" -DestinationPath \"dist/${DIST}.zip\" -Force"
+
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
