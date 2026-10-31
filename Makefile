@@ -276,6 +276,10 @@ SOURCES = src/main.c src/input.c src/output.c src/deck.c \
 # Exclude the file on any non-Windows host to avoid an empty object file.
 ifneq ($(OS),Windows_NT)
     SOURCES := $(filter-out src/compat_time.c,$(SOURCES))
+else ifneq (,$(filter MINGW%,$(UNAME_S)))
+    # Native MSYS2/MinGW uses the MinGW CRT even though OS=Windows_NT.
+    SOURCES := $(filter-out src/compat_time.c,$(SOURCES))
+    $(info Detected MSYS2/MinGW runtime; excluding src/compat_time.c)
 endif
 
 # If building with a MinGW cross-compiler, also skip compat_time.c
