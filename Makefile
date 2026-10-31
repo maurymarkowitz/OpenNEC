@@ -62,7 +62,7 @@ ifeq ($(OPENMP),1)
         # Auto-detect OpenMP flags for the current compiler
         ifeq ($(UNAME_S),Darwin)
             # macOS: clang doesn't have built-in OpenMP, need explicit flags
-            $(warning OpenMP requested on macOS but no OPENMP_CFLAGS provided. Please provide: make OPENMP=1 OPENMP_CFLAGS="-I/path/to/omp/include -fopenmp" OPENMP_LDFLAGS="-L/path/to/omp/lib -lomp")
+            $(warning OpenMP requested on macOS but no OPENMP_CFLAGS provided. With Apple Clang, use: make OPENMP=1 OPENMP_CFLAGS="-I/path/to/omp/include -Xpreprocessor -fopenmp" OPENMP_LDFLAGS="-L/path/to/omp/lib -lomp")
         else
             # Linux/Windows: GCC/Clang include built-in OpenMP support
             CFLAGS += -fopenmp
@@ -403,7 +403,7 @@ help:
 	@echo "  make DEBUG=1              # Build with AddressSanitizer"
 	@echo "  make debug                # Same as make DEBUG=1"
 	@echo "  make OPENMP=1             # Build with OpenMP (auto-detect on Linux/Windows)"
-	@echo "  make OPENMP=1 OPENMP_CFLAGS=\"-I/opt/libomp/include -fopenmp\" OPENMP_LDFLAGS=\"-L/opt/libomp/lib -lomp\"  # macOS with custom libomp"
+	@echo "  make OPENMP=1 OPENMP_CFLAGS=\"-I/opt/libomp/include -Xpreprocessor -fopenmp\" OPENMP_LDFLAGS=\"-L/opt/libomp/lib -lomp\"  # macOS with Apple Clang and custom libomp"
 	@echo "  make install              # Install to default location"
 	@echo "  make PREFIX=/opt install  # Install to /opt (Unix/Linux/macOS)"
 	@echo "  make PREFIX=D:\MyApps install  # Install to D:\MyApps (Windows)"
