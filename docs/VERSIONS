@@ -1,5 +1,10 @@
 OpenNEC version history
 
+Version 2.3.2 - 2026 October 31
+- booo, scary!
+- finally fixed the issue in somnec when close to the ground, issue 26 and 14
+- fixing issue in Windows build to make OpenBLAS simpler/faster
+
 Version 2.3.1 - 2026 October 28
 - final touchups and fixes for release
 

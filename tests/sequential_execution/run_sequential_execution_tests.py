@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 
-EXPECTED_VERSION = "2.3.1"
+EXPECTED_VERSION = "2.3.2"
 
 CASES = {
     "issue25_multiple_ex_diagnostic.nec": {"frequencies": 1, "patterns": 0, "antenna_blocks": 1, "source_rows": 2},
