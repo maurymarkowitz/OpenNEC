@@ -640,7 +640,7 @@ int shanks_integration(context_t *ctx, complex double start, complex double dela
       del=delb;
       romberg_integrate_1d(ctx,nans,sum,2);
       for( i = 0; i < nans; i++ )
-        ans2[i] += sum[i];
+        ans2[i] = ans1[i] + sum[i];
       intx = 0;
       continue;
     } /* if( (ibx == 0) && (creal(b) >= rbk) ) */

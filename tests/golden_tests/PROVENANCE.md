@@ -6,22 +6,12 @@ Eleven minimal decks, one per feature axis, each with a pinned input impedance.
 exceeds 1e-4.  This file records the raw number every engine gave, so a pin can
 be audited rather than trusted.
 
-Two lanes
----------
+Regression lane
+---------------
 
-The decks run in **two CI jobs against one script**, so a red X names exactly
-one deck:
-
-| job | pins | at `acafb37` |
-|---|---|---|
-| `golden-impedance` | `expected.json` — decks 01–10, twelve points | **green**, widest 4.0e-05 |
-| `golden-open-issues` | `expected_open.json` — decks pinned to an open issue, deck 11 today | **red by design**, 1.7e-01, issue #14 |
-
-`run_golden.py` already took `--expected`, so the split is a second pin file and
-a second job — no change to the script.  **When an issue closes, move its deck's
-entry from `expected_open.json` into `expected.json`** and the floor grows by
-one deck.  The floor job never runs deck 11 and the open-issues job never runs
-01–10, so neither lane can mask the other.
+All eleven decks and thirteen pinned points run in the required
+`golden-impedance` CI job against `expected.json`. `expected_open.json` remains
+as an empty holding file for any future isolated regression.
 
 Engines
 -------
@@ -49,7 +39,7 @@ What "agreement" actually measures here
 
 | pair | agreement |
 |---|---|
-| onec ↔ nec2c | 1.1e-06 … 4.0e-05 (and 1.7e-01 on deck 11) |
+| onec ↔ nec2c | 1.1e-06 … 4.0e-05 (2.6e-05 on deck 11) |
 | nec2c ↔ PyNEC (nec2++) | 3.2e-05 … 2.1e-04 |
 | nec2c ↔ momwire sinusoidal | 7.7e-04 … 1.8e-02 |
 
@@ -114,11 +104,10 @@ Per-deck notes
   and so is not counted as a third opinion on this axis.
 * `11_gn2_low_height` — **three-way, and the tightest agreement in the matrix**:
   nec2c 91.758 +13.222j, nec2++ 91.7606 +13.2406j (2.0e-04), momwire 91.785
-  +13.156j (7.7e-04).  A 21-segment half-wave dipole 0.43 m up — 0.02 λ at
-  14 MHz — over the same `GN 2` ground as deck 03.  `onec` answers
-  79.228 +4.256j, 1.7e-01 away, **while echoing `RELATIVE DIELECTRIC CONST.=
-  10.000` correctly**: the environment block is right and the solution is not,
-  which is precisely why this matrix pins impedances and not just the echo.
+  +13.156j (7.7e-04). A 21-segment half-wave dipole 0.43 m up — 0.02 λ at
+  14 MHz — over the same `GN 2` ground as deck 03. OpenNEC now returns
+  91.7604 +13.2219j (2.59e-05 relative to the pin) after correcting the
+  breakpoint-reset accumulation in its Sommerfeld Shanks integrator.
 
   nec2++ was used as a corroborator here deliberately.  Its historical
   near-ground `GN 2` interpolation defect is real but was **fixed**, and
@@ -150,15 +139,12 @@ onec at `acafb37`
 | `09_fr_sweep` | 29 | 73.9196 +10.3678j | 5.99e-06 | pass |
 | `09_fr_sweep` | 30 | 81.6220 +46.4619j | 1.06e-06 | pass |
 | `10_gx_symmetry` | 30 | 24.8892 +67.3309j | 3.12e-06 | pass |
-| `11_gn2_low_height` | 14 | 79.2283 +4.2560j | 1.66e-01 | **FAIL** |
+| `11_gn2_low_height` | 14 | 91.7604 +13.2219j | 2.59e-05 | pass |
 
-The twelve points of the `golden-impedance` floor all pass at 1e-4, and that
-job is green.  The thirteenth, `11_gn2_low_height`, is the whole of the
-`golden-open-issues` job: it **fails at 1.66e-01 and maps to issue #14** — the
-`GN 2` sequential-path fix at `6a7a395` corrected the echoed environment block
-and the far-field case (deck 03), but the near-ground solution is still wrong.
-That job is expected red until #14 closes; the floor is the regression contract
-and must stay green.
+All thirteen points of the `golden-impedance` floor pass at 1e-4. Deck 11
+previously failed at 1.66e-01; the near-ground root cause was an incorrect
+assignment at the Shanks integration contour-break reset. It is now part of
+the required regression contract.
 
 `05_ld5_conductivity` is the widest passing row at 4.0e-05 and is the one where
 onec and nec2c differ by more than nec2c's printed rounding (onec 82.3428,
@@ -173,10 +159,6 @@ Reproducing
 
     # the regression floor -- must exit 0
     python3 tests/golden_tests/run_golden.py --onec ./onec
-
-    # the open-issue lane -- exits 1 until #14 closes
-    python3 tests/golden_tests/run_golden.py --onec ./onec \
-        --expected tests/golden_tests/expected_open.json
 
 The guards were checked against deliberately broken runs: a 0.1 % shift in a
 pin, a wrapper that exits 3, a wrapper that removes the input-parameters
