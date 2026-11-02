@@ -1,0 +1,9 @@
+CM Issue 31: PQ must preserve RP execution
+CE
+GW 1 21 0 -5.1 12 0 5.1 12 0.001
+GE 0
+EX 0 1 11 0 1 0
+FR 0 1 0 0 14.2 0
+PQ -1
+RP 0 1 1 1000 90 0 0 0
+EN

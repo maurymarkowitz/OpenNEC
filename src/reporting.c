@@ -1614,28 +1614,28 @@ static int process_nh_card(context_t *ctx, deck_t *deck, int card_idx,
 
 /**
  * PT Card - Print Control (Currents)
- * Fortran label 35, nec2c case 11
+ * Fortran label 35, nec2c case 10
  */
 static int process_pt_card(context_t *ctx, const card_t *card, card_state_t *state)
 {
     if (!ctx || !card || !state) return -1;
     
     state->currents_print_control = card->i[1];  /* iptflg */
-    state->card_sequence_state = 7;  /* iflow - PT card */
+    /* Like nec2c, print controls leave the execution state unchanged. */
     
     return 0;
 }
 
 /**
  * PQ Card - Print Control (Charges)
- * Fortran label (similar to PT), nec2c case 12
+ * Fortran label (similar to PT), nec2c case 14
  */
 static int process_pq_card(context_t *ctx, const card_t *card, card_state_t *state)
 {
     if (!ctx || !card || !state) return -1;
     
     state->charges_print_control = card->i[1];  /* iptflq */
-    state->card_sequence_state = 7;  /* iflow - PQ card */
+    /* Like nec2c, print controls leave the execution state unchanged. */
     
     return 0;
 }

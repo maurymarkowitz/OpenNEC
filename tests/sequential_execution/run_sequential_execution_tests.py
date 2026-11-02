@@ -19,6 +19,8 @@ CASES = {
     "tl_fr_sweep.nec": {"frequencies": 13, "patterns": 13},
     "multi_ex_fr_sweep.nec": {"frequencies": 3, "patterns": 0, "antenna_blocks": 3, "source_rows": 6},
     "ex2_second_xq_same_freq.nec": {"frequencies": 4, "patterns": 0, "antenna_blocks": 4},
+    "issue31_pt_rp.nec": {"frequencies": 1, "patterns": 1, "antenna_blocks": 1, "source_rows": 1},
+    "issue31_pq_rp.nec": {"frequencies": 1, "patterns": 1, "antenna_blocks": 1, "source_rows": 1},
 }
 
 PATTERN_ROW = re.compile(

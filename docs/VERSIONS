@@ -2,6 +2,7 @@ OpenNEC version history
 
 Version 2.3.3 - 2026 November 2
 - got NX cards working properly
+- fixed the issue where PT and PQ cards stopped RP. not sure how this happend in the first place.
 - fixed a fat-finger when looking for NEC's bad triangle connections
 
 Version 2.3.2 - 2026 October 31
