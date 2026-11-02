@@ -23,18 +23,19 @@ Why OpenNEC?
 
 There are many NEC-2 engines available, why should you use OpenNEC?
 
-- OpenNEC takes full advantage of multi-core/processor systems using OpenMP. A few other NEC engines also use OMP.
-- OpenNEC uses the fast BLAS math code, when available. Some other NEC engines also support BLAS.
-- OpenNEC includes fixes for all common NEC issues. Other engines fix some of these as well.
-- OpenNEC models are limited only by the system size. Older engines have hard-coded limits, some fix this.
-- OpenNEC uses identical code on Windows, macOS and Linux. Other engines require effort when moving between OSes.
-- OpenNEC can read input files from practically any deck. Older engines were more strict, newer ones generally support one dialect or another.
+- OpenNEC uses identical code and produces identical results on Windows, macOS and Linux.
+- OpenNEC uses the fast BLAS math code, which dramatically boosts performance.
+- OpenNEC also takes full advantage of multi-core/processor systems using OpenMP.
+- OpenNEC supports "somnec" ground internally.
+- OpenNEC includes fixes for all known NEC bugs and issues.
+- OpenNEC models are limited only by the system size, and scale to the 100,000 segment range.
+- OpenNEC supports extensions from 4nec2 and other systems, allowing these to be run on any platform.
+- OpenNEC can properly read practically any deck. Older engines were much more rigid.
 - OpenNEC can also read and write files from other antenna programs, like EZNEC and MMANA-GAL.
 - OpenNEC can produce reports in both nec2d and nec2c format, so it can be used in any front-end program like 4nec2 and cocoaNEC.
-- OpenNEC fully supports extensions from 4nec2 and other systems, allowing these to be used on any platform.
 - OpenNEC can be compiled directly into your program.
 
-So why use OpenNEC when most of these features are available in other engines? Because OpenNEC has all of these in one package. Not this fix or that extension, *all of them* - in a single, fast, cross-platform program.
+Few of these additions are unique to OpenNEC, and some can be solved using other tools. So why use OpenNEC? Because OpenNEC has all of these in one package. Not *this* fix or *that* extension, *all of them* - in a single, very fast, cross-platform, completely open-source program.
 
 Installing OpenNEC
 ------------------
@@ -45,7 +46,7 @@ https://github.com/maurymarkowitz/OpenNEC/releases
 
 Binaries are available for macOS, Linux and Windows. The programs be installed by downloading the appropriate .zip file from the Releases page and unzipping into any convenient location. On Linux and Windows they are built in versions that use the original built-in math code, as well as versions using the much faster BLAS code. The macOS version always uses BLAS, using Apple's built-in Accelerate framework.
 
-When first installed on macOS, Gatekeeper will prevent the program from being run. To fix this, navigate to your install directory and issue this command in Terminal:
+When first installed on macOS from a manual download, Gatekeeper will prevent the program from being run. To fix this, navigate to your install directory and issue this command in Terminal:
 
 `xattr -d com.apple.quarantine onec`
 
@@ -68,7 +69,7 @@ scoop install onec
 Building OpenNEC
 ----------------
 
-You can also build the project from source. It is a makefile project that does not require `autoconfig` or other steps. A simple `make` in the root directory should produce a working executable on practically any unix-like system. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](docs/BUILD.md).
+You can also build the project from source. It is a makefile project that does not require `autoconfig` or other steps. A simple `make` in the root directory should produce a working executable on practically any unix-like system, including all known Linux varieties and any modern macOS. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](docs/BUILD.md).
 
 Windows compatibility is provided using MinGW, which needs to be installed manually. The same makefile is used for both Unix and Windows, and the `make` utility supplied with MinGW works perfectly. See [BUILD-WINDOWS](docs/BUILD-WINDOWS.md) for details.
 
@@ -77,7 +78,7 @@ Both platforms support `make install` which adds the documentation and example f
 Running OpenNEC
 ---------------
 
-OpenNEC includes a command-line interace, `onec`, that can be used to parse decks from the shell, and will write the calculated results to `stdout` or to a specific file using the `-o` flag.  For a fuller guide to the command-line interface and examples of the available flags, see the [OpenNEC User Manual](docs/OpenNEC%20user%20manual.md). This section shows the most common cases.
+OpenNEC includes a command-line interace, `onec`, that can be used to parse decks from the shell, and will write the calculated results to `stdout` or to a specific file using the `-o` flag.  For a fuller guide to the command-line interface and examples of the available flags, see the [OpenNEC User Manual](docs/OpenNEC%20user%20manual.md).
 
 OpenNEC is normally invoked from your unix shell, Terminal on macOS, or CMD or PowerShell on Windows. To run it, use a command similar to the following example, replacing the "<FILE/PATH>" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
 
@@ -144,7 +145,7 @@ OpenNEC has built-in readers and writers for various 3rd party file formats. For
 
 ```./onec example.maa```
 
-This will read the MMANA-GAL format `example.maa` file, convert it to NEC format, and then run the simulations and produce a .out file.
+This will read the MMANA-GAL format `example.maa` file, convert it to NEC format in memory, and then run the simulations and produce a .out file.
 
 OpenNEC can also write files in various formats using the `-w` option. This is normally used with a "bare" extension like `.nec`, but you can also provide a complete filename if you wish to rename the converted deck. In most cases, you use something like:
 
@@ -156,7 +157,7 @@ A list of the supported file types and more details on the conversion process ca
 
 OpenNEC concept
 ---------------
-OpenNEC's code ultimately traces its history to the NEC-2 Fortran code released by Lawrence Livermore in the early 1980s. A port from Fortran to C using an automated conversion tool was made by Neoklis Kyriazis in the nec2c program which was first released on 2003 August 20. OpenNEC was originally forked from the 1.3 version of nec2c, which Kyriazis released in 2014. Although initially conceived a simple update to nec2c, OpenNEC was eventually completely re-written.
+OpenNEC's code ultimately traces its history to the NEC-2 Fortran code released by Lawrence Livermore in the early 1980s. A port from Fortran to C using an automated conversion tool was made by Neoklis Kyriazis in the nec2c program which was first released on 2003 August 20. OpenNEC was originally forked from the 1.3 version of nec2c, which Kyriazis released in 2014.
 
 The original difference between OpenNEC and nec2c was its form; nec2c is a command-line program, while most of the OpenNEC code is in the form of a static library. This allows OpenNEC to be embedded in any program written in a language that provides access to C libraries, like Rust, Java, or Swift. The optional `main.c` included in the project wraps the library to provide a command line tool similar to the original nec2c, but adds a number of new command line switches to provide finer control over execution and many new options.
 
@@ -164,7 +165,7 @@ Programs that wish to use OpenNEC as their calculation engine can directly acces
 
 OpenNEC has since been greatly expanded compared to nec2c. It improves many parts of the internal functionality, including multi-threading, parsing multiple files at once, adding support for 3rd party extensions to NEC, and supporting a number of common math libraries that dramatically increase performance. On large files, OpenNEC can be 7 to 10 times as fast as the original code. See [OpenNEC, NEC-2 and nec2c](docs/OpenNEC,%20NEC-2%20and%20nec2c.md) for details.
 
-OpenNEC also adds many of the features found in the popular 4nec2 program on Windows. In particular, it supports the symbols (variables), formulas and calculations that make it easier to design complex antennas. These features are widely used and found in many of the real-world `.nec` decks found on the 'net. It also supports new variants of the `LD` and `EX` cards and other 4nec2 additions.
+OpenNEC also adds many of the features found in the popular 4nec2 program on Windows. In particular, it supports the symbols (variables), formulas and calculations that make it easier to design complex antennas. These features are widely used and found in many of the real-world `.nec` decks found on the 'net. It also supports new variants of the `LD` and `EX` cards and other 4nec2 and EZNEC additions.
 
 Known limitations
 -----------------

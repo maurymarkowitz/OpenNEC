@@ -1,0 +1,37 @@
+CM Minimal, ENTIRELY LEGITIMATE reproduction of the conect() runaway
+CM - only 4 wires / 6 segments, and nothing here is a modeling
+CM mistake (see nec2thread's src/geometry.c conect()).
+CM
+CM Wire 1 (D): an ordinary, moderately long wire elsewhere in the
+CM model (e.g. a feedline, boom, or ground lead). Its far endpoint
+CM (10,10,9.995) sits 0.005 units from vertex (10,10,10) of the
+CM triangle below - not touching, but well within D's own
+CM connection tolerance (0.001 * D's length ~17.3 = ~0.017).
+CM conect() records a real, but one-directional, connection from
+CM D into that vertex.
+CM
+CM Wires 2/3/4: an ORDINARY CLOSED TRIANGULAR LOOP - a completely
+CM unremarkable structure (a triangular loop antenna face, a
+CM wire-grid mesh triangle, etc). No duplicate/overlapping geometry,
+CM no error of any kind. Side length 0.1, so the triangle's own
+CM connection tolerance (0.001 * 0.1 = 0.0001) is far tighter than
+CM D's 0.005 gap - the triangle segments do NOT "see" D as connected;
+CM the link is genuinely one-directional.
+CM
+CM Result: D's junction-walk steps into the triangle's vertex, then
+CM cycles around the triangle's perimeter forever (all three
+CM triangle segments are numbered higher than D, and the walk never
+CM lands back on D's own index or drops below it). Verified: the
+CM triangle alone terminates in 9 iterations, and D pointed away
+CM from the triangle terminates in 15 - only the combination
+CM produces the runaway (100000+ iterations, aborts).
+CE This is what the "runaway conect" abort in misc.c is guarding against.
+GW 1 3 0 0 0 10 10 9.995 .001
+GW 2 1 10 10 10 10 10 10.1 .001
+GW 3 1 10 10 10.1 10 10.0866 10.05 .001
+GW 4 1 10 10.0866 10.05 10 10 10 .001
+GE 0
+EX 0 1 2 0 1 0
+FR 0 1 0 0 300 0
+XQ
+EN

@@ -407,10 +407,15 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
         }
         
         /* Dispatch to card-specific handler */
+        bool is_nx = strcmp(card->card_code, "NX") == 0;
         int result = dispatch_card(ctx, deck, i, &state);
         if (result != 0) {
             free_card_state(&state);
             return result;
+        }
+        if (is_nx) {
+            /* NX consumes the next section's CM/CE and geometry cards. */
+            i = deck->geometry_end;
         }
     }
     
@@ -813,6 +818,67 @@ static void reset_network_buffers(context_t *ctx)
     if (!ctx) return;
     ctx->netcx.num_networks = 0;
     ctx->netcx.network_type = 0;  /* Force network matrix rebuild (matches Fortran NTSOL=0) */
+}
+
+/*
+ * NX enters the same initialization path as the first structure.  The
+ * sequential processor retains a context across the whole input file, so
+ * release or clear every result and control buffer that could otherwise make
+ * a card in the new section inherit state from the old one.
+ */
+static void reset_nx_section(context_t *ctx)
+{
+    if (!ctx) return;
+
+    reset_loading_buffers_seq(ctx);
+    if (ctx->loading_outputs.entries) {
+        mem_free(ctx, (void **)&ctx->loading_outputs.entries);
+    }
+    ctx->loading_outputs.count = 0;
+    ctx->loading_outputs.capacity = 0;
+    reset_network_buffers(ctx);
+    reset_coupling_buffers(ctx);
+    if (ctx->yparm.coupling_rows) {
+        mem_free(ctx, (void **)&ctx->yparm.coupling_rows);
+        ctx->yparm.num_coupling_rows = 0;
+        ctx->yparm.coupling_rows_cap = 0;
+    }
+    reset_vsorc_buffers_seq(ctx);
+    ctx->ex_queue.flow = 0;
+
+    if (ctx->rpat.points) {
+        mem_free(ctx, (void **)&ctx->rpat.points);
+    }
+    ctx->rpat.num_points = 0;
+    if (ctx->nfr.points) {
+        mem_free(ctx, (void **)&ctx->nfr.points);
+    }
+    ctx->nfr.num_points = 0;
+    if (ctx->ngf_cm) {
+        mem_free(ctx, (void **)&ctx->ngf_cm);
+    }
+    ctx->has_ngf = false;
+    ctx->ngf_n_segs = 0;
+    ctx->ngf_neq = 0;
+    ctx->ngf_fmhz = 0.0;
+
+    /* These arrays have no recorded capacity; retaining them can make a
+     * larger next structure overrun the prior section's allocation. */
+    mem_free(ctx, (void **)&ctx->save.pivot);
+    mem_free(ctx, (void **)&ctx->crnt.surface_cur);
+    mem_free(ctx, (void **)&ctx->crnt.a_real);
+    mem_free(ctx, (void **)&ctx->crnt.a_imag);
+    mem_free(ctx, (void **)&ctx->crnt.b_real);
+    mem_free(ctx, (void **)&ctx->crnt.b_imag);
+    mem_free(ctx, (void **)&ctx->crnt.c_real);
+    mem_free(ctx, (void **)&ctx->crnt.c_imag);
+    ctx->matpar.core_used = 0;
+
+    ctx->gnd.has_ground = 1;       /* Free space is the NEC default. */
+    ctx->gnd.is_perfect = 0;
+    ctx->gnd.num_radials = 0;
+    ctx->gnd.far_field_type = -1;
+
 }
 
 /**
@@ -1648,51 +1714,91 @@ static int process_nx_card(context_t *ctx, deck_t *deck, int card_idx,
                           card_state_t *state)
 {
     if (!ctx || !deck || !state) return -1;
-    
-    /* Find next structure geometry after NX card */
-    int new_geom_start = -1, new_geom_end = -1;
-    
-    for (int i = card_idx + 1; i < deck->num_cards; i++) {
-        card_t *c = &deck->cards[i];
-        if (is_geometry(c)) {
-            if (new_geom_start == -1) new_geom_start = i;
-            new_geom_end = i;
-            if (strcmp(c->card_code, "GE") == 0) break;
+
+    /* nec2c branches to its initial-deck reader at NX. That reader accepts
+     * CM cards, requires CE, then reads geometry through GE. */
+    int pos = card_idx + 1;
+    while (pos < deck->num_cards && deck->cards[pos].ignore) pos++;
+
+    int new_comment_start = -1;
+    int new_comment_end = -1;
+    while (pos < deck->num_cards && strcmp(deck->cards[pos].card_code, "CM") == 0) {
+        if (new_comment_start == -1) new_comment_start = pos;
+        new_comment_end = pos++;
+        while (pos < deck->num_cards && deck->cards[pos].ignore) pos++;
+    }
+    if (pos >= deck->num_cards || strcmp(deck->cards[pos].card_code, "CE") != 0) {
+        add_error(ctx, &ctx->errors,
+                  "NX must be followed by zero or more CM cards and a CE card before the next geometry section.",
+                  FATAL);
+        return -1;
+    }
+    if (new_comment_start == -1) new_comment_start = pos;
+    new_comment_end = pos++;
+
+    int new_symbol_start = -1;
+    int new_symbol_end = -1;
+    int new_geom_start = -1;
+    int new_geom_end = -1;
+    for (; pos < deck->num_cards; pos++) {
+        card_t *next = &deck->cards[pos];
+        if (next->ignore) continue;
+        if (strcmp(next->card_code, "SY") == 0 && new_geom_start == -1) {
+            if (new_symbol_start == -1) new_symbol_start = pos;
+            new_symbol_end = pos;
+            continue;
         }
+        if (is_geometry(next)) {
+            if (new_geom_start == -1) new_geom_start = pos;
+            new_geom_end = pos;
+            if (strcmp(next->card_code, "GE") == 0) break;
+            continue;
+        }
+        add_error(ctx, &ctx->errors,
+                  "NX next structure must contain geometry cards ending with GE.", FATAL);
+        return -1;
     }
-    
-    if (new_geom_start == -1) {
-        /* No more geometry - end of all structures */
-        return 0;
+    if (new_geom_start == -1 || new_geom_end == -1 ||
+        strcmp(deck->cards[new_geom_end].card_code, "GE") != 0) {
+        add_error(ctx, &ctx->errors,
+                  "NX next structure has no complete geometry section ending with GE.", FATAL);
+        return -1;
     }
-    
-    /* Save old geometry info */
-    int old_geom_start = deck->geometry_start;
-    int old_geom_end = deck->geometry_end;
-    
-    /* Update deck to point to new geometry section */
+
+    /* Geometry observes NGF and matrix state, so clear those before it sees
+     * the new section. */
+    reset_nx_section(ctx);
+    deck->comment_start = new_comment_start;
+    deck->comment_end = new_comment_end;
+    deck->symbol_start = new_symbol_start;
+    deck->symbol_end = new_symbol_end;
     deck->geometry_start = new_geom_start;
     deck->geometry_end = new_geom_end;
-    
-    /* Recalculate geometry for new structure */
+
     errors_list_t geom_errors = {0};
     calculate_geometry(ctx, deck, &geom_errors, &ctx->outputs);
-    
     if (geom_errors.num_errors > 0) {
-        /* Restore old geometry and return error */
-        deck->geometry_start = old_geom_start;
-        deck->geometry_end = old_geom_end;
         transfer_errors(&geom_errors, &ctx->errors);
         return -1;
     }
-    
-    /* Reset state for new structure */
+    if (reset_calculation_defaults(ctx) != 0) {
+        add_error(ctx, &ctx->errors,
+                  "NX: failed to initialize calculation defaults for the new section", FATAL);
+        return -1;
+    }
+
+    /* The original reader writes the new CM/CE cards before its geometry
+     * listing. The sequential loop skips those cards, so emit them here. */
+    if (ctx->output_fp) {
+        for (int i = new_comment_start; i <= new_comment_end; i++) {
+            card_t *comment = &deck->cards[i];
+            fprintf(ctx->output_fp, "%s\n", comment->card_str ? comment->card_str : "");
+        }
+        write_nec_structure_section(ctx, deck, ctx->output_fp);
+    }
+
     free_card_state(state);
-    init_card_state(state);
-    
-    /* Note: Caller will continue reading cards after NX position */
-    /* The new geometry will be used for subsequent frequency loops */
-    
+    init_card_state(state);  /* MPCNT and all card-local defaults restart. */
     return 0;
 }
 

@@ -1,5 +1,7 @@
 Items still to be implemented:
 
+* re-implement batch reporting for the interactive mode
+
 * add some more tests for the deck type if none is specified
 
 * sectionize the deck based on NX cards

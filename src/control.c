@@ -21,7 +21,7 @@
 #include "output.h"
 
 // Forward declarations for static functions
-static int calculation_defaults(context_t *ctx);
+int reset_calculation_defaults(context_t *ctx);
 static int execute_frequency_loop(context_t *ctx, int nfrq, int ifrq, double delfrq, const deck_t *deck);
 static void reset_loading_buffers(context_t *ctx);
 static void reset_network_buffers(context_t *ctx);
@@ -285,7 +285,7 @@ int run_simulation(context_t *ctx, deck_t *deck)
     }
     
     // Step 2: Initialize calculation defaults (requires valid geometry)
-    if (calculation_defaults(ctx) != 0) {
+    if (reset_calculation_defaults(ctx) != 0) {
         add_error(ctx, &ctx->errors, "Failed to initialize calculation defaults (no valid geometry)", FATAL);
         return -1;
     }
@@ -563,7 +563,7 @@ int run_simulation(context_t *ctx, deck_t *deck)
                              nx_geom_errors.errors[i].severity);
                 return -1;
             }
-            if (calculation_defaults(ctx) != 0) {
+            if (reset_calculation_defaults(ctx) != 0) {
                 add_error(ctx, &ctx->errors,
                     "NX: failed to initialize calculation defaults for new section", FATAL);
                 return -1;
@@ -590,7 +590,7 @@ int run_simulation(context_t *ctx, deck_t *deck)
  * @param ctx     The NEC context to initialize
  * @return        0 on success, -1 on error (no geometry)
  */
-static int calculation_defaults(context_t *ctx)
+int reset_calculation_defaults(context_t *ctx)
 {
     // validate that geometry has been calculated
     if (ctx->geometry.num_segs_sym <= 0 && ctx->geometry.num_patches_sym <= 0) {

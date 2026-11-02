@@ -27,11 +27,18 @@ void write_nec_output(context_t *ctx, const deck_t *deck, FILE *pfile);
 /**
  * @brief Writes the one-time geometry preamble section.
  *
- * Writes the file header, structure specification, segments, patches, and
- * input card listing.  Called once per simulation section before the
- * frequency loop begins.
+ * Writes the file header and the first structure's specification, segments,
+ * patches, and input-card listing. Called once per output file.
  */
 void write_nec_preamble(context_t *ctx, const deck_t *deck, FILE *file);
+
+/**
+ * @brief Writes a subsequent structure's geometry output without the NEC banner.
+ *
+ * Used for an NX card: NEC prints a new structure specification and segment
+ * listing, but the program header remains a one-time prologue.
+ */
+void write_nec_structure_section(context_t *ctx, const deck_t *deck, FILE *file);
 
 /**
  * @brief Writes all per-frequency-step output sections.

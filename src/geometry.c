@@ -324,6 +324,10 @@ void calculate_geometry(context_t *ctx, deck_t *deck, errors_list_t *errors, out
         // if we're at the end of the geometry section, we have all the segments
         // so now is an opportune time to connect them together
         if (connect_segments(ctx, tag, outputs) != 0) {
+          /* connect_segments() records its diagnostics on the geometry-owned
+           * list.  Also return them through this call's error list so callers
+           * can stop before attempting calculations with incomplete geometry. */
+          transfer_errors(&ctx->geometry.errors, errors);
           return; // Stop if there's a fatal geometry error (e.g. below ground)
         }
         

@@ -336,22 +336,24 @@ void test_deck_structure(const context_t *ctx, const deck_t *deck, errors_list_t
         add_error(ctx, errors, msg, WARNING);
       }
 
-      // the first non-ignored card after NX must be CM or CE
-      bool found_next_cm = false;
+      // nec2c restarts its initial-deck reader at NX: CM cards are optional,
+      // but the next non-ignored card must close that comment section with CE.
+      bool found_next_section_start = false;
       for (int j = i + 1; j < deck->num_cards; j++)
       {
         if (deck->cards[j].ignore)
           continue;
-        if (is_comment(&deck->cards[j]))
+        if (strcmp(deck->cards[j].card_code, "CM") == 0 ||
+            strcmp(deck->cards[j].card_code, "CE") == 0)
         {
-          found_next_cm = true;
+          found_next_section_start = true;
         }
         break; /* first non-ignored card, comment or not */
       }
-      if (!found_next_cm)
+      if (!found_next_section_start)
       {
         snprintf(msg, sizeof(msg),
-                 "NX on line %d: must be immediately followed by a CM card to start the next section.", i + 1);
+                 "NX on line %d: must be followed by CM card(s) or CE to start the next section.", i + 1);
         add_error(ctx, errors, msg, FATAL);
       }
 

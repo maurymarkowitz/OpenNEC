@@ -19,6 +19,9 @@
  */
 int run_simulation(context_t *ctx, deck_t *deck);
 
+/* Reset geometry-dependent calculation defaults before a new NX structure. */
+int reset_calculation_defaults(context_t *ctx);
+
 /* Process queued EX cards for excitation (called from sequential processor) */
 int process_ex_batch(context_t *ctx);
 

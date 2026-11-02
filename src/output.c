@@ -558,9 +558,9 @@ static void write_coupling_data(context_t *ctx)
 /******************************************************************************
  * write_nec_preamble()
  *
- * Writes the one-time geometry header section: file header, structure
- * specification, segments, patches, and input cards.  Called once per
- * simulation section, before the frequency loop begins.
+ * Writes the one-time file header followed by the first structure's geometry
+ * section. Later NX sections use write_nec_structure_section(), which omits
+ * the file header.
  */
 void write_nec_preamble(context_t *ctx, const deck_t *deck, FILE *file)
 {
@@ -569,6 +569,11 @@ void write_nec_preamble(context_t *ctx, const deck_t *deck, FILE *file)
     fprintf(file, "1\n");
     
   write_header(ctx, deck, file);
+  write_nec_structure_section(ctx, deck, file);
+}
+
+void write_nec_structure_section(context_t *ctx, const deck_t *deck, FILE *file)
+{
   write_structure(ctx, deck, file);
   write_segments(ctx, deck, file);
   /* Do NOT echo cards here. Card echoing is handled by write_batch_card_echo()

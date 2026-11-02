@@ -1,5 +1,9 @@
 OpenNEC version history
 
+Version 2.3.3 - 2026 November 2
+- got NX cards working properly
+- fixed a fat-finger when looking for NEC's bad triangle connections
+
 Version 2.3.2 - 2026 October 31
 - booo, scary!
 - fixed the issue in somnec when close to the ground, issue 26 and 14
