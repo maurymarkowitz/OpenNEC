@@ -1,5 +1,7 @@
 Items still to be implemented:
 
+* follow the call to process_deck_sequential, why is geometry already calculated?
+
 * re-implement batch reporting for the interactive mode
 
 * add some more tests for the deck type if none is specified
