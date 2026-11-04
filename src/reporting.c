@@ -322,15 +322,51 @@ static void restore_geometry(context_t *ctx, const card_state_t *state)
 int process_deck_sequential(context_t *ctx, deck_t *deck)
 {
     if (!ctx || !deck) return -1;
+
+    /* Certain paths to coming here may have already reported fatal errors. */
+    for (int i = 0; i < ctx->errors.num_errors; i++) {
+        if (ctx->errors.errors[i].severity >= FATAL)
+            return -1;
+    }
+
+    /* Geometry may have been built earlier by estimate_time() or a caller.
+     * In that case the segment count is nonzero even if geometry construction
+     * stopped on a fatal error, so don't proceed to write output from the
+     * partially initialized geometry. */
+    for (int i = 0; i < ctx->geometry.errors.num_errors; i++) {
+        error_t *geometry_error = &ctx->geometry.errors.errors[i];
+        if (geometry_error->severity < FATAL)
+            continue;
+
+        bool already_reported = false;
+        for (int j = 0; j < ctx->errors.num_errors; j++) {
+            error_t *error = &ctx->errors.errors[j];
+            if (error->severity == geometry_error->severity &&
+                strcmp(error->message, geometry_error->message) == 0) {
+                already_reported = true;
+                break;
+            }
+        }
+        if (!already_reported) {
+            errors_list_t one_error = { .num_errors = 1, .errors = geometry_error };
+            transfer_errors(&one_error, &ctx->errors);
+        }
+        return -1;
+    }
     
     /* Step 1: Calculate geometry if not already done (like run_simulation does) */
     if (ctx->geometry.num_segs == 0 && ctx->geometry.num_patches == 0) {
+        int prior_error_count = ctx->errors.num_errors;
         errors_list_t geometry_errors = {0};
         calculate_geometry(ctx, deck, &geometry_errors, &ctx->outputs);
         
         if (geometry_errors.num_errors > 0) {
             transfer_errors(&geometry_errors, &ctx->errors);
             return -1;
+        }
+        for (int i = prior_error_count; i < ctx->errors.num_errors; i++) {
+            if (ctx->errors.errors[i].severity >= FATAL)
+                return -1;
         }
     }
     
