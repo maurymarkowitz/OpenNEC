@@ -89,35 +89,15 @@ int write_deck_nec2(const deck_t *deck, FILE *file)
         // int and float fields
         if (is_control(card) || is_geometry(card))
         {
-            for (int j = 0; j <= card->ints_used && j <= MAX_INTS; j++)
+            /* Card fields are stored 1-based; index 0 is not an NEC field. */
+            for (int j = 1; j <= card->ints_used && j <= MAX_INTS; j++)
             {
-                char key[8];
-                snprintf(key, sizeof(key), "I%d", j % 100);  /* limit to 2 digits */
-                const char *formula = lookup_formula(card, key);
-
-                if (formula != NULL)
-                {
-                    fprintf(file, " %s", formula);
-                }
-                else
-                {
-                    fprintf(file, " %d", card->i[j]);
-                }
+                fprintf(file, " %d", card->i[j]);
             }
-            for (int j = 0; j <= card->flts_used && j <= MAX_FLTS; j++)
+            for (int j = 1; j <= card->flts_used && j <= MAX_FLTS; j++)
             {
-                char key[8];
-                snprintf(key, sizeof(key), "F%d", j % 100);  /* limit to 2 digits */
-                const char *formula = lookup_formula(card, key);
-
-                if (formula != NULL)
-                {
-                    fprintf(file, " %s", formula);
-                }
-                else
-                {
-                    fprintf(file, " %G", card->f[j]);
-                }
+                /* update_deck_values() has already evaluated any formulas. */
+                fprintf(file, " %G", card->f[j]);
             }
             // close the line
             fputc('\n', file);

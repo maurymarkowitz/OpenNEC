@@ -380,7 +380,7 @@ static const char *filetype_name(filetype_t ft, const char *filename)
 static int has_nec_extension(const char *filename)
 {
   filetype_t ft = classify_by_extension(filename);
-  return ft == FILETYPE_NEC;
+  return ft == FILETYPE_NEC || ft == FILETYPE_NEC2;
 }
 
 /* Parse a quoted glob argument such as "/path/to/STAR.yo".
@@ -790,7 +790,7 @@ static int process_single_file(const char *input_filename, const char *output_fi
     filetype_t wftype = classify_by_extension(ext_src);
     if (wftype == FILETYPE_UNSUPPORTED || wftype == FILETYPE_UNKNOWN || wftype == FILETYPE_STDIN) {
       fprintf(error_fp, "onec: -w: unrecognised output format for '%s' "
-              "(supported: .nec .deck .nec2 .nec4 .maa .mma .yo .ant .yag)\n", write_file);
+              "(supported: .nec .deck .nec2 .nec4 .maa .mma .yo .ant .yag .nc)\n", write_file);
     } else {
       FILE *wfp = (wpath[0] && strcmp(wpath, "-") != 0) ? fopen(wpath, "w") : stdout;
       if (!wfp) {
@@ -809,6 +809,8 @@ static int process_single_file(const char *input_filename, const char *output_fi
           write_deck_maa(&deck, wfp);
         } else if (wftype == FILETYPE_YO) {
           write_deck_yo(&deck, wfp);
+        } else if (wftype == FILETYPE_NC) {
+          write_deck_nc(&deck, wfp);
         }
         if (wfp != stdout) fclose(wfp);
       }

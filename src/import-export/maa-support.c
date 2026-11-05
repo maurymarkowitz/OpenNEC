@@ -29,10 +29,9 @@
  * @brief Parse the nth numeric token from a card's string (1-based, past the code).
  *
  * Skips the two-character card code and then counts comma/space-delimited
- * numeric tokens.  Returns the parsed value, or 0.0 if the field is absent
- * or the card has no string.  Used by the exporter to extract float fields
- * (re, im, R, X, …) without depending on the i[]/f[] arrays, which are only
- * populated after formula evaluation (which may be skipped with -n).
+ * tokens. Returns the parsed value, or 0.0 if the field is absent or the card
+ * has no string. The exporter uses this as a fallback for deck structures
+ * without parsed fields; formula-backed values should come from evaluated f[].
  */
 static double card_field_n(const card_t *c, int n)
 {
@@ -208,9 +207,9 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
         if (strcmp(c->card_code, "EX") != 0) continue;
         count++;
         int wire = c->i[2];
-        /* f[] may not be populated when -n skips formula eval; parse from string */
-        double re = card_field_n(c, 4);
-        double im = card_field_n(c, 5);
+        /* Preserve parsed literal fallback, but use evaluated values for formulas. */
+        double re = lookup_formula(c, "F1") ? c->f[1] : card_field_n(c, 4);
+        double im = lookup_formula(c, "F2") ? c->f[2] : card_field_n(c, 5);
         double mag = hypot(re, im);
         double phase = atan2(im, re) * 180.0 / M_PI;
         fprintf(fp, "w%dc, %.2f, %.6f\n", wire, phase, mag);
@@ -225,11 +224,12 @@ int write_deck_maa(const deck_t *deck, FILE *fp)
         count++;
         int wire = c->i[2];
         int seg  = c->i[3];
-        /* f[] may not be populated when -n skips formula eval; parse from string */
-        double R = card_field_n(c, 5);
-        double X = card_field_n(c, 6);
-        double L = card_field_n(c, 7);
-        double C = card_field_n(c, 8);
+        /* Use evaluated fields when formulas are present; otherwise retain the
+         * string fallback for decks assembled without parse_deck(). */
+        double R = lookup_formula(c, "F1") ? c->f[1] : card_field_n(c, 5);
+        double X = lookup_formula(c, "F2") ? c->f[2] : card_field_n(c, 6);
+        double L = lookup_formula(c, "F3") ? c->f[3] : card_field_n(c, 7);
+        double C = lookup_formula(c, "F4") ? c->f[4] : card_field_n(c, 8);
         fprintf(fp, "%d, %d, %.6g, %.6g, %.6g, %.6g\n",
                 wire, seg, R, X, L, C);
     }

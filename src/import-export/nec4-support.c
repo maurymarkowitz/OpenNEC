@@ -117,19 +117,13 @@ int write_deck_nec4(const deck_t *deck, FILE *file)
         MAX_FLTS = max_flt_fields(card);
 
         if (is_control(card) || is_geometry(card)) {
-            for (int j = 0; j <= card->ints_used && j <= MAX_INTS; j++) {
-                char key[8];
-                snprintf(key, sizeof key, "I%d", j % 100);  /* limit to 2 digits */
-                const char *formula = lookup_formula(card, key);
-                if (formula) fprintf(file, " %s", formula);
-                else fprintf(file, " %d", card->i[j]);
+            /* Card fields are 1-based; NEC-4 output needs evaluated values. */
+            for (int j = 1; j <= card->ints_used && j <= MAX_INTS; j++) {
+                fprintf(file, " %d", card->i[j]);
             }
-            for (int j = 0; j <= card->flts_used && j <= MAX_FLTS; j++) {
-                char key[8];
-                snprintf(key, sizeof key, "F%d", j % 100);  /* limit to 2 digits */
-                const char *formula = lookup_formula(card, key);
-                if (formula) fprintf(file, " %s", formula);
-                else fprintf(file, " %G", card->f[j]);
+            for (int j = 1; j <= card->flts_used && j <= MAX_FLTS; j++) {
+                /* update_deck_values() has already evaluated any formulas. */
+                fprintf(file, " %G", card->f[j]);
             }
             // prepare comment text, if any
             char cmt_text[512] = "";

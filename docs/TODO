@@ -2,6 +2,8 @@ Items still to be implemented:
 
 * follow the call to process_deck_sequential, why is geometry already calculated?
 
+* handle SimNEC/SimSmith dcl's, which are basically SYs with a "dcl" or "$" instead of SY. need a separate input/export for this
+
 * re-implement batch reporting for the interactive mode
 
 * add some more tests for the deck type if none is specified
