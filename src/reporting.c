@@ -330,14 +330,11 @@ int process_deck_sequential(context_t *ctx, deck_t *deck)
     }
 
     /* Geometry may have been built earlier by estimate_time() or a caller.
-     * In that case the segment count is nonzero even if geometry construction
-     * stopped on a fatal error, so don't proceed to write output from the
-     * partially initialized geometry. */
+     * Geometry errors are not uniformly marked FATAL: some helpers record a
+     * warning and return early. Any retained geometry error means the cached
+     * geometry may be incomplete, so don't write output from it. */
     for (int i = 0; i < ctx->geometry.errors.num_errors; i++) {
         error_t *geometry_error = &ctx->geometry.errors.errors[i];
-        if (geometry_error->severity < FATAL)
-            continue;
-
         bool already_reported = false;
         for (int j = 0; j < ctx->errors.num_errors; j++) {
             error_t *error = &ctx->errors.errors[j];

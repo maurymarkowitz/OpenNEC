@@ -86,26 +86,15 @@ void calculate_geometry(context_t *ctx, deck_t *deck, errors_list_t *errors, out
     return;
   }
   
-  // Symbol table and defaults were already initialized after parse_deck
-  // Now we evaluate card formulas sequentially as we encounter cards
+  // Card formulas were evaluated in deck order by update_deck_values().
   
   // loop over the geometry section of the deck, which should be correct by this point
   for(int i = deck->geometry_start; i <= deck->geometry_end; i++) {
     card = &deck->cards[i];
     
-    // Check if this is a SY card - if so, evaluate its formulas and continue to next card.
-    // Ignored (commented-out) SY cards are skipped: they must not update the symbol table,
-    // otherwise an ignored 'SY X=old that precedes an active SY X=new would shadow the
-    // correct value when tinyexpr resolves 'X' (it picks the first binding it finds).
+    // SY values and card fields have already been evaluated in deck order.
     if(strcmp(card->card_code, "SY") == 0) {
-      if(!card->ignore && card->formulas) {
-        key_value_t *kv = card->formulas;
-        while (kv) {
-          evaluate_formula(ctx, kv, deck, errors);
-          kv = kv->next;
-        }
-      }
-      continue; // Skip to next card, SY cards don't generate geometry
+      continue;
     }
     
     // one of the few ways that onec modifies the original NEC code is by adding

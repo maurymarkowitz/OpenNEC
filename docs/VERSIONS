@@ -1,5 +1,13 @@
 OpenNEC version history
 
+Version 2.3.4 - 2026 November 5
+- NEC-2 export code properly replaces formulas now, and removes the extra "0"
+- possible issue when --skip-large is used with broken geometry is fixed
+- SY's and formulas are now evaled in order, so re-defining a symbol works and only effects following formulas
+- "bad" formulas in geometry fields no longer silently fail, they return and error and exit
+- looped formulas (SY A=B, B=A) now evaluate with an error, not to 0
+- estimate_time does its own segment count now, no longer calling calculate_geometry
+
 Version 2.3.3 - 2026 November 2
 - got NX cards working properly
 - fixed the issue where PT and PQ cards stopped RP. not sure how this happend in the first place.

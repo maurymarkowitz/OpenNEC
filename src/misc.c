@@ -13,6 +13,8 @@
 #include <time.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <limits.h>
+#include <math.h>
 
 /***  ONEC utils ***/
 
@@ -284,6 +286,24 @@ void mem_free( const context_t *ctx, void **ptr )
 } /* End of void free_ptr() */
 
 /*------------------------------------------------------------------------*/
+
+static void estimate_count_scale(int *count, int factor)
+{
+  if (*count <= 0 || factor <= 0) {
+    *count = 0;
+  } else if (*count > INT_MAX / factor) {
+    *count = INT_MAX;
+  } else {
+    *count *= factor;
+  }
+}
+
+static void estimate_symmetry_scale(int *multiplier, int factor)
+{
+  estimate_count_scale(multiplier, factor);
+  if (*multiplier == 0)
+    *multiplier = INT_MAX;
+}
 
 /******************************************************************************
  * detect_field_separator
@@ -660,7 +680,7 @@ static void estimate_setup(const deck_t *deck,
     else if (strcmp(code, "GR") == 0) {
       /* i[2] = number of rotational sectors */
       int sectors = c->i[2];
-      if (sectors > 1) *m_sym *= sectors;
+      if (sectors > 1) estimate_symmetry_scale(m_sym, sectors);
     }
     else if (strcmp(code, "GX") == 0) {
       /* i[2] = three-digit bitmask: hundreds=x, tens=y, units=z */
@@ -668,7 +688,26 @@ static void estimate_setup(const deck_t *deck,
       int ix = (bitmask / 100) % 10 ? 1 : 0;
       int iy = (bitmask / 10)  % 10 ? 1 : 0;
       int iz =  bitmask        % 10 ? 1 : 0;
-      *m_sym *= (1 << (ix + iy + iz));
+      estimate_symmetry_scale(m_sym, (1 << (ix + iy + iz)));
+    }
+    else if (strcmp(code, "GM") == 0) {
+      /* GM copies all or part of the geometry accumulated so far. Without
+       * building segment tags, use the whole current geometry as an upper
+       * bound for tag-limited copies. A non-zero I2 adds that many copies. */
+      int copies = c->i[2];
+      if (copies > 0) {
+        estimate_count_scale(ns, *m_sym);
+        estimate_count_scale(np, *m_sym);
+        int copy_factor = (copies == INT_MAX) ? INT_MAX : copies + 1;
+        estimate_count_scale(ns, copy_factor);
+        estimate_count_scale(np, copy_factor);
+        *m_sym = 1;
+      } else if (fabs(c->f[1]) + fabs(c->f[2]) > 1.0e-10) {
+        /* X/Y rotation invalidates the existing NEC symmetry reduction. */
+        estimate_count_scale(ns, *m_sym);
+        estimate_count_scale(np, *m_sym);
+        *m_sym = 1;
+      }
     }
   }
 
@@ -730,6 +769,8 @@ static void estimate_setup(const deck_t *deck,
  *
  * Design notes:
  *   - T4 = 0 when no RP card is present.  No worst-case Nf is assumed.
+ *   - GM copy counts use the current full geometry as an upper bound when a
+ *     tag selects only part of it. This keeps the estimate conservative.
  *   - The Nc (wire-to-surface junction) correction term is omitted because
  *     Nc cannot be determined from deck cards alone without running the full
  *     geometry engine.
@@ -737,8 +778,8 @@ static void estimate_setup(const deck_t *deck,
  *     (fill, factorisation, solve, far-field) repeat for each frequency.
  *     Nfreq therefore multiplies the entire T, not just T4.
  *
- * @param  deck   Parsed deck (symbols evaluated; calculate_geometry() need
- *                NOT have been called)
+ * @param  deck   Parsed deck with formulas evaluated; no geometry calculation
+ *                is performed.
  * @return        Dimensionless complexity estimate T >= 0.0, or 0.0 if the
  *                deck pointer is NULL.
  */
@@ -746,43 +787,19 @@ double estimate_time(context_t *ctx, deck_t *deck)
 {
   if (!ctx || !deck) return 0.0;
 
-  /* Ensure geometry is expanded so we get the post-GM segment count.
-   * calculate_geometry() is coordinate math only — no matrix work.
-   * If it was already called (e.g. by a preceding run_simulation,
-   * or by a GUI that built the geometry view), we reuse the result. */
-  if (ctx->geometry.num_segs == 0 && ctx->geometry.num_patches == 0) {
-    errors_list_t tmp_errs = {0};
-    calculate_geometry(ctx, deck, &tmp_errs, &ctx->outputs);
-    for (int i = 0; i < tmp_errs.num_errors; i++) free(tmp_errs.errors[i].message);
-    free(tmp_errs.errors);
-  }
-
-  /* Scan control cards for FR / RP / GN — deck-scan is still needed for
-   * these because they live outside the geometry section. The geometry
-   * portion of nec_estimate_setup is now superseded by ctx->geometry. */
+  /* Estimate from parsed cards only. This avoids mutating geometry, which
+   * process_deck_sequential() will build for the simulation itself. */
   int ns_scan, np_scan, nf, m_sym_scan, k_gnd, nfreq;
   estimate_setup(deck, &ns_scan, &np_scan, &nf, &m_sym_scan, &k_gnd, &nfreq);
 
-  /* Derive ns / np / m_sym from the expanded geometry.
-   *  ctx->geometry.num_segs_sym  = segments in one symmetry cell (< .n when GR is used)
-   *  ctx->geometry.num_patches_sym  = patches   in one symmetry cell
-   *  m_sym             = n / np  (>1 for GR; ==1 after GM expansion) */
-  int ns, np, m_sym;
-  if (ctx->geometry.num_segs > 0 || ctx->geometry.num_patches > 0) {
-    ns    = ctx->geometry.num_segs_sym;
-    np    = ctx->geometry.num_patches_sym;
-    m_sym = (ctx->geometry.num_segs_sym > 0) ? ctx->geometry.num_segs / ctx->geometry.num_segs_sym : 1;
-  } else {
-    /* Empty or failed geometry — fall back to deck-scan values. */
-    ns    = ns_scan;
-    np    = np_scan;
-    m_sym = m_sym_scan;
-  }
+  int ns = ns_scan;
+  int np = np_scan;
+  int m_sym = m_sym_scan;
 
   if (m_sym  <= 0) m_sym  = 1;
   if (nfreq  <= 0) nfreq  = 1;
 
-  double N     = (double)(ns + 2 * np);
+  double N     = (double)ns + 2.0 * (double)np;
   double M     = (double)m_sym;
   double k     = (double)k_gnd;
   double Ns    = (double)ns;

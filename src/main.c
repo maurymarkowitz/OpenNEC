@@ -261,15 +261,15 @@ void parse_options(int argc, char *argv[])
 
 /* ---------- file-type detection ----------------------------------- */
 typedef enum {
-  FILETYPE_NEC,          /* .nec  .deck  — native NEC/OpenNEC deck    */
-  FILETYPE_NEC2,         /* .nec2        — NEC-2 stripped output      */
-  FILETYPE_NEC4,         /* .nec4        — NEC-4 output (stub)        */
-  FILETYPE_YO,           /* .yo   .ant   .yag — Yagi Optimizer        */
-  FILETYPE_MAA,          /* .maa  .mma   — MMANA-GAL                  */
-  FILETYPE_NC,           /* .nc  — cocoaNEC script                    */
-  FILETYPE_UNSUPPORTED,  /* known format, importer not yet available  */
-  FILETYPE_UNKNOWN,      /* unrecognised extension — try NEC parsing  */
-  FILETYPE_STDIN,        /* empty / "-" — stdin, no extension info    */
+  FILETYPE_NEC,          /* .nec  .deck   — native NEC/OpenNEC deck    */
+  FILETYPE_NEC2,         /* .nec2         — NEC-2, no formulas, etc.   */
+  FILETYPE_NEC4,         /* .nec4         — NEC-4, NEC-2 with comments */
+  FILETYPE_YO,           /* .yo .ant .yag — Yagi Optimizer             */
+  FILETYPE_MAA,          /* .maa .mma     — MMANA-GAL                  */
+  FILETYPE_NC,           /* .nc           — cocoaNEC script            */
+  FILETYPE_UNSUPPORTED,  /* known format, importer not yet available   */
+  FILETYPE_UNKNOWN,      /* unrecognised extension — try NEC parsing   */
+  FILETYPE_STDIN,        /* empty / "-" — stdin, no extension info     */
 } filetype_t;
 
 /* Maps extension to format.  Case-insensitive. */
@@ -761,6 +761,18 @@ static int process_single_file(const char *input_filename, const char *output_fi
 
   // Evaluate all formulas in the deck
   update_deck_values(ctx, &deck);
+
+  // Formula errors are fatal: do not export or simulate a deck whose fields
+  // still contain their default parsed values.
+  for (int i = 0; i < ctx->errors.num_errors; i++) {
+    if (ctx->errors.errors[i].severity >= FATAL) {
+      if (input_fp != stdin) fclose(input_fp);
+      if (output_fp != stdout) fclose(output_fp);
+      destroy_deck(&deck);
+      destroy_context(ctx);
+      return -1;
+    }
+  }
 
   /* --skip-large: when group mode is active (multiple files or -r), skip files whose
      estimated complexity is too high (T >= 1e11). */

@@ -1117,16 +1117,9 @@ static int process_next_batch(context_t *ctx, deck_t *deck, int *batch_start, in
         
         char *code = card->card_code;
         
-        // Check if this is a SY card - if so, evaluate its formulas and continue to next card
+        // SY assignments were evaluated in deck order before processing.
         if (strcmp(code, "SY") == 0) {
-            if (card->formulas) {
-                key_value_t *kv = card->formulas;
-                while (kv) {
-                    evaluate_formula(ctx, kv, deck, &ctx->errors);
-                    kv = kv->next;
-                }
-            }
-            continue; // Skip to next card, SY cards don't configure anything
+            continue;
         }
         
         // Skip XQ, EN, XT, NX cards (they don't configure anything)

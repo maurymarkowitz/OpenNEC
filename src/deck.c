@@ -21,13 +21,10 @@
 #include "tinyexpr.h"
 
 /* Forward declarations for internal functions */
-static void update_symbol_values(context_t *ctx, deck_t *deck, errors_list_t *errors);
-static void update_card_values(deck_t *deck);
+static void update_card_values(context_t *ctx, deck_t *deck, errors_list_t *errors);
 static void add_default_symbols(deck_t *deck);
 static void update_symbol_list(deck_t *deck, errors_list_t *errors);
 
-static bool references(const char *expr, const char *symname);
-static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, context_t *ctx, errors_list_t *errors);
 
 /******************************************************************************
  * new_card
@@ -961,12 +958,8 @@ void update_deck_values(context_t *ctx, deck_t *deck)
   deck->num_symbols = 0;
   add_default_symbols(deck);
 
-  // then add symbols from the
-  update_symbol_list(deck, &ctx->errors);
-
-  // Evaluate and update
-  update_symbol_values(ctx, deck, &ctx->errors);
-  update_card_values(deck);
+  // Walk cards in order, updating the active symbols as SY cards occur.
+  update_card_values(ctx, deck, &ctx->errors);
 }
 
 /******************************************************************************
@@ -994,21 +987,35 @@ static void update_symbol_list(deck_t *deck, errors_list_t *errors)
       key_value_t *kv = card->formulas;
       while (kv)
       {
-        // Check if this symbol name conflicts with any existing symbol (case-insensitive)
+        // User symbols override defaults, case-insensitively.
         for (int j = 0; j < num_defaults; j++)
         {
           if (deck->symbols[j] && strcasecmp(deck->symbols[j]->key, kv->key) == 0)
           {
-            // if (errors) {
-            //   char msg[256];
-            //   snprintf(msg, sizeof(msg), "The symbol '%s' conflicts with existing symbol '%s'. The user symbol will take precedence.", kv->key, deck->symbols[j]->key);
-            //   add_error(NULL, errors, msg, WARNING);
-            // }
             // remove the conflicting default symbol
             remove_symbol(deck, deck->symbols[j]->key);
             num_defaults--; // Adjust count since we removed one
             break;
           }
+        }
+
+        // A later SY assignment replaces the previous binding. Keep only one
+        // entry so formula evaluation cannot resolve a case-insensitive name
+        // to an earlier definition (e.g. a=1 followed by A=2).
+        bool replaced = false;
+        for (int j = num_defaults; j < deck->num_symbols; j++)
+        {
+          if (deck->symbols[j] && strcasecmp(deck->symbols[j]->key, kv->key) == 0)
+          {
+            deck->symbols[j] = kv;
+            replaced = true;
+            break;
+          }
+        }
+        if (replaced)
+        {
+          kv = kv->next;
+          continue;
         }
 
         add_symbol(deck, kv);
@@ -1150,6 +1157,7 @@ void add_default_symbols(deck_t *deck)
       key_value_t *def_sym = (key_value_t *)malloc(sizeof(key_value_t));
       def_sym->key = strdup(defaults[d].name);
       def_sym->value = strdup(defaults[d].value);
+      def_sym->fv = strtod(defaults[d].value, NULL);
       def_sym->separator = '=';
       def_sym->next = NULL;
       add_symbol(deck, def_sym);
@@ -1158,45 +1166,6 @@ void add_default_symbols(deck_t *deck)
 
   // add unit conversion constants
   add_unit_constants(deck);
-}
-
-/******************************************************************************
- * update_symbol_values
- *
- * Evaluates formulas for each symbol in the deck and stores the result in fv.
- * Symbols are calculated in dependency order: if a symbol's formula references
- * other symbols, those referenced symbols are evaluated first.
- */
-void update_symbol_values(context_t *ctx, deck_t *deck, errors_list_t *errors)
-{
-  key_value_t **syms = deck->symbols;
-  bool *evaluated = calloc(deck->num_symbols, sizeof(bool));
-  if (ctx)
-    ctx->eval_depth = 0;
-  for (int i = 0; i < deck->num_symbols; i++)
-    if (eval_symbol(i, deck->num_symbols, syms, evaluated, deck, ctx, errors) != 0)
-    {
-      // error already added
-    }
-  free(evaluated);
-}
-
-// helper: check if formula references a symbol
-static bool references(const char *expr, const char *symname)
-{
-  if (!expr || !symname)
-    return false;
-  size_t len = strlen(symname);
-  const char *p = expr;
-  while ((p = strstr(p, symname)))
-  {
-    if ((p == expr || !isalnum((unsigned char)p[-1])) && (!isalnum((unsigned char)p[len])))
-    {
-      return true;
-    }
-    p += len;
-  }
-  return false;
 }
 
 // Helper function for better formula error messages
@@ -1242,140 +1211,6 @@ static char *get_formula_error_description(const char *formula, int error_pos)
   return NULL; // no specific error description available
 }
 
-// Recursive evaluation for symbol dependencies
-static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated, deck_t *deck, context_t *ctx, errors_list_t *errors)
-{
-  // Check recursion depth to prevent infinite loops using ctx->eval_depth
-  if (ctx)
-    ctx->eval_depth++;
-  if (ctx && ctx->eval_depth > 100)
-  {
-    char err_msg[256];
-    snprintf(err_msg, sizeof(err_msg), "Maximum recursion depth exceeded evaluating symbol '%s'", syms[i]->key);
-    add_error(ctx, errors, err_msg, FATAL);
-    ctx->eval_depth--;
-    return -1;
-  }
-
-  // Check if already evaluated to prevent infinite recursion
-  if (evaluated[i])
-  {
-    if (ctx)
-      ctx->eval_depth--;
-    return 0;
-  }
-
-  // Mark as evaluated immediately to prevent infinite recursion on circular dependencies
-  evaluated[i] = true;
-
-  key_value_t *sym = syms[i];
-
-  // Recursively evaluate all referenced symbols first
-  for (int j = 0; j < sym_count; j++)
-  {
-    if (i == j)
-      continue;
-    if (references(sym->value, syms[j]->key))
-    {
-      if (eval_symbol(j, sym_count, syms, evaluated, deck, ctx, errors) != 0)
-        return -1;
-    }
-  }
-
-  // Now evaluate this symbol's formula
-  if (sym->value && sym->value[0] != '\0')
-  {
-    // Use original case for tinyexpr variables to avoid conflicts
-    te_variable *vars = calloc(sym_count, sizeof(te_variable));
-    for (int k = 0; k < sym_count; k++)
-    {
-      vars[k].name = syms[k]->key;
-      vars[k].address = &syms[k]->fv;
-      vars[k].type = TE_VARIABLE;
-      vars[k].context = NULL;
-    }
-
-    // Preprocess AWG syntax (#14 -> awg value)
-    char *temp_formula = preprocess_awg(sym->value);
-
-    // Preprocess implicit multiplication (135 ft -> 135*ft)
-    char *processed_formula = preprocess_implicit_multiplication(temp_formula);
-    free(temp_formula);
-
-    int err = 0;
-    te_expr *expr = te_compile(processed_formula, vars, sym_count, &err);
-    if (expr)
-    {
-      sym->fv = te_eval(expr);
-      te_free(expr);
-
-      // DEBUG: Show symbol evaluation
-      // fprintf(stderr, "DEBUG: Evaluated symbol '%s' = '%s' -> %g\n", sym->key, processed_formula, sym->fv);
-    }
-    else
-    {
-      // Find which card this symbol belongs to
-      int card_num = -1;
-      for (int c = 0; c < deck->num_cards; c++)
-      {
-        card_t *card = &deck->cards[c];
-        if (strcmp(card->card_code, "SY") == 0 && card->formulas)
-        {
-          key_value_t *kv = card->formulas;
-          while (kv)
-          {
-            if (kv == sym)
-            {
-              card_num = c + 1;
-              break;
-            }
-            kv = kv->next;
-          }
-          if (card_num > 0)
-            break;
-        }
-      }
-      char err_msg[256];
-      // Try to provide a more descriptive error message
-      char *error_desc = get_formula_error_description(processed_formula, err);
-      if (card_num > 0)
-      {
-        if (error_desc)
-        {
-          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' on card %d: %s", processed_formula, card_num, error_desc);
-          free(error_desc);
-        }
-        else
-        {
-          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d on card %d", processed_formula, err, card_num);
-        }
-      }
-      else
-      {
-        if (error_desc)
-        {
-          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s': %s", processed_formula, error_desc);
-          free(error_desc);
-        }
-        else
-        {
-          snprintf(err_msg, sizeof(err_msg), "Error evaluating formula '%s' at position %d", processed_formula, err);
-        }
-      }
-      add_error(ctx, errors, err_msg, FATAL);
-      free(processed_formula);
-      free(vars);
-      if (ctx)
-        ctx->eval_depth--;
-      return -1;
-    }
-    free(vars);
-  }
-  if (ctx)
-    ctx->eval_depth--;
-  return 0;
-}
-
 /******************************************************************************
  * update_card_values
  *
@@ -1384,16 +1219,62 @@ static int eval_symbol(int i, int sym_count, key_value_t **syms, bool *evaluated
  * of update_deck_values
  *
  */
-void update_card_values(deck_t *deck)
+static void update_card_values(context_t *ctx, deck_t *deck, errors_list_t *errors)
 {
   for (int c = 0; c < deck->num_cards; c++)
   {
     card_t *card = &deck->cards[c];
 
-    // Skip SY cards - their formulas define symbols, not field values
-    // Symbol formulas are evaluated separately in update_symbol_values
+    // SY assignments take effect immediately for subsequent assignments and cards.
     if (strcmp(card->card_code, "SY") == 0)
     {
+      if (card->ignore)
+        continue;
+      for (key_value_t *kv = card->formulas; kv; kv = kv->next)
+      {
+        int count = deck->num_symbols;
+        te_variable *vars = calloc(count, sizeof(*vars));
+        for (int i = 0; i < count; i++)
+        {
+          char *name = strdup(deck->symbols[i]->key);
+          for (char *p = name; *p; p++)
+            *p = tolower((unsigned char)*p);
+          vars[i].name = name;
+          vars[i].address = &deck->symbols[i]->fv;
+          vars[i].type = TE_VARIABLE;
+        }
+        char *temp = preprocess_awg(kv->value);
+        char *processed = preprocess_implicit_multiplication(temp);
+        free(temp);
+        for (char *p = processed; *p; p++)
+          *p = tolower((unsigned char)*p);
+        int err = 0;
+        te_expr *expr = te_compile(processed, vars, count, &err);
+        if (expr)
+        {
+          kv->fv = te_eval(expr);
+          te_free(expr);
+          int i;
+          for (i = 0; i < deck->num_symbols; i++)
+            if (strcasecmp(deck->symbols[i]->key, kv->key) == 0)
+              break;
+          if (i < deck->num_symbols)
+            deck->symbols[i] = kv;
+          else
+            add_symbol(deck, kv);
+        }
+        else
+        {
+          char msg[MAX_ERROR_LEN];
+          snprintf(msg, sizeof(msg), "Error evaluating formula '%s = %s' on card %d at position %d",
+                   kv->key, kv->value, card->card_num > 0 ? card->card_num : c + 1, err);
+          add_error(ctx, errors, msg, FATAL);
+        }
+        for (int i = 0; i < count; i++)
+          free((char *)vars[i].name);
+        free(vars);
+        free(processed);
+      }
       continue;
     }
 
@@ -1416,16 +1297,18 @@ void update_card_values(deck_t *deck)
       int max_vars = MAX_FLT_FIELDS + MAX_INT_FIELDS + num_syms;
       te_variable *vars = calloc(max_vars, sizeof(te_variable));
       int v = 0;
+      const char *flt_names[] = {"", "f1", "f2", "f3", "f4", "f5", "f6", "f7"};
+      const char *int_names[] = {"", "i1", "i2", "i3", "i4"};
       for (int i = 1; i <= fcount; i++)
       {
-        vars[v].name = fnames[i];
+        vars[v].name = flt_names[i];
         vars[v].address = &fvals[i];
         vars[v].type = TE_VARIABLE;
         v++;
       }
       for (int i = 1; i <= icount; i++)
       {
-        vars[v].name = inames[i];
+        vars[v].name = int_names[i];
         vars[v].address = &ivals[i];
         vars[v].type = TE_VARIABLE;
         v++;
@@ -1433,7 +1316,10 @@ void update_card_values(deck_t *deck)
 
       for (int i = 0; i < num_syms; i++)
       {
-        vars[v].name = deck->symbols[i]->key;
+        char *name = strdup(deck->symbols[i]->key);
+        for (char *p = name; *p; p++)
+          *p = tolower((unsigned char)*p);
+        vars[v].name = name;
         vars[v].address = &deck->symbols[i]->fv;
         vars[v].type = TE_VARIABLE;
         v++;
@@ -1483,10 +1369,29 @@ void update_card_values(deck_t *deck)
               ivals[idx] = (double)ival;
             }
           }
+          else
+          {
+            char msg[MAX_ERROR_LEN];
+            char *error_desc = get_formula_error_description(processed_expr, err);
+            if (error_desc)
+            {
+              snprintf(msg, sizeof(msg), "Error evaluating formula '%s' for %s on card %d: %s",
+                       expr_str, key, card->card_num > 0 ? card->card_num : c + 1, error_desc);
+              free(error_desc);
+            }
+            else
+            {
+              snprintf(msg, sizeof(msg), "Error evaluating formula '%s' for %s on card %d at position %d",
+                       expr_str, key, card->card_num > 0 ? card->card_num : c + 1, err);
+            }
+            add_error(ctx, errors, msg, FATAL);
+          }
           free(processed_expr);
         }
         kv = kv->next;
       }
+      for (int i = fcount + icount; i < v; i++)
+        free((char *)vars[i].name);
       free(vars);
     }
 
