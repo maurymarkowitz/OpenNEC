@@ -24,6 +24,138 @@
 
 #include "internals.h"
 #include "deck_validations.h"
+#include "misc.h"
+
+static bool formula_name_is_builtin(const char *name)
+{
+  static const char *names[] = {
+      "abs", "acos", "arccos", "arcsin", "arctan", "asin", "atan", "atan2",
+      "atn", "ceil", "cos", "cosh", "e", "exp", "fac", "fix", "floor",
+      "int", "ln", "log", "log10", "max", "min", "mod", "ncr", "npr",
+      "pi", "pow", "sgn", "sin", "sinh", "sqr", "sqrt", "tan", "tanh"};
+  for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++)
+    if (strcasecmp(name, names[i]) == 0)
+      return true;
+  return false;
+}
+
+static bool formula_name_is_known(const char *name, char **defined, int count)
+{
+  static const char *defaults[] = {"pi", "c", "m", "cm", "mm", "ft", "in", "mil",
+                                   "pf", "nf", "uf", "nh", "uh", "mh"};
+  for (size_t i = 0; i < sizeof(defaults) / sizeof(defaults[0]); i++)
+    if (strcasecmp(name, defaults[i]) == 0)
+      return true;
+  if (strncasecmp(name, "awg", 3) == 0 && name[3])
+  {
+    char *end = NULL;
+    long n = strtol(name + 3, &end, 10);
+    if (*end == '\0' && n >= 0 && n <= 40)
+      return true;
+  }
+  for (int i = 0; i < count; i++)
+    if (strcasecmp(name, defined[i]) == 0)
+      return true;
+  return false;
+}
+
+static const char *formula_assignment_name(const char *formula)
+{
+  for (const char *p = formula; p && *p; )
+  {
+    if (isalpha((unsigned char)*p) || *p == '_')
+    {
+      const char *name = p++;
+      while (isalnum((unsigned char)*p) || *p == '_') p++;
+      const char *end = p;
+      while (isspace((unsigned char)*p)) p++;
+      if (*p == '=' && p[1] != '=') return name;
+      p = end;
+    }
+    else p++;
+  }
+  return NULL;
+}
+
+bool validate_deck_formulas(context_t *ctx, const deck_t *deck, errors_list_t *errors)
+{
+  int capacity = 1;
+  for (int c = 0; c < deck->num_cards; c++)
+    for (key_value_t *kv = deck->cards[c].formulas; kv; kv = kv->next)
+      capacity++;
+  char **defined = calloc((size_t)capacity, sizeof(*defined));
+  if (!defined)
+    return false;
+  int defined_count = 0;
+  bool valid = true;
+  char msg[MAX_ERROR_LEN];
+
+  for (int c = 0; c < deck->num_cards; c++)
+  {
+    const card_t *card = &deck->cards[c];
+    bool is_sy = strcmp(card->card_code, "SY") == 0;
+    if (card->ignore) continue;
+    for (key_value_t *kv = card->formulas; kv; kv = kv->next)
+    {
+      if (!kv->key || !kv->value) continue;
+      if (!is_sy && formula_assignment_name(kv->value))
+      {
+        const char *start = formula_assignment_name(kv->value);
+        size_t n = 0;
+        while ((isalnum((unsigned char)start[n]) || start[n] == '_') && n < 63) n++;
+        char variable[64];
+        memcpy(variable, start, n); variable[n] = '\0';
+        snprintf(msg, sizeof(msg), "Variable assignment to '%s' is only allowed on SY cards (field %s on card %d)",
+                 variable, kv->key, card->card_num > 0 ? card->card_num : c + 1);
+        add_error(ctx, errors, msg, FATAL);
+        valid = false;
+        continue;
+      }
+
+      char *awg = preprocess_awg(kv->value);
+      char *expr = preprocess_implicit_multiplication(awg);
+      free(awg);
+      if (!expr) continue;
+      for (char *p = expr; *p; p++) *p = (char)tolower((unsigned char)*p);
+      for (char *p = expr; *p; )
+      {
+        if (!isalpha((unsigned char)*p) && *p != '_') { p++; continue; }
+        char name[128];
+        size_t n = 0;
+        while ((isalnum((unsigned char)*p) || *p == '_') && n < sizeof(name) - 1)
+          name[n++] = *p++;
+        name[n] = '\0';
+        bool field_var = !is_sy && n == 2 &&
+                         ((name[0] == 'f' && name[1] >= '1' && name[1] <= '7') ||
+                          (name[0] == 'i' && name[1] >= '1' && name[1] <= '4'));
+        if (!formula_name_is_known(name, defined, defined_count) && !field_var &&
+            !formula_name_is_builtin(name))
+        {
+          snprintf(msg, sizeof(msg), "Undefined variable '%s' in formula (field %s on card %d)",
+                   name, kv->key, card->card_num > 0 ? card->card_num : c + 1);
+          add_error(ctx, errors, msg, FATAL);
+          valid = false;
+          break;
+        }
+      }
+      free(expr);
+
+      // Each assignment on an SY card becomes visible immediately afterward.
+      if (is_sy && !formula_name_is_known(kv->key, defined, defined_count))
+        defined[defined_count++] = strdup(kv->key);
+      else if (is_sy)
+      {
+        bool found = false;
+        for (int i = 0; i < defined_count; i++)
+          if (strcasecmp(defined[i], kv->key) == 0) found = true;
+        if (!found) defined[defined_count++] = strdup(kv->key);
+      }
+    }
+  }
+  for (int i = 0; i < defined_count; i++) free(defined[i]);
+  free(defined);
+  return valid;
+}
 
 // local structs for structural geometry validations
 typedef struct

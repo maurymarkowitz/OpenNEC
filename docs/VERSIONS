@@ -1,6 +1,8 @@
 OpenNEC version history
 
-Version 2.3.4 - 2026 November 5
+Version 2.3.5 - 2026 November 7
+- force an error if there is an assignment in a non-SY card
+- updated validation tests to look for various formula-related issues like this
 - NEC-2 export code properly replaces formulas now, and removes the extra "0"
 - possible issue when --skip-large is used with broken geometry is fixed
 - SY's and formulas are now evaled in order, so re-defining a symbol works and only effects following formulas

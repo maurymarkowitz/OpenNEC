@@ -19,11 +19,13 @@
 #include "internals.h"
 #include "deck.h"
 #include "tinyexpr.h"
+#include "deck_validations.h"
 
 /* Forward declarations for internal functions */
 static void update_card_values(context_t *ctx, deck_t *deck, errors_list_t *errors);
 static void add_default_symbols(deck_t *deck);
 static void update_symbol_list(deck_t *deck, errors_list_t *errors);
+static const char *find_variable_assignment(const char *formula);
 
 
 /******************************************************************************
@@ -958,6 +960,12 @@ void update_deck_values(context_t *ctx, deck_t *deck)
   deck->num_symbols = 0;
   add_default_symbols(deck);
 
+  // Validate formula syntax against symbols available at each point in the
+  // deck before evaluating any fields. This catches forward references and
+  // assignments outside SY without partially updating geometry/control cards.
+  if (!validate_deck_formulas(ctx, deck, &ctx->errors))
+    return;
+
   // Walk cards in order, updating the active symbols as SY cards occur.
   update_card_values(ctx, deck, &ctx->errors);
 }
@@ -1211,6 +1219,35 @@ static char *get_formula_error_description(const char *formula, int error_pos)
   return NULL; // no specific error description available
 }
 
+// Helper function to look for variable assignments in a formula
+static const char *find_variable_assignment(const char *formula)
+{
+  if (!formula)
+    return NULL;
+
+  const char *p = formula;
+  while (*p)
+  {
+    if (isalpha((unsigned char)*p) || *p == '_')
+    {
+      const char *name = p++;
+      while (isalnum((unsigned char)*p) || *p == '_')
+        p++;
+      const char *end = p;
+      while (isspace((unsigned char)*p))
+        p++;
+      if (*p == '=' && p[1] != '=')
+        return name;
+      p = end;
+    }
+    else
+    {
+      p++;
+    }
+  }
+  return NULL;
+}
+
 /******************************************************************************
  * update_card_values
  *
@@ -1333,6 +1370,26 @@ static void update_card_values(context_t *ctx, deck_t *deck, errors_list_t *erro
         const char *expr_str = kv->value;
         if (key != NULL && expr_str != NULL && key[0] != '\0')
         {
+          const char *assignment = find_variable_assignment(expr_str);
+          if (assignment)
+          {
+            char variable[64];
+            size_t name_len = 0;
+            while ((isalnum((unsigned char)assignment[name_len]) || assignment[name_len] == '_') &&
+                   name_len < sizeof(variable) - 1)
+              name_len++;
+            memcpy(variable, assignment, name_len);
+            variable[name_len] = '\0';
+
+            char msg[MAX_ERROR_LEN];
+            snprintf(msg, sizeof(msg),
+                     "Variable assignment to '%s' is only allowed on SY cards, but found in field %s on card %d",
+                     variable, key, card->card_num > 0 ? card->card_num : c + 1);
+            add_error(ctx, errors, msg, FATAL);
+            kv = kv->next;
+            continue;
+          }
+
           char kind = key[0];
           int idx = atoi(key + 1);
           int err = 0;

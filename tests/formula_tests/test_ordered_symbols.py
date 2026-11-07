@@ -47,6 +47,14 @@ GE 0""")
         self.assertIn("Error evaluating formula", result.stderr)
         self.assertEqual(output, "")
 
+    def test_variable_assignment_in_geometry_formula_is_rejected(self):
+        result, output = self.run_deck("""\
+GW 1 3 0 0 0 0 x=1 0 0.001
+GE 0""")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Variable assignment to 'x' is only allowed on SY cards", result.stderr)
+        self.assertEqual(output, "")
+
     def test_cycle_is_rejected(self):
         result, output = self.run_deck("SY a=b, b=a\nGE 0")
         self.assertNotEqual(result.returncode, 0)

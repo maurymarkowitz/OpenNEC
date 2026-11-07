@@ -1,9 +1,9 @@
 OpenNEC, NEC-2, nec2c and others
 ================================
 
-OpenNEC, onec for short, is a reimplementation of the nec2c code, which is a reimplementation of the original Fortran NEC-2 code. The differences between OpenNEC and nec2c are much greater than those between nec2c and NEC-2. This document describes the main changes between nec2c and OpenNEC.
+OpenNEC, onec for short, is a major reimplementation of the nec2c code, which is a relatively direct C language port of the original Fortran NEC-2 code, commonly found today in nec2d form. The differences between OpenNEC and nec2c are much greater than those between nec2c and nec2d.
 
-OpenNEC also includes many features inspired by other NEC engines. The sections below outline these new features, as well as listing a number of alternative NEC engines similar to OpenNEC.
+This document describes the main changes between nec2c and OpenNEC. OpenNEC also includes many features inspired by other NEC engines that are not part of nec2c or nec2d. The sections below outline these new features, as well as listing a number of alternative NEC engines similar to OpenNEC.
 
 Changes from nec2c
 ------------------
@@ -27,14 +27,14 @@ Changes from nec2c
 - onec has complete green's file support, and a green's file can be written using the -g flag on the command line, bypassing the need to modify the deck to add a WG card.
 
 - nec2c changed the output format of the reports in the .out files, which caused it to be incompatible with many GUI programs, but others used the new format instead.
-- onec can generate both the original NEC-2 format and the new nec2c format reports, and should work with any program (see the --format switch).
+- onec can generate reports in either the original NEC-2 format or the new nec2c format, and should work with any program (see the --format switch).
 
 Other basic changes
 -------------------
 
-- onec fixes a notorious bug in the geometry system that caused NEC to go into an infinite loop when segments were connected improperly. The program exits gracefully in this case, with a clear error message.
+- onec fixes a notorious bug in the geometry system that caused NEC engines to go into an infinite loop when segments were connected improperly. The program exits gracefully in this case, with a clear error message.
 
-- onec also fixes a number of bugs in nec2c, including known issues in the somnec calculations.
+- onec also fixes a number of bugs in nec2c, including a known issue in the somnec calculation.
 
 - onec adds a generic extension system that allows arbitrary data to be stored in cards in a compatible fashion. See the [OpenNEC file format](OpenNEC%20file%20format.md) document for details.
 
@@ -74,7 +74,7 @@ Many of the alternative calculation engines available are modified versions of t
 
 4nec2 is a powerful GUI program for Windows machines by Arie Voors, started in the 1990s and seeing continual development since then. Over time, it added a number of features like formulas and additional NEC options like EX 6.
 
-4nec2 uses external engines to perform the calculations. The 4nec2 package comes with several compiled versions of the original Fortran code, each changing the number of segments it can support with the tradeoff that the "larger" versions require more memory to run. This was an important feature at the time 4nec2 was first written, although today any machine can run the largest models and the "smaller" versions offer little utility.
+4nec2 uses external engines to perform the calculations. It ships with several compiled versions of the original Fortran code, each changing the number of segments it can support with the tradeoff that the "larger" versions require more memory to run. This was an important feature at the time 4nec2 was first written, although today any machine can run the largest models and the "smaller" versions offer little utility.
 
 The current nec2d-XS versions are further modified to add the eXtended Sommerfeld (XS) option that allows users to compute more accurate near-field results in certain scenarios by using a more rigorous treatment of the ground plane effects.
 
