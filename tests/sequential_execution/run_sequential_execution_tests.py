@@ -7,7 +7,18 @@ import tempfile
 from pathlib import Path
 
 
-EXPECTED_VERSION = "2.3.4"
+def _source_version():
+    """The version the binary under test should print: VERSION_STRING in
+    src/opennec.h.  Read from the source so a version bump cannot leave this
+    check behind, while a stale onec binary still fails it."""
+    header = Path(__file__).resolve().parents[2] / "src" / "opennec.h"
+    match = re.search(r'#define\s+VERSION_STRING\s+"([^"]+)"', header.read_text())
+    if not match:
+        raise SystemExit(f"VERSION_STRING not found in {header}")
+    return match.group(1)
+
+
+EXPECTED_VERSION = _source_version()
 
 CASES = {
     "issue25_multiple_ex_diagnostic.nec": {"frequencies": 1, "patterns": 0, "antenna_blocks": 1, "source_rows": 2},
