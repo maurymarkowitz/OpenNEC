@@ -1,7 +1,7 @@
 Golden impedance matrix — provenance
 ====================================
 
-Eleven minimal decks, one per feature axis, each with a pinned input impedance.
+Twelve minimal decks, one per feature axis, each with a pinned input impedance.
 `run_golden.py` runs `onec` over them and fails CI when any |Z − Z_exp| / |Z_exp|
 exceeds 1e-4.  This file records the raw number every engine gave, so a pin can
 be audited rather than trusted.
@@ -9,7 +9,7 @@ be audited rather than trusted.
 Regression lane
 ---------------
 
-All eleven decks and thirteen pinned points run in the required
+All twelve decks and fourteen pinned points run in the required
 `golden-impedance` CI job against `expected.json`. `expected_open.json` remains
 as an empty holding file for any future isolated regression.
 
@@ -151,6 +151,25 @@ onec and nec2c differ by more than nec2c's printed rounding (onec 82.3428,
 nec2c 82.339 ± 0.0005, nec2++ 82.34636) — onec and nec2++ agree more closely
 than either agrees with nec2c on the `LD 5` axis.  Worth a look, but well
 inside the gate.
+
+Deck 12, crossed TL (added 2026-11-13)
+--------------------------------------
+
+`12_tl_crossed` is deck 07 with the line's Z0 written as -50.  In NEC-2 a
+negative Z0 on a TL card means a crossed (transposed) line: the card is stored
+as network type 3 with |Z0|, and only the sign of y12 changes.  The
+sequential path's `process_nt_tl_card` stored the raw -50 as type 2, which
+flips the sign of the line's self admittances instead.
+
+| engine | Z at 30 MHz | rel to pin |
+|---|---|---|
+| nec2c 1.3.1 (pin) | 98.438 -26.246j | |
+| PyNEC (pynec-accel 1.7.7, card by card) | 98.4147 -26.3133j | 7.0e-04 |
+| onec 2.3.5 @ `4dfb65b` | 21.3454 -4.34111j | 7.9e-01 (fail) |
+| onec with this fix | 98.4339 -26.2525j | 7.5e-05 (pass) |
+
+The other thirteen points are unchanged by the fix.  Log-periodic decks
+from LPCAD, whose feeder is a chain of crossed TL cards, are the common case.
 
 Reproducing
 -----------
