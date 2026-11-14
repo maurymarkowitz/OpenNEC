@@ -5,7 +5,7 @@
     {
       "id": "golden-impedance",
       "name": "Golden Impedance Matrix (Regression Floor)",
-      "description": "Core antenna impedance validation against nec2c reference. All 13 points must pass at 1e-4 relative tolerance.",
+      "description": "Core antenna impedance validation against nec2c reference. All 14 points must pass at 1e-4 relative tolerance.",
       "runner": "tests/golden_tests/run_golden.py",
       "required": true,
       "platforms": ["Linux", "Darwin", "Windows"],

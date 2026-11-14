@@ -4,14 +4,14 @@ OpenNEC User Manual
 Introduction
 ------------
 
-This manual describes how to use the OpenNEC command-line program (`onec`) to analyze antenna models and convert between file formats. It covers installation, command-line options, practical examples, and integration with other antenna modeling tools.
+This manual describes how to use the OpenNEC command-line program, `onec`, to analyze antenna models and convert between file formats. It covers installation, command-line options, practical examples, and integration with other antenna modeling tools.
 
-For instructions on creating and modeling antennas, see the [OpenNEC modeling manual](OpenNEC%20modeling%20manual.md). For information on using OpenNEC as a library in your own programs, see the [OpenNEC programmer manual](OpenNEC%20programmer%20manual.md).
+For instructions on creating and modeling antenna designs, see the [OpenNEC modeling manual](OpenNEC%20modeling%20manual.md). For information on using OpenNEC as a library in your own programs, see the [OpenNEC programmer manual](OpenNEC%20programmer%20manual.md).
 
 What is OpenNEC?
 ----------------
 
-OpenNEC (`onec`) is a high-performance implementation of the NEC-2 antenna simulation code. It reads antenna designs from text files called "decks", and calculates their electrical properties such as radiation patterns, impedance, and gain.
+OpenNEC is a high-performance implementation of the NEC-2 antenna simulation code. It reads antenna designs from text files called "decks", and calculates their electrical properties such as radiation patterns, impedance, and gain.
 
 **Key features:**
 
@@ -22,18 +22,7 @@ OpenNEC (`onec`) is a high-performance implementation of the NEC-2 antenna simul
 - **Extensible** — Supports 4nec2 extensions like symbols and formulas
 - **Unlimited** — No hard-coded limits on model size
 
-Design concept
---------------
-
-OpenNEC was developed to match two common command-line interface styles, as well as modernizing it to make it easier to use for new users.
-
-The original Fortran code used separate `READ` statements to interactively ask the user for the input and output filenames, and does not have any other command line arguments. Engines matching this behaviour are often seen on Windows machines, including the common nec2dx, part of the widely-used 4nec2 package. This is a lightly-updated version of the original Fortran code, and follows its interface. It is normally invoked with no parameters, in which case the `READ` statements in the code are filled in using a batch file that uses redirection to simulate the user typing in these values.
-
-On Unix machines and macOS, nec2c is more common. nec2c was modified to work in a somewhat more Unix-like fashion, although it lacks many of the features one might expect in a Unix command-line application, like redirection or piping. It does not demand interactive values for the input and output filenames, and instead these are specified using the `-i` and `-o` command-line switches. This allows you to call the engine without having to provide interactive values, which is an improvement. In contrast to nec2dx, if nec2c is called without any parameters it will print usage notes and exit.
-
-Neither system operates in a fashion like other applications on their respective platforms. For one, you cannot provide the input filename as a "bare" parameter (or "positional parameter"), which is the way most applications work on both platforms. Additionally, on Unix and macOS there is some expectation that you can provide the input and output using redirection or piping, which these engines don't support.
-
-OpenNEC supports both of these interfaces, with the goal being that it can be used as a drop-in replacement for these engines. This does lead to some subtle differences when run on different platforms. However, in general terms, the system should work the same way as any program it might replace, not only when used with existing programs like cocoaNEC or 4nec2. At the same time, it also adds additional options that make it work more like native applications on these platforms.
+OpenNEC comes in two forms, a library intended to be used directly inside other programs, and as a stand-alone program, `onec`, which lets you run calculations by hand.
 
 Installation
 ------------
@@ -62,6 +51,41 @@ On macOS, you'll need to remove the quarantine flag:
 ```bash
 xattr -d com.apple.quarantine onec
 ```
+
+Command line details
+--------------------
+
+OpenNEC was developed to match older command-line interface styles, as well as modernizing it to make it easier to use for new users. This leads to some complexity and gotchas.
+
+When NEC was first created, as BRACT, computers generally did not have files in the modern sense. Instead, input data was punched onto cards and the output was a line printer. There was no need to specify the input and output, that was hard coded into the programs.
+
+When NEC moved to more modern machines, files and the hard drives that stored them were becoming common, but there was no standard for passing those filenames into programs. Instead of trying to make it work across platforms, they added a couple of lines of code to print out a prompt and then read in user provided input and output filenames. So when you're using `nec2dx` on Windows for instance, it will look something like this, where the lowecase is what the user types:
+
+    nec2d.exe
+     INPUT FILE: myinput.nec
+     OUTPUT FILE: myoutput.out
+
+Most users today do not run the NEC code directly, they use a GUI shell program like 4nec2 that does it for them. To do this, the programs create a text file with the two responses in it, and then uses "redirection" to pass those in as if the user typed them, something like:
+
+`nec2d.exe < nec2d.tmp`
+
+Modern systems expect to be able to type in the file names on the command line. When nec2c was written, it added this feature using the `-i` and `-o` switches, so:
+
+`nec2c -i myinput.nec -o myoutput.out`
+
+Later authors working with NEC-4 and NEC-5 decided not to use the switches, more in keeping with DOS/Windows style, and used:
+
+`nec5 myinput.nec myoutput.out`
+
+So there's already multiple styles you need to handle.
+
+This leads to another problem. on Unix systems it is generally expected that programs allow you to pass in the *contents* of file using redirection, instead of the names. The equivalent syntax for the command above using these Unix features would be:
+
+`nec2c < myinput.nec > myoutput.out`
+
+This sort of redirection is extremely useful in some workflows. For instance, you can redirect the report output to the many Unix tools to do things like extract certain values, look for problems, etc. This is especially useful during testing.
+
+Unfortunately this is the same syntax as the original DOS interface using redirection. To avoid potential problems, OpenNEC currently treats a redirect on Windows systems as the nec2d-like "passing in the names", and on Unix it treats them as redirecting the contents.
 
 Basic usage
 -----------
@@ -692,7 +716,17 @@ Performance tips
 
 ### Multi-Threading
 
-OpenNEC automatically uses all available CPU cores for matrix operations (via OpenMP). For very large models, this provides 5-10× speedup over single-threaded engines.
+Builds with OpenMP use multiple threads for matrix operations. The OpenMP runtime chooses the default thread count, which can vary by system and may not be the fastest choice for every model.
+
+Performance can vary depending on the number of threads, so it's always a good idea to experiment a bit to see what selections work best on your machine. You can do this by setting the value of the shell variable `OMP_NUM_THREADS` before launching onec:
+
+```bash
+OMP_NUM_THREADS=4 onec antenna.nec
+```
+
+In the classic Windows shell, use `set OMP_NUM_THREADS=4` before running `onec`. In PowerShell, use `$env:OMP_NUM_THREADS = "4"`.
+
+A good way to find the best value on your platform is to use the benchmarking script in `/tests/benchmark_tests/`. This runs the two large decks multiple times. You can modify it to change the `OMP_NUM_THREADS` and see which setting works best for you. These are large files though, it can take several minutes to run so be ready for that.
 
 ### BLAS Libraries
 

@@ -67,6 +67,11 @@
       "deck": "11_gn2_low_height.nec",
       "provenance": "nec2c 1.3.1 pin; PyNEC 2.0E-04, momwire sinusoidal 7.7E-04 -- the tightest three-way row in the matrix",
       "points": [{"freq_mhz": 14.0, "tag": 1, "seg": 11, "r": 91.758, "x": 13.222}]
+    },
+    {
+      "deck": "12_tl_crossed.nec",
+      "provenance": "nec2c 1.3.1 pin; PyNEC 7.0E-04 (deck 07 with Z0 = -50, a crossed line)",
+      "points": [{"freq_mhz": 30.0, "tag": 1, "seg": 5, "r": 98.438, "x": -26.246}]
     }
   ]
 }

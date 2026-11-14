@@ -91,12 +91,12 @@ Command-line options include:
 `-r`, `--recursive`: process directories recursively, parse every NEC file found  
 `-n`, `--no-run`: parse the deck but skip calculation/simulation  
 `-t`, `--test-deck`: run deck sanity checks (often used with -n)  
-`-j` <N>, `--jobs` <N>: if multiple files are passed in, run them in parallel up to <N> at a time  
 `-i`, `--input-file` <file>: read the deck from a specific file (single input only)  
 `-o`, `--output-file` <file>: write output to a specific file (single input only)  
 `-w`, `--write-file` <file>: writes the deck out to the named file type (see below)  
 `-e`, `--error-file` <path>: write errors/logs to a file instead of `stderr`  
 `-g`, `--greens` <file>: write Greens function output to the given file (or default .ngf)  
+`-j` <N>, `--jobs` <N>: if multiple files are passed in, run them in parallel up to <N> at a time  
 `-a`, `--add-rp`: automatically add a default RP if the deck ends without any output. Used with 4nec2 decks.  
 `-f`, `--format`: select the format for the generated `.out` file. Valid values are `nec2c` or `original` (default on all platforms).  
 `--line-ending`: override the line ending style for output files. Valid values are `lf` (default on Unix/macOS) or `crlf` (default on Windows).  

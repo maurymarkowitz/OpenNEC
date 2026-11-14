@@ -24,6 +24,8 @@ void fill_excitation_vector(context_t *restrict ctx, double p1, double p2, doubl
 /* Formerly nec2c: factr */
 void factor_matrix(const context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip, int ndim);
 void solve(const context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip, complex double *restrict b, int ndim);
+void solve_many(const context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip,
+    complex double *restrict b, int ndim, int nrhs, int ldb);
 /* Formerly nec2c: solves */
 void solve_symmetric(context_t *restrict ctx, complex double *restrict a, int *restrict ip, complex double *restrict b, int neq, int nrh, int np, int n, int mp, int m);
 

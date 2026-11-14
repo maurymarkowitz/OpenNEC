@@ -1164,60 +1164,22 @@ void fill_excitation_vector(context_t *restrict ctx, double p1, double p2, doubl
 void factor_matrix(const context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip, int ndim)
 {
 #if defined(HAVE_ACCELERATE) || defined(HAVE_OPENBLAS) || defined(HAVE_BLAS) || defined(HAVE_MKL)
-	/* LAPACK-backed LU factorization using a local np×np buffer to honor layout. */
+	/* The NEC matrix is stored in column-major order with leading dimension
+	 * ndim. The legacy factorizer first transposed it, then factored that
+	 * transpose. Factor the stored matrix directly; solve() uses ZGETRS with
+	 * TRANS='T' to preserve the same NEC equation without copying the matrix. */
 	int m = n;
-	int lda = n; /* local buffer leading dimension */
+	int lda = ndim;
 	int info = 0;
-
-	/* Allocate local buffer for the n x n submatrix and pivot array. */
-	complex double *buf = NULL;
-	int *ipiv = NULL;
-	size_t buf_bytes = (size_t)n * (size_t)n * sizeof(complex double);
-	mem_alloc(ctx, (void *)&buf, buf_bytes);
-	mem_alloc(ctx, (void *)&ipiv, (size_t)n * sizeof(int));
-
-	/* Copy from big matrix (column-major, leading dimension=ndim) into local buf (lda=n). */
-	for (int j = 0; j < n; j++) {
-		for (int i = 0; i < n; i++) {
-			buf[i + j * lda] = a[i + j * ndim];
-		}
-	}
-
-	/* Match custom semantics: the original routine "un-transposes" the matrix
-		 before factorization by swapping across the diagonal. Do the same here. */
-	for (int i = 1; i < n; i++) {
-		for (int j = 0; j < i; j++) {
-			complex double tmp = buf[i + j * lda];
-			buf[i + j * lda] = buf[j + i * lda];
-			buf[j + i * lda] = tmp;
-		}
-	}
-	
-
-	/* Factorize local buffer: buf = P*L*U. */
-	zgetrf_(&m, &m, (double _Complex *)buf, &lda, ipiv, &info);
+	/* Factor the n x n matrix in place. LAPACK writes 1-based pivots, which
+	 * are already the representation expected by solve() and solve_symmetric(). */
+	zgetrf_(&m, &m, (double _Complex *)a, &lda, ip, &info);
 
 	if (info < 0) {
 		report(ctx, ONEC_SEV_ERROR, "ZGETRF ERROR: Illegal argument %d", -info);
 	} else if (info > 0) {
 		report(ctx, ONEC_SEV_WARNING, "ZGETRF WARNING: U(%d,%d) is exactly zero", info, info);
 	}
-
-	/* Copy LU factors back into the big matrix block. */
-	for (int j = 0; j < n; j++) {
-		for (int i = 0; i < n; i++) {
-			a[i + j * ndim] = buf[i + j * lda];
-		}
-	}
-
-	/* Copy pivot indices (1-based) to caller's ip array. */
-	for (int i = 0; i < n; i++) {
-		ip[i] = ipiv[i];
-	}
-
-	/* Free local buffers. */
-	mem_free(ctx, (void *)&buf);
-	mem_free(ctx, (void *)&ipiv);
 
 #else
   /* Custom implementation */
@@ -1433,56 +1395,32 @@ int factor_block_matrix(context_t *ctx, int nrow, int ncol, int imax, int ipsym 
 void solve(const context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip,
 		complex double *restrict b, int ndim )
 {
+  solve_many(ctx, n, a, ip, b, ndim, 1, n);
+}
+
+void solve_many(const context_t *restrict ctx, int n, complex double *restrict a, int *restrict ip,
+		complex double *restrict b, int ndim, int nrhs, int ldb )
+{
 #if defined(HAVE_ACCELERATE) || defined(HAVE_OPENBLAS) || defined(HAVE_BLAS) || defined(HAVE_MKL)
-	/* LAPACK-backed solve using local buffers for matrix and RHS. */
+	/* The legacy factorizer operates on the transpose of the stored NEC
+	 * matrix. factor_matrix() now factors the stored matrix directly, so ask
+	 * LAPACK to solve its transpose in place. */
 	int m = n;
-	int lda = n; /* local matrix leading dimension */
-	int ldb = n; /* local rhs leading dimension */
-	int nrhs = 1;
+	int lda = ndim;
 	int info = 0;
-	char trans = 'N';
+	char trans = 'T';
 
-	/* Allocate local buffers */
-	complex double *buf = NULL;
-	complex double *rhs = NULL;
-	int *ipiv = NULL;
-	mem_alloc(ctx, (void *)&buf, (size_t)n * (size_t)n * sizeof(complex double));
-	mem_alloc(ctx, (void *)&rhs, (size_t)n * sizeof(complex double));
-	mem_alloc(ctx, (void *)&ipiv, (size_t)n * sizeof(int));
-
-	/* Copy matrix block and RHS into local buffers */
-	for (int j = 0; j < n; j++) {
-		for (int i = 0; i < n; i++) {
-			buf[i + j * lda] = a[i + j * ndim];
-		}
-	}
-	
-	for (int i = 0; i < n; i++) {
-		rhs[i] = b[i];
-		ipiv[i] = ip[i];
-	}
-
-	/* Solve buf * X = rhs using LU factors present in buf and pivots ipiv */
-	zgetrs_(&trans, &m, &nrhs, (double _Complex *)buf, &lda,
-					ipiv, (double _Complex *)rhs, &ldb, &info);
+	/* Solve A^T X = B using the in-place LU factors and pivots. */
+	zgetrs_(&trans, &m, &nrhs, (double _Complex *)a, &lda,
+					ip, (double _Complex *)b, &ldb, &info);
 
 	if (info != 0) {
 		report(ctx, ONEC_SEV_ERROR, "ZGETRS ERROR: info=%d", info);
 	}
 
-	/* Copy solution back to b */
-	for (int i = 0; i < n; i++) {
-		b[i] = rhs[i];
-	}
-
-	/* Free local buffers */
-	mem_free(ctx, (void *)&buf);
-	mem_free(ctx, (void *)&rhs);
-	mem_free(ctx, (void *)&ipiv);
-
 #else
   /* Custom implementation */
-  int i, ip1, j, k, pia;
+  int ic, i, ip1, j, k, pia;
   complex double sum, *scm = NULL;
 
   /* Allocate to scratch memory */
@@ -1490,34 +1428,37 @@ void solve(const context_t *restrict ctx, int n, complex double *restrict a, int
   mreq *= sizeof(complex double);
   mem_alloc(ctx, (void *)&scm, mreq );
 
-  /* forward substitution */
-  for( i = 0; i < n; i++ )
+	for( ic = 0; ic < nrhs; ic++ )
   {
-	pia= ip[i]-1;
-	scm[i]= b[pia];
-	b[pia]= b[i];
-	ip1= i+1;
+	  /* forward substitution */
+	  for( i = 0; i < n; i++ )
+	  {
+		pia= ip[i]-1;
+		scm[i]= b[pia+ic*ldb];
+		b[pia+ic*ldb]= b[i+ic*ldb];
+		ip1= i+1;
 
 	if( ip1 < n)
 	  for( j = ip1; j < n; j++ )
       {
         complex double aval = a[j+i*ndim];
-        b[j] -= aval * scm[i];
+		  b[j+ic*ldb] -= aval * scm[i];
       }
-  }
+	  }
 
-  /* backward substitution */
-  for( k = 0; k < n; k++ )
-  {
-	i= n-k-1;
-	sum=CPLX_00;
-	ip1= i+1;
+	  /* backward substitution */
+	  for( k = 0; k < n; k++ )
+	  {
+		i= n-k-1;
+		sum=CPLX_00;
+		ip1= i+1;
 
 	if( ip1 < n)
 	  for( j = ip1; j < n; j++ )
-		sum += a[i+j*ndim]* b[j];
+		 sum += a[i+j*ndim]* b[j+ic*ldb];
 
-	b[i]=( scm[i]- sum)/ a[i+i*ndim];
+		b[i+ic*ldb]=( scm[i]- sum)/ a[i+i*ndim];
+	  }
   }
 
 	mem_free(ctx, (void *)&scm );
@@ -1623,16 +1564,37 @@ void solve_symmetric(context_t *restrict ctx, complex double *restrict a, int *r
 
   } /* if( smat.num_sections != 1) */
 
-  /* solve each mode equation */
-  for( kk = 0; kk < ctx->smat.num_sections; kk++ )
+  /* solve each mode equation; pack each mode's RHS columns so LAPACK can
+     process them together even though the full symmetric matrix stores
+     mode blocks with a larger leading dimension. */
+  if( nrh == 1 )
   {
-     ia= kk* npeq;
-     ib= ia;
+    for( kk = 0; kk < ctx->smat.num_sections; kk++ )
+    {
+      ia= kk* npeq;
+      solve(ctx, npeq, &a[ia], &ip[ia], &b[ia], nrow);
+    }
+  }
+  else
+  {
+    complex double *mode_rhs = NULL;
+    mreq = (size_t)npeq * (size_t)nrh * sizeof(complex double);
+    mem_alloc(ctx, (void *)&mode_rhs, mreq);
+    for( kk = 0; kk < ctx->smat.num_sections; kk++ )
+    {
+      ia= kk* npeq;
+      ib= ia;
 
-     for( ic = 0; ic < nrh; ic++ )
-       solve(ctx, npeq, &a[ib], &ip[ia], &b[ia+ic*neq], nrow );
-
-   } /* for( kk = 0; kk < smat.num_sections; kk++ ) */
+      for( ic = 0; ic < nrh; ic++ )
+        for( i = 0; i < npeq; i++ )
+          mode_rhs[i+ic*npeq] = b[ia+i+ic*neq];
+      solve_many(ctx, npeq, &a[ib], &ip[ia], mode_rhs, nrow, nrh, npeq);
+      for( ic = 0; ic < nrh; ic++ )
+        for( i = 0; i < npeq; i++ )
+          b[ia+i+ic*neq] = mode_rhs[i+ic*npeq];
+    }
+    mem_free(ctx, (void *)&mode_rhs);
+  }
 
   if( ctx->smat.num_sections == 1)
   {

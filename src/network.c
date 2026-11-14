@@ -27,7 +27,7 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
   int neqt, irow1=0, i, isc1=0;
   size_t mreq;
   double pwr;
-  complex double *vsrc = NULL, *rhs = NULL, *cmn = NULL;
+  complex double *vsrc = NULL, *rhs = NULL, *rhs_batch = NULL, *cmn = NULL;
   complex double *rhnt = NULL, *rhnx = NULL, ymit, vlt, cux=CPLX_00;
 
   ctx->netcx.power_in=0.;
@@ -163,25 +163,29 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
       if( irow1 >= 2)
       {
         double asmx, asa;
+        mreq = (size_t)neqt * (size_t)irow1 * sizeof(complex double);
+        mem_alloc(ctx, (void *)&rhs_batch, mreq);
+        for( i = 0; i < irow1; i++ )
+        {
+          isc1= ipnt[i]-1;
+          for( j = 0; j < neqt; j++ )
+            rhs_batch[j+i*neqt] = (j == isc1) ? CPLX_10 : CPLX_00;
+        }
+        solve_symmetric(ctx, cm, ip, rhs_batch, ctx->netcx.num_eq, irow1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
+
         for( i = 0; i < irow1; i++ )
         {
           isc1= ipnt[i]-1;
           asmx= ctx->geometry.half_len[isc1];
-
-          for( j = 0; j < neqt; j++ )
-            rhs[j] = CPLX_00;
-
-          rhs[isc1] = CPLX_10;
-          solve_symmetric(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
-          compute_current_coefficients(ctx, rhs);
-
+          compute_current_coefficients(ctx, &rhs_batch[i*neqt]);
           for( j = 0; j < irow1; j++ )
           {
             isc1= ipnt[j]-1;
-            cmn[j+i*ndimn]= rhs[isc1]/ asmx;
+            cmn[j+i*ndimn]= rhs_batch[i*neqt+isc1]/ asmx;
           }
 
         } /* for( i = 0; i < irow1; i++ ) */
+        mem_free(ctx, (void *)&rhs_batch);
 
         asmx=0.;
         asa=0.;
@@ -426,23 +430,27 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
 
       /* add interaction matrix admittance */
       /* elements to network equation matrix */
+      mreq = (size_t)neqt * (size_t)nteq * sizeof(complex double);
+      mem_alloc(ctx, (void *)&rhs_batch, mreq);
       for( i = 0; i < nteq; i++ )
       {
-        for( j = 0; j < neqt; j++ )
-          rhs[j] = CPLX_00;
-
         irow1= nteqa[i]-1;
-        rhs[irow1]=CPLX_10;
-        solve_symmetric(ctx, cm, ip, rhs, ctx->netcx.num_eq, 1, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
-        compute_current_coefficients(ctx, rhs);
+        for( j = 0; j < neqt; j++ )
+          rhs_batch[j+i*neqt] = (j == irow1) ? CPLX_10 : CPLX_00;
+      }
+      solve_symmetric(ctx, cm, ip, rhs_batch, ctx->netcx.num_eq, nteq, ctx->geometry.num_segs_sym, ctx->geometry.num_segs, ctx->geometry.num_patches_sym, ctx->geometry.num_patches);
 
+      for( i = 0; i < nteq; i++ )
+      {
+        compute_current_coefficients(ctx, &rhs_batch[i*neqt]);
         for( j = 0; j < nteq; j++ )
         {
           irow1= nteqa[j]-1;
-          cmn[i+j*ndimn] += rhs[irow1];
+          cmn[i+j*ndimn] += rhs_batch[i*neqt+irow1];
         }
 
       } /* for( i = 0; i < nteq; i++ ) */
+      mem_free(ctx, (void *)&rhs_batch);
 
       /* factor network equation matrix */
       factor_matrix(ctx, nteq, cmn, ipnt, ndimn);
@@ -649,6 +657,7 @@ void network(context_t *restrict ctx, complex double *restrict cm, int *restrict
   mem_free( ctx, (void *)&ntsca );
   mem_free( ctx, (void *)&vsrc );
   mem_free( ctx, (void *)&rhs );
+  mem_free( ctx, (void *)&rhs_batch );
   mem_free( ctx, (void *)&cmn );
   mem_free( ctx, (void *)&rhnt );
   mem_free( ctx, (void *)&rhnx );
