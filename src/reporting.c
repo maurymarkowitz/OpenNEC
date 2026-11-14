@@ -1161,7 +1161,15 @@ static int process_nt_tl_card(context_t *ctx, const card_t *card, card_state_t *
     double x12i = card->f[4];
     double x22r = card->f[5];
     double x22i = card->f[6];
-    
+
+    /* A TL with negative Z0 is a crossed (transposed) line: NEC-2 stores it as
+     * type 3 with |Z0|, and network.c flips the sign of y12 for type 3.  Same
+     * rule as the deprecated path in control.c. */
+    if ((ntyp == 2) && (x11r <= 0.0)) {
+        ntyp = 3;
+        x11r = -x11r;
+    }
+
     /* Add to network system */
     return add_network(ctx, ntyp, tag1, seg1, tag2, seg2,
                       x11r, x11i, x12r, x12i, x22r, x22i);
