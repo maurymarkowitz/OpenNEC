@@ -1,0 +1,11 @@
+CM 12 axis: TL with negative Z0 (crossed line), deck 07 with the line transposed
+CM pin (nec2c 1.3.1): 98.438 -j26.246 ohm at 30 MHz (deck 07 uncrossed: 16.716 -j16.401)
+CE
+GW 1 9 0. 0. -2.5 0. 0. 2.5 0.005
+GW 2 9 2. 0. -2.5 2. 0. 2.5 0.005
+GE 0
+FR 0 1 0 0 30. 0.
+TL 1 5 2 5 -50. 2.
+EX 0 1 5 0 1. 0.
+XQ
+EN

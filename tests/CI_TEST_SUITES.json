@@ -1,15 +1,25 @@
 {
   "_comment": "Registry of all CI test suites. Each suite is auto-discovered and run by run_ci_tests.py. Add new test suites by adding entries here without modifying CI workflows.",
-  
   "test_suites": [
     {
       "id": "golden-impedance",
       "name": "Golden Impedance Matrix (Regression Floor)",
-      "description": "Core antenna impedance validation against nec2c reference. All 13 points must pass at 1e-4 relative tolerance.",
+      "description": "Core antenna impedance validation against nec2c reference. All 15 points must pass at 1e-4 relative tolerance.",
       "runner": "tests/golden_tests/run_golden.py",
       "required": true,
-      "platforms": ["Linux", "Darwin", "Windows"],
-      "args": ["--onec", "{ONEC_BIN}", "--decks", "tests/golden_tests/decks", "--expected", "tests/golden_tests/expected.json"],
+      "platforms": [
+        "Linux",
+        "Darwin",
+        "Windows"
+      ],
+      "args": [
+        "--onec",
+        "{ONEC_BIN}",
+        "--decks",
+        "tests/golden_tests/decks",
+        "--expected",
+        "tests/golden_tests/expected.json"
+      ],
       "timeout_seconds": 300,
       "cleanup_patterns": [
         "tests/golden_tests/decks/*.out",
@@ -22,8 +32,15 @@
       "description": "RP sweeps execute once, repeated standalone FR/RP groups execute, and TL network state rebuilds at every frequency step.",
       "runner": "tests/sequential_execution/run_sequential_execution_tests.py",
       "required": true,
-      "platforms": ["Linux", "Darwin", "Windows"],
-      "args": ["--onec", "{ONEC_BIN}"],
+      "platforms": [
+        "Linux",
+        "Darwin",
+        "Windows"
+      ],
+      "args": [
+        "--onec",
+        "{ONEC_BIN}"
+      ],
       "timeout_seconds": 120,
       "cleanup_patterns": [
         "{TMPDIR}/onec-sequential-*"

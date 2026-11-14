@@ -118,6 +118,11 @@
         "efficiency_percent": 59.35,
         "efficiency_tolerance_percent": 0.02
       }
+    },
+    {
+      "deck": "17_tl_crossed.nec",
+      "provenance": "nec2c 1.3.1 pin; PyNEC 7.0E-04 (deck 07 with Z0 = -50, a crossed line)",
+      "points": [{"freq_mhz": 30.0, "tag": 1, "seg": 5, "r": 98.438, "x": -26.246}]
     }
   ]
 }
