@@ -694,6 +694,14 @@ void write_single_radiation_pattern(FILE *file, context_t *ctx)
   
   write_radiation_pattern_header(file, ctx);
   write_radiation_pattern_data(file, ctx);
+  write_average_power_gain(file, ctx);
+  write_normalized_gain(file, ctx);
+}
+
+void write_single_near_field(FILE *file, const context_t *ctx)
+{
+  if (file == NULL || ctx == NULL) return;
+  write_near_field_data(file, ctx);
 }
 
 void write_nec_output(context_t *ctx, const deck_t *deck, FILE *file)

@@ -1,17 +1,27 @@
 Golden impedance matrix — provenance
 ====================================
 
-Eleven minimal decks, one per feature axis, each with a pinned input impedance.
-`run_golden.py` runs `onec` over them and fails CI when any |Z − Z_exp| / |Z_exp|
-exceeds 1e-4.  This file records the raw number every engine gave, so a pin can
-be audited rather than trusted.
+Eleven minimal decks, one per impedance feature axis, each with a pinned input
+impedance, plus report reproductions for issues #34 through #38. `run_golden.py`
+runs `onec` over them and fails CI when any |Z − Z_exp| / |Z_exp| exceeds 1e-4
+or when the issue #34 near-field sections, RP range, or Eθ values, the issue
+#35 average gain and XNDA behaviors, the issue #36 RP ground mode and GD medium,
+the issue #37 extended-kernel selection, or the issue #38 structure-loss power
+budget differ from the checked-in expected samples. This file records the raw
+number every engine gave, so a pin can be audited rather than trusted.
 
 Regression lane
 ---------------
 
-All eleven decks and thirteen pinned points run in the required
-`golden-impedance` CI job against `expected.json`. `expected_open.json` remains
-as an empty holding file for any future isolated regression.
+All sixteen decks and fourteen impedance pins run in the required
+`golden-impedance` CI job against `expected.json`. The issue #34 deck checks both
+near-field sections and the RP distance-dependent far-field amplitude/phase;
+issue #35 checks average gain and the XNDA axis, normalization, directive, and
+average flags; issue #36 checks the circular-cliff far-field pattern with its
+GD-specified second medium; issue #37 checks EK 0 enables and EK -1 disables
+the extended kernel; issue #38 checks power loss for an LD 4 resistor against
+nec2c's 1.6496 mW and 59.35% efficiency. Their report samples are in
+`expected_output/`.
 
 Engines
 -------

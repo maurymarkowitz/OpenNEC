@@ -21,6 +21,7 @@
 #include "network.h"
 #include "output.h"
 #include "somnec.h"
+#include "fields.h"
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -78,7 +79,26 @@ void init_card_state(card_state_t *state)
     /* Pattern tracking */
     state->last_processed_pattern_idx = -1;
     state->num_rp_cards = 0;
+    state->num_near_cards = 0;
     state->seen_output_card = false;  /* Track if we've seen an output card (RP/NE/NH) */
+}
+
+static void collect_near_card(card_state_t *state, const card_t *card)
+{
+    if (!state || !card || state->num_near_cards >= MAX_RP_CARDS_PER_FREQUENCY)
+        return;
+    int idx = state->num_near_cards++;
+    state->near_cards[idx].type = strcmp(card->card_code, "NH") == 0 ? 1 : 0;
+    state->near_cards[idx].mode = card->i[1];
+    state->near_cards[idx].nx = card->i[2];
+    state->near_cards[idx].ny = card->i[3];
+    state->near_cards[idx].nz = card->i[4];
+    state->near_cards[idx].x0 = card->f[1];
+    state->near_cards[idx].y0 = card->f[2];
+    state->near_cards[idx].z0 = card->f[3];
+    state->near_cards[idx].dx = card->f[4];
+    state->near_cards[idx].dy = card->f[5];
+    state->near_cards[idx].dz = card->f[6];
 }
 
 void free_card_state(card_state_t *state)
@@ -159,15 +179,20 @@ static int process_synthetic_rp_card(context_t *ctx, deck_t *deck, int card_idx,
     /* We need to manually handle the RP processing since we don't have a real card index */
     state->card_sequence_state = 7;  /* Mark that we're in pattern collection */
     state->num_rp_cards = 0;         /* Reset RP card collection */
+    state->num_near_cards = 0;
 
     /* Store the synthetic RP parameters */
     if (state->num_rp_cards < MAX_RP_CARDS_PER_FREQUENCY) {
+        state->rp_cards[state->num_rp_cards].far_field_type = synthetic_rp.i[1];
         state->rp_cards[state->num_rp_cards].num_theta = synthetic_rp.i[2];
         state->rp_cards[state->num_rp_cards].num_phi = synthetic_rp.i[3];
+        state->rp_cards[state->num_rp_cards].output_flags = synthetic_rp.i[4];
         state->rp_cards[state->num_rp_cards].theta_start = synthetic_rp.f[1];
         state->rp_cards[state->num_rp_cards].phi_start = synthetic_rp.f[2];
         state->rp_cards[state->num_rp_cards].theta_step = synthetic_rp.f[3];
         state->rp_cards[state->num_rp_cards].phi_step = synthetic_rp.f[4];
+        state->rp_cards[state->num_rp_cards].range = synthetic_rp.f[5];
+        state->rp_cards[state->num_rp_cards].norm_gain = synthetic_rp.f[6];
         state->num_rp_cards++;
     }
 
@@ -1197,6 +1222,7 @@ static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
     
     /* Look ahead to collect RP/NE/NH cards that follow this XQ */
     state->num_rp_cards = 0;  /* Reset RP card collection for this XQ */
+    state->num_near_cards = 0;
     int last_pattern_idx = card_idx;
     
     for (int i = card_idx + 1; i < deck->num_cards; i++) {
@@ -1219,10 +1245,14 @@ static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
             
             state->rp_cards[state->num_rp_cards].num_theta = n_theta;
             state->rp_cards[state->num_rp_cards].num_phi = n_phi;
+            state->rp_cards[state->num_rp_cards].far_field_type = next_card->i[1];
+            state->rp_cards[state->num_rp_cards].output_flags = next_card->i[4];
             state->rp_cards[state->num_rp_cards].theta_start = theta_start;
             state->rp_cards[state->num_rp_cards].phi_start = phi_start;
             state->rp_cards[state->num_rp_cards].theta_step = theta_step;
             state->rp_cards[state->num_rp_cards].phi_step = phi_step;
+            state->rp_cards[state->num_rp_cards].range = next_card->f[5];
+            state->rp_cards[state->num_rp_cards].norm_gain = next_card->f[6];
             state->num_rp_cards++;
             
             last_pattern_idx = i;
@@ -1231,7 +1261,7 @@ static int process_xq_card(context_t *ctx, deck_t *deck, int card_idx,
                 ctx->gnd.far_field_type = 0;
             }
         } else if (strcmp(next_card->card_code, "NE") == 0 || strcmp(next_card->card_code, "NH") == 0) {
-            /* NE/NH cards are near-field requests, mark but don't collect yet */
+            collect_near_card(state, next_card);
             last_pattern_idx = i;
         } else if (strcmp(next_card->card_code, "PT") == 0 || strcmp(next_card->card_code, "PQ") == 0) {
             /* PT/PQ cards follow patterns, mark position */
@@ -1314,6 +1344,7 @@ static int process_rp_card(context_t *ctx, deck_t *deck, int card_idx,
         
         state->card_sequence_state = 7;  /* Mark that we're in pattern collection */
         state->num_rp_cards = 0;  /* Reset RP card collection */
+        state->num_near_cards = 0;
         int last_pattern_idx = card_idx;
         
         /* Collect this RP and any following RP/NE/NH cards */
@@ -1332,10 +1363,14 @@ static int process_rp_card(context_t *ctx, deck_t *deck, int card_idx,
                 
                 state->rp_cards[state->num_rp_cards].num_theta = n_theta;
                 state->rp_cards[state->num_rp_cards].num_phi = n_phi;
+                state->rp_cards[state->num_rp_cards].far_field_type = pattern_card->i[1];
+                state->rp_cards[state->num_rp_cards].output_flags = pattern_card->i[4];
                 state->rp_cards[state->num_rp_cards].theta_start = pattern_card->f[1];
                 state->rp_cards[state->num_rp_cards].phi_start = pattern_card->f[2];
                 state->rp_cards[state->num_rp_cards].theta_step = pattern_card->f[3];
                 state->rp_cards[state->num_rp_cards].phi_step = pattern_card->f[4];
+                state->rp_cards[state->num_rp_cards].range = pattern_card->f[5];
+                state->rp_cards[state->num_rp_cards].norm_gain = pattern_card->f[6];
                 state->num_rp_cards++;
                 
                 last_pattern_idx = i;
@@ -1344,7 +1379,7 @@ static int process_rp_card(context_t *ctx, deck_t *deck, int card_idx,
                 }
             } else if (strcmp(pattern_card->card_code, "NE") == 0 || 
                       strcmp(pattern_card->card_code, "NH") == 0) {
-                /* NE/NH cards follow patterns, mark position */
+                collect_near_card(state, pattern_card);
                 last_pattern_idx = i;
             } else if (strcmp(pattern_card->card_code, "PT") == 0 || 
                       strcmp(pattern_card->card_code, "PQ") == 0) {
@@ -1435,6 +1470,7 @@ static int process_ne_card(context_t *ctx, deck_t *deck, int card_idx,
         
         state->card_sequence_state = 8;  /* Mark that we're in pattern collection - NE */
         state->num_rp_cards = 0;  /* Reset RP card collection */
+        state->num_near_cards = 0;
         int last_pattern_idx = card_idx;
         
         /* Collect this NE and any following pattern cards */
@@ -1453,10 +1489,14 @@ static int process_ne_card(context_t *ctx, deck_t *deck, int card_idx,
                 
                 state->rp_cards[state->num_rp_cards].num_theta = n_theta;
                 state->rp_cards[state->num_rp_cards].num_phi = n_phi;
+                state->rp_cards[state->num_rp_cards].far_field_type = pattern_card->i[1];
+                state->rp_cards[state->num_rp_cards].output_flags = pattern_card->i[4];
                 state->rp_cards[state->num_rp_cards].theta_start = pattern_card->f[1];
                 state->rp_cards[state->num_rp_cards].phi_start = pattern_card->f[2];
                 state->rp_cards[state->num_rp_cards].theta_step = pattern_card->f[3];
                 state->rp_cards[state->num_rp_cards].phi_step = pattern_card->f[4];
+                state->rp_cards[state->num_rp_cards].range = pattern_card->f[5];
+                state->rp_cards[state->num_rp_cards].norm_gain = pattern_card->f[6];
                 state->num_rp_cards++;
                 
                 last_pattern_idx = i;
@@ -1465,7 +1505,7 @@ static int process_ne_card(context_t *ctx, deck_t *deck, int card_idx,
                 }
             } else if (strcmp(pattern_card->card_code, "NE") == 0 || 
                       strcmp(pattern_card->card_code, "NH") == 0) {
-                /* NE/NH cards follow, mark position */
+                collect_near_card(state, pattern_card);
                 last_pattern_idx = i;
             } else if (strcmp(pattern_card->card_code, "PT") == 0 || 
                       strcmp(pattern_card->card_code, "PQ") == 0) {
@@ -1552,6 +1592,7 @@ static int process_nh_card(context_t *ctx, deck_t *deck, int card_idx,
         
         state->card_sequence_state = 9;  /* Mark that we're in pattern collection - NH */
         state->num_rp_cards = 0;  /* Reset RP card collection */
+        state->num_near_cards = 0;
         int last_pattern_idx = card_idx;
         
         /* Collect this NH and any following pattern cards */
@@ -1570,10 +1611,14 @@ static int process_nh_card(context_t *ctx, deck_t *deck, int card_idx,
                 
                 state->rp_cards[state->num_rp_cards].num_theta = n_theta;
                 state->rp_cards[state->num_rp_cards].num_phi = n_phi;
+                state->rp_cards[state->num_rp_cards].far_field_type = pattern_card->i[1];
+                state->rp_cards[state->num_rp_cards].output_flags = pattern_card->i[4];
                 state->rp_cards[state->num_rp_cards].theta_start = pattern_card->f[1];
                 state->rp_cards[state->num_rp_cards].phi_start = pattern_card->f[2];
                 state->rp_cards[state->num_rp_cards].theta_step = pattern_card->f[3];
                 state->rp_cards[state->num_rp_cards].phi_step = pattern_card->f[4];
+                state->rp_cards[state->num_rp_cards].range = pattern_card->f[5];
+                state->rp_cards[state->num_rp_cards].norm_gain = pattern_card->f[6];
                 state->num_rp_cards++;
                 
                 last_pattern_idx = i;
@@ -1582,7 +1627,7 @@ static int process_nh_card(context_t *ctx, deck_t *deck, int card_idx,
                 }
             } else if (strcmp(pattern_card->card_code, "NE") == 0 || 
                       strcmp(pattern_card->card_code, "NH") == 0) {
-                /* NE/NH cards follow, mark position */
+                collect_near_card(state, pattern_card);
                 last_pattern_idx = i;
             } else if (strcmp(pattern_card->card_code, "PT") == 0 || 
                       strcmp(pattern_card->card_code, "PQ") == 0) {
@@ -1693,8 +1738,9 @@ static int process_kh_card(context_t *ctx, const card_t *card, card_state_t *sta
 static int process_ek_card(context_t *ctx, const card_t *card, card_state_t *state)
 {
     if (!ctx || !card || !state) return -1;
-    
-    state->use_extended_kernel = card->i[1];  /* iexk - Extended kernel flag */
+
+    /* NEC-2 treats a bare EK or EK 0 as enabled; only EK -1 disables it. */
+    state->use_extended_kernel = card->i[1] == -1 ? 0 : 1;
     
     return 0;
 }
@@ -1732,10 +1778,14 @@ static int process_cp_card(context_t *ctx, const card_t *card, card_state_t *sta
 static int process_gd_card(context_t *ctx, const card_t *card, card_state_t *state)
 {
     if (!ctx || !card || !state) return -1;
-    
-    /* Extended ground parameters - normally handled inline with GN */
-    /* This is for additional ground features not in basic GN card */
-    
+
+    /* GD supplies the far-field second medium and cliff geometry. The active
+     * sequential path must retain these values for RP modes 2, 3, 5, and 6. */
+    ctx->fpat.epsr2 = card->f[1];
+    ctx->fpat.sigma2 = card->f[2];
+    ctx->fpat.cliff_dist = card->f[3];
+    ctx->fpat.cliff_height = card->f[4];
+
     return 0;
 }
 
@@ -2090,6 +2140,25 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
             /* Solve for currents using network solver */
             network(ctx, cm, ctx->save.pivot, ctx->crnt.surface_cur);
             ctx->netcx.network_type = 1;  /* Mark network as solved (matches Fortran NTSOL=1) */
+
+            /* Account for real impedance loading in the structure power
+             * budget.  The frequency-loop implementation performs this after
+             * network(); the sequential path must do the same for every solve
+             * so LD 4 resistors and finite-conductivity loads are not reported
+             * as lossless.  Currents and segment impedances use NEC's
+             * wavelength-normalized convention. */
+            ctx->fpat.ohmic_loss = 0.0;
+            if (ctx->zload.num_loads > 0) {
+                for (int i = 0; i < ctx->geometry.num_segs; i++) {
+                    complex double current = ctx->crnt.surface_cur[i] * ctx->geometry.wavelength;
+                    double magnitude = cabs(current);
+                    double resistance = creal(ctx->zload.seg_impedance[i]);
+                    if (fabs(resistance) >= 1.e-20) {
+                        ctx->fpat.ohmic_loss += 0.5 * magnitude * magnitude *
+                            resistance * ctx->geometry.half_len[i];
+                    }
+                }
+            }
             
             state->processing_stage = 4;  /* igo - Done */
         }
@@ -2100,6 +2169,14 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
          * This must run for every solved execution step, even when a later XQ reuses a
          * frequency value that appeared in a prior FR/XQ block (e.g., NEC-2 Example 2). */
         if (state->processing_stage >= 4 && ctx->output_fp) {
+            /* Near-field data is emitted below for the requests collected from
+             * this execution card. Do not let results from the previous
+             * frequency appear in the general frequency-step output. */
+            if (state->num_near_cards > 0 && ctx->nfr.points != NULL) {
+                free(ctx->nfr.points);
+                ctx->nfr.points = NULL;
+                ctx->nfr.num_points = 0;
+            }
             write_frequency_step_output(ctx->output_fp, ctx);
         }
         
@@ -2111,12 +2188,27 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
             /* Process each collected RP card */
             for (int rp_idx = 0; rp_idx < state->num_rp_cards; rp_idx++) {
                 /* Set up field pattern structure for this RP card */
+                ctx->gnd.far_field_type = state->rp_cards[rp_idx].far_field_type;
                 ctx->fpat.num_theta = state->rp_cards[rp_idx].num_theta;
                 ctx->fpat.num_phi = state->rp_cards[rp_idx].num_phi;
+                int flags = state->rp_cards[rp_idx].output_flags;
+                ctx->fpat.gain_type = flags / 10;
+                ctx->fpat.avg_power_flag = flags - ctx->fpat.gain_type * 10;
+                ctx->fpat.normalize_gain = ctx->fpat.gain_type / 10;
+                ctx->fpat.gain_type -= ctx->fpat.normalize_gain * 10;
+                ctx->fpat.pol_axis = ctx->fpat.normalize_gain / 10;
+                ctx->fpat.normalize_gain -= ctx->fpat.pol_axis * 10;
+                if (ctx->fpat.pol_axis != 0) ctx->fpat.pol_axis = 1;
+                if (ctx->fpat.gain_type != 0) ctx->fpat.gain_type = 1;
+                if (ctx->fpat.num_theta < 2 || ctx->fpat.num_phi < 2 ||
+                    ctx->gnd.far_field_type == 1)
+                    ctx->fpat.avg_power_flag = 0;
                 ctx->fpat.theta_start = state->rp_cards[rp_idx].theta_start;
                 ctx->fpat.phi_start = state->rp_cards[rp_idx].phi_start;
                 ctx->fpat.theta_step = state->rp_cards[rp_idx].theta_step;
                 ctx->fpat.phi_step = state->rp_cards[rp_idx].phi_step;
+                ctx->fpat.range = state->rp_cards[rp_idx].range;
+                ctx->fpat.norm_gain = state->rp_cards[rp_idx].norm_gain;
                 
                 /* Compute radiation pattern */
                 compute_radiation_pattern(ctx);
@@ -2132,6 +2224,28 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
                     }
                     ctx->rpat.num_points = 0;
                 }
+            }
+        }
+
+        /* Compute each collected NE/NH request after the currents are solved.
+         * These cards are consumed by the look-ahead just like RP cards, so
+         * they must be retained here and evaluated for every frequency. */
+        if (state->processing_stage >= 4) {
+            for (int nf_idx = 0; nf_idx < state->num_near_cards; nf_idx++) {
+                ctx->fpat.is_near_field = state->near_cards[nf_idx].mode;
+                ctx->fpat.near_field_type = state->near_cards[nf_idx].type;
+                ctx->fpat.grid_nx = state->near_cards[nf_idx].nx;
+                ctx->fpat.grid_ny = state->near_cards[nf_idx].ny;
+                ctx->fpat.grid_nz = state->near_cards[nf_idx].nz;
+                ctx->fpat.grid_x0 = state->near_cards[nf_idx].x0;
+                ctx->fpat.grid_y0 = state->near_cards[nf_idx].y0;
+                ctx->fpat.grid_z0 = state->near_cards[nf_idx].z0;
+                ctx->fpat.grid_dx = state->near_cards[nf_idx].dx;
+                ctx->fpat.grid_dy = state->near_cards[nf_idx].dy;
+                ctx->fpat.grid_dz = state->near_cards[nf_idx].dz;
+                compute_near_field(ctx);
+                if (ctx->output_fp)
+                    write_single_near_field(ctx->output_fp, ctx);
             }
         }
         

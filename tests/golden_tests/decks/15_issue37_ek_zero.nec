@@ -1,0 +1,9 @@
+CM Fat dipole, EK 0 should turn the extended kernel on
+CE
+GW 1 11 0 0 -.2385 0 0 .2385 .02
+GE 0
+EK 0
+EX 0 1 6 0 1 0
+FR 0 1 0 0 299.8 0
+XQ
+EN

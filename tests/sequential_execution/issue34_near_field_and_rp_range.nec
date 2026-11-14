@@ -1,0 +1,12 @@
+CM Issue 34: NE/NH after XQ and RP range propagation
+CE
+GW 1 11 0 0 -5 0 0 5 0.001
+GE 0
+GN -1
+FR 0 1 0 0 14.2
+EX 0 1 6 0 1 0
+XQ
+NE 0 1 1 1 1 0 0 0 0 0
+NH 0 1 1 1 1 0 0 0 0 0
+RP 0 2 2 1000 0 0 90 90 1 0
+EN

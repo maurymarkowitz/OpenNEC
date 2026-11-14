@@ -80,6 +80,48 @@ def patterns_match(actual, reference):
     return True, ""
 
 
+def issue34_pattern_value(report):
+    for line in report.splitlines():
+        if re.match(r"^\s*90\.00\s+0\.00\s", line):
+            fields = line.split()
+            for index, field in enumerate(fields):
+                if re.fullmatch(r"[+-]?\d+\.\d+E[+-]\d+", field) and index + 1 < len(fields):
+                    return float(field), float(fields[index + 1])
+    return None
+
+
+def check_issue34(onec, decks, temporary):
+    source = decks / "issue34_near_field_and_rp_range.nec"
+    source_text = source.read_text()
+    results = []
+    for distance in (1, 2):
+        deck_text = source_text.replace("90 90 1 0", f"90 90 {distance} 0")
+        deck = Path(temporary) / f"issue34_{distance}m.nec"
+        output = Path(temporary) / f"issue34_{distance}m.out"
+        deck.write_text(deck_text)
+        result = run_deck(onec, deck, output)
+        if result.returncode != 0:
+            return False, f"onec exited {result.returncode} at RP range {distance} m"
+        report = output.read_text(errors="replace")
+        for section in ("NEAR ELECTRIC FIELDS", "NEAR MAGNETIC FIELDS"):
+            if section not in report:
+                return False, f"missing {section} section at RP range {distance} m"
+        if f"RANGE:  {distance:.6E} METERS" not in report:
+            return False, f"RP range {distance} m was not reported"
+        value = issue34_pattern_value(report)
+        if value is None:
+            return False, f"could not read E-theta at RP range {distance} m"
+        results.append(value)
+
+    amp1, phase1 = results[0]
+    amp2, phase2 = results[1]
+    if not math.isclose(amp1 / amp2, 2.0, rel_tol=1e-4):
+        return False, f"E-theta did not scale inversely with range ({amp1} vs {amp2})"
+    if math.isclose(phase1, phase2, abs_tol=1.0):
+        return False, f"E-theta phase did not change with range ({phase1} vs {phase2})"
+    return True, "near-field sections present and RP amplitude/phase respond to range"
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--onec", default="./onec")
@@ -146,6 +188,13 @@ def main():
                     failed = True
                 else:
                     print(f"PASS {name}: {source_rows} antenna input rows")
+
+        passed, detail = check_issue34(onec, decks, temporary)
+        if passed:
+            print(f"PASS issue34_near_field_and_rp_range.nec: {detail}")
+        else:
+            print(f"FAIL issue34_near_field_and_rp_range.nec: {detail}")
+            failed = True
 
         test_output = Path(temporary) / "tl_fr_sweep.out"
         reference_output = Path(temporary) / "tl_single_frequency_reference.out"

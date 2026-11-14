@@ -1,0 +1,8 @@
+CM Average gain: lossless dipole in free space, RP XNDA=1001
+CE
+GW 1 11 0 0 -.2385 0 0 .2385 .001
+GE 0
+EX 0 1 6 0 1 0
+FR 0 1 0 0 299.8 0
+RP 0 37 73 1001 0 0 5 5
+EN

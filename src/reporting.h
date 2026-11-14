@@ -85,14 +85,25 @@ typedef struct {
     /* Multiple RP card handling - store parameters for all RP cards following current XQ */
     #define MAX_RP_CARDS_PER_FREQUENCY 20
     struct {
+        int far_field_type;
         int num_theta;
         int num_phi;
+        int output_flags;
         double theta_start;
         double phi_start;
         double theta_step;
         double phi_step;
+        double range;
+        double norm_gain;
     } rp_cards[MAX_RP_CARDS_PER_FREQUENCY];
     int num_rp_cards;           /**< Number of RP cards collected from look-ahead */
+
+    struct {
+        int type;               /**< 0=NE electric field, 1=NH magnetic field */
+        int mode, nx, ny, nz;
+        double x0, y0, z0, dx, dy, dz;
+    } near_cards[MAX_RP_CARDS_PER_FREQUENCY];
+    int num_near_cards;
     
     bool seen_output_card;      /**< True if RP, NE, NH, or other output card has been seen */
     

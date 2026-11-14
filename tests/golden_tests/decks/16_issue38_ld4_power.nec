@@ -1,0 +1,9 @@
+CM Dipole with a 50 ohm series resistor at the centre, LD 4
+CE
+GW 1 21 0 0 -.2385 0 0 .2385 .001
+GE 0
+LD 4 1 11 11 50 0
+EX 0 1 11 0 1 0
+FR 0 1 0 0 299.8 0
+XQ
+EN

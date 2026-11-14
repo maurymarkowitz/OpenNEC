@@ -1,0 +1,182 @@
+1
+
+
+
+                                 ***********************************************
+
+                                  NUMERICAL ELECTROMAGNETICS CODE (onec 2.4.0) 
+
+                                 ***********************************************
+
+
+
+
+                                     - - - - COMMENTS - - - -
+
+
+                          Near and far field regression probe                                        
+                                                                                                     
+
+
+
+
+                                 - - - STRUCTURE SPECIFICATION - - -
+
+                                     COORDINATES MUST BE INPUT IN
+                                     METERS OR BE SCALED TO METERS
+                                     BEFORE STRUCTURE INPUT IS ENDED
+
+
+  WIRE                                                                               NO. OF    FIRST  LAST     TAG
+  NO.        X1         Y1         Z1          X2         Y2         Z2      RADIUS   SEG.     SEG.   SEG.     NO.
+     1    0.00000    0.00000   -5.00000     0.00000    0.00000    5.00000    0.00100     11        1    11       1
+
+   TOTAL SEGMENTS USED=   11     NO. SEG. IN A SYMMETRIC CELL=   11     SYMMETRY FLAG=  0
+
+
+         - MULTIPLE WIRE JUNCTIONS -
+ JUNCTION    SEGMENTS  (- FOR END 1, + FOR END 2)
+  NONE
+
+
+
+
+                                 - - - - SEGMENTATION DATA - - - -
+
+                                        COORDINATES IN METERS
+
+                         I+ AND I- INDICATE THE SEGMENTS BEFORE AND AFTER I
+
+
+  SEG.   COORDINATES OF SEG. CENTER     SEG.     ORIENTATION ANGLES    WIRE    CONNECTION DATA   TAG
+  NO.       X         Y         Z       LENGTH     ALPHA     BETA      RADIUS    I-   I    I+    NO.
+     1   0.00000   0.00000  -4.54545   0.90909   90.00000   0.00000   0.00100     0    1    2      1
+     2   0.00000   0.00000  -3.63636   0.90909   90.00000   0.00000   0.00100     1    2    3      1
+     3   0.00000   0.00000  -2.72727   0.90909   90.00000   0.00000   0.00100     2    3    4      1
+     4   0.00000   0.00000  -1.81818   0.90909   90.00000   0.00000   0.00100     3    4    5      1
+     5   0.00000   0.00000  -0.90909   0.90909   90.00000   0.00000   0.00100     4    5    6      1
+     6   0.00000   0.00000   0.00000   0.90909   90.00000   0.00000   0.00100     5    6    7      1
+     7   0.00000   0.00000   0.90909   0.90909   90.00000   0.00000   0.00100     6    7    8      1
+     8   0.00000   0.00000   1.81818   0.90909   90.00000   0.00000   0.00100     7    8    9      1
+     9   0.00000   0.00000   2.72727   0.90909   90.00000   0.00000   0.00100     8    9   10      1
+    10   0.00000   0.00000   3.63636   0.90909   90.00000   0.00000   0.00100     9   10   11      1
+    11   0.00000   0.00000   4.54545   0.90909   90.00000   0.00000   0.00100    10   11    0      1
+
+  DATA CARD No:   1 GN  -1     0     0     0  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  DATA CARD No:   2 FR   0     1     0     0  1.42000E+01  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  DATA CARD No:   3 EX   0     1     6     0  1.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  DATA CARD No:   4 XQ   0     0     0     0  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  DATA CARD No:   5 NE   0     1     1     1  1.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  DATA CARD No:   6 NH   0     1     1     1  1.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+  DATA CARD No:   7 RP   0     2     2  1000  0.00000E+00  0.00000E+00  9.00000E+01  9.00000E+01  2.00000E+00  0.00000E+00
+
+
+
+                                 - - - - - - FREQUENCY - - - - - -
+
+                                    FREQUENCY= 1.4200E+01 MHZ
+                                    WAVELENGTH= 2.1113E+01 METERS
+
+
+
+
+                    APPROXIMATE INTEGRATION EMPLOYED FOR SEGMENTS MORE THAN   1.000 WAVELENGTHS APART
+
+
+
+                               - - - STRUCTURE IMPEDANCE LOADING - - -
+
+                                   THIS STRUCTURE IS NOT LOADED
+
+
+
+                                  - - - ANTENNA ENVIRONMENT - - -
+
+
+
+                                            FREE SPACE
+
+
+
+                                - - - MATRIX TIMING - - -
+
+                        FILL=    0.000 SEC.,  FACTOR=    0.000 SEC.
+
+
+
+                                          - - - ANTENNA INPUT PARAMETERS - - -
+
+   TAG   SEG.    VOLTAGE (VOLTS)         CURRENT (AMPS)         IMPEDANCE (OHMS)        ADMITTANCE (MHOS)      POWER
+   NO.   NO.    REAL        IMAG.       REAL        IMAG.       REAL        IMAG.       REAL        IMAG.     (WATTS)
+     1     6 1.00000E+00 0.00000E+00 1.15611E-02 6.17926E-03 6.72774E+01-3.59589E+01 1.15611E-02 6.17926E-03 5.78055E-03
+
+
+
+                             - - - CURRENTS AND LOCATION - - -
+
+                                 DISTANCES IN WAVELENGTHS
+
+
+  SEG.  TAG    COORD. OF SEG. CENTER     SEG.            - - - CURRENT (AMPS) - - -
+  NO.   NO.     X        Y        Z      LENGTH     REAL        IMAG.       MAG.        PHASE
+     1    1   0.0000   0.0000  -0.2153  0.04306   1.8735E-03  8.6064E-04  2.0618E-03   24.673
+     2    1   0.0000   0.0000  -0.1722  0.04306   5.1139E-03  2.4046E-03  5.6510E-03   25.183
+     3    1   0.0000   0.0000  -0.1292  0.04306   7.8013E-03  3.7648E-03  8.6622E-03   25.761
+     4    1   0.0000   0.0000  -0.0861  0.04306   9.8449E-03  4.8957E-03  1.0995E-02   26.440
+     5    1   0.0000   0.0000  -0.0431  0.04306   1.1125E-02  5.7403E-03  1.2519E-02   27.293
+     6    1   0.0000   0.0000   0.0000  0.04306   1.1561E-02  6.1793E-03  1.3109E-02   28.124
+     7    1   0.0000   0.0000   0.0431  0.04306   1.1125E-02  5.7403E-03  1.2519E-02   27.293
+     8    1   0.0000   0.0000   0.0861  0.04306   9.8449E-03  4.8957E-03  1.0995E-02   26.440
+     9    1   0.0000   0.0000   0.1292  0.04306   7.8013E-03  3.7648E-03  8.6622E-03   25.761
+    10    1   0.0000   0.0000   0.1722  0.04306   5.1139E-03  2.4046E-03  5.6510E-03   25.183
+    11    1   0.0000   0.0000   0.2153  0.04306   1.8735E-03  8.6064E-04  2.0618E-03   24.673
+
+
+
+                                        - - - POWER BUDGET - - -
+
+                                           INPUT POWER   = 5.7805E-03 WATTS
+                                           RADIATED POWER= 5.7805E-03 WATTS
+                                           STRUCTURE LOSS= 0.0000E+00 WATTS
+                                           NETWORK LOSS  = 0.0000E+00 WATTS
+                                           EFFICIENCY    = 100.00 PERCENT
+
+
+
+
+                                                - - - RADIATION PATTERNS - - -
+
+                             RANGE:  2.000000E+00 METERS
+                             EXP(-JKR)/R:  5.00000E-01 AT PHASE:  -34.10 DEGREES
+
+  - - ANGLES - -           - POWER GAINS -       - - - POLARIZATION - - -    - - - E(THETA) - - -    - - - E(PHI) - - -
+  THETA     PHI        VERT.   HOR.    TOTAL      AXIAL     TILT   SENSE     MAGNITUDE    PHASE      MAGNITUDE    PHASE 
+ DEGREES  DEGREES       DB      DB      DB        RATIO     DEG.              VOLTS/M    DEGREES      VOLTS/M    DEGREES
+    0.00     0.00    -999.99 -999.99 -999.99    0.00000     0.00            0.00000E+00   -34.10    0.00000E+00   -34.10
+   90.00     0.00       2.11 -999.99    2.11    0.00000    -0.00  LINEAR    3.75186E-01    82.45    0.00000E+00     0.00
+    0.00    90.00    -999.99 -999.99 -999.99    0.00000     0.00            0.00000E+00   -34.10    0.00000E+00   -34.10
+   90.00    90.00       2.11 -999.99    2.11    0.00000    -0.00  LINEAR    3.75186E-01    82.45    0.00000E+00     0.00
+
+
+
+
+                                   - - - NEAR ELECTRIC FIELDS - - -
+
+            -  LOCATION  -                     -  EX  -               -  EY  -               -  EZ  -
+                X          Y          Z          MAGNITUDE   PHASE      MAGNITUDE   PHASE      MAGNITUDE   PHASE
+      METERS     METERS     METERS        VOLTS/M   DEGREES      VOLTS/M   DEGREES      VOLTS/M   DEGREES
+     1.0000     0.0000     0.0000     1.7390E-09    44.92    0.0000E+00     0.00    1.6737E-01  -163.59
+
+
+                                   - - - NEAR MAGNETIC FIELDS - - -
+
+            -  LOCATION  -                     -  HX  -               -  HY  -               -  HZ  -
+                X          Y          Z          MAGNITUDE   PHASE      MAGNITUDE   PHASE      MAGNITUDE   PHASE
+      METERS     METERS     METERS         AMPS/M   DEGREES       AMPS/M   DEGREES       AMPS/M   DEGREES
+     1.0000     0.0000     0.0000     0.0000E+00     0.00    2.0664E-03    25.95    0.0000E+00     0.00
+
+
+
+ ***** DATA CARD NO.  8   EN   0     0     0     0  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00
+
+ RUN TIME =     0.001
