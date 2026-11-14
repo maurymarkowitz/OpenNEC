@@ -1953,7 +1953,10 @@ static int execute_frequency_loop_sequential(context_t *ctx, deck_t *deck,
     geometry_t *geom = &ctx->geometry;
     
     /* Allocate matrix and other structures for frequency loop */
-    if (allocate_frequency_loop_storage(ctx, geom->num_segs + geom->num_patches) != 0) {
+    /* Each patch carries two unknowns (NEC-2's NEQ = N + 2M), as
+     * process_deck_sequential() and control.c both count them; N + M made
+     * factor_block_matrix() reject every deck with a surface patch. */
+    if (allocate_frequency_loop_storage(ctx, geom->num_segs + 2 * geom->num_patches) != 0) {
         add_error(ctx, &ctx->errors, "Failed to allocate frequency loop storage", FATAL);
         return -1;
     }
