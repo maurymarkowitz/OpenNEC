@@ -1,5 +1,10 @@
 OpenNEC version history
 
+Version 2.4.0 - 2026 November 14
+- fixed a duh in the BLAS code so it no longer copies matrixes around so much
+- network solves are batched on the RHS now, another speed bump
+- updated documentation about setting the thread count
+
 Version 2.3.5 - 2026 November 7
 - force an error if there is an assignment in a non-SY card
 - updated validation tests to look for various formula-related issues like this
