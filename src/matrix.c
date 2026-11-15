@@ -28,6 +28,7 @@
 #include "matrix.h"
 #include "fields.h"
 #include "calculations.h"
+#include <stdint.h>
 
 /* Forward declarations for internal functions */
 /* Formerly nec2c: cmss */
@@ -38,6 +39,10 @@ static void fill_patch_wire_matrix(context_t *restrict ctx, int j1, int j2, int 
 static void fill_wire_patch_matrix(context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *restrict cw, int itrp);
 /* Formerly nec2c: cmww */
 static void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm, int nr, complex double *cw, int nw, int itrp);
+static void prepare_wire_source(context_t *ctx, int j);
+#ifdef _OPENMP
+static int fill_wire_observers(context_t *ctx, int nrow, complex double *cm, int n);
+#endif
 /* Formerly nec2c: qdsrc */
 void charge_discontinuity_source(context_t *restrict ctx, int is, complex double v, complex double *restrict e);
 
@@ -64,6 +69,98 @@ extern void zgetrs_(char*, int*, int*, double _Complex*, int*, int*, double _Com
 #endif
 
 /*-------------------------------------------------------------------*/
+
+#ifdef _OPENMP
+/* A source's field parameters and junction coefficients, prepared once per
+ * fill. The coefficients depend on frequency and must not be cached across
+ * fills. Each entry owns its indices and coefficient arrays. */
+typedef struct {
+  segment_t field;
+  int count;
+  int *indices;
+  double *coeff_const, *coeff_sine, *coeff_cos;
+} wire_source_t;
+
+/* Return 1 on success, 0 to use the original fill after allocation failure,
+ * or -1 if basis construction failed. No matrix writes occur before all
+ * source data is prepared, so allocation failure can safely fall back. */
+static int fill_wire_observers(context_t *ctx, int nrow, complex double *cm, int n)
+{
+  wire_source_t *sources = calloc((size_t)n, sizeof(*sources));
+  if (!sources) return 0;
+  int status = 1;
+
+  for (int j = 0; j < n; ++j) {
+    if (compute_all_basis_funcs_on_seg(ctx, j + 1) != 0) {
+      status = -1;
+      break;
+    }
+    wire_source_t *source = &sources[j];
+    source->count = ctx->segj.num_junction_segs;
+    size_t count = (size_t)source->count;
+    if (count > SIZE_MAX / (3 * sizeof(double)) ||
+        count > SIZE_MAX / sizeof(*source->indices)) {
+      status = 0;
+      break;
+    }
+    /* Separate allocations keep double arrays correctly aligned. */
+    source->indices = malloc(count * sizeof(*source->indices));
+    source->coeff_const = malloc(count * 3 * sizeof(*source->coeff_const));
+    if (!source->indices || !source->coeff_const) {
+      status = 0;
+      break;
+    }
+    source->coeff_sine = source->coeff_const + count;
+    source->coeff_cos = source->coeff_sine + count;
+    memcpy(source->indices, ctx->segj.junction_segs, count * sizeof(*source->indices));
+    memcpy(source->coeff_const, ctx->segj.coeff_const, count * sizeof(double));
+    memcpy(source->coeff_sine, ctx->segj.coeff_sine, count * sizeof(double));
+    memcpy(source->coeff_cos, ctx->segj.coeff_cos, count * sizeof(double));
+    prepare_wire_source(ctx, j + 1);
+    source->field = ctx->dataj;
+  }
+
+  if (status == 1) {
+    /* Each observation owns a complete transposed column. Its sources and
+     * loading are accumulated in the same order as the original fill. */
+    #pragma omp parallel default(shared)
+    {
+      context_t local = *ctx;
+      #pragma omp for schedule(static)
+      for (int i = 0; i < n; ++i) {
+        double xi = ctx->geometry.x_center[i], yi = ctx->geometry.y_center[i];
+        double zi = ctx->geometry.z_center[i], radius = ctx->geometry.radius[i];
+        double dx = ctx->geometry.dir_cos_x[i], dy = ctx->geometry.dir_cos_y[i];
+        double dz = ctx->geometry.dir_cos_z[i];
+        for (int j = 0; j < n; ++j) {
+          const wire_source_t *source = &sources[j];
+          local.dataj = source->field;
+          e_field_segment(&local, xi, yi, zi, radius, i - j);
+          complex double ek = local.dataj.e_const_x*dx + local.dataj.e_const_y*dy + local.dataj.e_const_z*dz;
+          complex double es = local.dataj.e_sin_x*dx + local.dataj.e_sin_y*dy + local.dataj.e_sin_z*dz;
+          complex double ec = local.dataj.e_cos_x*dx + local.dataj.e_cos_y*dy + local.dataj.e_cos_z*dz;
+          for (int k = 0; k < source->count; ++k) {
+            size_t index = (size_t)(source->indices[k] - 1) + (size_t)i * (size_t)nrow;
+            cm[index] += ek*source->coeff_const[k] + es*source->coeff_sine[k] + ec*source->coeff_cos[k];
+          }
+          if (j == i && ctx->zload.num_loads != 0) {
+            for (int k = 0; k < source->count; ++k) {
+              size_t index = (size_t)(source->indices[k] - 1) + (size_t)i * (size_t)nrow;
+              cm[index] -= (source->coeff_const[k] + source->coeff_cos[k]) * ctx->zload.seg_impedance[j];
+            }
+          }
+        }
+      }
+    }
+  }
+  for (int j = 0; j < n; ++j) {
+    free(sources[j].indices);
+    free(sources[j].coeff_const);
+  }
+  free(sources);
+  return status;
+}
+#endif
 
 /* cmset sets up the complex structure matrix in the array cm */
 /* Formerly nec2c: cmset */
@@ -102,6 +199,20 @@ int fill_interaction_matrix(context_t *restrict ctx, int nrow, complex double *r
   ist=1;
   if( i1 <= ctx->geometry.num_segs_sym)
 	ist= ctx->geometry.num_segs_sym- i1+2;
+
+#ifdef _OPENMP
+  /* Full wire-only matrices can be filled one complete column per worker. */
+  if (ctx->geometry.num_segs > 0 && ctx->geometry.num_patches == 0 &&
+      ctx->geometry.num_segs == ctx->geometry.num_segs_sym &&
+      it == ctx->geometry.num_segs && nrow == ctx->geometry.num_segs &&
+      ctx->matpar.storage_case == 1)
+  {
+    int status = fill_wire_observers(ctx, nrow, cm, ctx->geometry.num_segs);
+    if (status < 0) return -1;
+    if (status > 0) return 0;
+    /* Allocation failed before filling; continue with the original path. */
+  }
+#endif
 
   /* wire source loop */
   if( ctx->geometry.num_segs != 0)
@@ -574,13 +685,11 @@ void fill_wire_patch_matrix(context_t *restrict ctx, int j, int i1, int i2, comp
 
 /* cmww computes matrix elements for wire-wire interactions */
 /* Formerly nec2c: cmww */
-void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
-    int nr, complex double *cw, int nw, int itrp)
- {
-  int ipr, iprx, i, ij, jx;
-  double xi, yi, zi, ai, cabi, sabi, salpi;
-  complex double etk, ets, etc;
-
+/* Set up the source state shared by both wire-wire fill paths. */
+static void prepare_wire_source(context_t *ctx, int j)
+{
+  int ipr, iprx, jx;
+  double xi;
   /* set source segment parameters */
   jx = j;
   j--;
@@ -700,6 +809,21 @@ void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, compl
 	} /* if( ipr < 0 ) */
 
   } /* if( dataj.use_extended_kernel != 0) */
+
+}
+
+void fill_wire_wire_matrix(context_t *restrict ctx, int j, int i1, int i2, complex double *restrict cm,
+    int nr, complex double *cw, int nw, int itrp)
+ {
+  int i;
+#ifndef _OPENMP
+  int ipr, ij, jx;
+  double xi, yi, zi, ai, cabi, sabi, salpi;
+  complex double etk, ets, etc;
+#endif
+
+  prepare_wire_source(ctx, j);
+  --j;
 
   /* observation loop.
    *

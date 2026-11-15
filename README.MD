@@ -168,6 +168,10 @@ OpenNEC has since been greatly expanded compared to nec2c. It improves many part
 
 OpenNEC also adds many of the features found in the popular 4nec2 program on Windows. In particular, it supports the symbols (variables), formulas and calculations that make it easier to design complex antennas. These features are widely used and found in many of the real-world `.nec` decks found on the 'net. It also supports new variants of the `LD` and `EX` cards and other 4nec2 and EZNEC additions.
 
+See also
+--------
+Steve Burns has written a Python wrapper for OpenNEC in the pyopennec project. This lets you call OpenNEC from within Python code, including his amazing AntennaKnobs program. You can find pyopennec here: https://github.com/stevenmburns/pyopennec
+
 Known limitations
 -----------------
 * NEC4 cards like CW and IS are not currently supported.

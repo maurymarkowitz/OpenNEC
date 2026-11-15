@@ -1,5 +1,9 @@
 OpenNEC version history
 
+Version 2.4.1 - 2026 November 15
+- reorganized the OpenMP matrix fill to reduce the number of regions. this has a major effect on performance
+- mention Steve's pyopennec which lets you call OpenNEC from python code!
+
 Version 2.4.0 - 2026 November 14
 - fixed a duh in the BLAS code so it no longer copies matrixes around so much
 - network solves are batched on the RHS now, another speed bump
