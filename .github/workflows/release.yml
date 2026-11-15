@@ -252,7 +252,7 @@ jobs:
             pkgconf
             make
 
-      - name: Verify packaged static OpenBLAS
+      - name: Verify static OpenBLAS build dependency
         shell: msys2 {0}
         run: |
           set -e
@@ -268,7 +268,7 @@ jobs:
           test -s "$OPENBLAS_INCLUDE_DIR/openblas_config.h"
           pkg-config --cflags --libs openblas
 
-      - name: Build OpenNEC with packaged static OpenBLAS
+      - name: Build OpenNEC with static OpenBLAS
         shell: msys2 {0}
         run: |
           set -e
@@ -277,7 +277,9 @@ jobs:
           make clean
 
           make RELEASE=1 \
+            GC_SECTIONS=1 \
             CC=gcc \
+            STRIP=x86_64-w64-mingw32-strip \
             STATIC_LINK=1 \
             STATIC_BLAS=1 \
             BACKEND=openblas \
@@ -295,11 +297,6 @@ jobs:
           set -e
 
           DIST="onec-windows-x86_64-openblas"
-          PREFIX=/mingw64
-          OPENBLAS_INCLUDE_DIR="$PREFIX/include/openblas"
-          if [ ! -d "$OPENBLAS_INCLUDE_DIR" ]; then
-            OPENBLAS_INCLUDE_DIR="$PREFIX/include"
-          fi
 
           mkdir -p "dist/${DIST}/lib" "dist/${DIST}/include" "dist/${DIST}/bin"
 
@@ -308,11 +305,6 @@ jobs:
 
           # OpenNEC library
           cp libonec.a "dist/${DIST}/lib/"
-
-          # OpenBLAS static library and headers
-          cp "$PREFIX/lib/libopenblas.a" "dist/${DIST}/lib/"
-          cp "$OPENBLAS_INCLUDE_DIR/cblas.h" "dist/${DIST}/include/"
-          cp "$OPENBLAS_INCLUDE_DIR/openblas_config.h" "dist/${DIST}/include/"
 
           # OpenNEC headers
           cp src/opennec.h src/types.h src/deck.h src/input.h src/output.h \

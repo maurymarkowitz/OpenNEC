@@ -25,6 +25,7 @@ DEBUG ?= 0
 # Release build (production binary, smaller size, no debug symbols)
 # Usage: make RELEASE=1
 RELEASE ?= 0
+GC_SECTIONS ?= 0
 
 ifeq ($(DEBUG),1)
     # Debug builds use -O0 to preserve source-level debugging
@@ -37,6 +38,14 @@ else ifeq ($(RELEASE),1)
     # Release builds omit debug symbols at compile time without using -s (which can be problematic)
     CFLAGS := -I. -Isrc -O2 -Wall -Wno-unused-parameter
     $(info Building release binary (RELEASE=1); debug symbols omitted)
+endif
+
+# Remove unused code/data sections from release executables. This is useful
+# with static libraries, where the linker can discard unreferenced sections.
+ifeq ($(GC_SECTIONS),1)
+    CFLAGS += -ffunction-sections -fdata-sections
+    LDFLAGS += -Wl,--gc-sections
+    $(info Enabling function/data sections and linker garbage collection)
 endif
 
 # Have the compiler record every header used by each object.  Without these
@@ -312,6 +321,7 @@ DEPENDENCIES = $(LIB_OBJECTS:.o=.d) src/main.d
 LIBRARY = libonec.a
 
 EXECUTABLE = onec
+STRIP ?= strip
 
 # Installation paths (configurable via PREFIX variable)
 ifeq ($(OS),Windows_NT)
@@ -344,15 +354,15 @@ $(EXECUTABLE): src/main.o $(LIBRARY)
 	@if [ "$(RELEASE)" = "1" ]; then \
 		ACTUAL_EXE="$@"; \
 		if [ ! -f "$$ACTUAL_EXE" ]; then \
-			if [ -f "$$${ACTUAL_EXE}.exe" ]; then \
-				ACTUAL_EXE="$$${ACTUAL_EXE}.exe"; \
-			elif [ -f "$$${ACTUAL_EXE}.EXE" ]; then \
-				ACTUAL_EXE="$$${ACTUAL_EXE}.EXE"; \
+			if [ -f "$${ACTUAL_EXE}.exe" ]; then \
+				ACTUAL_EXE="$${ACTUAL_EXE}.exe"; \
+			elif [ -f "$${ACTUAL_EXE}.EXE" ]; then \
+				ACTUAL_EXE="$${ACTUAL_EXE}.EXE"; \
 			fi; \
 		fi; \
 		if [ -f "$$ACTUAL_EXE" ]; then \
 			echo "Stripping symbols from release binary..."; \
-			strip "$$ACTUAL_EXE" || true; \
+			$(STRIP) "$$ACTUAL_EXE"; \
 			echo "Release binary size: $$(du -h "$$ACTUAL_EXE" | cut -f1)"; \
 		fi; \
 	fi

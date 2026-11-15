@@ -78,9 +78,10 @@ Notes
   the bundled `src/compat_time.c` when a MinGW toolchain is detected to avoid
   collisions.
 - For most builds you can use `BACKEND=original` to avoid requiring OpenBLAS
-  or other numeric libraries. If you need high-performance BLAS on Windows,
-  install a native Windows build of OpenBLAS and make sure `pkg-config` and
-  the library are available.
+  or other numeric libraries. If you want to use the high-performance BLAS on Windows (which you probably do),
+  download and install a native Windows build of OpenBLAS, then make sure
+  `pkg-config`, its headers, and its library are available. The Windows release
+  archive does not bundle OpenBLAS for your own builds, you have to download them yourself.
 - **RELEASE=1** flag removes debug symbols for smaller binaries (~50% reduction)
 - **LDFLAGS="-static"** embeds all runtime libraries (pthreads, CRT) for a fully
   portable executable with no DLL dependencies
