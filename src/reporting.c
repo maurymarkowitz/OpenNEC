@@ -727,12 +727,6 @@ static int add_loading(context_t *ctx, int ldtyp, int ldtag, int ldtagf,
     
     if (!ctx) return -1;
     
-    /* Validate and add to loading impedance system */
-    if (ctx->zload.num_loads >= 200) {  /* Reasonable limit */
-        add_error(ctx, &ctx->errors, "Too many loading impedances", WARNING);
-        return -1;
-    }
-    
     fflush(stderr);
     
     ctx->zload.num_loads++;
