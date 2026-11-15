@@ -2,7 +2,7 @@ OpenNEC version history
 
 Version 2.4.1 - 2026 November 15
 - reorganized the OpenMP matrix fill to reduce the number of regions. this has a major effect on performance
-- mention Steve's pyopennec which lets you call OpenNEC from python code!
+- link to Steve's pyopennec which lets you call OpenNEC from python code!
 - trying to cut down the size of the Windows+BLAS download, libopenblas is no longer supplied in the archive, and the BUILD-WINDOWS now mentions you have to get that on your own (as you do with MinGW too)
 
 Version 2.4.0 - 2026 November 14
