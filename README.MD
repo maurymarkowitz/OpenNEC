@@ -71,7 +71,7 @@ Building OpenNEC
 
 You can also build the project from source. It is a makefile project that does not require `autoconfig` or other steps. A simple `make` in the root directory should produce a working executable on practically any unix-like system, including all known Linux varieties and any modern macOS. For platform-specific build instructions and backend selection (Accelerate/OpenBLAS/MKL/BLAS), see [BUILD](docs/BUILD.md).
 
-Windows compatibility is provided using MinGW, which needs to be installed manually. The same makefile is used for both Unix and Windows, and the `make` utility supplied with MinGW works perfectly. See [BUILD-WINDOWS](docs/BUILD-WINDOWS.md) for details.
+Windows compatibility is provided using MinGW, which needs to be installed manually. If you wish to use BLAS code (you do!), that also has to be installed manually. The same makefile is used for both Unix and Windows, and the `make` utility supplied with MinGW works perfectly. See [BUILD-WINDOWS](docs/BUILD-WINDOWS.md) for details.
 
 Both platforms support `make install` which adds the documentation and example files to the proper locations, and `make uninstall` to cleanly remove all the parts.
 
@@ -146,13 +146,13 @@ OpenNEC has built-in readers and writers for various 3rd party file formats. For
 
 ```./onec example.maa```
 
-This will read the MMANA-GAL format `example.maa` file, convert it to NEC format in memory, and then run the simulations and produce a .out file.
+This will read the MMANA-GAL format `example.maa` file, convert it to NEC format in memory, and then run the simulations and produce an `example.out` file.
 
 OpenNEC can also write files in various formats using the `-w` option. This is normally used with a "bare" extension like `.nec`, but you can also provide a complete filename if you wish to rename the converted deck. In most cases, you use something like:
 
 ```./onec -n -w .nec example.maa```
 
-This will read the file `example.maa` and write it back out in .nec format, converting the file to a format that can then be used by any NEC engine. This example uses the `-n` switch to avoid running the calculations, which may not be desired when doing conversions.
+This will read the file `example.maa` and write it back out as `example.nec` which can then be used by any NEC engine. This example uses the `-n` switch to avoid running the calculations, which you don't need when doing conversions.
 
 A list of the supported file types and more details on the conversion process can be found in the user manual, and details on the individual file formats can be found in the docs folder.
 

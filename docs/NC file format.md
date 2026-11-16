@@ -10,7 +10,7 @@ Introduction
 * "deck" mode, which saves a traditional NEC-2 file with a `.deck` extension
 * "NC" mode, short for "NEC C", which saves a *program* with a `.nc` extension
 
-The choice of `.nec` for a non-NEC file and `.deck` for those that *are* NEC format is unfortunate as it means the default behaviour when opening one of these files may result in the wrong internal code being called.
+The choice of `.nec` for a non-NEC file and `.deck` for those that *are* NEC format is unfortunate as it means the default behaviour when opening one of these files may result in the wrong internal code being called. For instance, if you download a normal NEC file with the default `.nec` extension and double click it, cocoaNEC will attempt to open it as an XML file and fail.
 
 In contrast to some other formats, like `.EZ`, NC antenna descriptions map one-to-one onto NEC constructs, and conversion is always possible with no loss of information. However, the purpose of NC is to allow certain values to be scripted, for instance by changing the length of one of the elements, and this cannot be directly converted into NEC.
 
@@ -40,7 +40,8 @@ model ( "model name" ) {
 - Braces `{ }` group compound statements.
 - The model name string (e.g. `"dipole"`) becomes the NEC-2 `CM` / `CE` comment card.
 
-## Syntax example
+Syntax example
+--------------
 
 The simplest possible NC file that produces output...
 
@@ -51,17 +52,22 @@ model ( "dipole" )
 }
 ```
 
-The `model()` directive includes an optional title. If such a name is present, it is inserted into the output NEC deck as a leading `CM` line. NC also allows comments at any point in the deck, and the conversion treats these differently depending on where they appear:
+Comments
+--------
 
-- if the comment appears before the `model`, it will be added to the comment block at the top of the deck. If there is also a title in the `model`, an empty CM will be added after it and before other comments to make it more readable.
-- if the comment appears within `model` section, on its own line, a new `!` type comment card will be inserted at that same point in the output deck.
+The `model()` directive includes an optional title. If one is found, it is inserted into the output NEC deck as a leading `CM` line. NC also allows comments at any point in the deck, and the conversion treats these differently depending on where they appear:
+
+- if the comment appears before the `model`, it will be added to the comment block at the top of the deck but below the model name, if present. If there is a model name, an empty CM will be added before other comments to make it more readable.
+- if the comment appears within the `model` section, on its own line, a new `!` type comment card will be inserted at that same point in the output deck.
 - if the comment is within `model` section and is at the end of a non-comment line, it will be inserted as a `!` comment at the end of that line.
 - comments found in parts of the NC we do not read are not retained.
+
+Generally speaking, the importer will try to gather up all of the "top of file" type comments and format them into a readable form in the CM/CE block, and leave inline comments where they are.
 
 Variable Declarations
 ---------------------
 
-Variables must be declared before use. A declaration names a type followed by one or more comma-separated identifiers, ending with `;`.
+Variables must be declared before use. It uses a C-like syntax with the variable type followed by one or more comma-separated identifiers, ending with `;`.
 
 | NC type     | NEC-2 equivalent | Notes |
 |-------------|-----------------|-------|
@@ -74,13 +80,23 @@ Variables must be declared before use. A declaration names a type followed by on
 
 **Scope:** Variables declared outside all functions are global and visible everywhere. Variables declared inside a function body are local to that function.
 
-Variables declared at global scope map directly to `SY` (symbol) cards when their values are numeric scalars (`int` or `real`). `element` variables hold internally-assigned wire tag numbers and do not appear in `SY` cards.
+OpenNEC converts variable definitions into `SY` (symbol) cards where possible. This is possible when the variable are numeric, like `int` or `real`. There are no separate numeric types in OpenNEC, so something like:
+
+    int i,j,k;
+    real x,y,z;
+
+Will be converted into something like...
+
+    SY i,j,k;
+    SY x,y,z;
+
+The other variable types, like `element`, are not converted. These are retained internally, the element number is stored so command cards can refer to them, but they are not presented on `SY` cards.
 
 ### Unit-conversion suffixes
 
 cocoaNEC uses unit suffixes in a fashion similar to OpenNEC and 4nec2, that is, one can add a unit to a measurement like "10in" in any field or formula.
 
-cocoaNEC differs from OpenNEC in that it also supports the alternative way of writing feet and inches, using the `'` and `"` characters. Both of these characters are used for other purposes in NEC decks, and cannot be easily converted in-place. When these are encountered the input file, they will be converted to `ft` and `in`. No examples of "mixed measurements" like `10'6"` were found, and this format is not currently supported.
+cocoaNEC differs from OpenNEC in that it also supports the alternative way of writing feet and inches, using the `'` and `"` characters. Both of these characters are used for other purposes in NEC decks, and cannot be easily converted in-place. When these are encountered the input file, they will be converted to `ft` and `in`. No examples of "mixed measurements" like `10'6"` were found in the example `.nc` collection, and this format is not currently supported.
 
 NC also adds `u`, `n` and `p` units for entering small values. These will be converted to `uH`, `nH` and `pH`, respectively.
 
@@ -93,22 +109,19 @@ NC also adds `u`, `n` and `p` units for entering small values. These will be con
 | `n` | replaced by `*1e-9` multiplier | `× 1e-9` (nano) |
 | `p` | replaced by `*1e-12` multiplier | `× 1e-12` (pico) |
 
-The `u`/`n`/`p` suffixes are recognised when immediately after a digit and not
-followed by an alphanumeric character (so compound unit symbols like `uH`, `nF`,
-`pF` that the evaluator already knows are left untouched).
+The `u`/`n`/`p` suffixes are recognised when immediately after a digit and not followed by an alphanumeric character (so compound unit symbols like `uH`, `nF`, `pF` that the evaluator already knows are left untouched).
 
-Examples: `1.35"` becomes `1.35in`; `12'` becomes `12ft`; `#14` becomes
-`awg14`; `100p` becomes `100*1e-12`; `47n` becomes `47*1e-9`.
+Examples: `1.35"` becomes `1.35in`; `12'` becomes `12ft`; `#14` becomes `awg14`; `100p` becomes `100*1e-12`; `47n` becomes `47*1e-9`.
 
 Geometry Functions
 ------------------
 
+cocoaNEC uses functions to build geometry, instead of cards, although in the end the differences is minor. The big difference is that cocoaNEC generates a tag number for all geometry internally, and returns that value from the function. So for instance, calling the `wire` function will add the equivalent of a `GC` card, create a tag number for it, and returns that number for future reference. These numbers are stored into `element` variables, if desired, and then passed into other functions that handle the control card functions.
+
 NEC-2 requires coordinates in **metres**. Expressions using unit suffixes (e.g. `12ft`) evaluate to metres at runtime. Returned values are of type `element`.
 
 ### `wire( x0, y0, z0, x1, y1, z1, radius, segments )`
-Defines a straight wire from `(x0,y0,z0)` to `(x1,y1,z1)` with the given radius and
-segment count. NC automatically makes `segments` odd (adds 1 if even) so that a
-feed can sit at the exact centre segment. Generates a NEC-2 **GW** card.
+Defines a straight wire from `(x0,y0,z0)` to `(x1,y1,z1)` with the given radius and segment count. NC automatically makes `segments` odd (adds 1 if even) so that a feed can sit at the exact centre segment. Generates a NEC-2 **GW** card.
 
 ```nc
 element fedWire ;
@@ -119,12 +132,10 @@ fedWire = wire( 0, -5, 12, 0, 5, 12, 0.01, 21 ) ;
 Identical to `wire` but does **not** force an odd segment count. Generates a **GW** card.
 
 ### `taperedWire( x0, y0, z0, x1, y1, z1, radius, segmentLength0, segmentLength1 )`
-Similar to `wire` but segment lengths (in wavelengths) follow a geometric progression
-from `segmentLength0` at end 0 to `segmentLength1` at end 1. Generates one or more **GW** cards.
+Similar to `wire` but segment lengths (in wavelengths) follow a geometric progression from `segmentLength0` at end 0 to `segmentLength1` at end 1. Generates one or more **GW** cards.
 
 ### Vector variants
-For each of the above, a `v`-suffixed version (`wirev`, `linev`, `taperedWirev`) accepts
-`vector` coordinates and an optional `transform` for rotation/translation:
+For each of the above, a `v`-suffixed version (`wirev`, `linev`, `taperedWirev`) accepts `vector` coordinates and an optional `transform` for rotation/translation:
 
 ```nc
 wirev( t, v0, v1, radius, segments )
@@ -161,15 +172,14 @@ All excitation functions target an `element` variable. They generate NEC-2 **EX*
 voltageFeed( element, real, imag )
 voltageFeedAtSegment( element, real, imag, segment )
 ```
-Places a voltage source `real + j·imag` at the centre of the wire (or at a specific
-1-based segment for `AtSegment`).
+Places a voltage source `real + j·imag` at the centre of the wire (or at a specific 1-based segment for `AtSegment`).
 
 ### Current feed
 ```nc
 currentFeed( element, real, imag )
 currentFeedAtSegment( element, real, imag, segment )
 ```
-Same shape as voltage feed but drives current rather than voltage.
+Same shape as voltage feed, but drives current rather than voltage.
 
 ### Plane-wave excitation
 ```nc
@@ -181,8 +191,7 @@ leftPolarizedIncidentPlaneWave( element, theta, phi, eta )
 Loading
 -------
 
-Loading functions apply impedance or distributed R/L/C values to wire elements and
-generate NEC-2 **LD** cards.
+Loading functions apply impedance or distributed R/L/C values to wire elements and generate NEC-2 **LD** cards.
 
 ### Impedance load
 ```nc
@@ -235,8 +244,7 @@ addFrequency( f )           // add a second (or further) frequency point
 frequencySweep( f0, f1, n ) // n equally spaced frequencies from f0 to f1 inclusive
 ```
 
-**Default frequency:** if no frequency function is called the importer automatically
-inserts `FR 0,1,0,0,14.0,0` (14 MHz) so the deck is always runnable.
+**Default frequency:** if no frequency function is called the importer automatically inserts `FR 0,1,0,0,14.0,0` (14 MHz) so the deck is always runnable.
 
 Ground
 ------
@@ -271,11 +279,7 @@ azimuthPlotForElevationAngle( angle )   // elevation angle in degrees
 elevationPlotForAzimuthAngle( angle )   // azimuth angle in degrees
 ```
 
-**Automatic full-sphere pattern:** regardless of whether the NC file calls any
-radiation-pattern function, the importer always appends
-`RP 0, 37, 73, 1000, 0, 0, 5, 5` (full sphere at 5° resolution) just before
-`EN`. This mirrors what cocoaNEC itself produces and ensures output is always
-generated.
+**Automatic full-sphere pattern:** regardless of whether the NC file calls any radiation-pattern function, the importer always appends `RP 0, 37, 73, 1000, 0, 0, 5, 5` (full sphere at 5° resolution) just before `EN`. This mirrors what cocoaNEC itself produces and ensures output is always generated.
 
 Networks and Transmission Lines
 -------------------------------
@@ -293,10 +297,7 @@ longTransmissionLine( element1, element2, z0, electricalLength )
 terminatedTransmissionLine( element1, element2, z0, electricalLength, y1r, y1i, y2r, y2i )
 ```
 
-Physical coax and twin-lead helpers (see the Extensions page) expand into NT cards
-computed from cable parameters (Zo, velocity factor, loss constants). Because the
-frequency is required to compute the NT admittance matrix, one NT card is emitted per
-FR card.
+Physical coax and twin-lead helpers (see the Extensions page) expand into NT cards computed from cable parameters (Zo, velocity factor, loss constants). Because the frequency is required to compute the NT admittance matrix, one NT card is emitted per FR card.
 
 Miscellaneous Control Functions
 -------------------------------
@@ -340,8 +341,7 @@ Mapping NC to NEC-2 Cards
 
 ### Variables to SY cards
 
-Global `int` and `real` scalar variables whose values are known at compile time map to
-NEC-2 `SY` (symbol) cards. For example:
+Global `int` and `real` scalar variables whose values are known at compile time map to NEC-2 `SY` (symbol) cards. For example:
 
 ```nc
 real length, height ;
@@ -359,8 +359,7 @@ SY height=12
 SY length=5
 ```
 
-`element`, `coaxtype`, `vector`, and `transform` variables are internal compiler
-bookkeeping and do not appear as `SY` cards.
+`element`, `coaxtype`, `vector`, and `transform` variables are internal compiler bookkeeping and do not appear as `SY` cards.
 
 Annotated Minimal Example
 -------------------------
@@ -405,8 +404,7 @@ EN
 What to ignore for basic extraction
 -----------------------------------
 
-The following NC language features do **not** need to be interpreted to produce a
-runnable NEC deck:
+The following NC language features do **not** need to be interpreted to produce a runnable NEC deck:
 
 - `control()` function and all its contents
 - `runModel()`, `vswr()`, `feedpointImpedance*()`, `maxGain`, etc.
@@ -418,10 +416,7 @@ runnable NEC deck:
 
 ### Known unsupported pattern: geometry driven by `control()` variables
 
-Some NC files declare global variables that are never assigned in the `model()` body;
-their values are only set inside the `control()` block (which the importer skips).
-When such variables are then used as wire coordinates or radii, the geometry is
-undefined and conversion will fail with formula evaluation errors.
+Some NC files declare global variables that are never assigned in the `model()` body; their values are only set inside the `control()` block (which the importer skips). When such variables are then used as wire coordinates or radii, the geometry is undefined and conversion will fail with formula evaluation errors.
 
 Example (`Gull.nc`):
 ```nc
@@ -442,12 +437,7 @@ control() {
 }
 ```
 
-This pattern is used by parametric / optimization models where the `control()` block
-sweeps parameter values and calls `runModel()` multiple times. Supporting it would
-require executing the control block, including potential loops, conditionals, and
-user‑defined function calls — well beyond a static importer. Such files **cannot be
-imported** by `nc2nec` and should be converted manually or redesigned so that
-parameter values are assigned in the `model()` body.
+This pattern is used by parametric / optimization models where the `control()` block sweeps parameter values and calls `runModel()` multiple times. Supporting it would require executing the control block, including potential loops, conditionals, and user‑defined function calls — well beyond a static importer. Such files **cannot be imported** and should be converted manually or redesigned so that parameter values are assigned in the `model()` body.
 
 ---
 

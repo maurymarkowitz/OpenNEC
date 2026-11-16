@@ -86,7 +86,7 @@ OpenNEC merges the functionality in nec2d-XS (including the Sommerfeld calculati
 
 ### NEC2/MP
 
-NEC2/MP was a version of the original code that was re-written to run on multi-processor systems and designed to be used as a replacement for nec2d in 4nec2. It was released only in binary form. The last known update was from 2012, and the author's web page - the only source for downloads - has since disappeared. Nevertheless, there are many references to this software on the 'net, so for completeness here is an archive link to the original page:
+NEC2/MP was a version of the original code that was re-written by Athan Papadimitriou to run on multi-processor systems, designed to be used as a replacement for nec2d in 4nec2. It was released only in binary form. The last known update was from 2012, and the author's web page - the only source for downloads - has since disappeared. Nevertheless, there are many references to this software on the 'net, so for completeness here is an archive link to the original page:
 
 https://web.archive.org/web/20130502013310/http://users.otenet.gr/~jmsp/
 
