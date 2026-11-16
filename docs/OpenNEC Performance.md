@@ -1,0 +1,101 @@
+# OpenNEC Performance
+
+Roger Cox, W8IO, publishes a [NEC Benchmark page](https://www.w8io.com/nec-benchmarks.htm) that lists the time to run two large decks using different NEC engines and machines. The first file is a whip with a hand-crafted ground plane with many segments, and the second is a complex log-periodic Yagi. The LogYag is a more typical antenna model, and the relative performance between engines on that file will likely match your own decks.
+
+OpenNEC has added several performance improvements using these decks to guide development, including BLAS/LAPACK support and OpenMP matrix filling. This makes it among the fastest NEC engines available.
+
+The decks and the benchmark script used to measure them can be found in [`tests/benchmark_tests/`](../tests/benchmark_tests/).
+
+## Some background
+
+The original idea behind OpenNEC was to make a version of the nec2c code that could be compiled directly into GUI programs. Previous programs like 4nec2 wrote out a NEC deck, called an external program to run the calculations and write a report file, and then read and parsed that file for display. This round-trip introduced delays, which were significant for smaller antenna designs where the time needed to launch the program was often as long as the calculations. By allowing the functionality to be called directly from the GUI, thereby removing the program startup time, OpenNEC would make GUI programs much faster and more interactive.
+
+A number of authors have also attacked the performance of the underlying NEC engine itself. A common way is to replace NEC's original hand-crafted Fortran matrix math code with fast multi-threaded math libraries. By the time the OpenNEC project started, these have almost all gone away in favour of the OpenBLAS library. These have the major advantage of being able to run in parallel across multiple cores (sub-processors), which is a feature of all modern computers. 
+
+Modifying the original nec2c matrix code to call BLAS was relatively simple, and was included in the very first production versions of OpenNEC. Using BLAS, which is included in Apple's Accelerate library on all macOS systems, resulted in a major boost in performance, on the order of 3 times for most files, and as much as 7 times for very large decks on my 8-core machine.
+
+More recently, Steven Burns, KK7KNB, has been modifying the nec2++ code with similar goals. His branch added OpenMP support to allow a particular operation, the matrix fill, to also run in parallel. This greatly speeds the setup of complex designs. OpenNEC implemented these changes, but did so on top of the original code, which offered some improvement but not as much as possible. After some investigation the problem was solved and now nec2++ and OpenNEC offer similar performance on most decks, and both are dramatically faster than older engines.
+
+## Baseline performance
+
+I attempted to run these decks with the original Fortran code from the [nec2d-SX source code](https://www.qsl.net/4nec2/supfiles.htm) found on the 4nec2 web pages, with the segment count increased to 11k. However, neither deck would run, reporting `SEGMENT CONNECTION ERROR...`. This turned out to be due to a fixed limit on the number of connections between segments, 60, which both of these files had issues with at one point or another. This issue was fixed in nec2c, so I moved on.
+
+nec2c is a relatively direct port of the original NEC-2 Fortran code, originally using an automated conversion tool. Its times are very similar to the same decks run under nec2d (when they work!). Here is nec2c 1.3 running these tests on an M2 Max Studio.
+
+| Deck   | Time    |
+|--------|--------:|
+| Whip   | 396.52  |
+| LogYag | 64.68   |
+
+## Previous best
+
+Cox's page lists a number of different engines and platforms. The fastest engine at the time of the last update, in June 2023, was Athan Papadimitriou's [NEC2/MP 1.5](https://web.archive.org/web/20130502013310/http://users.otenet.gr/~jmsp/) being run on a Core i9-12900H machine with 12 cores. This machine is not directly compariable to the 8-core M2 the other tests use, but likely has similar overall performance.
+
+| Deck   | Time    |
+|--------|--------:|
+| Whip   | 38      |
+| LogYag | 67.8    |
+
+These results show the improvement you get from using the BLAS code, which allows the mathematics to run across the multiple cores of the machine and gives a 10 times performance boost to the calculations, which is pretty good considering it has 12 cores. However, it offers little advantage in the LogYag case where the performance is mostly hung up in the building of the geometry, which NEC2/MP didn't change.
+
+## OpenNEC results
+
+Now let's compare those results with OpenNEC, which has implemented the changes to the matrix fill using OpenMP. This is version 2.4.1 built as a production binary using the clang complier, `-O2` optimization, Apple Accelerate (which contains BLAS) and OpenMP. Both decks were run five times with `OMP_NUM_THREADS=8` and `VECLIB_MAXIMUM_THREADS=8`, which matches the 8-core system, the times below are the fastest of the five.
+
+| Deck   | Time    |
+|--------|--------:|
+| Whip   | 12.59   |
+| LogYag | 4.69    |
+
+This produces dramatically improved performance, on the order of 32 and 14 times faster than nec2c, repsectively, and is also much faster than the previous gold standard, NEC/MP.
+
+## NEC2++ comparison
+
+Many of the upgrades to OpenNEC were recommended by Steven Burns, who implemented similar changes in his fork of nec2++ which is part of the larger [momwire](https://github.com/stevenmburns/momwire) project (which also has other non-accelerated engines). His code includes one additional feature that OpenNEC currently lacks, a system that can re-use certain parts of the internal mathematics depending on how the geometry is set up.
+
+These are single-run measurements using Steve's code built on the M2 with OpenBLAS, LAPACK and OpenMP, and `OMP_NUM_THREADS=8` and `OPENBLAS_NUM_THREADS=8`, as in the OpenNEC examples. The whip was run from a temporary copy with apostrophe comments removed, and the wire-intersection check was disabled because it rejects the mesh.
+
+### Fill reuse off
+
+| Deck   | Time    |
+|--------|--------:|
+| Whip   | 18.43   |
+| LogYag | 9.28    |
+
+### Fill reuse enabled
+
+| Deck   | Time    |
+|--------|--------:|
+| Whip   | 13.60   |
+| LogYag | 10.40   |
+
+Reuse substantially reduced the whip time, because the ground plane's geometry matched the requirements for reuse. LogYag exceeded the reuse limit, so it falls back to the ordinary fill. As you can see, the reuse offers a real boost in performance, and is a target for inclusion in OpenNEC.
+
+## Thread settings
+
+One annoyance of the OpenMP system is that its performance is best when the number of threads is equal to the number of physical cores. Unfortunately, there's no standard way to know what that is, it differs across platforms. Generally to get OpenNEC to deliver the best peformance you'll have to look up your machine's specs on the 'net, and look for the "performance cores" number (or something like that, it also varies).
+
+You can then specify that number of threads when you run the program using command-line variables:
+
+`OMP_NUM_THREADS=8 VECLIB_MAXIMUM_THREADS=8 ./onec` ...
+
+You'll want to experiment with the numbers, some machines prefer a larger number than the number of cores, and others strongly prefer smaller.
+
+## Reproduction
+
+Build the production Accelerate + OpenMP executable on macOS:
+
+```sh
+make clean
+make CC=clang RELEASE=1 BACKEND=accelerate OPENMP=1 \
+  OPENMP_CFLAGS='-I/opt/homebrew/opt/libomp/include -Xpreprocessor -fopenmp' \
+  OPENMP_LDFLAGS='-L/opt/homebrew/opt/libomp/lib -lomp'
+```
+
+And then use the script in the testing folder to run the five-trial benchmark at eight threads:
+
+```sh
+OMP_NUM_THREADS=8 VECLIB_MAXIMUM_THREADS=8 \
+  tests/benchmark_tests/benchmark_decks.sh ./onec
+```
+You can change the number of times to run the file inside the script, and you'll likely want to do so when you're running some of the slower engines like nec2c.
