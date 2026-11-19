@@ -14,7 +14,7 @@ A number of authors have also attacked the performance of the underlying NEC eng
 
 By the time the OpenNEC project started, most of these libraries had gone away in favour of OpenBLAS, and this was included in macOS, so this made everything that much easier. Modifying the original nec2c matrix code to call BLAS was relatively simple, and was included in the very first versions of OpenNEC. This resulted in a major boost in performance, on the order of 3 times for most files, and as much as 7 times for very large decks on my 8-core machine. Similar code for Windows was added starting with the 2.2 releases.
 
-Steven Burns, KK7KNB, has been modifying the nec2++ code with similar goals. In additionl to BLAS, this branch added OpenMP support to allow a particular operation, the matrix fill, to also run in parallel. This greatly speeds the setup of complex designs, before BLAS is let loose. He ported these changes back to OpenNEC, and with some further tweaks to make the C gods happy, nec2++ and OpenNEC now offer similar performance on most decks. Both are *dramatically* faster than older engines.
+Steven Burns, KK7KNB, has been modifying the nec2++ code with similar goals. In additionl to BLAS, this branch added OpenMP support to allow a particular operation, the matrix fill, to also run in parallel. This greatly speeds the setup of complex designs, before BLAS is let loose. He ported these changes back to OpenNEC, and with some further tweaks to make the C gods happy, nec2++ and OpenNEC now offer similar performance on most decks. Both are *dramatically* faster than older engines, often on the order of 10 to 30 times!
 
 ## Baseline performance
 
