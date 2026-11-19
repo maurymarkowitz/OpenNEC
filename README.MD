@@ -12,7 +12,7 @@ This software is released under the MIT license. See [LICENSE](LICENSE) for deta
 Introduction
 ------------
 
-OpenNEC (onec) is an implementation of the NEC-2 code written in the C programming language. It is used to simulate the reception and transmission patterns of radio frequency antennas. The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". Decks are stored in text files with a `.nec` extension, or more rarely, `.deck`.
+OpenNEC (onec) is an implementation of the NEC-2 code written in the C programming language. NEC-2 is used to simulate the reception and transmission patterns of radio frequency antennas. The antenna's physical design is stored on a series of "cards", and a collection of cards is known as a "deck". Decks are stored in text files with a `.nec` extension, or more rarely, `.deck`.
 
 OpenNEC will read the design in the deck and can run a number of calculations to determine the antenna's performance. The output can be read directly, or exported to a text file, normally with an `.out` extension. It can also provide warnings about common design problems, and import and export decks to and from other common antenna file formats.
 
@@ -30,12 +30,12 @@ There are many NEC-2 engines available, why should you use OpenNEC?
 - OpenNEC includes fixes for all known NEC bugs and issues.
 - OpenNEC models are limited only by the system size, and scale to the 100,000 segment range.
 - OpenNEC supports extensions from 4nec2 and other systems, allowing these to be run on any platform.
-- OpenNEC can properly read practically any deck. Older engines were much more rigid.
-- OpenNEC can also read and write files from other antenna programs, like EZNEC and MMANA-GAL.
+- OpenNEC can properly read practically any deck, even with weird formatting.
+- OpenNEC can read and write files from other antenna programs, like EZNEC and MMANA-GAL.
 - OpenNEC can produce reports in both nec2d and nec2c format, so it can be used in any front-end program like 4nec2 and cocoaNEC.
 - OpenNEC can be compiled directly into your program.
 
-Few of these additions are unique to OpenNEC, so why use it? Because OpenNEC has [all of these in one](docs/OpenNEC,%20NEC-2%20and%20nec2c.md).
+Few of these additions are unique to OpenNEC, so why switch? Because OpenNEC has [all of these in one](docs/OpenNEC,%20NEC-2%20and%20nec2c.md).
 
 Not *this* fix or *that* extension, *all of them* - in a single, [very fast](docs/OpenNEC%20performance.md), cross-platform, completely open-source program.
 
