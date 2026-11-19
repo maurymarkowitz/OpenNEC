@@ -15,10 +15,10 @@ Changes from nec2c
 - onec parses the entire deck in one pass, which allows it to perform whole-deck checks and perform file-type conversions.
 
 - nec2c can calculate only one file at a time.
-- onec's command line can process multiple files, all the files in a directory, and even recurse through all the files in multiple directories.
+- onec's command line can process multiple files, all the files in a directory, and even recurse through sub-directories.
 
 - nec2c has considerable global state inherited from the original Fortran code's `COMMON` sections. This makes it non-reentrant and it cannot be used in a threaded fashion.
-- onec has been refactored so there is no global state and is completely thread-safe. Programs can use the library to work on multiple decks, and the command shell can run multiple input files in parallel at the same time.
+- onec has been refactored so there is no global state and is completely thread-safe. Programs can use the library to work on multiple decks at the same time.
 
 - nec2c uses the original Fortran matrix calculation code. A number of forks of nec2c support one matrix library or another.
 - onec supports a wide variety of well-known matrix libraries across multiple platforms. These offer major performance improvements on larger files (3x on 1000 segments, 7x on 4000).

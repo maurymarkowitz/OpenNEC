@@ -22,7 +22,7 @@ To provide a performance baseline, I attempted to run these decks with the origi
 
 nec2c is a relatively direct port of the original NEC-2 Fortran code, originally using an automated conversion tool. Its times are very similar to the same decks run under nec2d (when they work!), so it can be used as the baseline as well. Here is nec2c 1.3 running these tests on an M2 Max Studio.
 
-| Deck   | Time    |
+| Deck   | Seconds |
 |--------|--------:|
 | Whip   | 396.52  |
 | LogYag | 64.68   |
@@ -31,7 +31,7 @@ nec2c is a relatively direct port of the original NEC-2 Fortran code, originally
 
 Cox's page lists a number of different engines and platforms. The fastest engine at the time of the last update, in June 2023, was Athan Papadimitriou's [NEC2/MP 1.5](https://web.archive.org/web/20130502013310/http://users.otenet.gr/~jmsp/) being run on a Core i9-12900H machine with 12 cores. This machine is not directly compariable to the 8-core M2 the other tests use, but likely has similar overall performance.
 
-| Deck   | Time    |
+| Deck   | Seconds |
 |--------|--------:|
 | Whip   | 38      |
 | LogYag | 67.8    |
@@ -42,7 +42,7 @@ These results show the improvement you get from using the BLAS code, which allow
 
 Now let's compare those results with OpenNEC, which has BLAS and has also implemented the changes to the matrix fill using OpenMP. This is version 2.4.1 built as a production binary using the clang complier, `-O2` optimization, Apple Accelerate (which contains BLAS) and OpenMP. Both decks were run five times with `OMP_NUM_THREADS=8` and `VECLIB_MAXIMUM_THREADS=8`, which matches the 8-core system, and the times below are the fastest of the five. "Times faster" is the number of times faster than nec2c on the same machine (it was not provded for NEC/MP above as that was a different platform). Larger values means faster.
 
-| Deck   | Time    | Times faster |
+| Deck   | Seconds | Times faster |
 |--------|--------:|------:|
 | Whip   | 12.59   | 31.5  |
 | LogYag | 4.69    | 13.8  |
@@ -55,9 +55,9 @@ You can especially see the effect of threading the matrix fill. The whip is domi
 
 ### Fill reuse off
 
-Many of the performance upgrades to OpenNEC were recommended by Steven Burns, who implemented similar changes in his fork of nec2++ which is part of the larger [momwire](https://github.com/stevenmburns/momwire) project (which also has other non-accelerated engines). These are single-run measurements using momwire's nec2++ code built on the M2 with OpenBLAS, LAPACK and OpenMP, and `OMP_NUM_THREADS=8` and `OPENBLAS_NUM_THREADS=8`, as in the OpenNEC examples. The whip was run from a temporary copy with apostrophe comments removed, and the wire-intersection check was disabled because it rejects the mesh.
+Many of the performance upgrades to OpenNEC were recommended by Steven Burns, who implemented similar changes in his fork of nec2++ which is part of the larger [momwire](https://github.com/stevenmburns/momwire) project. These are single-run measurements using momwire's nec2++ code built on the M2 with OpenBLAS, LAPACK and OpenMP, and `OMP_NUM_THREADS=8` and `OPENBLAS_NUM_THREADS=8`, as in the OpenNEC examples. The whip was run from a temporary copy with apostrophe comments removed, and the wire-intersection check was disabled because it rejects the mesh.
 
-| Deck   | Time    | Times faster |
+| Deck   | Seconds | Times faster |
 |--------|--------:|------:|
 | Whip   | 18.43   | 21.5  |
 | LogYag | 9.28    | 7.0   |
@@ -66,12 +66,12 @@ Many of the performance upgrades to OpenNEC were recommended by Steven Burns, wh
 
 The modified nec2++ code includes one additional feature that OpenNEC currently lacks, a system that can re-use certain parts of the internal mathematics depending on how the geometry is set up, a feature called "fill reuse". The following times are with that feature turned on.
 
-| Deck   | Time    | Times faster |
+| Deck   | Seconds | Times faster |
 |--------|--------:|------:|
 | Whip   | 13.60   | 29.2  |
 | LogYag | 10.40   | 6.2   |
 
-Reuse substantially reduced the whip time, because the ground plane's geometry matched the requirements for reuse. LogYag exceeded the reuse limit, so it falls back to the ordinary fill. The time needed to check if reuse can be used might explain the different in results compared to reuse-off, but that could also just be testing noise.
+Reuse substantially reduced the whip time, because the ground plane's geometry matched the requirements for reuse. LogYag exceeded the reuse limit, so it falls back to the ordinary fill. To measure the eligibility-check cost, I used `PYNEC_FILL_TIMING=1` and ran ten alternating reuse-off/on pairs on a one-frequency LogYag deck with eight OpenMP threads. In this diagnostic build without LAPACK, the check took 30–41 ms; median wall time was 1.155 s with reuse off and 1.190 s with reuse on. The check found 915,306 classes against a cap of 915,305, then fell back to the ordinary fill. This confirms a small, repeatable overhead, but it does not account for the 1.12 s difference in the earlier full-sweep single-run results; that comparison still needs repeated full-sweep runs to distinguish noise from other effects.
 
 As you can see, the reuse offers a real boost in performance, and is a target for inclusion in OpenNEC.
 
