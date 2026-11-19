@@ -35,7 +35,9 @@ There are many NEC-2 engines available, why should you use OpenNEC?
 - OpenNEC can produce reports in both nec2d and nec2c format, so it can be used in any front-end program like 4nec2 and cocoaNEC.
 - OpenNEC can be compiled directly into your program.
 
-Few of these additions are unique to OpenNEC, and some can be solved using other tools. So why use OpenNEC? Because OpenNEC has all of these in one package. Not *this* fix or *that* extension, *all of them* - in a single, very fast, cross-platform, completely open-source program.
+Few of these additions are unique to OpenNEC, so why use it? Because OpenNEC has all of these in one.
+
+Not *this* fix or *that* extension, *all of them* - in a single, very fast, cross-platform, completely open-source program.
 
 Installing OpenNEC
 ------------------

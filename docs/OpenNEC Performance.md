@@ -73,9 +73,11 @@ Reuse substantially reduced the whip time, because the ground plane's geometry m
 
 ## Thread settings
 
-One annoyance of the OpenMP system is that its performance is best when the number of threads is equal to the number of physical cores. Unfortunately, there's no standard way to know what that is, it differs across platforms. Generally to get OpenNEC to deliver the best peformance you'll have to look up your machine's specs on the 'net, and look for the "performance cores" number (or something like that, it also varies).
+One annoyance of the OpenMP system is that its performance is best when the number of threads is equal to the number of physical cores. Unfortunately, there's no standard way to know what that is, it differs across platforms.
 
-You can then specify that number of threads when you run the program using command-line variables:
+Generally to get OpenNEC to deliver the best peformance you'll have to look up your machine's specs on the 'net, and look for the "performance cores" number (or something like that, the name varies).
+
+You can then specify that number of threads when you run the program using command-line variables. For instance, on a machine with eight performance cores, you would want to try:
 
 `OMP_NUM_THREADS=8 VECLIB_MAXIMUM_THREADS=8 ./onec` ...
 
