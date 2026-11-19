@@ -1,4 +1,4 @@
-# OpenNEC Performance
+# OpenNEC performance
 
 Roger Cox, W8IO, publishes a [NEC Benchmark page](https://www.w8io.com/nec-benchmarks.htm) that lists the time to run two large decks using different NEC engines and machines. The first file is a whip with a hand-crafted ground plane with many segments, and the second is a complex log-periodic Yagi. The LogYag is a more typical antenna model, and the relative performance between engines on that file will likely match your own decks.
 
