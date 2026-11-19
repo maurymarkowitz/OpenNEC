@@ -18,9 +18,9 @@ Steven Burns, KK7KNB, has been modifying the nec2++ code with similar goals. In 
 
 ## Baseline performance
 
-I attempted to run these decks with the original Fortran code from the [nec2d-SX source code](https://www.qsl.net/4nec2/supfiles.htm) found on the 4nec2 web pages, with the segment count increased to 11k. However, neither deck would run, reporting `SEGMENT CONNECTION ERROR...`. This turned out to be due to a fixed limit on the number of connections between segments, 60, which both of these files had issues with at one point or another. This issue was fixed in nec2c, so I moved on.
+To provide a performance baseline, I attempted to run these decks with the original Fortran code from the [nec2d-SX source code](https://www.qsl.net/4nec2/supfiles.htm) found on the 4nec2 web pages, with the segment count increased to 11k and the in-deck comments stripped out. However, neither deck would run, reporting `SEGMENT CONNECTION ERROR...`. This turned out to be due to a fixed limit on the number of connections between segments, 60, which both of these files had issues with at one point or another. This issue was fixed in nec2c, so I moved on.
 
-nec2c is a relatively direct port of the original NEC-2 Fortran code, originally using an automated conversion tool. Its times are very similar to the same decks run under nec2d (when they work!). Here is nec2c 1.3 running these tests on an M2 Max Studio.
+nec2c is a relatively direct port of the original NEC-2 Fortran code, originally using an automated conversion tool. Its times are very similar to the same decks run under nec2d (when they work!), so it can be used as the baseline as well. Here is nec2c 1.3 running these tests on an M2 Max Studio.
 
 | Deck   | Time    |
 |--------|--------:|
@@ -40,20 +40,22 @@ These results show the improvement you get from using the BLAS code, which allow
 
 ## OpenNEC results
 
-Now let's compare those results with OpenNEC, which has implemented the changes to the matrix fill using OpenMP. This is version 2.4.1 built as a production binary using the clang complier, `-O2` optimization, Apple Accelerate (which contains BLAS) and OpenMP. Both decks were run five times with `OMP_NUM_THREADS=8` and `VECLIB_MAXIMUM_THREADS=8`, which matches the 8-core system, the times below are the fastest of the five. Times is the number of times faster than nec2c.
+Now let's compare those results with OpenNEC, which has BLAS and has also implemented the changes to the matrix fill using OpenMP. This is version 2.4.1 built as a production binary using the clang complier, `-O2` optimization, Apple Accelerate (which contains BLAS) and OpenMP. Both decks were run five times with `OMP_NUM_THREADS=8` and `VECLIB_MAXIMUM_THREADS=8`, which matches the 8-core system, and the times below are the fastest of the five. "Times faster" is the number of times faster than nec2c on the same machine (it was not provded for NEC/MP above as that was a different platform). Larger values means faster.
 
 | Deck   | Time    | Times faster |
 |--------|--------:|------:|
 | Whip   | 12.59   | 31.5  |
 | LogYag | 4.69    | 13.8  |
 
-This produces dramatically improved performance, on the order of 32 and 14 times faster than nec2c, repsectively, and is also much faster than the previous gold standard, NEC/MP.
+OpenMP is siginificantly faster than the previous gold standard, NEC/MP. According to GeekBench, the M2 is about 10 to 25% faster than the i9-12900H on these tasks, but even when that's factored in the performance is still a significant win, at least three times as fast.
+
+You can especially see the effect of threading the matrix fill. The whip is dominated by calculation time, but the LogYag is highly complex and spends more time in setup. In NEC/MP, the LogYag ends up taking almost twice as long as the whip. But by threading the setup, in OpenNEC it runs over twice as fast as whip. This means there's a four-fold overall improvement, which is something close to eight-fold on the setup half, about what we would expect on an 8-core machine.
 
 ## NEC2++ comparison
 
 ### Fill reuse off
 
-Many of the upgrades to OpenNEC were recommended by Steven Burns, who implemented similar changes in his fork of nec2++ which is part of the larger [momwire](https://github.com/stevenmburns/momwire) project (which also has other non-accelerated engines). These are single-run measurements using Steve's code built on the M2 with OpenBLAS, LAPACK and OpenMP, and `OMP_NUM_THREADS=8` and `OPENBLAS_NUM_THREADS=8`, as in the OpenNEC examples. The whip was run from a temporary copy with apostrophe comments removed, and the wire-intersection check was disabled because it rejects the mesh.
+Many of the performance upgrades to OpenNEC were recommended by Steven Burns, who implemented similar changes in his fork of nec2++ which is part of the larger [momwire](https://github.com/stevenmburns/momwire) project (which also has other non-accelerated engines). These are single-run measurements using momwire's nec2++ code built on the M2 with OpenBLAS, LAPACK and OpenMP, and `OMP_NUM_THREADS=8` and `OPENBLAS_NUM_THREADS=8`, as in the OpenNEC examples. The whip was run from a temporary copy with apostrophe comments removed, and the wire-intersection check was disabled because it rejects the mesh.
 
 | Deck   | Time    | Times faster |
 |--------|--------:|------:|
@@ -75,15 +77,15 @@ As you can see, the reuse offers a real boost in performance, and is a target fo
 
 ## Thread settings
 
-One annoyance of the OpenMP system is that its performance with NEC is best when the number of threads is equal to the number of physical cores. Unfortunately, there's no standard way to know what that is, it differs across platforms.
+One annoyance of the OpenMP system is that its performance with NEC is best when the number of threads is equal to the number of physical cores. Unfortunately, there's no standard way to know what that is, it differs across platforms and many CPUs have different sorts of cores which may or may not be returned in the count.
 
-To get OpenNEC to deliver the best peformance you'll have to look up your machine's specs on the 'net, and look for the "performance cores" number (or something like that, the name varies). You can then specify that number of threads when you run the program using command-line variables.
+So to get OpenNEC to deliver the best peformance for your system, you'll have to look up your machine's specs on the 'net, and look for the "performance cores" number (or something like that, the name varies too). You can then specify that number of threads when you run the program using command-line variables.
 
 For instance, on a machine with eight performance cores, you would want to try:
 
 `OMP_NUM_THREADS=8 VECLIB_MAXIMUM_THREADS=8 ./onec` ...
 
-You'll want to experiment with the numbers, some machines prefer a larger number than the number of cores, and others strongly prefer smaller, but the majority seem to want threads = cores.
+You'll want to experiment with the numbers, some machines prefer a larger number than the number of cores, and others strongly prefer smaller, but the majority seem to want "threads = cores".
 
 ## Reproduction
 
