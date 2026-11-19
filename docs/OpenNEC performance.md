@@ -4,7 +4,7 @@ Roger Cox, W8IO, publishes a [NEC Benchmark page](https://www.w8io.com/nec-bench
 
 OpenNEC has added several performance improvements using these decks to guide development, including BLAS/LAPACK support and OpenMP matrix filling. This makes it among the fastest NEC engines available.
 
-The decks and the benchmark script used to measure them can be found in [`tests/benchmark_tests/`](../tests/benchmark_tests/).
+The decks and the benchmark script used to measure them can be found in [`tests/benchmark_tests/`](../tests/benchmark_tests/). See the instructions at the end on how to run these on your platform.
 
 ## Some background
 
