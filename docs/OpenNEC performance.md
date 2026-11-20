@@ -46,8 +46,8 @@ nec2c is a relatively direct port of the original NEC-2 Fortran code, originally
 
 | Deck   | Seconds |
 |--------|--------:|
-| Whip   | 396.52  |
 | LogYag | 64.68   |
+| Whip   | 396.52  |
 
 These numbers are used as "performance value 1.0" in the following sections. The "Times faster" columns below are the number of times faster than these values. Larger values are better - 10 means ten times as fast, 5 means only five times as fast.
 
@@ -58,8 +58,8 @@ Cox's page lists a number of different engines and platforms. The fastest engine
 
 | Deck   | Seconds | Times faster |
 |--------|--------:|-------------:|
-| Whip   | 67.8    | 5.8          |
 | LogYag | 38      | 1.7          |
+| Whip   | 67.8    | 5.8          |
 
 These results show the improvement you get from using the BLAS code on a machine with six performance cores. Whip, in particular, scales almost perfectly. LogYag is more complex and doesn't do quite so well.
 
@@ -71,8 +71,8 @@ With the exception of adding BLAS, many of the performance upgrades to OpenNEC w
 
 | Deck   | Seconds | Times faster |
 |--------|--------:|------:|
-| Whip   | 17.48   | 22.7  |
 | LogYag | 9.34    | 6.9   |
+| Whip   | 17.48   | 22.7  |
 
 This shows the further improvement that comes with the parallelization of the matrix setup, which NEC/MP lacked. This gives another three times boost.
 
@@ -80,8 +80,8 @@ Another upgrade in the nec2++ code is an optional system that examines the geome
 
 | Deck   | Seconds | Times faster |
 |--------|--------:|------:|
-| Whip   | 12.91   | 30.7  |
 | LogYag | 9.75    | 6.6   |
+| Whip   | 12.91   | 30.7  |
 
 The matrix that gets fed into BLAS contains a list of every segment in the design, and how it interacts with the others. So for whip, which has 4,392 segments, it ends up creating a matrix describing 19.3 million interactions. The reuse concept writes down a little "key" for each of these as it is building them, and then looks to see if many of them share the same key. If enough do, there's no need to build the entry for that slot from scratch, it can just copy it from an earlier matrix.
 
@@ -93,8 +93,8 @@ Now let's compare all of these results with OpenNEC. These numbers are from vers
 
 | Deck   | Seconds | Times faster |
 |--------|--------:|------:|
-| Whip   | 12.35   | 32.1  |
 | LogYag | 4.60    | 14.1  |
+| Whip   | 12.35   | 32.1  |
 
 OpenMP is as much as 30 times faster than the nec2c baseline, three or more times faster than the previous record holder NEC/MP, and is about 50% faster than nec2++.
 
@@ -104,8 +104,8 @@ With fill reuse and the early-exit test enabled, the fastest times from five run
 
 | Deck   | Seconds | Times faster |
 |--------|--------:|------:|
-| Whip   | 10.13   | 39.1  |
 | LogYag | 4.62    | 14.0  |
+| Whip   | 10.13   | 39.1  |
 
 The small effect of the early exit is visible here, barely, as the LogYag takes only 2/100th longer to run as opposed to as much as 5/10ths of a second without the early exit.
 
