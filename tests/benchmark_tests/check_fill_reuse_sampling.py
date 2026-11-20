@@ -93,6 +93,14 @@ def main():
                 if state_probe:
                     subprocess.run([state_probe, str(deck), "reject" if reject else "reuse"],
                                    env=env, capture_output=True, text=True, check=True)
+            if state_probe and name == "small_repeated":
+                # The context's own choice wins over the environment, both ways.
+                for mode, env_value in (("ctx-off", "1"), ("ctx-on", "0")):
+                    env = os.environ.copy()
+                    env.update(OMP_NUM_THREADS="8", VECLIB_MAXIMUM_THREADS="8",
+                               OPENNEC_FILL_REUSE=env_value)
+                    subprocess.run([state_probe, str(deck), mode], env=env,
+                                   capture_output=True, text=True, check=True)
             choice = f"{'reject' if reject else 'reuse'}, " if state_probe else ""
             print(f"PASS {name}: {choice}1/8 threads, 3 frequencies")
     print(f"All {len(cases)} sampling cases passed.")
