@@ -41,6 +41,13 @@ jobs:
       - name: Smoke test
         run: |
           ./onec examples/example5.nec
+      - name: Check fill reuse and sampling
+        run: |
+          clang -I. -Isrc -O2 tests/benchmark_tests/fill_reuse_state.c libonec.a \
+            -L"$(brew --prefix libomp)/lib" -lomp -framework Accelerate -lm \
+            -o /tmp/opennec-fill-reuse-state
+          python3 tests/benchmark_tests/check_fill_reuse_sampling.py --onec ./onec \
+            --state-probe /tmp/opennec-fill-reuse-state
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

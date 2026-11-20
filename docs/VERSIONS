@@ -1,5 +1,11 @@
 OpenNEC version history
 
+Version 2.4.2 - 2026 November 19
+- enabled matrix fill reuse by default in OpenMP builds using Accelerate or OpenBLAS; set OPENNEC_FILL_REUSE=0 to disable it, or 1 to enable it in your own builds
+- add a quick check path in the fill reuse to short-circuit testing the whole matrix, shaves a bit of time in a lot of cases
+- the quick-exit is currently set to a maximum of 20,000 tests, this needs futher testing but seems to work
+- many updates to the performance document based on these changes
+
 Version 2.4.1 - 2026 November 15
 - removed the 200 load limit, which accidentially got re-added as part of sequential reporting
 - reorganized the OpenMP matrix fill to reduce the number of regions. this has a major effect on performance

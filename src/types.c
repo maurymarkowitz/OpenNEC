@@ -26,6 +26,7 @@
 #include "types.h"
 #include "internals.h"
 #include "misc.h"
+#include "matrix.h"
 
 // NOTE: ordering of these lists is important! they are used in
 //       various places to convert the code back to a number for
@@ -232,6 +233,9 @@ void context_cleanup(context_t *ctx)
         free(ctx->ngf_cm);
         ctx->ngf_cm = NULL;
     }
+
+    // release the cache use during fill reuse - if used
+    free_matrix_fill_cache(ctx);
 }
 
 /* end of types.c */

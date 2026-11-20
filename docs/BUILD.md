@@ -85,6 +85,8 @@ macOS Setup
 -----------
 On macOS, the default backend is Apple Accelerate. You can also use OpenBLAS on Apple Silicon via Homebrew under `/opt/homebrew`, or Intel machines under `/usr/local`.
 
+The Accelerate backend uses the newer LAPACK interface and requires macOS 13.3 or later. OpenMP builds also need a `libomp` runtime compatible with the target macOS version.
+
 - Accelerate (default):
 
 ```bash
@@ -193,6 +195,8 @@ make RELEASE=1 OPENMP=1 \
 ```
 
 ### Manual OpenMP Configuration
+
+Builds that combine OpenMP with Apple Accelerate or OpenBLAS enable matrix fill reuse by default. Set `OPENNEC_FILL_REUSE=0` when running `onec` to disable reuse for a particular run; set it to `1` to enable it explicitly in other OpenMP builds.
 
 For any platform, you can explicitly control OpenMP support with:
 

@@ -29,6 +29,9 @@
 #include "fields.h"
 #include "calculations.h"
 #include <stdint.h>
+#ifdef _OPENMP
+#include <stdatomic.h>
+#endif
 
 /* Forward declarations for internal functions */
 /* Formerly nec2c: cmss */
@@ -70,6 +73,25 @@ extern void zgetrs_(char*, int*, int*, double _Complex*, int*, int*, double _Com
 
 /*-------------------------------------------------------------------*/
 
+static void discard_fill_reuse_groups(context_t *ctx)
+{
+  free(ctx->fill_reuse_class_ids);
+  free(ctx->fill_reuse_representatives);
+  free(ctx->fill_reuse_snapshot);
+  free(ctx->fill_reuse_values);
+  free(ctx->fill_reuse_unsafe);
+  ctx->fill_reuse_class_ids = NULL;
+  ctx->fill_reuse_representatives = NULL;
+  ctx->fill_reuse_snapshot = NULL;
+  ctx->fill_reuse_values = NULL;
+  ctx->fill_reuse_unsafe = NULL;
+  ctx->fill_reuse_values_capacity = 0;
+  ctx->fill_reuse_pair_count = 0;
+  ctx->fill_reuse_class_count = 0;
+  ctx->fill_reuse_snapshot_count = 0;
+  ctx->fill_reuse_skip_cached = false;
+}
+
 #ifdef _OPENMP
 /* A source's field parameters and junction coefficients, prepared once per
  * fill. The coefficients depend on frequency and must not be cached across
@@ -77,17 +99,668 @@ extern void zgetrs_(char*, int*, int*, double _Complex*, int*, int*, double _Com
 typedef struct {
   segment_t field;
   int count;
+  size_t capacity;
   int *indices;
   double *coeff_const, *coeff_sine, *coeff_cos;
 } wire_source_t;
+
+/* Pair keys store only relative geometry. Source and observer properties
+ * are quantized once, sorted into compact type IDs, then packed together.
+ * Free-space keys use five words; ground keys use ten. */
+typedef struct {
+  uint64_t bits[10];
+} fill_pair_key_t;
+
+typedef struct {
+  uint64_t bits[4];
+  int segment;
+} fill_type_entry_t;
+
+typedef struct {
+  uint32_t *source, *observer;
+  size_t words;
+} fill_pair_types_t;
+
+static uint64_t fill_quantized(double value, double quantum)
+{
+  return (uint64_t)(int64_t)llround(value / quantum);
+}
+
+static int fill_type_compare(const void *va, const void *vb)
+{
+  const fill_type_entry_t *a = va, *b = vb;
+  for (int k = 0; k < 4; ++k) {
+    if (a->bits[k] < b->bits[k]) return -1;
+    if (a->bits[k] > b->bits[k]) return 1;
+  }
+  return 0;
+}
+
+static int fill_pair_types(const context_t *ctx, const wire_source_t *sources,
+                            int n, double q, fill_pair_types_t *types)
+{
+  types->words = ctx->gnd.has_ground == 2 ? 10 : 5;
+  types->source = malloc(2 * (size_t)n * sizeof(*types->source));
+  fill_type_entry_t *entries = malloc((size_t)n * sizeof(*entries));
+  if (!types->source || !entries) {
+    free(types->source); free(entries);
+    types->source = NULL;
+    return 0;
+  }
+  types->observer = types->source + n;
+  for (int pass = 0; pass < 2; ++pass) {
+    for (int j = 0; j < n; ++j) {
+      const segment_t *f = &sources[j].field;
+      entries[j] = (fill_type_entry_t){{0}, j};
+      if (pass == 0) {
+        entries[j].bits[0] = fill_quantized(f->seg_half_len, q);
+        entries[j].bits[1] = fill_quantized(f->seg_radius, q);
+        entries[j].bits[2] = (uint64_t)(unsigned)f->use_extended_kernel;
+        entries[j].bits[3] = (uint64_t)(unsigned)f->end1_kernel_type |
+                            ((uint64_t)(unsigned)f->end2_kernel_type << 32);
+      } else {
+        entries[j].bits[0] = fill_quantized(ctx->geometry.radius[j], q);
+      }
+    }
+    qsort(entries, (size_t)n, sizeof(*entries), fill_type_compare);
+    uint32_t id = 0;
+    uint32_t *ids = pass == 0 ? types->source : types->observer;
+    for (int j = 0; j < n; ++j) {
+      if (j && fill_type_compare(&entries[j - 1], &entries[j])) ++id;
+      ids[entries[j].segment] = id;
+    }
+  }
+  free(entries);
+  return 1;
+}
+
+static fill_pair_key_t fill_pair_key(const context_t *ctx,
+                                     const wire_source_t *source, int i, int j,
+                                     double q, const fill_pair_types_t *types)
+{
+  const segment_t *f = &source->field;
+  fill_pair_key_t key;
+  double dx = ctx->geometry.x_center[i] - f->src_x;
+  double dy = ctx->geometry.y_center[i] - f->src_y;
+  double dz = ctx->geometry.z_center[i] - f->src_z;
+  double sx = f->src_dir_cos_x, sy = f->src_dir_cos_y, sz = f->src_dir_cos_z;
+  double ix = ctx->geometry.dir_cos_x[i];
+  double iy = ctx->geometry.dir_cos_y[i];
+  double iz = ctx->geometry.dir_cos_z[i];
+  const double qd = 0x1p-40;
+  key.bits[0] = ((uint64_t)types->source[j] << 32) |
+                ((uint64_t)types->observer[i] << 1) | (uint64_t)(i == j);
+  if (ctx->gnd.has_ground == 2) {
+    double h = hypot(dx, dy);
+    double e1x = 1.0, e1y = 0.0;
+    if (h > 0.0) {
+      e1x = dx / h; e1y = dy / h;
+    } else {
+      double hs = hypot(sx, sy), hi = hypot(ix, iy);
+      if (hs > 0.0) { e1x = sx / hs; e1y = sy / hs; }
+      else if (hi > 0.0) { e1x = ix / hi; e1y = iy / hi; }
+    }
+    double sj1 = sx*e1x + sy*e1y, sj2 = sy*e1x - sx*e1y;
+    double si1 = ix*e1x + iy*e1y, si2 = iy*e1x - ix*e1y;
+    if (sj2 < 0.0 || (sj2 == 0.0 && si2 < 0.0)) { sj2 = -sj2; si2 = -si2; }
+    key.bits[1] = fill_quantized(h, q);
+    key.bits[2] = fill_quantized(f->src_z, q);
+    key.bits[3] = fill_quantized(ctx->geometry.z_center[i], q);
+    key.bits[4] = fill_quantized(sj1, qd);
+    key.bits[5] = fill_quantized(sj2, qd);
+    key.bits[6] = fill_quantized(sz, qd);
+    key.bits[7] = fill_quantized(si1, qd);
+    key.bits[8] = fill_quantized(si2, qd);
+    key.bits[9] = fill_quantized(iz, qd);
+    return key;
+  }
+  double zp = dx * sx + dy * sy + dz * sz;
+  double rx = dx - sx * zp, ry = dy - sy * zp, rz = dz - sz * zp;
+  key.bits[1] = fill_quantized(zp, q);
+  key.bits[2] = fill_quantized(sqrt(rx * rx + ry * ry + rz * rz), q);
+  key.bits[3] = fill_quantized(ix * sx + iy * sy + iz * sz, qd);
+  key.bits[4] = fill_quantized(ix * rx + iy * ry + iz * rz, q);
+  return key;
+}
+
+static uint64_t fill_pair_hash(const fill_pair_key_t *key, size_t words)
+{
+  uint64_t h = UINT64_C(0x6a09e667f3bcc909);
+  for (size_t i = 0; i < words; ++i) {
+    uint64_t x = key->bits[i];
+    x ^= x >> 33; x *= UINT64_C(0xff51afd7ed558ccd);
+    x ^= x >> 33; x *= UINT64_C(0xc4ceb9fe1a85ec53);
+    x ^= x >> 33;
+    h ^= x + UINT64_C(0x9e3779b97f4a7c15) + (h << 6) + (h >> 2);
+  }
+  return h;
+}
+
+/* Each hash slot publishes an immutable full key with a release store.
+ * Matching readers acquire that store before inspecting the key. A class's
+ * least pair is selected atomically, then class IDs are numbered in pair
+ * order after the parallel scan, independent of thread scheduling.
+ * Return -1 on allocation failure, 0 on cap overflow, 1 on success. */
+static int fill_classify_pairs(const context_t *ctx, const wire_source_t *sources,
+                               int n, double q, const fill_pair_types_t *types,
+                               size_t cap, size_t slots, uint32_t *ids,
+                               uint32_t *representatives, size_t *class_count)
+{
+  const uint32_t busy = UINT32_MAX, overflow = UINT32_MAX - 1;
+  const size_t key_bytes = types->words * sizeof(uint64_t);
+  _Atomic uint64_t *table = malloc(slots * sizeof(*table));
+  _Atomic uint32_t *least = malloc(cap * sizeof(*least));
+  uint64_t *keys = malloc(cap * key_bytes);
+  uint32_t *renumber = malloc(cap * sizeof(*renumber));
+  size_t *row_offsets = calloc((size_t)n + 1, sizeof(*row_offsets));
+  if (!table || !least || !keys || !renumber || !row_offsets) {
+    free(table); free(least); free(keys); free(renumber); free(row_offsets);
+    return -1;
+  }
+  #pragma omp parallel for schedule(static)
+  for (size_t s = 0; s < slots; ++s) atomic_init(&table[s], 0);
+  _Atomic size_t count = 0;
+  _Atomic int stopped = 0;
+  #pragma omp parallel for schedule(dynamic, 8)
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < n; ++j) {
+      if (atomic_load_explicit(&stopped, memory_order_relaxed)) break;
+      size_t p = (size_t)i * (size_t)n + (size_t)j;
+      fill_pair_key_t key = fill_pair_key(ctx, &sources[j], i, j, q, types);
+      uint64_t hash = fill_pair_hash(&key, types->words);
+      uint64_t tag = (hash & UINT64_C(0xffffffff00000000)) | UINT64_C(0x100000000);
+      size_t slot = (size_t)hash & (slots - 1);
+      for (;;) {
+        uint64_t word = atomic_load_explicit(&table[slot], memory_order_acquire);
+        if (word == 0 && atomic_compare_exchange_strong_explicit(&table[slot],
+              &word, tag | busy, memory_order_acq_rel, memory_order_acquire)) {
+          size_t c = atomic_fetch_add_explicit(&count, 1, memory_order_relaxed);
+          if (c >= cap) {
+            atomic_store_explicit(&stopped, 1, memory_order_relaxed);
+            atomic_store_explicit(&table[slot], tag | overflow, memory_order_release);
+          } else {
+            memcpy(keys + c * types->words, key.bits, key_bytes);
+            atomic_init(&least[c], (uint32_t)p);
+            ids[p] = (uint32_t)c;
+            atomic_store_explicit(&table[slot], tag | (uint32_t)c, memory_order_release);
+          }
+          break;
+        }
+        if ((word & UINT64_C(0xffffffff00000000)) == tag) {
+          while ((uint32_t)word == busy)
+            word = atomic_load_explicit(&table[slot], memory_order_acquire);
+          uint32_t c = (uint32_t)word;
+          if (c == overflow) break;
+          if (memcmp(keys + (size_t)c * types->words, key.bits, key_bytes) == 0) {
+            ids[p] = c;
+            uint32_t old = atomic_load_explicit(&least[c], memory_order_relaxed);
+            while (p < old && !atomic_compare_exchange_weak_explicit(&least[c],
+                  &old, (uint32_t)p, memory_order_relaxed, memory_order_relaxed)) {}
+            break;
+          }
+        }
+        slot = (slot + 1) & (slots - 1);
+      }
+    }
+  }
+  *class_count = atomic_load_explicit(&count, memory_order_relaxed);
+  int ok = !atomic_load_explicit(&stopped, memory_order_relaxed);
+  free(table); free(keys);
+  if (ok) {
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < n; ++i) {
+      size_t begin = (size_t)i * (size_t)n;
+      size_t found = 0;
+      for (int j = 0; j < n; ++j) {
+        size_t p = begin + (size_t)j;
+        found += atomic_load_explicit(&least[ids[p]], memory_order_relaxed) == p;
+      }
+      row_offsets[i + 1] = found;
+    }
+    for (int i = 0; i < n; ++i) row_offsets[i + 1] += row_offsets[i];
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < n; ++i) {
+      size_t begin = (size_t)i * (size_t)n;
+      uint32_t next = (uint32_t)row_offsets[i];
+      for (int j = 0; j < n; ++j) {
+        size_t p = begin + (size_t)j;
+        uint32_t c = ids[p];
+        if (atomic_load_explicit(&least[c], memory_order_relaxed) == p) {
+          representatives[next] = (uint32_t)p;
+          renumber[c] = next++;
+        }
+      }
+    }
+    #pragma omp parallel for schedule(static)
+    for (size_t p = 0; p < (size_t)n * (size_t)n; ++p) ids[p] = renumber[ids[p]];
+  }
+  free(least); free(renumber); free(row_offsets);
+  return ok;
+}
+
+static uint64_t *fill_reuse_snapshot(const context_t *ctx,
+                                     const wire_source_t *sources, int n,
+                                     size_t *snapshot_count)
+{
+  const double wavelength = ctx->geometry.wavelength;
+  double lref = 0.0;
+  for (int i = 0; i < n; ++i) {
+    double coord = fmax(fabs(ctx->geometry.x_center[i]),
+                        fmax(fabs(ctx->geometry.y_center[i]), fabs(ctx->geometry.z_center[i])));
+    lref = fmax(lref, (coord + sources[i].field.seg_half_len) * wavelength);
+  }
+  const double q = ldexp(lref > 0.0 ? lref : 1.0, -40);
+  const double qd = 0x1p-40;
+  *snapshot_count = 4 + (size_t)n * 14;
+  uint64_t *snapshot = malloc(*snapshot_count * sizeof(*snapshot));
+  if (!snapshot) return NULL;
+  size_t at = 0;
+  snapshot[at++] = (uint64_t)(unsigned)n;
+  snapshot[at++] = (uint64_t)(unsigned)ctx->gnd.has_ground;
+  snapshot[at++] = (uint64_t)(unsigned)ctx->gnd.is_perfect;
+  snapshot[at++] = (uint64_t)(unsigned)ctx->gnd.num_radials;
+  for (int i = 0; i < n; ++i) {
+    const double values[] = {
+      ctx->geometry.x_center[i] * wavelength,
+      ctx->geometry.y_center[i] * wavelength,
+      ctx->geometry.z_center[i] * wavelength,
+      ctx->geometry.radius[i] * wavelength, ctx->geometry.dir_cos_x[i],
+      ctx->geometry.dir_cos_y[i], ctx->geometry.dir_cos_z[i],
+      sources[i].field.seg_half_len * wavelength,
+      sources[i].field.seg_radius * wavelength,
+      sources[i].field.src_dir_cos_x, sources[i].field.src_dir_cos_y,
+      sources[i].field.src_dir_cos_z
+    };
+    for (size_t k = 0; k < sizeof(values) / sizeof(values[0]); ++k) {
+      double quantum = (k >= 4 && k <= 6) || (k >= 9) ? qd : q;
+      snapshot[at++] = fill_quantized(values[k], quantum);
+    }
+    snapshot[at++] = (uint64_t)(unsigned)sources[i].field.use_extended_kernel;
+    snapshot[at++] = (uint64_t)(unsigned)sources[i].field.end1_kernel_type |
+                     ((uint64_t)(unsigned)sources[i].field.end2_kernel_type << 32);
+  }
+  return snapshot;
+}
+
+static void fill_pair_key_at(const context_t *ctx, const wire_source_t *sources,
+                             size_t pair, int n, double q, const fill_pair_types_t *types,
+                             fill_pair_key_t *key)
+{
+  int i = (int)(pair / (size_t)n);
+  int j = (int)(pair % (size_t)n);
+  *key = fill_pair_key(ctx, &sources[j], i, j, q, types);
+}
+
+static uint64_t fill_sample_random(uint64_t *state)
+{
+  uint64_t x = *state;
+  x ^= x >> 12;
+  x ^= x << 25;
+  x ^= x >> 27;
+  *state = x;
+  return x * UINT64_C(2685821657736338717);
+}
+
+/* Count every matching combination among up to 20,000 distinct sampled
+ * pairs. Full keys confirm hash matches; repeated draws of the same pair
+ * are excluded. For small matrices this is a census with an exact decision.
+ *
+ * The sampled collision comparisons share entries and are not independent
+ * binomial trials. Use a deliberately conservative PERFORMANCE HEURISTIC:
+ * use 2 * (matching_pairs + 8) as the guarded collision count before
+ * comparing H with the cap's minimum H. This guard band has no claimed
+ * confidence level. An uncertain sample proceeds to exact classification;
+ * rejecting reuse only selects the ordinary, fully computed matrix fill. */
+static int fill_reuse_sample_skip(const context_t *ctx,
+                                  const wire_source_t *sources, int n,
+                                  size_t pairs, size_t class_cap, double q,
+                                  const fill_pair_types_t *types,
+                                  const uint64_t *snapshot, size_t snapshot_count)
+{
+  if (pairs < 2 || class_cap >= pairs) return 0;
+  const size_t sample_limit = 20000;
+  size_t sample_size = pairs < sample_limit ? pairs : sample_limit;
+  int census = sample_size == pairs;
+  size_t slots = 1;
+  while (slots < sample_size * 2) slots *= 2;
+  uint32_t *seen = census ? NULL : calloc(slots, sizeof(*seen));
+  uint32_t *buckets = calloc(slots, sizeof(*buckets));
+  uint32_t *counts = calloc(sample_size, sizeof(*counts));
+  uint64_t *keys = malloc(sample_size * types->words * sizeof(*keys));
+  if ((!census && !seen) || !buckets || !counts || !keys) {
+    free(seen); free(buckets); free(counts); free(keys);
+    return 0;
+  }
+  uint64_t state = UINT64_C(0x9e3779b97f4a7c15);
+  for (size_t k = 0; k < snapshot_count; ++k)
+    state = (state ^ snapshot[k]) * UINT64_C(1099511628211);
+  if (state == 0) state = UINT64_C(0xd1b54a32d192ed03);
+
+  size_t groups = 0;
+  uint64_t collisions = 0;
+  for (size_t k = 0; k < sample_size;) {
+    size_t p = k;
+    if (!census) {
+      p = (size_t)(fill_sample_random(&state) % pairs);
+      uint64_t mixed = (uint64_t)p * UINT64_C(0x9e3779b97f4a7c15);
+      size_t slot = (size_t)(mixed ^ (mixed >> 32)) & (slots - 1);
+      while (seen[slot] && seen[slot] != (uint32_t)(p + 1))
+        slot = (slot + 1) & (slots - 1);
+      if (seen[slot]) continue;
+      seen[slot] = (uint32_t)(p + 1);
+    }
+    fill_pair_key_t key;
+    fill_pair_key_at(ctx, sources, p, n, q, types, &key);
+    size_t slot = (size_t)fill_pair_hash(&key, types->words) & (slots - 1);
+    while (buckets[slot] &&
+           memcmp(keys + (size_t)(buckets[slot] - 1) * types->words, key.bits,
+                  types->words * sizeof(*keys)) != 0)
+      slot = (slot + 1) & (slots - 1);
+    size_t c;
+    if (buckets[slot]) {
+      c = buckets[slot] - 1;
+    } else {
+      c = groups++;
+      buckets[slot] = (uint32_t)(c + 1);
+      memcpy(keys + c * types->words, key.bits, types->words * sizeof(*keys));
+    }
+    collisions += counts[c]++;
+    ++k;
+  }
+  double h_cap = (double)(pairs - class_cap) /
+                 ((double)class_cap * (double)(pairs - 1));
+  double combinations = 0.5 * (double)sample_size * (double)(sample_size - 1);
+  double guarded_h = 2.0 * ((double)collisions + 8.0) / combinations;
+  int skip = census ? groups > class_cap || groups == pairs : guarded_h < h_cap;
+  free(seen); free(buckets); free(counts); free(keys);
+  return skip;
+}
+
+/* Build exact pair classes, evaluate one projected field triple per class,
+ * and scatter with each source's own basis coefficients. Returns 1 when
+ * filled, 0 when resource limits/class count require the ordinary path. */
+static int fill_wire_observers_reuse(context_t *ctx, int nrow, complex double *cm,
+                                     wire_source_t *sources, int n)
+{
+  size_t pairs;
+  size_t table_size = 1;
+  const size_t memory_limit = (size_t)384 * 1024 * 1024;
+  /* NEC uses 1 for free space and 2 when a ground image is present. */
+  int ground_ok = ctx->gnd.has_ground == 1 ||
+      (ctx->gnd.has_ground == 2 && ctx->gnd.num_radials == 0 &&
+       (ctx->gnd.is_perfect == 0 || ctx->gnd.is_perfect == 1 || ctx->gnd.is_perfect == 2));
+  if (!ground_ok || n <= 0 ||
+      (size_t)n > SIZE_MAX / (size_t)n) {
+    return 0;
+  }
+  pairs = (size_t)n * (size_t)n;
+  if (pairs > UINT32_MAX || pairs > SIZE_MAX / 2 ||
+      pairs > SIZE_MAX / sizeof(uint32_t) ||
+      pairs > memory_limit / sizeof(uint32_t)) {
+    return 0;
+  }
+  double lref = 0.0;
+  for (int i = 0; i < n; ++i) {
+    double coord = fmax(fabs(ctx->geometry.x_center[i]),
+                        fmax(fabs(ctx->geometry.y_center[i]), fabs(ctx->geometry.z_center[i])));
+    lref = fmax(lref, coord + sources[i].field.seg_half_len);
+  }
+  double q = ldexp(lref > 0.0 ? lref : 1.0, -40);
+  size_t snapshot_count = 0;
+  uint64_t *snapshot = fill_reuse_snapshot(ctx, sources, n, &snapshot_count);
+  if (!snapshot) return 0;
+  int snapshot_match = ctx->fill_reuse_snapshot != NULL &&
+                       ctx->fill_reuse_pair_count == pairs &&
+                       ctx->fill_reuse_snapshot_count == snapshot_count &&
+                       memcmp(snapshot, ctx->fill_reuse_snapshot,
+                              snapshot_count * sizeof(*snapshot)) == 0;
+  /* Release the old geometry's map before budgeting a replacement. */
+  if (!snapshot_match && ctx->fill_reuse_snapshot != NULL)
+    discard_fill_reuse_groups(ctx);
+  int cache_hit = snapshot_match && ctx->fill_reuse_class_ids != NULL &&
+                  ctx->fill_reuse_representatives != NULL;
+  if (snapshot_match && ctx->fill_reuse_skip_cached) {
+    free(snapshot);
+    return 0;
+  }
+  if (cache_hit) {
+    free(snapshot);
+    snapshot = NULL;
+  }
+  size_t classes = cache_hit ? ctx->fill_reuse_class_count : 0;
+  uint32_t *class_ids = cache_hit ? (uint32_t *)ctx->fill_reuse_class_ids : NULL;
+  uint32_t *representatives = cache_hit ? (uint32_t *)ctx->fill_reuse_representatives : NULL;
+  size_t class_cap = pairs / 2 + 1;
+  size_t alternate_cap = pairs / 8;
+  if (alternate_cap < (size_t)1 << 20) alternate_cap = (size_t)1 << 20;
+  if (class_cap > alternate_cap) class_cap = alternate_cap;
+  fill_pair_types_t types = {0};
+  int over_cap = 0;
+  if (!cache_hit) {
+    if (!fill_pair_types(ctx, sources, n, q, &types)) {
+      free(snapshot);
+      return 0;
+    }
+    /* Budget the pair map, packed keys, atomic slots, representative and
+     * renumber arrays, and retained field buffers. Classifier temporaries
+     * are released before evaluating fields. */
+    for (;;) {
+      table_size = 1;
+      while (table_size < class_cap * 2) table_size *= 2;
+      size_t fixed_bytes = pairs * sizeof(uint32_t) +
+                          table_size * sizeof(_Atomic uint64_t) +
+                          ((size_t)n + 1) * sizeof(size_t) +
+                          2 * (size_t)n * sizeof(uint32_t);
+      size_t per_class_bytes = types.words * sizeof(uint64_t) +
+          sizeof(_Atomic uint32_t) + 2 * sizeof(uint32_t) +
+          3 * sizeof(complex double) + sizeof(unsigned char);
+      if (fixed_bytes <= memory_limit &&
+          class_cap <= (memory_limit - fixed_bytes) / per_class_bytes) break;
+      if (class_cap <= ((size_t)1 << 20)) {
+        free(types.source); free(snapshot);
+        return 0;
+      }
+      class_cap = (class_cap + 1) / 2;
+    }
+    if (fill_reuse_sample_skip(ctx, sources, n, pairs, class_cap, q, &types,
+                              snapshot, snapshot_count)) {
+      over_cap = 1;
+      goto fallback;
+    }
+    class_ids = malloc(pairs * sizeof(*class_ids));
+    representatives = malloc(class_cap * sizeof(*representatives));
+    if (!class_ids || !representatives) goto fallback;
+    int classified = fill_classify_pairs(ctx, sources, n, q, &types, class_cap,
+                                         table_size, class_ids, representatives, &classes);
+    free(types.source);
+    types.source = NULL;
+    if (classified != 1) {
+      over_cap = classified == 0;
+      goto fallback;
+    }
+  }
+  if (classes >= pairs) { over_cap = 1; goto fallback; }
+  if (classes > ctx->fill_reuse_values_capacity) {
+    complex double *new_values = malloc(classes * 3 * sizeof(*new_values));
+    unsigned char *new_unsafe = malloc(classes * sizeof(*new_unsafe));
+    if (!new_values || !new_unsafe) {
+      free(new_values); free(new_unsafe);
+      goto fallback;
+    }
+    free(ctx->fill_reuse_values); free(ctx->fill_reuse_unsafe);
+    ctx->fill_reuse_values = new_values;
+    ctx->fill_reuse_unsafe = new_unsafe;
+    ctx->fill_reuse_values_capacity = classes;
+  }
+  complex double *values = ctx->fill_reuse_values;
+  unsigned char *unsafe = ctx->fill_reuse_unsafe;
+  #pragma omp parallel default(shared)
+  {
+    context_t local = *ctx;
+    #pragma omp for schedule(dynamic, 64)
+    for (size_t c = 0; c < classes; ++c) {
+      size_t p = representatives[c];
+      int i = (int)(p / (size_t)n), j = (int)(p % (size_t)n);
+      const segment_t *f = &sources[j].field;
+      local.dataj = *f;
+      e_field_segment(&local, ctx->geometry.x_center[i], ctx->geometry.y_center[i],
+                      ctx->geometry.z_center[i], ctx->geometry.radius[i], i - j);
+      values[3*c] = local.dataj.e_const_x*ctx->geometry.dir_cos_x[i] +
+                    local.dataj.e_const_y*ctx->geometry.dir_cos_y[i] +
+                    local.dataj.e_const_z*ctx->geometry.dir_cos_z[i];
+      values[3*c+1] = local.dataj.e_sin_x*ctx->geometry.dir_cos_x[i] +
+                      local.dataj.e_sin_y*ctx->geometry.dir_cos_y[i] +
+                      local.dataj.e_sin_z*ctx->geometry.dir_cos_z[i];
+      values[3*c+2] = local.dataj.e_cos_x*ctx->geometry.dir_cos_x[i] +
+                      local.dataj.e_cos_y*ctx->geometry.dir_cos_y[i] +
+                      local.dataj.e_cos_z*ctx->geometry.dir_cos_z[i];
+      double dx = ctx->geometry.x_center[i] - f->src_x;
+      double dy = ctx->geometry.y_center[i] - f->src_y;
+      double dz = ctx->geometry.z_center[i] - f->src_z;
+      double zp = dx*f->src_dir_cos_x + dy*f->src_dir_cos_y + dz*f->src_dir_cos_z;
+      double rx = dx - f->src_dir_cos_x*zp;
+      double ry = dy - f->src_dir_cos_y*zp;
+      double rz = dz - f->src_dir_cos_z*zp;
+      double rho = sqrt(rx*rx + ry*ry + rz*rz);
+      double rh = sqrt(rho*rho + ctx->geometry.radius[i]*ctx->geometry.radius[i]);
+      double r = sqrt(zp*zp + rh*rh);
+      double guard = 8.0*q + 1.0e-12*fabs(f->k_half_len);
+      unsafe[c] = fabs(r - f->k_half_len) <= guard ||
+                  fabs(rh - 1.0e-10) <= guard ||
+                  (f->use_extended_kernel == 1 &&
+                   fabs(rh - f->seg_radius) <= guard);
+      if (ctx->gnd.has_ground == 2) {
+        double zsum = ctx->geometry.z_center[i] + f->src_z;
+        double zip = dx*f->src_dir_cos_x + dy*f->src_dir_cos_y - zsum*f->src_dir_cos_z;
+        double rix = dx - f->src_dir_cos_x*zip;
+        double riy = dy - f->src_dir_cos_y*zip;
+        double riz = zsum + f->src_dir_cos_z*zip;
+        double ri = sqrt(zip*zip + rix*rix + riy*riy + riz*riz +
+                         ctx->geometry.radius[i]*ctx->geometry.radius[i]);
+        unsafe[c] = unsafe[c] || fabs(ri - f->k_half_len) <= guard;
+        if (ctx->gnd.is_perfect == 0) {
+          double horizontal = hypot(dx, dy);
+          unsafe[c] = unsafe[c] || fabs(horizontal - 1.0e-6) <= guard;
+        }
+        if (ctx->gnd.is_perfect == 2) {
+          double dpx = f->src_dir_cos_y*zsum + f->src_dir_cos_z*dy;
+          double dpy = -f->src_dir_cos_z*dx - f->src_dir_cos_x*zsum;
+          double dpz = f->src_dir_cos_x*dy - f->src_dir_cos_y*dx;
+          double dpn = sqrt(dpx*dpx + dpy*dpy + dpz*dpz);
+          double rr = dx*dx + dy*dy + zsum*zsum;
+          unsafe[c] = unsafe[c] || dpn <= 1.0e-5 + guard || fabs(dpz) <= guard ||
+                      fabs(sqrt(rr) - sqrt(0.95)) <= guard;
+          if (rr > 0.95) {
+            double zp_image = dx*f->src_dir_cos_x + dy*f->src_dir_cos_y - zsum*f->src_dir_cos_z;
+            double rh2 = rr - zp_image*zp_image;
+            double rh_image = sqrt(fmax(rh2, 0.0));
+            double dmin = rh2 <= 1.0e-10 ? 0.0 :
+                sqrt(rh2 / (rh2 + ctx->geometry.radius[i]*ctx->geometry.radius[i]));
+            unsafe[c] = unsafe[c] || fabs(rh_image - 1.0e-5) <= guard ||
+                        fabs(dmin - 0.95) <= guard / fmax(ctx->geometry.radius[i], 1.0e-30);
+          }
+        }
+      }
+    }
+    #pragma omp for schedule(static)
+    for (int i = 0; i < n; ++i) {
+      complex double *restrict column = cm + (size_t)i * (size_t)nrow;
+      const uint32_t *restrict row_classes = class_ids + (size_t)i * (size_t)n;
+      double xi = ctx->geometry.x_center[i], yi = ctx->geometry.y_center[i];
+      double zi = ctx->geometry.z_center[i], radius = ctx->geometry.radius[i];
+      double dx = ctx->geometry.dir_cos_x[i], dy = ctx->geometry.dir_cos_y[i];
+      double dz = ctx->geometry.dir_cos_z[i];
+      for (int j = 0; j < n; ++j) {
+        const wire_source_t *source = &sources[j];
+        size_t c = row_classes[j];
+        complex double ek, es, ec;
+        if (unsafe[c]) {
+          local.dataj = source->field;
+          e_field_segment(&local, xi, yi, zi, radius, i - j);
+          ek = local.dataj.e_const_x*dx +
+               local.dataj.e_const_y*dy +
+               local.dataj.e_const_z*dz;
+          es = local.dataj.e_sin_x*dx +
+               local.dataj.e_sin_y*dy +
+               local.dataj.e_sin_z*dz;
+          ec = local.dataj.e_cos_x*dx +
+               local.dataj.e_cos_y*dy +
+               local.dataj.e_cos_z*dz;
+        } else {
+          ek = values[3*c]; es = values[3*c+1]; ec = values[3*c+2];
+        }
+        for (int k = 0; k < source->count; ++k) {
+          size_t index = (size_t)(source->indices[k] - 1);
+          column[index] += ek*source->coeff_const[k] + es*source->coeff_sine[k] + ec*source->coeff_cos[k];
+        }
+        if (j == i && ctx->zload.num_loads != 0) {
+          for (int k = 0; k < source->count; ++k) {
+            size_t index = (size_t)(source->indices[k] - 1);
+            column[index] -= (source->coeff_const[k] + source->coeff_cos[k]) * ctx->zload.seg_impedance[j];
+          }
+        }
+      }
+    }
+  }
+  if (!cache_hit) {
+    free(ctx->fill_reuse_class_ids);
+    free(ctx->fill_reuse_representatives);
+    free(ctx->fill_reuse_snapshot);
+    ctx->fill_reuse_class_ids = class_ids;
+    ctx->fill_reuse_representatives = representatives;
+    ctx->fill_reuse_snapshot = snapshot;
+    ctx->fill_reuse_pair_count = pairs;
+    ctx->fill_reuse_class_count = classes;
+    ctx->fill_reuse_snapshot_count = snapshot_count;
+    ctx->fill_reuse_skip_cached = false;
+  }
+  return 1;
+
+fallback:
+  if (!cache_hit) {
+    free(class_ids);
+    free(representatives);
+    if (over_cap) {
+      free(ctx->fill_reuse_class_ids);
+      free(ctx->fill_reuse_representatives);
+      free(ctx->fill_reuse_snapshot);
+      ctx->fill_reuse_class_ids = NULL;
+      ctx->fill_reuse_representatives = NULL;
+      ctx->fill_reuse_snapshot = snapshot;
+      ctx->fill_reuse_pair_count = pairs;
+      ctx->fill_reuse_class_count = 0;
+      ctx->fill_reuse_snapshot_count = snapshot_count;
+      ctx->fill_reuse_skip_cached = true;
+    } else {
+      free(snapshot);
+    }
+  }
+  free(types.source);
+  return 0;
+}
 
 /* Return 1 on success, 0 to use the original fill after allocation failure,
  * or -1 if basis construction failed. No matrix writes occur before all
  * source data is prepared, so allocation failure can safely fall back. */
 static int fill_wire_observers(context_t *ctx, int nrow, complex double *cm, int n)
 {
-  wire_source_t *sources = calloc((size_t)n, sizeof(*sources));
-  if (!sources) return 0;
+  const char *reuse_setting = getenv("OPENNEC_FILL_REUSE");
+#if defined(_OPENMP) && (defined(HAVE_ACCELERATE) || defined(HAVE_OPENBLAS))
+  int reuse_enabled = 1;
+#else
+  int reuse_enabled = 0;
+#endif
+  if (reuse_setting)
+    reuse_enabled = reuse_setting[0] == '1' && reuse_setting[1] == '\0';
+  if ((size_t)n > ctx->fill_sources_count) {
+    wire_source_t *grown = realloc(ctx->fill_sources, (size_t)n * sizeof(*grown));
+    if (!grown) return 0;
+    memset(grown + ctx->fill_sources_count, 0,
+           ((size_t)n - ctx->fill_sources_count) * sizeof(*grown));
+    ctx->fill_sources = grown;
+    ctx->fill_sources_count = (size_t)n;
+  }
+  wire_source_t *sources = ctx->fill_sources;
   int status = 1;
 
   for (int j = 0; j < n; ++j) {
@@ -103,12 +776,18 @@ static int fill_wire_observers(context_t *ctx, int nrow, complex double *cm, int
       status = 0;
       break;
     }
-    /* Separate allocations keep double arrays correctly aligned. */
-    source->indices = malloc(count * sizeof(*source->indices));
-    source->coeff_const = malloc(count * 3 * sizeof(*source->coeff_const));
-    if (!source->indices || !source->coeff_const) {
-      status = 0;
-      break;
+    if (count > source->capacity) {
+      int *indices = malloc(count * sizeof(*indices));
+      double *coefficients = malloc(count * 3 * sizeof(*coefficients));
+      if (!indices || !coefficients) {
+        free(indices); free(coefficients);
+        status = 0;
+        break;
+      }
+      free(source->indices); free(source->coeff_const);
+      source->indices = indices;
+      source->coeff_const = coefficients;
+      source->capacity = count;
     }
     source->coeff_sine = source->coeff_const + count;
     source->coeff_cos = source->coeff_sine + count;
@@ -120,7 +799,9 @@ static int fill_wire_observers(context_t *ctx, int nrow, complex double *cm, int
     source->field = ctx->dataj;
   }
 
-  if (status == 1) {
+  if (status == 1 && reuse_enabled && fill_wire_observers_reuse(ctx, nrow, cm, sources, n)) {
+    status = 2;
+  } else if (status == 1) {
     /* Each observation owns a complete transposed column. Its sources and
      * loading are accumulated in the same order as the original fill. */
     #pragma omp parallel default(shared)
@@ -153,14 +834,25 @@ static int fill_wire_observers(context_t *ctx, int nrow, complex double *cm, int
       }
     }
   }
-  for (int j = 0; j < n; ++j) {
+  return status == 2 ? 1 : status;
+}
+#endif
+
+void free_matrix_fill_cache(context_t *ctx)
+{
+#ifdef _OPENMP
+  wire_source_t *sources = ctx->fill_sources;
+  for (size_t j = 0; j < ctx->fill_sources_count; ++j) {
     free(sources[j].indices);
     free(sources[j].coeff_const);
   }
-  free(sources);
-  return status;
-}
 #endif
+  free(ctx->fill_sources);
+  ctx->fill_sources = NULL;
+  ctx->fill_sources_count = 0;
+  discard_fill_reuse_groups(ctx);
+}
+
 
 /* cmset sets up the complex structure matrix in the array cm */
 /* Formerly nec2c: cmset */
@@ -179,9 +871,13 @@ int fill_interaction_matrix(context_t *restrict ctx, int nrow, complex double *r
   ctx->dataj.use_extended_kernel = iexkx;
   it = ctx->matpar.last_block_rows;
 
-  for( i = 0; i < nrow; i++ )
-	for( j = 0; j < it; j++ )
-	  cm[i+j*nrow]= CPLX_00;
+  /* Clear contiguous columns, matching each fill worker's ownership. */
+#ifdef _OPENMP
+  #pragma omp parallel for private(i) schedule(static) if((size_t)nrow * (size_t)it >= 65536)
+#endif
+  for (j = 0; j < it; ++j)
+    for (i = 0; i < nrow; ++i)
+      cm[(size_t)i + (size_t)j * (size_t)nrow] = CPLX_00;
 
   i1= 1;
   i2= it;

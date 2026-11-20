@@ -29,4 +29,7 @@ void solve_many(const context_t *restrict ctx, int n, complex double *restrict a
 /* Formerly nec2c: solves */
 void solve_symmetric(context_t *restrict ctx, complex double *restrict a, int *restrict ip, complex double *restrict b, int neq, int nrh, int np, int n, int mp, int m);
 
+/* Release pair maps and scratch storage when the context is destroyed. */
+void free_matrix_fill_cache(context_t *ctx);
+
 #endif /* MATRIX_H */

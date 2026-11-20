@@ -727,6 +727,20 @@ struct context_t
 	bool first_output_for_frequency; /* True once FREQUENCY header has been output at current frequency (persists across EX iterations) */
 	bool step_size_warned;    /* True once the Romberg step-size-limited warning has been emitted */
 	bool add_rp_if_missing;   /* True if --add-rp flag was specified on command line */
+	/* Geometry-only pair classes and reusable storage. Field triples and
+	 * source coefficients are recomputed at every fill. */
+	void *fill_reuse_class_ids;
+	void *fill_reuse_representatives;
+	void *fill_reuse_snapshot;
+	void *fill_reuse_values;
+	void *fill_reuse_unsafe;
+	void *fill_sources;
+	size_t fill_sources_count;
+	size_t fill_reuse_values_capacity;
+	size_t fill_reuse_pair_count;
+	size_t fill_reuse_class_count;
+	size_t fill_reuse_snapshot_count;
+	bool fill_reuse_skip_cached;
 };
 
 /* Internal initialization and cleanup (called by create_context/destroy_context) */
