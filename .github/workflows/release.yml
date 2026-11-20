@@ -114,7 +114,7 @@ jobs:
       - name: Verify x86_64 OpenMP runtime
         run: |
           test "$(uname -m)" = "x86_64"
-          lipo -verify_arch x86_64 "$(brew --prefix libomp)/lib/libomp.dylib"
+          lipo "$(brew --prefix libomp)/lib/libomp.dylib" -verify_arch x86_64
       - name: Set build vars
         run: |
           if [ "${{ matrix.backend }}" = "original" ]; then
