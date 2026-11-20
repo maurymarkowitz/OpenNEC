@@ -750,7 +750,9 @@ static int fill_wire_observers(context_t *ctx, int nrow, complex double *cm, int
 #else
   int reuse_enabled = 0;
 #endif
-  if (reuse_setting)
+  if (ctx->fill_reuse)
+    reuse_enabled = ctx->fill_reuse > 0;
+  else if (reuse_setting)
     reuse_enabled = reuse_setting[0] == '1' && reuse_setting[1] == '\0';
   if ((size_t)n > ctx->fill_sources_count) {
     wire_source_t *grown = realloc(ctx->fill_sources, (size_t)n * sizeof(*grown));
