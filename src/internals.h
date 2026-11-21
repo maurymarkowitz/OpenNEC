@@ -741,6 +741,12 @@ struct context_t
 	size_t fill_reuse_class_count;
 	size_t fill_reuse_snapshot_count;
 	bool fill_reuse_skip_cached;
+	/* The caller's fill-reuse choice for this context: 0 leaves it to
+	 * OPENNEC_FILL_REUSE and then the build default, 1 turns reuse on, -1 off.
+	 * A per-context switch lets several solves in one process choose
+	 * differently; the environment is process-wide. Builds without OpenMP
+	 * have no reuse path, so 1 is ignored there. */
+	int fill_reuse;
 };
 
 /* Internal initialization and cleanup (called by create_context/destroy_context) */
