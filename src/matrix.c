@@ -94,6 +94,7 @@ static void discard_fill_reuse_groups(context_t *ctx)
   ctx->fill_reuse_skip_cached = false;
 }
 
+#ifdef _OPENMP
 static void report_fill_reuse(context_t *ctx, const char *format, ...)
 {
   if (ctx->fill_reuse_diagnostic_reported) return;
@@ -106,7 +107,6 @@ static void report_fill_reuse(context_t *ctx, const char *format, ...)
   ctx->fill_reuse_diagnostic_reported = true;
 }
 
-#ifdef _OPENMP
 /* A source's field parameters and junction coefficients, prepared once per
  * fill. The coefficients depend on frequency and must not be cached across
  * fills. Each entry owns its indices and coefficient arrays. */
