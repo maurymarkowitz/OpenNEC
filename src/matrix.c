@@ -29,6 +29,8 @@
 #include "fields.h"
 #include "calculations.h"
 #include <stdint.h>
+#include <stdio.h>
+#include <stdarg.h>
 #ifdef _OPENMP
 #include <stdatomic.h>
 #endif
@@ -90,6 +92,18 @@ static void discard_fill_reuse_groups(context_t *ctx)
   ctx->fill_reuse_class_count = 0;
   ctx->fill_reuse_snapshot_count = 0;
   ctx->fill_reuse_skip_cached = false;
+}
+
+static void report_fill_reuse(context_t *ctx, const char *format, ...)
+{
+  if (ctx->fill_reuse_diagnostic_reported) return;
+  fprintf(stderr, "FILL REUSE: ");
+  va_list args;
+  va_start(args, format);
+  vfprintf(stderr, format, args);
+  va_end(args);
+  fputc('\n', stderr);
+  ctx->fill_reuse_diagnostic_reported = true;
 }
 
 #ifdef _OPENMP
@@ -415,8 +429,11 @@ static int fill_reuse_sample_skip(const context_t *ctx,
                                   const wire_source_t *sources, int n,
                                   size_t pairs, size_t class_cap, double q,
                                   const fill_pair_types_t *types,
-                                  const uint64_t *snapshot, size_t snapshot_count)
+                                  const uint64_t *snapshot, size_t snapshot_count,
+                                  size_t *sampled_pairs, size_t *repeated_pairs)
 {
+  *sampled_pairs = 0;
+  *repeated_pairs = 0;
   if (pairs < 2 || class_cap >= pairs) return 0;
   const size_t sample_limit = 20000;
   size_t sample_size = pairs < sample_limit ? pairs : sample_limit;
@@ -472,6 +489,8 @@ static int fill_reuse_sample_skip(const context_t *ctx,
   double combinations = 0.5 * (double)sample_size * (double)(sample_size - 1);
   double guarded_h = 2.0 * ((double)collisions + 8.0) / combinations;
   int skip = census ? groups > class_cap || groups == pairs : guarded_h < h_cap;
+  *sampled_pairs = sample_size;
+  *repeated_pairs = (size_t)collisions;
   free(seen); free(buckets); free(counts); free(keys);
   return skip;
 }
@@ -491,12 +510,14 @@ static int fill_wire_observers_reuse(context_t *ctx, int nrow, complex double *c
        (ctx->gnd.is_perfect == 0 || ctx->gnd.is_perfect == 1 || ctx->gnd.is_perfect == 2));
   if (!ground_ok || n <= 0 ||
       (size_t)n > SIZE_MAX / (size_t)n) {
+    report_fill_reuse(ctx, "fell back (unsupported geometry or ground configuration)");
     return 0;
   }
   pairs = (size_t)n * (size_t)n;
   if (pairs > UINT32_MAX || pairs > SIZE_MAX / 2 ||
       pairs > SIZE_MAX / sizeof(uint32_t) ||
       pairs > memory_limit / sizeof(uint32_t)) {
+    report_fill_reuse(ctx, "fell back (pair map exceeds the 384 MiB cache limit)");
     return 0;
   }
   double lref = 0.0;
@@ -508,7 +529,10 @@ static int fill_wire_observers_reuse(context_t *ctx, int nrow, complex double *c
   double q = ldexp(lref > 0.0 ? lref : 1.0, -40);
   size_t snapshot_count = 0;
   uint64_t *snapshot = fill_reuse_snapshot(ctx, sources, n, &snapshot_count);
-  if (!snapshot) return 0;
+  if (!snapshot) {
+    report_fill_reuse(ctx, "fell back (could not allocate geometry snapshot)");
+    return 0;
+  }
   int snapshot_match = ctx->fill_reuse_snapshot != NULL &&
                        ctx->fill_reuse_pair_count == pairs &&
                        ctx->fill_reuse_snapshot_count == snapshot_count &&
@@ -521,6 +545,7 @@ static int fill_wire_observers_reuse(context_t *ctx, int nrow, complex double *c
                   ctx->fill_reuse_representatives != NULL;
   if (snapshot_match && ctx->fill_reuse_skip_cached) {
     free(snapshot);
+    report_fill_reuse(ctx, "fell back (sampling rejected reuse on this geometry)");
     return 0;
   }
   if (cache_hit) {
@@ -539,6 +564,7 @@ static int fill_wire_observers_reuse(context_t *ctx, int nrow, complex double *c
   if (!cache_hit) {
     if (!fill_pair_types(ctx, sources, n, q, &types)) {
       free(snapshot);
+      report_fill_reuse(ctx, "fell back (could not classify pair types)");
       return 0;
     }
     /* Budget the pair map, packed keys, atomic slots, representative and
@@ -557,13 +583,25 @@ static int fill_wire_observers_reuse(context_t *ctx, int nrow, complex double *c
       if (fixed_bytes <= memory_limit &&
           class_cap <= (memory_limit - fixed_bytes) / per_class_bytes) break;
       if (class_cap <= ((size_t)1 << 20)) {
+        size_t estimate = fixed_bytes;
+        if (class_cap <= (SIZE_MAX - estimate) / per_class_bytes)
+          estimate += class_cap * per_class_bytes;
+        report_fill_reuse(ctx, "fell back (cache estimate %.0f MiB > 384 MiB)",
+                          (double)estimate / (1024.0 * 1024.0));
         free(types.source); free(snapshot);
         return 0;
       }
       class_cap = (class_cap + 1) / 2;
     }
+    size_t sampled_pairs = 0, repeated_pairs = 0;
     if (fill_reuse_sample_skip(ctx, sources, n, pairs, class_cap, q, &types,
-                              snapshot, snapshot_count)) {
+                              snapshot, snapshot_count, &sampled_pairs,
+                              &repeated_pairs)) {
+      double repeat_percent = sampled_pairs ?
+          100.0 * (double)repeated_pairs / (double)sampled_pairs : 0.0;
+      report_fill_reuse(ctx,
+          "fell back (sampling: %.1f%% of %zu sampled pairs repeat)",
+          repeat_percent, sampled_pairs);
       over_cap = 1;
       goto fallback;
     }
@@ -714,6 +752,8 @@ static int fill_wire_observers_reuse(context_t *ctx, int nrow, complex double *c
     ctx->fill_reuse_snapshot_count = snapshot_count;
     ctx->fill_reuse_skip_cached = false;
   }
+  report_fill_reuse(ctx, "served, %zu pairs, %zu representative evaluations",
+                    pairs, classes);
   return 1;
 
 fallback:
@@ -735,6 +775,10 @@ fallback:
       free(snapshot);
     }
   }
+  if (over_cap)
+    report_fill_reuse(ctx, "fell back (pair classes exceed the reuse budget)");
+  else
+    report_fill_reuse(ctx, "fell back (reuse allocation failed)");
   free(types.source);
   return 0;
 }
@@ -754,6 +798,8 @@ static int fill_wire_observers(context_t *ctx, int nrow, complex double *cm, int
     reuse_enabled = ctx->fill_reuse > 0;
   else if (reuse_setting)
     reuse_enabled = reuse_setting[0] == '1' && reuse_setting[1] == '\0';
+  if (!reuse_enabled)
+    report_fill_reuse(ctx, "disabled");
   if ((size_t)n > ctx->fill_sources_count) {
     wire_source_t *grown = realloc(ctx->fill_sources, (size_t)n * sizeof(*grown));
     if (!grown) return 0;
@@ -853,6 +899,7 @@ void free_matrix_fill_cache(context_t *ctx)
   ctx->fill_sources = NULL;
   ctx->fill_sources_count = 0;
   discard_fill_reuse_groups(ctx);
+  ctx->fill_reuse_diagnostic_reported = false;
 }
 
 

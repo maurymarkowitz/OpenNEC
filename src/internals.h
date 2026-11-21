@@ -741,6 +741,7 @@ struct context_t
 	size_t fill_reuse_class_count;
 	size_t fill_reuse_snapshot_count;
 	bool fill_reuse_skip_cached;
+	bool fill_reuse_diagnostic_reported;
 	/* The caller's fill-reuse choice for this context: 0 leaves it to
 	 * OPENNEC_FILL_REUSE and then the build default, 1 turns reuse on, -1 off.
 	 * A per-context switch lets several solves in one process choose

@@ -89,7 +89,13 @@ def main():
                 differences = [(a, b) for a, b in zip(expected, actual)
                                if abs(a-b) > 2e-4 * max(abs(a), abs(b), 1e-20)]
                 assert not differences, (name, "numerical difference", differences[:5])
-                assert "fill reuse" not in result.stderr.lower(), (name, result.stderr)
+                assert "FILL REUSE:" in result.stderr, (name, result.stderr)
+                if not reuse:
+                    assert "FILL REUSE: disabled" in result.stderr, (name, result.stderr)
+                elif reject:
+                    assert "FILL REUSE: fell back (sampling:" in result.stderr, (name, result.stderr)
+                else:
+                    assert "FILL REUSE: served," in result.stderr, (name, result.stderr)
                 if state_probe:
                     subprocess.run([state_probe, str(deck), "reject" if reject else "reuse"],
                                    env=env, capture_output=True, text=True, check=True)
