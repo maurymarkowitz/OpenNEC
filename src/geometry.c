@@ -1918,11 +1918,11 @@ void reflect(context_t *ctx, int card_num, int tag_increment, int ix, int iy, in
         ctx->geometry.patch_x_center[nx]= ctx->geometry.patch_x_center[i];
         ctx->geometry.patch_y_center[nx]= -ctx->geometry.patch_y_center[i];
         ctx->geometry.patch_z_center[nx]= ctx->geometry.patch_z_center[i];
-        ctx->geometry.patch_t1x[nx]= -ctx->geometry.patch_t1x[i];
-        ctx->geometry.patch_t1y[nx]= ctx->geometry.patch_t1y[i];
+        ctx->geometry.patch_t1x[nx]= ctx->geometry.patch_t1x[i];
+        ctx->geometry.patch_t1y[nx]= -ctx->geometry.patch_t1y[i];
         ctx->geometry.patch_t1z[nx]= ctx->geometry.patch_t1z[i];
-        ctx->geometry.patch_t2x[nx]= -ctx->geometry.patch_t2x[i];
-        ctx->geometry.patch_t2y[nx]= ctx->geometry.patch_t2y[i];
+        ctx->geometry.patch_t2x[nx]= ctx->geometry.patch_t2x[i];
+        ctx->geometry.patch_t2y[nx]= -ctx->geometry.patch_t2y[i];
         ctx->geometry.patch_t2z[nx]= ctx->geometry.patch_t2z[i];
         ctx->geometry.patch_normal_z[nx]= -ctx->geometry.patch_normal_z[i];
         ctx->geometry.patch_area[nx]= ctx->geometry.patch_area[i];
