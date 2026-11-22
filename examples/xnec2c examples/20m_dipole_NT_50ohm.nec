@@ -1,0 +1,49 @@
+CM Trivial dipole + NT card matching demo (US 20 m ham band)
+CM
+CM Geometry: half-wave dipole in free space, sized so the NEC2 model
+CM resonates near 14.175 MHz, the centre of the US 20 m amateur band
+CM (14.000 - 14.350 MHz).  Theoretical thin-wire feedpoint impedance at
+CM that resonance is approximately 73 + j0 Ohms.
+CM
+CM Length derivation:
+CM   target centre f = 14.175 MHz  ->  lambda = 300/14.175 = 21.164 m
+CM   NEC2 thin-wire resonant ratio for r = 1 mm is L/lambda ~ 0.4850
+CM   total length L = 0.4850 * 21.164 = 10.264 m
+CM   half-length     = 5.132 m, placed along the y axis at z = 0
+CM   21 segments    -> segment length 0.489 m ~ lambda/43, well within
+CM   the NEC2 lambda/10 segmentation guideline.  Odd count puts the
+CM   driven element at tag 1 segment 11.
+CM
+CM Match network: an NT card between the dipole feed segment (tag 1,
+CM seg 11) and a small isolated port wire (tag 2, seg 1) implements a
+CM two-port lossless L-network that transforms the 73 Ohm dipole feed
+CM to 50 Ohms at the EX voltage source.  Topology read from port 1 to
+CM port 2: shunt C, series L.  Design reactances:
+CM   Q  = sqrt(73/50 - 1) = 0.6782
+CM   Xp = -R_high / Q     = -107.64 Ohm  (shunt C on the 73 Ohm side)
+CM   Xs = Q * R_low       =  +33.91 Ohm  (series L into the 50 Ohm side)
+CM
+CM Y matrix in Siemens; NEC2 does not rescale NT entries with frequency,
+CM so the lumped equivalence is exact at 14.175 MHz only.  Across the
+CM sweep the dipole reactance also drifts, so the cleanest 50 + j0
+CM reading lands at the geometric resonance.  Y21 is implied reciprocal:
+CM   Y11 = 0 - 0.02020 j   Y12 = 0 + 0.02949 j   Y22 = 0 - 0.02949 j
+CM
+CM Port wire (tag 2): a 0.1 m stub placed 100 m off axis, electrically
+CM tiny (~ 0.005 lambda) so its own radiation is negligible compared to
+CM the dipole driven through the NT.
+CM
+CM Sweep: full US 20 m band, 14.000 - 14.350 MHz, 15 points x 25 kHz.
+CM
+CM Visual: the OpenGL structure view draws a filled magenta
+CM quadrilateral with two port-connector lines between segments 1.11
+CM and 2.1, exercising the ntyp 1 polygon fill batch.
+CE
+GW 1 21   0.000 -5.132  0.000   0.000  5.132  0.000  0.001
+GW 2  1 100.000 -0.050  0.000 100.000  0.050  0.000  0.001
+GE 0
+NT 1 11 2 1  0.0 -0.02020  0.0  0.02949  0.0 -0.02949
+EX 0  2  1  0  1.0  0.0
+FR 0 15 0 0  14.000  0.025
+RP 0 19 37 1000  0.0  0.0  10.0 10.0
+EN

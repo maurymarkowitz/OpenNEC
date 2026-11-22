@@ -1,5 +1,7 @@
 Items still to be implemented:
 
+* some 4nec2 files have element colors in hec format in the trailing comments, like #0f0
+
 * handle SimNEC/SimSmith dcl's, which are basically SYs with a "dcl" or "$" instead of SY. need a separate input/export for this
 
 * re-implement batch reporting for the interactive mode

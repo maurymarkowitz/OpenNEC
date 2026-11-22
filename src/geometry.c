@@ -2116,8 +2116,8 @@ void rotate(context_t *ctx, int card_num, int tag_increment, int num_copies)
     mem_realloc(ctx, (void *)&ctx->geometry.radius, mreq);
 
     for(int i = nx; i < n_new_total; i++ ) {
-      // cycle through the original new segments
-      k = n0 + (i - n0) % new_count;
+      // Rotate each new copy from the immediately preceding copy, as NEC-2 does.
+      k = i - new_count;
       xk = ctx->geometry.end1_x[k];
       yk = ctx->geometry.end1_y[k];
       ctx->geometry.end1_x[i]= xk* cs- yk* ss;
@@ -2134,8 +2134,7 @@ void rotate(context_t *ctx, int card_num, int tag_increment, int num_copies)
       if(itagi == 0)
         ctx->geometry.tag_nums[i] = 0;
       if( itagi != 0) {
-        int copy_num = (i - n0) / new_count;  /* 1 for first copy, 2 for second, etc. */
-        ctx->geometry.tag_nums[i] = itagi + copy_num * tag_increment;
+        ctx->geometry.tag_nums[i] = itagi + tag_increment;
       }
 
       ctx->geometry.card_nums[i] = card_num;
@@ -2172,6 +2171,7 @@ void rotate(context_t *ctx, int card_num, int tag_increment, int num_copies)
   mem_realloc(ctx, (void *)&ctx->geometry.patch_card_nums, mreq);
   
   for(int i = nx; i < ctx->geometry.num_patches; i++) {
+    // Match nec2c: each patch copy is rotated from the preceding copy.
     k = i-ctx->geometry.num_patches_sym;
     xk= ctx->geometry.patch_x_center[k];
     yk= ctx->geometry.patch_y_center[k];

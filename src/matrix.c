@@ -632,7 +632,8 @@ static int fill_wire_observers_reuse(context_t *ctx, int nrow, complex double *c
   }
   complex double *values = ctx->fill_reuse_values;
   unsigned char *unsafe = ctx->fill_reuse_unsafe;
-  #pragma omp parallel default(shared)
+  size_t unsafe_pair_evaluations = 0;
+  #pragma omp parallel default(shared) reduction(+:unsafe_pair_evaluations)
   {
     context_t local = *ctx;
     #pragma omp for schedule(dynamic, 64)
@@ -713,6 +714,7 @@ static int fill_wire_observers_reuse(context_t *ctx, int nrow, complex double *c
         size_t c = row_classes[j];
         complex double ek, es, ec;
         if (unsafe[c]) {
+          ++unsafe_pair_evaluations;
           local.dataj = source->field;
           e_field_segment(&local, xi, yi, zi, radius, i - j);
           ek = local.dataj.e_const_x*dx +
@@ -752,8 +754,8 @@ static int fill_wire_observers_reuse(context_t *ctx, int nrow, complex double *c
     ctx->fill_reuse_snapshot_count = snapshot_count;
     ctx->fill_reuse_skip_cached = false;
   }
-  report_fill_reuse(ctx, "served, %zu pairs, %zu representative evaluations",
-                    pairs, classes);
+  report_fill_reuse(ctx, "served, %zu pairs, %zu computed",
+                    pairs, classes + unsafe_pair_evaluations);
   return 1;
 
 fallback:

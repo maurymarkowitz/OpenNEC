@@ -40,9 +40,9 @@ One thing you have to be careful about when doing these sorts of changes is that
 
 ## Baseline performance
 
-To provide a performance baseline, I attempted to run these decks with the original Fortran code from the [nec2d-SX source code](https://www.qsl.net/4nec2/supfiles.htm) found on the 4nec2 web pages, with the segment count increased to 11k and the in-deck comments stripped out. However, neither deck would run, reporting `SEGMENT CONNECTION ERROR...`. This turned out to be due to a fixed limit on the number of connections between segments, 60, which both of these files had issues with at one point or another. This issue was fixed in nec2c, so I moved on.
+To provide a performance baseline, I attempted to run these decks with the original Fortran code from the [nec2d-SX source code](https://www.qsl.net/4nec2/supfiles.htm) found on the 4nec2 web pages, with the segment count increased to 11k and the in-deck comments stripped out. However, neither deck would run, reporting `SEGMENT CONNECTION ERROR...`. This turned out to be due to a fixed limit on the number of connections between segments, 60, which both of these files had issues with at one point or another.
 
-nec2c is a relatively direct port of the original NEC-2 Fortran code, originally using an automated conversion tool. But a key improvement is that it removed the segment connection limit and was able to run these decks. Its times are very similar to the same decks run under nec2d (when they work!), so it makes a reasonable alternative to get some baseline numbers.  Here is the latest nec2c version 1.3 running these tests on an M2 Max.
+[nec2c](https://github.com/KJ7LNW/nec2c) is a relatively direct port of the original NEC-2 Fortran code. A key improvement is that it removed various fixed-memory-size objects and made them dynamically grow with the model size - the segment connection limit is one of the things this fixed. Its times are very similar to the same decks run under nec2d, so it makes a reasonable alternative to get some baseline numbers. Here is the latest nec2c version 1.3 running these tests on an M2 Max.
 
 | Deck   | Seconds |
 |--------|--------:|
