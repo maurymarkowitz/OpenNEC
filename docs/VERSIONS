@@ -1,6 +1,7 @@
 OpenNEC version history
 
 Version 2.4.3 - 2026 November 22
+- added color support from 4nec2, we see the #RGB value and save it. if written it's `color=#RGB` which should be backward compatible
 - fixed GR rotations so each copy advances around the axis instead of overlapping the first rotated copy
 - fixed GX reflection of patches
 - fixed sequential-frequency unknown counts for patches
