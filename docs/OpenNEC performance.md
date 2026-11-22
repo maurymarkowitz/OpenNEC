@@ -49,7 +49,7 @@ To provide a performance baseline, I attempted to run these decks with the origi
 | LogYag | 64.68   |
 | Whip   | 396.52  |
 
-These numbers are used as "performance value 1.0" in the following sections. The "Times faster" columns below are the number of times faster than these values. Larger values are better - 10 means ten times as fast, 5 means only five times as fast.
+These numbers are used as "performance value 1.0" and the "Times faster" columns below are the number of times faster than these values. Larger values are better - 10 means ten times as fast, 5 means only five times as fast.
 
 ## Previous best
 
