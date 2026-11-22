@@ -5,7 +5,8 @@ Version 2.4.3 - 2026 November 22
 - fixed GX reflection of patches
 - fixed sequential-frequency unknown counts for patches
 - default to NEC-2's 299.8 MHz frequency when an execution card precedes FR
-- report whether fill reuse was served or why it fell back
+- report whether fill reuse was served or why it fell back (will remove this one at some point)
+- read 4nec2 three-digit geometry colors from trailing comments, including color:/colour: forms
 
 Version 2.4.2 - 2026 November 19
 - enabled matrix fill reuse by default in OpenMP builds using Accelerate or OpenBLAS; set OPENNEC_FILL_REUSE=0 to disable it, or 1 to enable it in your own builds

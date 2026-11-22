@@ -38,6 +38,7 @@
 /* Forward declarations for internal functions */
 static int read_line(context_t *ctx, char *buff, FILE *pfile, int line_num);
 static void parse_comment_card(context_t *ctx, card_t *card, errors_list_t *errors);
+static bool is_rgb_hex_triplet(const char *value);
 static void parse_geometry_or_control_card(context_t *ctx, card_t *card, errors_list_t *errors);
 static void parse_onec_card(context_t *ctx, card_t *card, errors_list_t *errors);
 static void parse_key_values(context_t *ctx, card_t *card, errors_list_t *errors);
@@ -1166,6 +1167,18 @@ void parse_onec_card(context_t *ctx, card_t *card, errors_list_t *errors)
  * everything after the marker is a comment
  *
  */
+static bool is_rgb_hex_triplet(const char *value)
+{
+  if (!value || strlen(value) != 3)
+    return false;
+
+  for (int i = 0; i < 3; i++) {
+    if (!isxdigit((unsigned char)value[i]))
+      return false;
+  }
+  return true;
+}
+
 void parse_key_values(context_t *ctx, card_t *card, errors_list_t *errors)
 {
   char str[MAX_LINE_LEN];
@@ -1220,9 +1233,33 @@ void parse_key_values(context_t *ctx, card_t *card, errors_list_t *errors)
     if (ti == 0)
       continue;
 
+    // 4nec2 stores element colors as a bare #RGB token in the trailing
+    // comment. This is safe here: parse_key_values() only receives text that
+    // was already separated from the card by an inline comment marker.
+    if (token[0] == '#' && is_rgb_hex_triplet(token + 1)) {
+      key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
+      if (pair != NULL) {
+        pair->key = strdup("color");
+        pair->value = strdup(token);
+        pair->separator = '=';
+        pair->next = NULL;
+        key_value_t **headp = &card->extensns;
+        if (*headp == NULL) {
+          *headp = pair;
+        } else {
+          key_value_t *tail = *headp;
+          while (tail->next) tail = tail->next;
+          tail->next = pair;
+        }
+        hasExtensions = true;
+      }
+      continue;
+    }
+
     // find delimiter = or : inside token
     char *split = strpbrk(token, "=:");
     if (split != NULL) {
+      char separator = *split;
       // separate key and value
       *split = '\0';
       char *keyptr = token;
@@ -1231,11 +1268,31 @@ void parse_key_values(context_t *ctx, card_t *card, errors_list_t *errors)
       char *k = trim(keyptr);
       char *v = trim(valptr);
 
+      // Accept the labelled 4nec2 forms too, preserving #RGB values and
+      // adding the hash when a caller writes color:RGB / colour:RGB.
+      bool isColor = (strcasecmp(k, "color") == 0 || strcasecmp(k, "colour") == 0);
+
       // strip surrounding quotes on value if present
       size_t vlen = strlen(v);
       if ((vlen >= 2) && ((v[0] == '"' && v[vlen - 1] == '"') || (v[0] == '\'' && v[vlen - 1] == '\''))) {
         v[vlen - 1] = '\0';
         v = v + 1;
+      }
+
+      if (isColor && *v == '\0')
+        continue;
+
+      char color_value[5];
+      const char *stored_value = v;
+      if (isColor) {
+        k = "color";
+        const char *rgb = (v[0] == '#') ? v + 1 : v;
+        if (is_rgb_hex_triplet(rgb)) {
+          color_value[0] = '#';
+          memcpy(color_value + 1, rgb, 3);
+          color_value[4] = '\0';
+          stored_value = color_value;
+        }
       }
 
       if (strlen(k) == 0 && strlen(v) == 0)
@@ -1279,8 +1336,8 @@ void parse_key_values(context_t *ctx, card_t *card, errors_list_t *errors)
       key_value_t *pair = (key_value_t *)malloc(sizeof(key_value_t));
       if (pair != NULL) {
         pair->key = strdup(k);
-        pair->value = strdup(v);
-        pair->separator = (strchr("=:", token[strlen(k)]) != NULL) ? token[strlen(k)] : '=';
+        pair->value = strdup(stored_value);
+        pair->separator = separator;
         pair->next = NULL;
 
         key_value_t **headp = isFormula ? &card->formulas : &card->extensns;
