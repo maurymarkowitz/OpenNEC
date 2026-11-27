@@ -38,7 +38,12 @@
 #include <unistd.h>
 #include <limits.h>
 #if defined(_WIN32)
+/* internals.h defines CR, which is also an identifier in Windows headers. */
+#pragma push_macro("CR")
+#undef CR
+#define NOMINMAX
 #include <windows.h>
+#pragma pop_macro("CR")
 #endif
 
 // various switches for the command line arguments
