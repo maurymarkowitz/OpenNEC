@@ -37,12 +37,16 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <limits.h>
+#if defined(_WIN32)
+#include <windows.h>
+#endif
 
 // various switches for the command line arguments
 static bool do_run_simulation = true;
 static bool run_tests = false;
 static bool run_greens = false;
 static bool recursive = false;
+static bool batch_mode = false;
 static bool skip_large = false;
 static bool add_rp_if_missing = false;  /* True if --add-rp flag is specified */
 static int num_input_files = 1; /* for skip-large group behavior */
@@ -77,30 +81,31 @@ static void print_version(void)
  */
 void print_usage(char *argv[])
 {
-  printf("Usage: %s [-hvntgr] [-i input_file] [-o output_file] [-e error_file] [-w file] <input_file...>\n", argv[0]);
+  printf("Usage: %s [options] [input [output]]\n       %s --batch [options] input...\n", argv[0], argv[0]);
   puts("Options:");
   puts("  -h, --help: print this description");
   puts("  -v, --version: print version info");
-  puts("  -r, --recursive: recurse into subdirectories");
-  puts("    With a bare directory (e.g. /models/) only .nec/.deck files are collected.");
-  puts("    With a quoted glob pattern (e.g. '/models/*.yo') files matching that");
-  puts("    extension are collected; the filter is inherited by all subdirectories.");
-  puts("  --skip-large: with multiple files (or -r), skip decks with complexity T >= 1e11");
-  puts("  -n, --no-run: don't run the simulation after parsing");
+ puts("  -n, --no-run: don't run the simulation after parsing");
   puts("  -t, --test-deck: run various sanity tests");
-  puts("  -i file, --input-file=file: read input file. this is not required if <input_file> is provided. if neither is provided, input is read from stdin");
-  puts("  -o file, --output-file=file: write output to file. omitted -o writes to stdout (single file) or <file>.out (multiple files)");
+  puts("  -i file, --input-file=file: read input file (use - for stdin)");
+  puts("  -o file, --output-file=file: write output file (use - for stdout)");
   puts("  -e, --error-file: output errors to (path/)file, instead of stderr");
   puts("  -g, --greens[=file]: write a Green's function file; filename defaults to input path with .ngf extension");
-  puts("  -j, --jobs N: process up to N files in parallel (default 1)");
   puts("  -w file, --write-file=file: write the deck to file in the format inferred from its extension");
   puts("    Supported: .nec/.deck (OpenNEC), .nec2 (NEC-2), .nec4 (NEC-4), .maa/.mma (MMANA-GAL), .yo/.ant/.yag (Yagi Optimizer), .nc (cocoaNEC)");
   puts("    Pass a bare extension (e.g. -w .maa) to convert multiple input files in place.");
+  puts("  --batch: process multiple files, patterns, or directories");
+  puts("    With a bare directory (e.g. /models/) only .nec/.deck files are collected.");
+  puts("    With a quoted glob pattern (e.g. '/models/*.yo') files matching that");
+  puts("    extension are collected; the filter is inherited by all subdirectories.");
+  puts("  -r, --recursive: recurse into subdirectories");
+  puts("  -j, --jobs N: process up to N files in parallel (default 1)");
+  puts("  --skip-large: with multiple files (or -r), skip decks with complexity T >= 1e11");
   puts("  -f, --format: output format for .out file: 'nec2c' (modern) or 'original' (Fortran, default on all platforms)");
   puts("  -l, --line-ending: line ending style: 'crlf' (default) or 'lf' (Unix/macOS)");
   puts("  --add-rp: automatically add a default radiation pattern (360° horizontal) if deck ends without one");
-  puts("Multiple input files or folders can be specified; each file will generate a .out file.");
-  puts("If no input_file is provided, input is read from stdin and output goes to stdout.");
+  puts("A single input file defaults to a generated .out file; '-' selects stdin or stdout.");
+  puts("Without any arguments, it will prompt for input and output filenames.");
   exit(0);
 }
 
@@ -111,6 +116,7 @@ static struct option program_options[] =
         {"no-run", no_argument, NULL, 'n'},
         {"test-deck", no_argument, NULL, 't'},
         {"recursive", no_argument, NULL, 'r'},
+        {"batch", no_argument, NULL, 'B'},
         {"input-file", required_argument, NULL, 'i'},
         {"output-file", required_argument, NULL, 'o'},
         {"error-file", required_argument, NULL, 'e'},
@@ -151,7 +157,7 @@ void parse_options(int argc, char *argv[])
   {
     // eat an option and exit if we're done
     /* portable short options: 'g' has an optional argument */
-    int c = getopt_long(argc, argv, "hvntri:o:e:g::j:w:sf:l:a", program_options, &option_index); // should match the items above
+    int c = getopt_long(argc, argv, "hvntrBi:o:e:g::j:w:sf:l:a", program_options, &option_index); // should match the items above
     if (c == -1)
       break;
 
@@ -175,6 +181,10 @@ void parse_options(int argc, char *argv[])
 
     case 'r':
       recursive = true;
+      break;
+
+    case 'B':
+      batch_mode = true;
       break;
 
     case 'i':
@@ -242,21 +252,15 @@ void parse_options(int argc, char *argv[])
       break;
 
     default:
-      abort();
+      exit(EXIT_FAILURE);
     }
   } // while
 
-  // now see if there's a filename at the end without an option
-  // flag, if so it overrides -i if it was supplied
-  if (optind < argc)
-    input_file = argv[optind];
-
   /* Treat a bare question-mark as a request for usage (e.g. `onec ?`) */
-  if (input_file && strcmp(input_file, "?") == 0) {
+  if (optind < argc && strcmp(argv[optind], "?") == 0) {
     print_usage(argv);
   }
 
-  // if no input file, we'll use stdin
 }
 
 /* ---------- file-type detection ----------------------------------- */
@@ -538,8 +542,42 @@ static void resolve_write_filename(const char *input, const char *wf,
  * @param error_fp        FILE* where warnings/errors are printed
  * @return 0 on success, -1 on fatal error
  */
+static bool same_named_file(const char *input, const char *output)
+{
+  if (!input || !output || !input[0] || !output[0] ||
+      strcmp(input, "-") == 0 || strcmp(output, "-") == 0)
+    return false;
+#if defined(_WIN32)
+  HANDLE a = CreateFileA(input, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                         NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+  HANDLE b = CreateFileA(output, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                         NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+  BY_HANDLE_FILE_INFORMATION x, y;
+  bool same = a != INVALID_HANDLE_VALUE && b != INVALID_HANDLE_VALUE &&
+              GetFileInformationByHandle(a, &x) && GetFileInformationByHandle(b, &y) &&
+              x.dwVolumeSerialNumber == y.dwVolumeSerialNumber &&
+              x.nFileIndexHigh == y.nFileIndexHigh && x.nFileIndexLow == y.nFileIndexLow;
+  if (a != INVALID_HANDLE_VALUE) CloseHandle(a);
+  if (b != INVALID_HANDLE_VALUE) CloseHandle(b);
+  return same;
+#else
+  struct stat a, b;
+  return stat(input, &a) == 0 && stat(output, &b) == 0 &&
+         a.st_dev == b.st_dev && a.st_ino == b.st_ino;
+#endif
+}
+
 static int process_single_file(const char *input_filename, const char *output_filename, FILE *error_fp)
 {
+  char conversion_path[512] = "";
+  if (write_file[0])
+    resolve_write_filename(input_filename, write_file, conversion_path, sizeof(conversion_path));
+  const char *conflict = same_named_file(input_filename, output_filename) ? output_filename :
+                         same_named_file(input_filename, conversion_path) ? conversion_path : NULL;
+  if (conflict) {
+    fprintf(error_fp, "onec: output '%s' would overwrite input '%s'\n", conflict, input_filename);
+    return -1;
+  }
   context_t *ctx = create_context();
   if (ctx == NULL)
   {
@@ -994,6 +1032,10 @@ static void generate_output_filename(const char *input_filename, char *output_fi
   // Find the last dot in the filename
   char *dot = strrchr(output_filename, '.');
   char *slash = strrchr(output_filename, '/');
+#if defined(_WIN32)
+  char *backslash = strrchr(output_filename, '\\');
+  if (backslash && (!slash || backslash > slash)) slash = backslash;
+#endif
 
   // Only use the dot if it's after the last slash (part of filename, not directory)
   if (dot != NULL && (slash == NULL || dot > slash))
@@ -1167,36 +1209,30 @@ int main(int argc, char **argv)
 {
   FILE *error_fp = NULL;
 
-  // process the command line options
-  parse_options(argc, argv);
-
-  /* On Windows, if invoked with no args, read two lines from stdin
-   * (input and output filenames) to support 4nec2-style callers.
-   * Print prompts to match the behavior of the original nec2d.exe. */
-#if defined(_WIN32)
   if (argc == 1) {
-    char inbuf[4096];
-    char outbuf[4096];
+    char inbuf[4096], outbuf[4096];
     printf(" ENTER NAME OF INPUT FILE >\n");
     fflush(stdout);
-    if (fgets(inbuf, sizeof inbuf, stdin) != NULL) {
-      size_t l = strlen(inbuf);
-      while (l > 0 && (inbuf[l-1] == '\n' || inbuf[l-1] == '\r')) { inbuf[--l] = '\0'; }
-      if (l > 0) {
-        input_file = strdup(inbuf);
-      }
-      printf(" ENTER NAME OF OUTPUT FILE >\n");
-      fflush(stdout);
-      if (fgets(outbuf, sizeof outbuf, stdin) != NULL) {
-        size_t m = strlen(outbuf);
-        while (m > 0 && (outbuf[m-1] == '\n' || outbuf[m-1] == '\r')) { outbuf[--m] = '\0'; }
-        if (m > 0) {
-          output_file = strdup(outbuf);
-        }
-      }
+    if (!fgets(inbuf, sizeof inbuf, stdin)) {
+      fprintf(stderr, "onec: missing input filename\n");
+      return EXIT_FAILURE;
     }
+    inbuf[strcspn(inbuf, "\r\n")] = '\0';
+    printf(" ENTER NAME OF OUTPUT FILE >\n");
+    fflush(stdout);
+    if (!fgets(outbuf, sizeof outbuf, stdin)) {
+      fprintf(stderr, "onec: missing output filename\n");
+      return EXIT_FAILURE;
+    }
+    outbuf[strcspn(outbuf, "\r\n")] = '\0';
+    if (!inbuf[0] || !outbuf[0]) {
+      fprintf(stderr, "onec: filenames must not be empty\n");
+      return EXIT_FAILURE;
+    }
+    return process_single_file(inbuf, outbuf, stderr) == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
   }
-#endif
+
+  parse_options(argc, argv);
 
   // open the error file if it was provided, otherwise stderr
   if (strlen(error_file) > 0)
@@ -1225,45 +1261,40 @@ int main(int argc, char **argv)
   int input_root_count = 0;
   int input_root_cap = 64;
 
-  if (optind >= argc)
-  {
-    // If -i was given, treat it like a single positional file argument
-    if (strlen(input_file) > 0)
-    {
-      char out[512];
-      resolve_output(input_file, output_file, out, sizeof(out));
-      if (process_single_file(input_file, out, error_fp) != 0)
-      {
-        if (error_fp != stderr)
-          fclose(error_fp);
-        return EXIT_FAILURE;
-      }
+  int operands = argc - optind;
+  if (!batch_mode) {
+    if ((input_file[0] && operands > 0) || operands > 2 ||
+        (output_file[0] && operands > 1) || recursive) {
+      fprintf(error_fp, "onec: conflicting operands or options; use --batch for multiple inputs or -r\n");
+      if (error_fp != stderr) fclose(error_fp);
+      return EXIT_FAILURE;
     }
-    else if (!isatty(STDIN_FILENO))
-    {
-      // Stdin is redirected, process it
-      char out[512];
-      resolve_output("", output_file, out, sizeof(out));
-      if (process_single_file("", out, error_fp) != 0)
-      {
-        fprintf(error_fp, "Error processing stdin\n");
-        fflush(error_fp);
-        if (error_fp != stderr)
-          fclose(error_fp);
-        return EXIT_FAILURE;
-      }
+    if (!input_file[0] && operands > 0) input_file = argv[optind];
+    if (!input_file[0]) {
+      fprintf(error_fp, "onec: missing input; use - for stdin\n");
+      if (error_fp != stderr) fclose(error_fp);
+      return EXIT_FAILURE;
     }
-    else
-    {
-      // No input files specified and stdin not redirected
-      fprintf(error_fp, "onec: missing file operand\nTry 'onec --help' for more information.\n");
-      fflush(error_fp);
-      if (error_fp != stderr)
-        fclose(error_fp);
+    if (operands == 2) output_file = argv[optind + 1];
+    char out[4096];
+    resolve_output(input_file, output_file, out, sizeof(out));
+    int result = process_single_file(input_file, out, error_fp);
+    if (error_fp != stderr) fclose(error_fp);
+    return result == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+  }
+
+  if (input_file[0] || output_file[0] || operands == 0) {
+    fprintf(error_fp, "onec: --batch requires positional inputs and cannot be combined with -i or -o\n");
+    if (error_fp != stderr) fclose(error_fp);
+    return EXIT_FAILURE;
+  }
+  for (int i = optind; i < argc; i++) {
+    if (strcmp(argv[i], "-") == 0) {
+      fprintf(error_fp, "onec: --batch does not accept stdin\n");
+      if (error_fp != stderr) fclose(error_fp);
       return EXIT_FAILURE;
     }
   }
-  else
   {
     // Collect all files, including from directories
     char **dir_queue = NULL;

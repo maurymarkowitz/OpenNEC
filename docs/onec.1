@@ -24,20 +24,17 @@ requests).  The canonical file extension is
 or
 .BR .deck .
 .PP
-Multiple input files or directories may be given on the command line.
-When more than one input is processed,
-.B onec
-writes each result to a file named
-.IB input .out
-next to the source file, and uses
-.I stdout
-to report progress.  With a single input and no
-.B \-o
-flag, results go to
-.IR stdout .
+A single input produces an output file with the extension
+.BR .out ,
+unless an output path is supplied. Use a positional
+.B \-
+for stdin or stdout. With no arguments, onec prompts for input and output
+filenames and reads both lines from stdin, including when stdin is redirected.
 .PP
-If no file is given at all, the deck is read from
-.IR stdin .
+With
+.B \-\-batch
+positional operands are input files or directories and each report is written
+to a generated output file. Use this option for shell-expanded wildcards.
 .SH OPTIONS
 .TP
 .BR \-h ", " \-\-help
@@ -46,8 +43,12 @@ Print a usage summary and exit.
 .BR \-v ", " \-\-version
 Print version information and exit.
 .TP
+.B \-\-batch
+Process positional inputs as multiple files, patterns, or directories.
+The \-i and \-o options and stdin are not supported in batch mode.
+.TP
 .BR \-r ", " \-\-recursive
-Recurse into subdirectories when a directory is given as an argument.
+In batch mode, recurse into subdirectories when a directory is given as an argument.
 By default only files whose extensions are recognised as NEC decks
 .RI ( .nec ,
 .IR .deck )
@@ -74,27 +75,20 @@ to check without simulating.
 .BI \-i " file" "\fR,\fP \-\-input\-file=" file
 Read the deck from
 .IR file .
-This flag is not required; a bare positional argument has the same
-effect and takes precedence if both are given.
+Use
+.B \-
+for stdin. A positional input cannot be combined with
+.BR \-i .
 .TP
 .BI \-o " file" "\fR,\fP \-\-output\-file=" file
 Write simulation results to
 .IR file .
-With a single input and no
-.B \-o
-flag the results go to
-.IR stdout .
-With multiple inputs or
-.BR \-r ,
-output is always written to per-file
-.I .out
-sidecar files regardless of this flag.
-Passing
-.B \-o
-with no argument (or with just
-.BR \- )
-forces output to
-.IR stdout .
+Use
+.B \-
+for stdout. Without an output argument, a named input generates a
+.B .out
+file. This option cannot be combined with a positional output or
+.BR \-\-batch .
 .TP
 .BI \-e " file" "\fR,\fP \-\-error\-file=" file
 Redirect error and diagnostic messages to
@@ -190,17 +184,16 @@ with
 only NEC deck extensions are collected automatically; all other formats
 must be passed explicitly or with a glob pattern.
 .SH EXAMPLES
-Run a simulation and print results to stdout:
+Run a simulation and write results to example.out:
 .PP
 .RS
 .B onec example.nec
 .RE
 .PP
-Run a simulation and write results to the default sidecar file
-.IR example.out :
+Run a simulation and print results to stdout:
 .PP
 .RS
-.B onec \-o example.nec
+.B onec example.nec \-
 .RE
 .PP
 Run a simulation and write results to a named file:
@@ -218,13 +211,13 @@ Parse and validate a deck without simulating:
 Process an entire directory tree, four files at a time:
 .PP
 .RS
-.B onec \-r \-j 4 /path/to/models/
+.B onec \--batch \-r \-j 4 /path/to/models/
 .RE
 .PP
 Process only MMANA-GAL files in a directory tree:
 .PP
 .RS
-.B "onec \-r '/path/to/models/*.maa'"
+.B "onec \--batch \-r '/path/to/models/*.maa'"
 .RE
 .PP
 Convert a MMANA-GAL file to NEC format and simulate it:
@@ -236,7 +229,7 @@ Convert a MMANA-GAL file to NEC format and simulate it:
 Convert a folder of MMANA-GAL files to NEC decks without simulating:
 .PP
 .RS
-.B "onec \-r \-n \-w .nec '/path/to/models/*.mma'"
+.B "onec \--batch \-r \-n \-w .nec '/path/to/models/*.mma'"
 .RE
 .PP
 Write a Green's function file alongside the output:
@@ -245,23 +238,13 @@ Write a Green's function file alongside the output:
 .B onec \-g example.nec
 .RE
 .SH OUTPUT
-When a single input file is processed and
-.B \-o
-is not given, results are written to
-.IR stdout .
-When multiple files are processed (either by listing them, or with
-.BR \-r ),
-each file
-.I path/to/model.nec
-produces a corresponding
-.I path/to/model.out
-sidecar file, and
-.I stdout
-is used for per-file progress messages and the end-of-batch summary.
+A named input produces a corresponding .out report unless an output path
+is supplied. Use a positional
+.B \-
+to write to stdout. Batch mode generates one report for each input and
+writes progress messages to stderr.
 .PP
-Errors and warnings always go to
-.I stderr
-unless redirected with
+Errors and warnings go to stderr unless redirected with
 .BR \-e .
 .SH EXIT STATUS
 .TP

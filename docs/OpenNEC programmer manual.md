@@ -10,14 +10,16 @@ This manual is aimed at programmers intending to call OpenNEC from their own cod
 
 Using OpenNEC as a plug-in engine
 ---------------------------------
-
 The OpenNEC command-line shell program, `onec`, has been designed to be able to work as a drop-in replacement for the original Fortran NEC-2 executables like `nec2d`, as well as programs that expect the slightly different parameter style found in the `nec2c` and `necpp` versions.
 
-On Unix systems, `onec` matches the nec2c interface, which used the `-i` parameter to define the input filename, and `-o` for the output filename. If no `-o` is provided, it writes to `stdout`, allowing you to pipe it where you need. If `-o` is provided but has no parameter, it makes a new output file using the input name and changing the extension to `.out`. If no paramaters are provided, the original nec2c will exit with usage notes. OpenNEC changes this only slightly, allowing you to supply the file through redirection, so you can pipe in the file(s).
+There are three basic formats that the various NEC engines use, and OpenNEC supports all of them:
+- **classic** - the program is run with no parameters, and the user is expected to type in the input and output filenames. GUI programs automate this by placing the two filenames in a new file, and passing that file in using redirection, like `onec < filenames.txt`. This is the style used by the original NEC-2 releases, and is widely used in programs like 4nec2 and cocoaNEC.
+- **modern** - newer versions of the NEC-4 and NEC-5 programs use positional filenames of the form `onec infile.nec outfile.out`.
+- **nec2c** - the nec2c port of the original Fortran code added new command-line switches, `-i` and `-o` to allow the input and output file names to be specified. This avoids having to make the filename file and use redirection, which simplifies things.
 
-The Windows version supports the same switches for input and output, `-i` and `-o`, but changes the behaviour in the no-parameter case to match nec2d. On Windows, when no files are provided it interactively asks for the input and output filenames, and exits if the former is blank. Most programs used redirection in this case, passing in the two filenames saved into another text file. The key difference is that the Unix version expects a deck as the input in the no-parameter case, whereas the Windows version expects two filenames.
+OpenNEC also offers a number of other styles that are intended to be used manually in the terminal, and go beyond these older interfaces. See the [OpenNEC user manual](OpenNEC%20user%20manual.md) for details.
 
-The exact calling proceedure varies among programs, so separate document have been created for each commonly used program. For now, these include:
+The exact calling proceedure varies among programs, so separate documents have been created for each commonly used program. For now, these include:
 
 - [Using OpenNEC with 4nec2](Using&20%OpenNEC&20%with&20%4nec2.md)
 - [Using OpenNEC with cocoaNEC](Using&20%OpenNEC&20%with&20%cocoaNEC.md)
@@ -1621,7 +1623,7 @@ CocoaNEC's `.nec` files are XML, not NEC-2 card format. Export from cocoaNEC as 
 
 **"onec: '-o' cannot be used with multiple input files"**
 
-When processing multiple input files, use a directory as the output target or let `onec` write alongside each input file. The `-o` flag only works with a single input file.
+Use `--batch` for multiple input files; reports are written alongside the inputs. The `-o` flag is for a single input file.
 
 **Round-trip differences in field spacing**
 

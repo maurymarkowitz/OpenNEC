@@ -1453,7 +1453,10 @@ static void prepare_wire_source(context_t *ctx, int j)
   if( ctx->dataj.use_extended_kernel != 0)
   {
 	ipr = ctx->geometry.seg_end1_conn[j];
-	if (ipr > PCHCON) ctx->dataj.end1_kernel_type = 0;
+	// Burke's NEC2-bug.txt documents the EK2 patch-connection bug; it was
+	// fixed after nec2c was converted, but nec2c and OpenNEC inherited it
+  // because it was fixed after 2003 apparently
+	if (ipr > PCHCON) ctx->dataj.end1_kernel_type = 2;
 	else if( ipr < 0 )
 	{
 	  ipr= -ipr;

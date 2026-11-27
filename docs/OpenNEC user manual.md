@@ -55,141 +55,69 @@ xattr -d com.apple.quarantine onec
 Command line details
 --------------------
 
-OpenNEC was developed to match older command-line interface styles, as well as modernizing it to make it easier to use for new users. This leads to some complexity and gotchas.
+OpenNEC was developed to match older command-line interface styles, as well as modernizing it to make it easier to use for new users.
 
-When NEC was first created, as BRACT, computers generally did not have files in the modern sense. Instead, input data was punched onto cards and the output was a line printer. There was no need to specify the input and output, that was hard coded into the programs.
+When NEC was first created, as BRACT, computers generally did not have files in the modern sense. Instead, input data was punched onto cards and the output was a line printer. There was no need to specify the input and output, that was hard coded into the programs, and so NEC did not have a way to tell it what file to use.
 
-When NEC moved to more modern machines, files and the hard drives that stored them were becoming common, but there was no standard for passing those filenames into programs. Instead of trying to make it work across platforms, they added a couple of lines of code to print out a prompt and then read in user provided input and output filenames. So when you're using `nec2dx` on Windows for instance, it will look something like this, where the lowecase is what the user types:
+When NEC moved to more modern machines, files and the hard drives that stored them were becoming common. To get it up and running on these machines, they made a very slight modification to the original program. Now when it was called, the program would stop and ask the user for the input and output filenames, like this:
+
 
     nec2d.exe
      INPUT FILE: myinput.nec
      OUTPUT FILE: myoutput.out
 
-Most users today do not run the NEC code directly, they use a GUI shell program like 4nec2 that does it for them. To do this, the programs create a text file with the two responses in it, and then uses "redirection" to pass those in as if the user typed them, something like:
 
-`nec2d.exe < nec2d.tmp`
+This works, but it is not easy to automate. For that reason, when the original Fortran code was ported to C in the nec2c program, the author added the ability to specify the input and output files on the command line using the new `-i` and `-o` options.
 
-Modern systems expect to be able to type in the file names on the command line. When nec2c was written, it added this feature using the `-i` and `-o` switches, so:
+During this period, new versions of NEC were introduced, NEC-4 and NEC-5. Early versions of those systems worked like the original NEC-2, and asked the user for the file names. But later versions added positional filenames like nec2c, but without the switches, instead the first one was the input and the second the output.
 
-`nec2c -i myinput.nec -o myoutput.out`
-
-Later authors working with NEC-4 and NEC-5 decided not to use the switches, more in keeping with DOS/Windows style, and used:
-
-`nec5 myinput.nec myoutput.out`
-
-So there's already multiple styles you need to handle.
-
-This leads to another problem. on Unix systems it is generally expected that programs allow you to pass in the *contents* of file using redirection, instead of the names. The equivalent syntax for the command above using these Unix features would be:
-
-`nec2c < myinput.nec > myoutput.out`
-
-This sort of redirection is extremely useful in some workflows. For instance, you can redirect the report output to the many Unix tools to do things like extract certain values, look for problems, etc. This is especially useful during testing.
-
-Unfortunately this is the same syntax as the original DOS interface using redirection. To avoid potential problems, OpenNEC currently treats a redirect on Windows systems as the nec2d-like "passing in the names", and on Unix it treats them as redirecting the contents.
-
-Basic usage
------------
-The general syntax using positional parameters is similar to traditional command-line programs:
-
-```
-onec [options] <input_file_or_directory>...
+OpenNEC supports all of these forms. For instance, to run a deck you can:
+```sh
+onec antenna.nec
 ```
 
-### Simple Examples
+When run with a single parameter like this, a default output filename is constructed, in this case `antenna.out`. But you can also specify the name if you want:
 
-The typical operation is to parse and calculate a single antenna model and send the results to stdout. In OpenNEC, the simplest way to do this is to use a positional parameter to provide a filename:
-
-```bash
-onec dipole.nec
+```sh
+onec antenna.nec report.out
 ```
 
-You can add the `-o` command-line switch to send the output to a named file instead:
+Or use the nec2c version:
 
-```bash
-onec -o out_test.out dipole.nec
+```sh
+onec antenna.nec report.out
+onec -i antenna.nec -o report.out
 ```
 
-To allow OpenNEC to be used in the same fashion as nec2c, OpenNEC also allows you to use the `-i` command-line switch to define the input filename anywhere on the line:
+Older versions of OpenNEC also supported "redirection", which let you pass in the *contents* of a file:
 
-```bash
-onec -i dipole.nec
+```sh
+onec < antenna.nec
 ```
 
-When using the -i switch, the -o switch can also make up a name based on the input name by replacing the original extension with `.out`. For instance, this will write the output to the file `dipole.out`:,
+But this is the same format the original Fortran-derived programs used. To solve this problem, OpenNEC now allows you to specify redirection using the `-` instead of a filename, like:
 
-```bash
-onec -o -i dipole.nec
+```sh
+onec - < antenna.nec
 ```
 
-On Unix and macOS, you can provide input and output files using redirection or piping. For instance, you can perform the same action as the previous example this way:
+The `-` tells OpenNEC you are passing in the file from `stdin`, and then the redirection operator, `<` actually passes in the data. You can do the same for outuput:
 
-```bash
-onec dipole.nec > dipole.out
+
+```sh
+onec antenna.nec -
 ```
 
-Or if you prefer to be explicit:
+In this case, it will read and process antenna.nec, and then send the report to `stdout`.
 
-```bash
-onec < dipole.nec > dipole.out
+Use `--batch` to process several inputs or a directory. For example:
+
+```sh
+onec --batch examples/*.nec
+onec --batch -r /path/to/models/
 ```
 
-Or you can use pipes:
-
-```bash
-cat example.nec | onec > result.out
-```
-
-Note that in these Unix-like examples there are no parameters being passed to OpenNEC, the shell is handling the redirection. In the case that you invoke OpenNEC without any identifiable input filename, and there is no file being piped or redirected into it, it will report an error and exit. This allows it to remain compatible with nec2c, which will do the same.
-
-The Windows version differs here. If no input filename can be identified it will enter "interactive mode" and prompt for the input and output filenames. This matches the behaviour of the original Fortran code, which always interactively asks for these filenames. This style of interaction has been retained in more recent versions of that code like nec2dx, and various Windows applications rely on it.
-
-At the time of writing, it is not clear how widespread the original Fortran style code is on the Unix side. If it turns out it *is* common, then the Unix version will be changed to work the same way and ask for files if none are provided.
-
-In addition to single-file input and output, OpenNEC also allows you to specify multiple input files. For instance, to run several models you can:
-
-```bash
-onec dipole.nec loop.nec ldpa.nec
-```
-
-When used with multiple inputs, the output filename cannot be separately specified and the output will be sent directly to files instead of stdout. stdout is instead used to report progress of each file. Since this capability does not exist in other engines, there is no backward compability to be retained here, and the interface is the same on all platforms.
-
-The real purpose of this feature is to allow the command shell to expand wildcards and globbing expressions into multiple input files. For instance, you can process all of the decks in the examples folder using:
-
-```bash
-onec examples/*.nec
-```
-
-You can also force OpenNEC to recursively decend all subfolders using the `-r` switch:
-
-```bash
-onec -r /path/to/antenna/models/
-```
-
-The `-r` switch was added for convinience, but you can do the same with traditional shell programming if you prefer:
-
-```bash
-find "$dir" -type f -iname "*.nec" -print0 |
-while IFS= read -r -d '' file; do
-    echo "Processing: $file"
-    onec "$file"
-done
-```
-
-### Summary
-
-**Single file mode:**
-- If no `-o` option is provided, output goes to `stdout` (the terminal)
-- With `-o filename`, output is written to the specified file
-- With `-o` but no explicit output filename, output goes to `<input>.out`
-
-**Multiple file mode:**
-- Each input file generates a corresponding `.out` file automatically
-- Progress and summary information is written to `stdout`
-- The `-o` option is not allowed with multiple files
-
-**No input file:**
-- On Unix/Linux/macOS: reads the deck from `stdin`, allowing piped input
-- On Windows: prompts interactively for input and output filenames (for nec2d compatibility)
+Each input receives a generated `.out` report. The `-i` and `-o` options are for single-file processing; with `-i`, use `-o` for an explicit output. A named output that identifies the input file is rejected.
 
 Command-Line options
 --------------------
@@ -235,8 +163,8 @@ onec -o results.txt antenna.nec
 # Use default name (antenna.out)
 onec antenna.nec
 
-# Write to stdout (default for single file)
-onec antenna.nec
+# Write to stdout
+onec antenna.nec -
 ```
 
 **`-e FILE`, `--error-file=FILE`**  
@@ -249,7 +177,7 @@ onec -e errors.log antenna.nec
 This is particularly useful when processing many files to capture all warnings in one place:
 
 ```bash
-onec -r -e validation.log /antenna/collection/
+onec --batch -r -e validation.log /antenna/collection/
 ```
 
 ### Processing Control
@@ -276,15 +204,18 @@ onec -nt problematic.nec
 onec -t antenna.nec
 ```
 
+**`--batch`**<br>
+Process multiple input files, patterns, or directories. Each input receives a generated output filename.
+
 **`-r`, `--recursive`**  
-Recursively process all matching files in subdirectories.
+With `--batch`, recursively process all matching files in subdirectories.
 
 ```bash
 # Process all .nec files in directory tree
-onec -r /antenna/models/
+onec --batch -r /antenna/models/
 
 # Process all .maa files recursively
-onec -r '/antenna/models/*.maa'
+onec --batch -r '/antenna/models/*.maa'
 ```
 
 When using `-r` with a bare directory, only `.nec` and `.deck` files are processed. To process other file types recursively, use a quoted glob pattern — the filter is inherited by all subdirectories.
@@ -293,7 +224,7 @@ When using `-r` with a bare directory, only `.nec` and `.deck` files are process
 When processing multiple files, skip models with estimated complexity T ≥ 10¹¹. Useful for batch processing when you want to avoid long-running simulations.
 
 ```bash
-onec -r --skip-large /large/antenna/collection/
+onec --batch -r --skip-large /large/antenna/collection/
 ```
 
 The complexity estimate T is based on the number of segments and frequencies. Very large models may take minutes or hours to complete. See the [programmer manual](OpenNEC%20programmer%20manual.md) for further details.
@@ -303,10 +234,10 @@ Process up to N files in parallel when multiple input files are specified. Defau
 
 ```bash
 # Process up to 4 files at once
-onec -j 4 examples/*.nec
+onec --batch -j 4 examples/*.nec
 
 # Use all available CPU cores
-onec -j 8 -r /antenna/collection/
+onec --batch -j 8 -r /antenna/collection/
 ```
 
 This option is ignored when processing a single file. The optimal value depends on your CPU core count and available memory. Generally you should use a value of N that matches the number of physical cores in your system. There is no standard way to look that up in code, you will have to find it online. A value of 4 will likely work well enough on any modern machine.
@@ -335,8 +266,24 @@ onec -a -f nec2c antenna.nec
 
 ### File Format Conversion
 
+OpenNEC has built-in readers and writers for several third-party file formats. For example:
+
+```bash
+onec example.maa
+```
+
+This reads the MMANA-GAL file `example.maa`, converts it to NEC format in memory, runs the simulation, and produces `example.out`.
+
 **`-w FILE`, `--write-file=FILE`**  
 Write the parsed deck to a file in the format indicated by the file extension. This can be used to convert between different antenna modeling formats.
+
+Use a bare extension to keep the input name, or a complete filename to choose the converted deck's name. For example:
+
+```bash
+onec -n -w .nec example.maa
+```
+
+This reads `example.maa` and writes `example.nec`. The `-n` option skips the simulation when only the converted deck is needed. Details on individual file formats are available in the docs folder.
 
 **Supported output formats:**
 - `.nec` or `.deck` — OpenNEC/4nec2 format (extended NEC-2)
@@ -354,7 +301,7 @@ onec -n -w antenna.nec antenna.maa
 onec -n -w antenna.yo antenna.nec
 
 # Batch convert entire directory
-onec -n -w .nec -r /mmana/files/*.maa
+onec --batch -n -w .nec -r /mmana/files/*.maa
 ```
 
 When the filename is a bare extension (e.g., `-w .nec`), OpenNEC converts multiple files in place, generating output files with the same base name but different extension.
@@ -468,7 +415,7 @@ The `-n` flag prevents simulation, making the conversion faster. The `-w` flag s
 Process all antenna models in a directory:
 
 ```bash
-onec examples/*.nec
+onec --batch examples/*.nec
 ```
 
 Each `.nec` file generates a corresponding `.out` file. Progress information is displayed as each file completes.
@@ -478,7 +425,7 @@ Each `.nec` file generates a corresponding `.out` file. Progress information is 
 Process all antenna models in a directory tree:
 
 ```bash
-onec -r ~/antenna_designs/
+onec --batch -r ~/antenna_designs/
 ```
 
 This finds all `.nec` and `.deck` files in `~/antenna_designs/` and all subdirectories, runs simulations, and generates `.out` files for each.
@@ -488,7 +435,7 @@ This finds all `.nec` and `.deck` files in `~/antenna_designs/` and all subdirec
 Speed up batch processing using multiple CPU cores:
 
 ```bash
-onec -j 4 -r ~/antenna_designs/
+onec --batch -j 4 -r ~/antenna_designs/
 ```
 
 Processes up to 4 files simultaneously, significantly reducing total processing time for large collections.
@@ -498,7 +445,7 @@ Processes up to 4 files simultaneously, significantly reducing total processing 
 Process all MMANA-GAL files in a directory:
 
 ```bash
-onec '~/mmana_antennas/*.maa'
+onec --batch '~/mmana_antennas/*.maa'
 ```
 
 Note the quotes around the glob pattern — this prevents the shell from expanding the pattern and allows OpenNEC to control the file matching.
@@ -508,7 +455,7 @@ Note the quotes around the glob pattern — this prevents the shell from expandi
 Convert an entire directory of MMANA files to NEC format:
 
 ```bash
-onec -n -w .nec -r ~/mmana_collection/
+onec --batch -n -w .nec -r ~/mmana_collection/
 ```
 
 This creates a `.nec` file for every `.maa` or `.mma` file found, preserving the directory structure.
@@ -518,13 +465,13 @@ This creates a `.nec` file for every `.maa` or `.mma` file found, preserving the
 Use OpenNEC in a Unix pipeline:
 
 ```bash
-cat antenna.nec | onec > results.txt
+cat antenna.nec | onec - > results.txt
 ```
 
 Or combine with preprocessing:
 
 ```bash
-grep -v '^CM' antenna.nec | onec > results.txt
+grep -v '^CM' antenna.nec | onec - > results.txt
 ```
 
 This example removes all comment lines before processing.
@@ -546,7 +493,7 @@ This converts the MMANA file to NEC format, runs the simulation, and saves:
 Collect all validation warnings when processing many files:
 
 ```bash
-onec -t -e warnings.log -r ~/antenna_collection/
+onec --batch -t -e warnings.log -r ~/antenna_collection/
 ```
 
 All warnings and errors from every file are written to `warnings.log` for later review.
@@ -556,7 +503,7 @@ All warnings and errors from every file are written to `warnings.log` for later 
 Process only Yagi Optimizer files in a mixed directory:
 
 ```bash
-onec -r '/path/to/antennas/*.yo'
+onec --batch -r '/path/to/antennas/*.yo'
 ```
 
 The glob pattern must be quoted to prevent shell expansion. Only `.yo` files are processed, and the pattern is applied recursively.
@@ -567,10 +514,10 @@ Test a large batch before committing to full simulation:
 
 ```bash
 # First, validate all files
-onec -nt -r ~/large_collection/
+onec --batch -nt -r ~/large_collection/
 
 # If validation passes, run simulations
-onec -r ~/large_collection/
+onec --batch -r ~/large_collection/
 ```
 
 ### Example 15: Using with Other Tools
@@ -774,13 +721,13 @@ onec -nt antenna.nec
 onec -n -w output.nec input.maa
 
 # Batch process directory
-onec -r /path/to/models/
+onec --batch -r /path/to/models/
 
 # Parallel batch processing
-onec -j 4 -r /path/to/models/
+onec --batch -j 4 -r /path/to/models/
 
 # Process with error logging
-onec -t -e errors.log -r /models/
+onec --batch -t -e errors.log -r /models/
 ```
 
 ### Options Summary
@@ -791,7 +738,8 @@ onec -t -e errors.log -r /models/
 | `-v` | `--version` | — | Display version and exit |
 | `-n` | `--no-run` | — | Skip simulation (parse only) |
 | `-t` | `--test-deck` | — | Run validation tests |
-| `-r` | `--recursive` | — | Process subdirectories |
+| — | `--batch` | — | Process multiple inputs or directories |
+| `-r` | `--recursive` | — | Process subdirectories in batch mode |
 | | `--skip-large` | — | Skip models with T ≥ 10¹¹ |
 | `-i` | `--input-file` | FILE | Specify input file |
 | `-o` | `--output-file` | FILE | Specify output file (single file mode) |

@@ -82,7 +82,7 @@ for deck in test/error_tests/*.deck; do
   fi
   echo "Testing $name"
   tmpout="/tmp/error_test_${name}.out"
-  ./onec "$deck" >"$tmpout" 2>&1
+  ./onec "$deck" - >"$tmpout" 2>&1
   status=$?
   if grep -E "$expected_regex" "$tmpout" >/dev/null; then
     echo "PASS: $name (found expected error)"

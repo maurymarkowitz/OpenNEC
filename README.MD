@@ -80,17 +80,14 @@ Both platforms support `make install` which adds the documentation and example f
 Running OpenNEC
 ---------------
 
-OpenNEC includes a command-line interace, `onec`, that can be used to parse decks from the shell, and will write the calculated results to `stdout` or to a specific file using the `-o` flag.  For a fuller guide to the command-line interface and examples of the available flags, see the [OpenNEC User Manual](docs/OpenNEC%20user%20manual.md).
+OpenNEC includes a command-line interace, `onec`, that can be used to parse decks from the shell. In common use, it takes two file names on the command line, reads from the first and writes to the second. If only one file name is provided, it uses that as the output file with the extension `.out`. If no file names are provided, `onec` will ask for the names interactively. 
 
-OpenNEC is normally invoked from your unix shell, Terminal on macOS, or CMD or PowerShell on Windows. To run it, use a command similar to the following example, replacing the "<FILE/PATH>" with the names of the one or more text files containing the antenna designs you wish to process, or with one or more directories containing such files:
-
-```./onec [options] <FILE/PATH>...```
+For a fuller guide to the command-line interface and examples of the available flags, see the [OpenNEC User Manual](docs/OpenNEC%20user%20manual.md).
 
 Command-line options include:
 
 `-h`, `--help`: print usage notes (this list)  
 `-v`, `--version`: print version info  
-`-r`, `--recursive`: process directories recursively, parse every NEC file found  
 `-n`, `--no-run`: parse the deck but skip calculation/simulation  
 `-t`, `--test-deck`: run deck sanity checks (often used with -n)  
 `-i`, `--input-file` <file>: read the deck from a specific file (single input only)  
@@ -98,6 +95,8 @@ Command-line options include:
 `-w`, `--write-file` <file>: writes the deck out to the named file type (see below)  
 `-e`, `--error-file` <path>: write errors/logs to a file instead of `stderr`  
 `-g`, `--greens` <file>: write Greens function output to the given file (or default .ngf)  
+`--batch`: process multiple files or directories<br>
+`-r`, `--recursive`: process directories recursively in batch mode<br>
 `-j` <N>, `--jobs` <N>: if multiple files are passed in, run them in parallel up to <N> at a time  
 `-a`, `--add-rp`: automatically add a default RP if the deck ends without any output. Used with 4nec2 decks.  
 `-f`, `--format`: select the format for the generated `.out` file. Valid values are `nec2c` or `original` (default on all platforms).  
@@ -106,57 +105,36 @@ Command-line options include:
 
 Short options with no parameters can be ganged, for instance, `-nt` or `-nta`.
 
-### On the PC
+On Windows, `/?` is also supported as a help switch.
 
-There are two changes in the command-line interface on windows, to better support existing NEC-2 workflows.
 
-The first is to add the `/?` command line switch, the same as `-h`.
 
-The second is that running the `onec.exe` with no command line switches or positional arguments will prompt the user for input and output filenames, rather than printing the usage notes. This matches the behavior of the original Fortran code, which is normally fed input from `CONIN$` (the windows `stdin`). The input is a file that contains two lines of text, the first line having the input filename, and the second the output filename. If the filename is empty, the program will exit with an error.
-
+Use `onec --batch [options] input...` to process multiple files or directories. This can be used with "glob expressions" like `*.nec` to add multiple files.
 Examples
 --------
 
-To run against a single file and send the results to stdout:
+To run a single file:
 
 ```./onec example.nec```
 
-Using the `-o` switch you can force it to write to a named file, and you can also change the output name:
+In this case no output filename is specified, so it constructs one by replacing the input file's extension with `.out`, to produce `example.out`. You can also provide it explicitely:
 
-```./onec -o example_output.out example.nec```
-
+```./onec example.nec report.out```
 OpenNEC normally produces files in nec2d (original Fortran) format. You can change the output format using `-f`:
 
 ```./onec -f nec2c example.nec```
 
 To run against a folder full of files, even in subdirectories:
 
-```./onec -r /example_files/```
+```./onec --batch -r /example_files/```
 
-When using the `-r` switch, the output will always be sent to `<file>.out`, and stdout is used for reporting the filenames as they are processed, along with end-of-batch information.
+When using the `-r` switch, the output will always be sent to `<file>.out`, and stderr is used for reporting the filenames as they are processed, along with end-of-batch information.
 
 If you wish to use onec to simply check syntax or reformat a file, use the `-n` and `-t` switches:
 
 ```./onec -nt example.nec```
 
 This will produce a series of warnings or errors detailing issues (if any) in the deck and then exit, without attempting to run the simulations.
-
-File conversion
----------------
-
-OpenNEC has built-in readers and writers for various 3rd party file formats. For instance:
-
-```./onec example.maa```
-
-This will read the MMANA-GAL format `example.maa` file, convert it to NEC format in memory, and then run the simulations and produce an `example.out` file.
-
-OpenNEC can also write files in various formats using the `-w` option. This is normally used with a "bare" extension like `.nec`, but you can also provide a complete filename if you wish to rename the converted deck. In most cases, you use something like:
-
-```./onec -n -w .nec example.maa```
-
-This will read the file `example.maa` and write it back out as `example.nec` which can then be used by any NEC engine. This example uses the `-n` switch to avoid running the calculations, which you don't need when doing conversions.
-
-A list of the supported file types and more details on the conversion process can be found in the user manual, and details on the individual file formats can be found in the docs folder.
 
 OpenNEC concept
 ---------------

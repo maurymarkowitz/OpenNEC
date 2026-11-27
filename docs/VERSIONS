@@ -1,5 +1,9 @@
 OpenNEC version history
 
+Version 2.5.0 - 2026 November 27
+- change command line to allow "two file format", `onec infile.nec outfile.out` to match the UI of modern NEC-5
+- fix very old bug in NEC-2 with EK2 and patches, was in nec2c and inherited here
+
 Version 2.4.3 - 2026 November 22
 - added color support from 4nec2, we see the #RGB value and save it. if written it's `color=#RGB` which should be backward compatible
 - fixed GR rotations so each copy advances around the axis instead of overlapping the first rotated copy

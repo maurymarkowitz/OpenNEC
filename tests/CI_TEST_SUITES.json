@@ -45,6 +45,23 @@
       "cleanup_patterns": [
         "{TMPDIR}/onec-sequential-*"
       ]
+    },
+    {
+      "id": "cli-interface",
+      "name": "CLI interface and input protection",
+      "description": "Endpoint selection, batch mode, prompts, and input protection.",
+      "runner": "tests/cli_tests/run_cli_tests.py",
+      "required": true,
+      "platforms": [
+        "Linux",
+        "Darwin",
+        "Windows"
+      ],
+      "args": [
+        "--onec",
+        "{ONEC_BIN}"
+      ],
+      "timeout_seconds": 120
     }
   ]
 }

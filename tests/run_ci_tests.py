@@ -77,7 +77,8 @@ def run_suite(suite, binaries, verbose=False):
         print(f"  ✗ {suite_id}: runner not found at {runner_path}")
         return False, 1, f"Runner not found: {runner_path}"
     
-    cmd = [str(runner_path)] + [expand_vars(arg, binaries) for arg in suite.get("args", [])]
+    cmd = ([sys.executable, str(runner_path)] if runner_path.suffix == ".py" else [str(runner_path)])
+    cmd += [expand_vars(arg, binaries) for arg in suite.get("args", [])]
     
     if verbose:
         print(f"  ▶ running: {' '.join(cmd)}")

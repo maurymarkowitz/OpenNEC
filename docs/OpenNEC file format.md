@@ -67,7 +67,7 @@ The onec extension system is intended to be largely free-form, edited by the use
 
 - `material`  is a similar display-only extension and may be any value, but the following values should be expected; `silver`, `copper`, `aluminum`, `6061-T6`, `6063-T832`, `brass`, `phosphor bronze` and `steel`. This list was based on the materials from Yagi Optimizer.
 
-- `color` stores a three-digit RGB color for geometry display. OpenNEC accepts the 4nec2 trailing-comment form `#RGB`, as well as `color:#RGB`, `colour:#RGB`, `color:RGB`, and `colour:RGB` (hex digits are case-insensitive). The bare `#RGB` form is recognized only inside an inline comment, after `!` or `'`, because a leading `#` is a whole-line comment marker (not line-end). When written back as an OpenNEC extension, these forms are normalized to `color=#RGB`, which should be comparible with 4nec2 (but has to be tested!).
+- `color` stores a three-digit RGB color for geometry display. 4nec2 uses the form `#RGB`, which OpenNEC supports for compatibility, but we also allow the more well-formed alternatives `color:#RGB`, `colour:#RGB`, `color:RGB`, and `colour:RGB` (the hex digits are case-insensitive). The bare `#RGB` form is recognized only inside an inline comment, after `!` or `'`, because a leading `#` is a whole-line comment marker (not line-end). When written back as an OpenNEC extension, we always use `color=#RGB`, which should be compatible with 4nec2 (but has to be tested!).
 
 Out-of-band formulas
 --------------------
