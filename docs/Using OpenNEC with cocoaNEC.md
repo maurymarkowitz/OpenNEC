@@ -313,7 +313,8 @@ cp onec ~/Applications/nec4d42
 chmod +x ~/Applications/nec4d42
 ```
 
-## Reverting to Original NEC-4
+Reverting to original NEC-4
+---------------------------
 
 To switch back to the original NEC-4.2 engine:
 
