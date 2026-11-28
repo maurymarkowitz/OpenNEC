@@ -1,11 +1,10 @@
 Using OpenNEC (onec) with cocoaNEC
 ==================================
 
-## Overview
+The OpenNEC command-line program `onec` can be used as a replacement for the NEC-4 external engine in cocoaNEC, providing better performance, cross-platform compatibility, and advanced features. cocoaNEC is a sophisticated antenna modeling application for macOS that provides a graphical interface for NEC antenna design and analysis. This guide explains how to configure cocoaNEC to use OpenNEC instead of or alongside the traditional Fortran-based NEC-4 engine.
 
-OpenNEC (`onec`) can be used as a replacement for the NEC-4 external engine in cocoaNEC, providing better performance, cross-platform compatibility, and advanced features. cocoaNEC is a sophisticated antenna modeling application for macOS that provides a graphical interface for NEC antenna design and analysis. This guide explains how to configure cocoaNEC to use OpenNEC instead of or alongside the traditional Fortran-based NEC-4 engine.
-
-## cocoaNEC Architecture
+cocoaNEC Architecture
+---------------------
 
 cocoaNEC uses a two-tier computation model:
 
@@ -21,7 +20,8 @@ cocoaNEC uses a two-tier computation model:
    - Single-threaded (no multicore benefit)
    - License required from Lawrence Livermore National Laboratory (LLNL)
 
-## How cocoaNEC Invokes External Engines
+How cocoaNEC invokes external engines
+-------------------------------------
 
 When cocoaNEC uses an external NEC engine (such as NEC-4):
 
@@ -40,7 +40,8 @@ When cocoaNEC uses an external NEC engine (such as NEC-4):
 
 5. **Result Display**: Parsed results appear in cocoaNEC's output window with context labels identifying which engine was used
 
-## Setting Up OpenNEC with cocoaNEC
+Setting up OpenNEC with cocoaNEC
+--------------------------------
 
 ### Installation Location
 
@@ -122,7 +123,8 @@ sudo ln -s ~/Applications/nec4d42 /Applications/nec4d42
 defaults write net.w7ay.cocoaNEC necEnginePath ~/Applications/nec4d42
 ```
 
-## Technical Considerations
+Technical considerations
+------------------------
 
 ### Input Format Compatibility
 
@@ -181,7 +183,8 @@ cocoaNEC supports multiple ground models in the antenna specification:
 
 OpenNEC implements all ground models identically to the original NEC-2 and NEC-4 codes. Ground parameter generation is internal to the engine—no external ground calculation process (like somnec2d in 4nec2) is needed.
 
-## Advanced Usage
+Advanced usage
+--------------
 
 ### Selecting NC Models for Engine Comparison
 
@@ -221,7 +224,8 @@ For batch model analysis without the GUI, use OpenNEC directly:
 
 Integrate with shell scripts or other automation workflows.
 
-## Troubleshooting
+Troubleshooting
+---------------
 
 ### Issue: cocoaNEC doesn't recognize OpenNEC at `/Applications/nec4d42`
 
@@ -262,7 +266,8 @@ Or when installed at `/Applications/`:
 chmod +x /Applications/nec4d42
 ```
 
-## Building OpenNEC for macOS
+Building OpenNEC for macOS
+--------------------------
 
 ### Prerequisites
 
@@ -317,7 +322,8 @@ To switch back to the original NEC-4.2 engine:
 3. Restart cocoaNEC
 4. Preferences will now show "NEC-4.2 (external)" unavailable if no executable is present
 
-## References
+References
+----------
 
 - [OpenNEC GitHub Repository](https://github.com/maurymarkowitz/OpenNEC)
 - [cocoaNEC User Manual](https://www.w7ay.net/site/Manuals/cocoaNEC/index.html)
@@ -327,7 +333,8 @@ To switch back to the original NEC-4.2 engine:
 - [Apple Accelerate Framework](https://developer.apple.com/accelerate/)
 - [OpenBLAS Documentation](https://www.openblas.net/)
 
-## Support & Issues
+Support & Issues
+----------------
 
 ### For OpenNEC-specific issues:
 - GitHub Issues: https://github.com/maurymarkowitz/OpenNEC/issues

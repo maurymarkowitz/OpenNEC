@@ -1,9 +1,6 @@
 cocoaNEC `.NC` File Format
 ==========================
 
-Introduction
-------------
-
 [cocoaNEC](https://www.w7ay.net/site/Applications/cocoaNEC/index.html) is a macOS antenna modeling system written starting in 2002 by Kok Chen (W7AY). It provides  a GUI interface to the nec2c engine, and allows the antenna description to be entered  in three formats:
 
 * "spreadsheet" mode, which saves an XML document with a `.nec` extension

@@ -1,4 +1,5 @@
-# OpenNEC performance
+OpenNEC performance
+===================
 
 Roger Cox, W8IO, publishes a [NEC Benchmark page](https://www.w8io.com/nec-benchmarks.htm) that lists the time to run two large decks using different NEC engines and machines. The first file is a whip antenna with a hand-crafted ground plane with many segments, and the second is a complex log-periodic Yagi. The LogYag is a more typical antenna model, and the relative performance between engines on that file will likely match your own decks.
 
@@ -8,7 +9,8 @@ Simply put: OpenNEC is *dramatically* faster than older engines, often on the or
 
 The decks and the benchmark script used to measure them can be found in [`tests/benchmark_tests/`](../tests/benchmark_tests/). See the instructions at the end on how to run these on your platform.
 
-## Thread settings
+Thread settings
+---------------
 
 OpenNEC has modified the original nec2c code to support multi-threaded code. This makes parts of the code run about as many times faster as you have cores in your CPU, which is normally between 4 and 8.
 
@@ -26,7 +28,8 @@ The only change for other Unix systems and Windows is the name of the second var
 
 You'll want to experiment with the numbers; some machines prefer a larger number than the number of cores, and others strongly prefer smaller, but the majority seem to want threads = cores.
 
-## Background
+Background
+----------
 
 The original idea behind OpenNEC was to make a version of the nec2c code that could be compiled directly into GUI programs. Previous GUI programs like 4nec2 write out a NEC deck, call an external program to run the calculations and write a report file, and then read and parse that file for display. This round-trip introduces delays, which are significant for smaller antenna designs where the time needed to launch the program is often as long as the calculations. By allowing the functionality to be called directly from the GUI, thereby removing the program startup time, OpenNEC could make GUI programs much faster and more interactive.
 
@@ -38,7 +41,8 @@ Steven Burns, KK7KNB, has been modifying the nec2++ code with similar goals, as 
 
 One thing you have to be careful about when doing these sorts of changes is that all of these bits of code have their own overhead that can actually slow down the performance on smaller decks. So if you concentrate on speeding up the big decks you might be making the smaller real-world decks people are using go slower. So all of this has to be benchmarked at every step.
 
-## Baseline performance
+Baseline performance
+--------------------
 
 To provide a performance baseline, I attempted to run these decks with the original Fortran code from the [nec2d-SX source code](https://www.qsl.net/4nec2/supfiles.htm) found on the 4nec2 web pages, with the segment count increased to 11k and the in-deck comments stripped out. However, neither deck would run, reporting `SEGMENT CONNECTION ERROR...`. This turned out to be due to a fixed limit on the number of connections between segments, 60, which both of these files had issues with at one point or another.
 
@@ -51,7 +55,8 @@ To provide a performance baseline, I attempted to run these decks with the origi
 
 These numbers are used as "performance value 1.0" and the "Times faster" columns below are the number of times faster than these values. Larger values are better - 10 means ten times as fast, 5 means only five times as fast.
 
-## Previous best
+Previous best
+-------------
 
 Cox's page lists a number of different engines and platforms. The fastest engine at the time of the last update, in June 2023 when this is being written, was Athan Papadimitriou's [NEC2/MP 1.5](https://web.archive.org/web/20130502013310/http://users.otenet.gr/~jmsp/) being run on a Core i9-12900H machine with six performance cores and another six efficiency cores.
 
@@ -65,7 +70,8 @@ These results show the improvement you get from using the BLAS code on a machine
 
 These numbers are not *directly* compariable to the nec2c results above, as it's a different machine. Unfortunately, the source code was not published, and the only binary releases were on the PC, so we have to fudge it. GeekBench states the M2 Max is about 12 to 25% faster, so if we could run on the M2 we would expect to see around 8 times faster for whip, and 2 for LogYag.
 
-## NEC2++ results
+NEC2++ results
+--------------
 
 With the exception of adding BLAS, many of the performance upgrades to OpenNEC were originally part of momwire's nec2++ modifications. The following measurements are the fastest of five runs using the nec2++ code built on the M2 with OpenBLAS, LAPACK and OpenMP, and `OMP_NUM_THREADS=8` and `OPENBLAS_NUM_THREADS=8`, suitable for the testing machine. The whip was run from a temporary copy with apostrophe comments removed, and the wire-intersection check was disabled because it rejects the mesh.
 
@@ -87,7 +93,8 @@ The matrix that gets fed into BLAS contains a list of every segment in the desig
 
 The reason this effects the whip so much is because the ground plane has so much similar geometry. The effect of the leftmost upper segment on the plane is ultimately the same magnitude as the rightmost lower one, so we can just flip the signs. It doesn't work so well on LogYag because the elements are different lengths, so there's less symmetry. In this case it falls back to the original fill code. Testing whether we should fall back adds a small amount of overhead. But it's not enough to explain the extra second seen here.
 
-## OpenNEC results
+OpenNEC results
+---------------
 
 Now let's compare all of these results with OpenNEC. These numbers are from version 2.4.2 built as a production binary using the clang complier, `-O2` optimization, Apple Accelerate (which contains BLAS) and OpenMP. Both decks were run five times with `OMP_NUM_THREADS=8` and `VECLIB_MAXIMUM_THREADS=8`, which matches the 8-core system, and the times below are the fastest of the five.
 
@@ -111,7 +118,8 @@ The small effect of the early exit is visible here, barely, as the LogYag takes 
 
 It is curious that OpenNEC outperforms nec2++ by this much. The two programs come from different backgrounds, but do basically the same things internally and have the same optimizations applied. OpenBLAS on this machine is a bit slower than the Accelerate version so that explains *some* of it. OpenNEC also has some differences in the way it sends geometery into the calculation side, it is wavelength based in places that nec2++ uses meters, but that shouldn't have much effect here. More experimentation is warranted.
 
-## Small deck effects
+Small deck effects
+------------------
 
 Because these advanced libraries all require time and memory to get up and running, it's possible that they actually slow things down in the case of small decks when the calculation time is so short its best to avoid all of it. But in repeated measurements this appears to be such a small effect as to not worry about it.
 
@@ -127,7 +135,8 @@ The following numbers are a series of decks with the same geometry but different
 
 As you can see, while the smaller decks do indeed run slower, about 8%, the actual time is so small that the difference is invisible.
 
-## Putting it all together
+Putting it all together
+-----------------------
 
 To illustrate the performance improvements across a broad selection of different deck complexity and sizes, as well as the improvements the various upgrades offer, a (lengthy!) test was run against a selection of files. These included the original example5.nec from cocoaNEC that was used to validate early versions of OpenNEC, the golden_decks selection of test files, the sym4-series ladder decks, and finally the Whip and LogYag files from Ron's collection. That's 25 decks in total.
 
@@ -179,7 +188,8 @@ At the bottom of the chart we see what this 0.003 second buys us, a massive impr
 
 So the end result seems clear: except for the very simplest and smallest decks, these additions offer very large improvements, and even on the simplest cases the downside is too tiny to worry about. 
 
-## Reproduction
+Reproduction
+------------
 
 To reproduce these numbers on your machine, build the production Accelerate + OpenMP executable on macOS or follow the directions in BUILD and BUILD-WINDOWS for other platforms:
 

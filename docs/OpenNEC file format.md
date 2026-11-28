@@ -1,9 +1,6 @@
 OpenNEC file format
 ===================
 
-Introduction
-------------
-
 OpenNEC, or onec for short, is an implementation of the Numerical Electromagnetics Code ("NEC") system for simulating antennas. NEC systems use text files known as "decks" to exchange design information between antenna simulator programs using the NEC-2 and NEC-4 programs, or compatible systems like nec2c, 4nec2, MININEC, and many others. The OpenNEC file format is an extended version of the *de facto* NEC file format.
 
 The onec file format adds a feature that allows the format to be arbitrarily extended without effecting the underlying NEC data, using inline comments. Most modern NEC implementations can read these files without modification. onec files can be easily converted to a more generic NEC-2 format, so any pure NEC-compatible program can read a converted onec file with no loss of information. 

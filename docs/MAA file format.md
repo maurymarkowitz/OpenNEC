@@ -1,9 +1,6 @@
 MMANA‑GAL ".maa" file format
 ============================
 
-Introduction
-------------
-
 The MMANA‑GAL software (and its derivatives) use a text format for saving antenna models. The files normally use the `.maa` extension, or more rarely `.mma`. These files contain an ordered sequence of text lines, separated by header lines and line counts, somewhat similar to the [YO format](YO%20file%20format.md).
 
 Although the format is undocumented, a large number of examples online allow the structure to be inferred. The variation seen in the wild ranges from the minimal 4‑line variant used by simple exporters (frequency, counts, wires, loads, sources) through more elaborate files which include segmentation parameters, ground and measurement options, and comment blocks.

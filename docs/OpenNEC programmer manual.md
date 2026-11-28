@@ -1,10 +1,7 @@
 OpenNEC Programmer Manual
 ==========================
 
-Introduction
-------------
-
-This manual focuses on how to use the `libopennec.a` library in other programs, and the internal structures and functions that you call from the library in your programs. It also includes guidance on generating and validating NEC decks, controlling simulations, import and export of other formats, and interpreting output.
+This manual focuses on how to use OpenNEC's `libopennec.a` library in other programs, and the internal structures and functions that you call from the library in your programs. It also includes guidance on generating and validating NEC decks, controlling simulations, import and export of other formats, and interpreting output.
 
 This manual is aimed at programmers intending to call OpenNEC from their own code. For those looking for instructions on how to use the program from the command line, see the main [README](../README.MD) and the [OpenNEC user manual](OpenNEC%20user%20manual.md). For instructions on how to build models and decks, see the [OpenNEC modeling manual](OpenNEC%20modeling%20manual.md).
 

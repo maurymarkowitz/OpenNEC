@@ -1,9 +1,6 @@
 Using OpenNEC (onec) with 4nec2
 ===============================
 
-Introduction
-------------
-
 The OpenNEC command-line program, `onec`, can be used as a drop-in replacement for the traditional NEC-2 calculation engines in 4nec2. OpenNEC provides much better performance, cross-platform compatibility, and supports models with large numbers of segments. This guide explains how to [configure 4nec2 to use onec](#configuring-4nec2-to-use-opennec) instead of the older Fortran-based executables that are supplied with 4nec2.
 
 4nec2's internal file format is a modified version of the format used by the Fortran code. It works by writing out a temporary deck with those modifications replaced with values the Fortran code can work with. OpenNEC can read these Fortran-style temporary files and produce output like what 4nec2 expects. See the section one [how 4nec2 invokes NEC engines](#how-4nec2-invokes-nec-engines) for details on this process.
