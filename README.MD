@@ -23,17 +23,17 @@ Why OpenNEC?
 
 There are many NEC-2 engines available, why should you use OpenNEC?
 
-- OpenNEC uses identical code and produces identical results on Windows, macOS and Linux.
-- OpenNEC uses the fast BLAS math code, which dramatically boosts performance.
-- OpenNEC also takes full advantage of multi-core/processor systems using OpenMP.
-- OpenNEC supports "somnec" ground internally.
-- OpenNEC includes fixes for all known NEC bugs and issues.
-- OpenNEC models are limited only by the system size, and scale to the 100,000 segment range.
-- OpenNEC supports extensions from 4nec2 and other systems, allowing these to be run on any platform.
-- OpenNEC can properly read practically any deck, even with weird formatting.
-- OpenNEC can read and write files from other antenna programs, like EZNEC and MMANA-GAL.
-- OpenNEC can produce reports in both nec2d and nec2c format, so it can be used in any front-end program like 4nec2 and cocoaNEC.
-- OpenNEC can be compiled directly into your program.
+- it uses identical code and produces identical results on Windows, macOS and Linux.
+- it uses the fast BLAS math code, which dramatically boosts performance.
+- it also takes full advantage of multi-core/processor systems using OpenMP.
+- it supports "somnec" ground internally.
+- it includes fixes for all known NEC bugs and issues.
+- it models are limited only by the system size, and scale to the 100,000 segment range.
+- it supports extensions from 4nec2 and other systems, allowing these to be run on any platform.
+- it can properly read practically any deck, even with weird formatting.
+- it can read and write files from other antenna programs, like EZNEC and MMANA-GAL.
+- it can produce reports in both nec2d and nec2c format, so it can be used in programs like 4nec2 and cocoaNEC.
+- the internal calculation library can be compiled directly into your program.
 
 Few of these additions are unique to OpenNEC, so why switch? Because OpenNEC has [all of these](docs/OpenNEC,%20NEC-2%20and%20nec2c.md).
 
