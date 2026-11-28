@@ -57,21 +57,22 @@ Command line details
 
 OpenNEC was developed to match older command-line interface styles, as well as modernizing it to make it easier to use for new users.
 
-When NEC was first created, as BRACT, computers generally did not have files in the modern sense. Instead, input data was punched onto cards and the output was a line printer. There was no need to specify the input and output, that was hard coded into the programs, and so NEC did not have a way to tell it what file to use.
+When NEC was first created, as BRACT, computers generally did not have files in the modern sense. Instead, input data was punched onto cards and the output was a line printer. There was no need to specify the input and output, that was inherant to the machine, so NEC did not need a way to tell it what files to read and write.
 
 When NEC moved to more modern machines, files and the hard drives that stored them were becoming common. To get it up and running on these machines, they made a very slight modification to the original program. Now when it was called, the program would stop and ask the user for the input and output filenames, like this:
 
+```dos
+nec2d.exe
+  INPUT FILE: myinput.nec
+  OUTPUT FILE: myoutput.out
+```
 
-    nec2d.exe
-     INPUT FILE: myinput.nec
-     OUTPUT FILE: myoutput.out
+This works, but it is not easy to automate. As users moved to interactive programs that called existing NEC engines to run the calculations, tricks had to be used to simulate typing in those filenames. To improve on this, when the original Fortran code was ported to C in the nec2c program, the author added the ability to specify the input and output files on the command line using the new `-i` and `-o` options.
 
-
-This works, but it is not easy to automate. For that reason, when the original Fortran code was ported to C in the nec2c program, the author added the ability to specify the input and output files on the command line using the new `-i` and `-o` options.
-
-During this period, new versions of NEC were introduced, NEC-4 and NEC-5. Early versions of those systems worked like the original NEC-2, and asked the user for the file names. But later versions added positional filenames like nec2c, but without the switches, instead the first one was the input and the second the output.
+During this period, new versions of NEC were introduced, NEC-4 and NEC-5. Early versions of those systems worked like the original NEC-2, and asked the user for the file names. But later versions added command-line filenames like nec2c, but without the switches, instead the first one was the input and the second the output.
 
 OpenNEC supports all of these forms. For instance, to run a deck you can:
+
 ```sh
 onec antenna.nec
 ```
@@ -95,7 +96,7 @@ Older versions of OpenNEC also supported "redirection", which let you pass in th
 onec < antenna.nec
 ```
 
-But this is the same format the original Fortran-derived programs used. To solve this problem, OpenNEC now allows you to specify redirection using the `-` instead of a filename, like:
+But this is the same format the original Fortran-derived programs used. To solve this problem, since version 2.5 and later allow you to specify redirection using the `-` instead of a filename, like:
 
 ```sh
 onec - < antenna.nec
@@ -110,14 +111,14 @@ onec antenna.nec -
 
 In this case, it will read and process antenna.nec, and then send the report to `stdout`.
 
-Use `--batch` to process several inputs or a directory. For example:
+A unique feature of OpenNEC is the ability to run multiple files at the same time, using the `--batch` switch. For example:
 
 ```sh
 onec --batch examples/*.nec
 onec --batch -r /path/to/models/
 ```
 
-Each input receives a generated `.out` report. The `-i` and `-o` options are for single-file processing; with `-i`, use `-o` for an explicit output. A named output that identifies the input file is rejected.
+Each input file generates an `.out` report with the default naming as above.
 
 Command-Line options
 --------------------
@@ -286,12 +287,17 @@ onec -n -w .nec example.maa
 This reads `example.maa` and writes `example.nec`. The `-n` option skips the simulation when only the converted deck is needed. Details on individual file formats are available in the docs folder.
 
 **Supported output formats:**
-- `.nec` or `.deck` — OpenNEC/4nec2 format (extended NEC-2)
-- `.nec2` — Pure NEC-2 format (no extensions)
-- `.nec4` — NEC-4 format
-- `.maa` or `.mma` — MMANA-GAL format
-- `.yo`, `.ant`, or `.yag` — Yagi Optimizer format
-- `.nc` — cocoaNEC format
+
+| Extension(s) | Format | Read | Write | Notes |
+|-------------|--------|------|-------|-------|
+| `.nec`, `.deck`, `.4nec` | OpenNEC/4nec2 | ✓ | ✓ | Native format, full feature support |
+| `.nec2` | NEC-2 | ✓ | ✓ | Pure NEC-2, no extensions |
+| `.nec4` | NEC-4 | ✓ | ✓ | Some NEC-4 cards not supported |
+| `.ez`, `.ezn` | EZNEC | — | — | Recognized but not yet supported |
+| `.maa`, `.mma` | MMANA-GAL | ✓ | ✓ | Full support |
+| `.nc` | cocoaNEC | ✓ | ✓ | Most features supported |
+| `.yo`, `.ant`, `.yag` | Yagi Optimizer | ✓ | ✓ | Full support |
+| `.nwp`, `.nwz` | NEC-Win Plus/Zip | — | — | Recognized but not supported |
 
 ```bash
 # Convert MMANA file to NEC format
@@ -304,15 +310,7 @@ onec -n -w antenna.yo antenna.nec
 onec --batch -n -w .nec -r /mmana/files/*.maa
 ```
 
-When the filename is a bare extension (e.g., `-w .nec`), OpenNEC converts multiple files in place, generating output files with the same base name but different extension.
-
-**Combined with simulation:**
-```bash
-# Convert and simulate in one step
-onec -w antenna.nec antenna.maa
-```
-
-This converts the input file, runs the simulation, and produces both the converted `.nec` file and the `.out` results file.
+When the filename is a bare extension (e.g., `-w .nec`) and --batch is used, OpenNEC converts multiple files in place, generating output files with the same base name but different extension.
 
 ### Output Format Control
 
@@ -562,7 +560,7 @@ cocoaNEC is a sophisticated antenna modeling application for macOS. To configure
 
 See [Using OpenNEC with cocoaNEC](Using%20OpenNEC%20with%20cocoaNEC.md) for complete setup instructions.
 
-### Using OpenNEC in Scripts
+### Using OpenNEC in scripts
 
 OpenNEC's command-line interface makes it ideal for automation and batch processing:
 
@@ -588,24 +586,6 @@ OpenNEC uses standard Unix return codes:
 - `2` — Invalid command-line arguments
 
 In batch mode, OpenNEC continues processing remaining files even if one fails, and returns the appropriate code based on the worst error encountered.
-
-File format support
--------------------
-
-OpenNEC can read and write multiple antenna modeling file formats:
-
-| Extension(s) | Format | Read | Write | Notes |
-|-------------|--------|------|-------|-------|
-| `.nec`, `.deck`, `.4nec` | OpenNEC/4nec2 | ✓ | ✓ | Native format, full feature support |
-| `.nec2` | NEC-2 | ✓ | ✓ | Pure NEC-2, no extensions |
-| `.nec4` | NEC-4 | ✓ | ✓ | Some NEC-4 cards not supported |
-| `.ez`, `.ezn` | EZNEC | — | — | Recognized but not yet supported |
-| `.maa`, `.mma` | MMANA-GAL | ✓ | ✓ | Full support |
-| `.nc` | cocoaNEC | ✓ | ✓ | Most features supported |
-| `.yo`, `.ant`, `.yag` | Yagi Optimizer | ✓ | ✓ | Full support |
-| `.nwp`, `.nwz` | NEC-Win Plus/Zip | — | — | Recognized but not supported |
-
-For detailed information on each format's capabilities and limitations, see the format-specific documents in the [docs](.) directory.
 
 Troubleshooting
 ---------------
